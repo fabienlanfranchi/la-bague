@@ -405,12 +405,12 @@ const MembersPage = () => {
                         {member.nom_complet}
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm text-gray-600">
+                        <span className="text-sm text-gray-400">
                           {member.fonction}
                         </span>
                       </TableCell>
                       <TableCell>
-                        <div className="text-sm">
+                        <div className="text-sm text-white">
                           <div>{member.saison_entree} {member.annee_entree}</div>
                         </div>
                       </TableCell>
