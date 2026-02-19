@@ -13,10 +13,10 @@ import {
   Calendar,
   Gamepad2,
   MessageSquare,
-  BarChart3,
   Book,
   Sparkles,
-  Instagram as InstagramIcon
+  Instagram as InstagramIcon,
+  ShoppingBag
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -31,10 +31,10 @@ const Sidebar = () => {
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, adminOnly: false },
     { path: '/comptabilite', label: 'Comptabilité', icon: DollarSign, adminOnly: true },
     { path: '/members', label: 'Membres', icon: Users, adminOnly: true },
-    { path: '/evenements', label: 'Événements', icon: Calendar, adminOnly: true },
-    { path: '/jeux', label: 'Jeux', icon: Gamepad2, adminOnly: true },
-    { path: '/messages', label: 'Messages', icon: MessageSquare, adminOnly: true },
-    { path: '/sondages', label: 'Sondages', icon: BarChart3, adminOnly: true },
+    { path: '/evenements', label: 'Événements', icon: Calendar, adminOnly: false },
+    { path: '/jeux', label: 'Jeux', icon: Gamepad2, adminOnly: false },
+    { path: '/boutique', label: 'Boutique', icon: ShoppingBag, adminOnly: false },
+    { path: '/messages', label: 'Messages', icon: MessageSquare, adminOnly: false },
     { path: '/cigarotheque', label: 'Cigarthèque', icon: Book, adminOnly: false },
     { path: '/assistant-ia', label: 'Assistant IA', icon: Sparkles, adminOnly: false },
     { path: '/instagram', label: 'Instagram', icon: InstagramIcon, adminOnly: false, external: true },
