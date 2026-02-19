@@ -8,7 +8,15 @@ import {
   User, 
   Crown,
   LogOut,
-  Menu
+  Menu,
+  DollarSign,
+  Calendar,
+  Gamepad2,
+  MessageSquare,
+  BarChart3,
+  Book,
+  Sparkles,
+  Instagram as InstagramIcon
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -21,8 +29,16 @@ const Sidebar = () => {
 
   const menuItems = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, adminOnly: false },
-    { path: '/profile', label: 'Profil', icon: User, adminOnly: false },
+    { path: '/comptabilite', label: 'Comptabilité', icon: DollarSign, adminOnly: true },
     { path: '/members', label: 'Membres', icon: Users, adminOnly: true },
+    { path: '/evenements', label: 'Événements', icon: Calendar, adminOnly: true },
+    { path: '/jeux', label: 'Jeux', icon: Gamepad2, adminOnly: true },
+    { path: '/messages', label: 'Messages', icon: MessageSquare, adminOnly: true },
+    { path: '/sondages', label: 'Sondages', icon: BarChart3, adminOnly: true },
+    { path: '/cigarotheque', label: 'Cigarthèque', icon: Book, adminOnly: false },
+    { path: '/assistant-ia', label: 'Assistant IA', icon: Sparkles, adminOnly: false },
+    { path: '/instagram', label: 'Instagram', icon: InstagramIcon, adminOnly: false, external: true },
+    { path: '/profile', label: 'Profil', icon: User, adminOnly: false },
   ];
 
   return (
@@ -39,20 +55,19 @@ const Sidebar = () => {
       <div
         className={`
           fixed left-0 top-0 h-full bg-black border-r border-[#D4A024]/20
-          transition-all duration-300 z-40
+          transition-all duration-300 z-40 overflow-y-auto
           ${isOpen ? 'w-64' : 'w-0 lg:w-64'}
-          overflow-hidden
         `}
       >
         <div className="flex flex-col h-full p-6">
           {/* Logo et profil */}
           <div className="mb-8">
             <div className="flex justify-center mb-6">
-              <div className="w-32 h-32 rounded-lg overflow-hidden border-2 border-[#D4A024] bg-[#7A2020] flex items-center justify-center">
+              <div className="w-32 h-32 flex items-center justify-center">
                 <img
-                  src="/assets/logos/logo-rond-rouge.jpg"
+                  src="/assets/logos/logo-rond-transparent.svg"
                   alt="La Bague Impériale"
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain filter drop-shadow-lg"
                 />
               </div>
             </div>
@@ -73,6 +88,23 @@ const Sidebar = () => {
               if (item.adminOnly && !isAdmin) return null;
               
               const Icon = item.icon;
+              
+              if (item.external) {
+                return (
+                  <a
+                    key={item.path}
+                    href="https://instagram.com/labagueimperiale"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center space-x-3 px-4 py-3 rounded-lg transition-all text-gray-400 hover:bg-[#D4A024]/10 hover:text-[#D4A024]"
+                    data-testid={`sidebar-${item.label.toLowerCase()}`}
+                  >
+                    <Icon className="w-5 h-5" />
+                    <span className="font-medium">{item.label}</span>
+                  </a>
+                );
+              }
+              
               return (
                 <Link
                   key={item.path}
