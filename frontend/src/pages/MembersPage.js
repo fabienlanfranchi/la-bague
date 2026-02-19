@@ -356,7 +356,7 @@ const MembersPage = () => {
                     >
                       Annuler
                     </Button>
-                    <Button type="submit" className="bg-amber-600 hover:bg-amber-700">
+                    <Button type="submit" className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif font-bold">
                       {editingMember ? 'Mettre à jour' : 'Créer'}
                     </Button>
                   </DialogFooter>
