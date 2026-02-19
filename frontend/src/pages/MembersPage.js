@@ -400,8 +400,8 @@ const MembersPage = () => {
                   </TableRow>
                 ) : (
                   filteredMembers.map((member) => (
-                    <TableRow key={member.id} data-testid={`member-row-${member.id}`}>
-                      <TableCell className="font-medium">
+                    <TableRow key={member.id} data-testid={`member-row-${member.id}`} className="border-[#D4A024]/20 hover:bg-[#D4A024]/5">
+                      <TableCell className="font-medium text-white">
                         {member.nom_complet}
                       </TableCell>
                       <TableCell>
