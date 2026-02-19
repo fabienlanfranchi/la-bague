@@ -169,7 +169,7 @@ const MembersPage = () => {
       </div>
 
       {/* Barre d'actions */}
-      <Card className="mb-6">
+      <Card className="mb-6 bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm">
         <CardContent className="pt-6">
           <div className="flex items-center justify-between gap-4">
             {/* Recherche */}
