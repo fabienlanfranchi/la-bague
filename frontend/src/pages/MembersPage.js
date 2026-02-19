@@ -192,7 +192,7 @@ const MembersPage = () => {
               <DialogTrigger asChild>
                 <Button
                   onClick={() => handleOpenDialog()}
-                  className="bg-amber-600 hover:bg-amber-700"
+                  className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif font-bold"
                   data-testid="add-member-button"
                 >
                   <Plus className="w-4 h-4 mr-2" />
