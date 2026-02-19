@@ -7,10 +7,24 @@ import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import ProfilePage from './pages/ProfilePage';
 import MembersPage from './pages/MembersPage';
+import Comptabilite from './pages/Comptabilite';
+import Evenements from './pages/Evenements';
+import Jeux from './pages/Jeux';
+import Messages from './pages/Messages';
+import Sondages from './pages/Sondages';
+import Cigarotheque from './pages/Cigarotheque';
+import AssistantIA from './pages/AssistantIA';
 
 const Home = () => {
   // Sélectionner une photo aléatoire parmi les 10
   const randomCigar = Math.floor(Math.random() * 10) + 1;
+  
+  // Alterner entre les logos pour la page d'accueil
+  const logos = [
+    '/assets/logos/logo-principal-transparent.png',
+    '/assets/logos/logo-vertical-transparent.png'
+  ];
+  const randomLogo = logos[Math.floor(Math.random() * logos.length)];
   
   return (
     <div 
@@ -29,7 +43,7 @@ const Home = () => {
         {/* Logo */}
         <div className="text-center mb-8">
           <img
-            src="/assets/logos/logo-principal-blanc.jpg"
+            src={randomLogo}
             alt="La Bague Impériale"
             className="w-64 md:w-96 mx-auto mb-6 filter drop-shadow-2xl"
           />
@@ -106,10 +120,10 @@ function App() {
               }
             />
             <Route
-              path="/profile"
+              path="/comptabilite"
               element={
                 <AppLayout>
-                  <ProfilePage />
+                  <Comptabilite />
                 </AppLayout>
               }
             />
@@ -118,6 +132,62 @@ function App() {
               element={
                 <AppLayout>
                   <MembersPage />
+                </AppLayout>
+              }
+            />
+            <Route
+              path="/evenements"
+              element={
+                <AppLayout>
+                  <Evenements />
+                </AppLayout>
+              }
+            />
+            <Route
+              path="/jeux"
+              element={
+                <AppLayout>
+                  <Jeux />
+                </AppLayout>
+              }
+            />
+            <Route
+              path="/messages"
+              element={
+                <AppLayout>
+                  <Messages />
+                </AppLayout>
+              }
+            />
+            <Route
+              path="/sondages"
+              element={
+                <AppLayout>
+                  <Sondages />
+                </AppLayout>
+              }
+            />
+            <Route
+              path="/cigarotheque"
+              element={
+                <AppLayout>
+                  <Cigarotheque />
+                </AppLayout>
+              }
+            />
+            <Route
+              path="/assistant-ia"
+              element={
+                <AppLayout>
+                  <AssistantIA />
+                </AppLayout>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <AppLayout>
+                  <ProfilePage />
                 </AppLayout>
               }
             />
