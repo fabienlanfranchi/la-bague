@@ -11,9 +11,9 @@ import Comptabilite from './pages/Comptabilite';
 import Evenements from './pages/Evenements';
 import Jeux from './pages/Jeux';
 import Messages from './pages/Messages';
-import Sondages from './pages/Sondages';
 import Cigarotheque from './pages/Cigarotheque';
 import AssistantIA from './pages/AssistantIA';
+import Boutique from './pages/Boutique';
 
 const Home = () => {
   // Sélectionner une photo aléatoire parmi les 10
