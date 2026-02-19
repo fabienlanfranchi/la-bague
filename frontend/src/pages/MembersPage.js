@@ -160,12 +160,12 @@ const MembersPage = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-gray-800 mb-2">
+    <div className="space-y-8">
+      <div className="text-center md:text-left">
+        <h1 className="text-4xl md:text-5xl font-serif font-bold text-white mb-2">
           Gestion des Membres
         </h1>
-        <p className="text-gray-600">Tableau complet des membres du club</p>
+        <p className="text-[#D4A024] text-lg font-serif">Tableau complet des membres du club</p>
       </div>
 
       {/* Barre d'actions */}
