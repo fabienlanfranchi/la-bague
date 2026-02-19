@@ -169,6 +169,14 @@ function App() {
               }
             />
             <Route
+              path="/sondages"
+              element={
+                <AppLayout>
+                  <Sondages />
+                </AppLayout>
+              }
+            />
+            <Route
               path="/cigarotheque"
               element={
                 <AppLayout>
