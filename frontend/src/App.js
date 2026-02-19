@@ -160,10 +160,10 @@ function App() {
               }
             />
             <Route
-              path="/sondages"
+              path="/boutique"
               element={
                 <AppLayout>
-                  <Sondages />
+                  <Boutique />
                 </AppLayout>
               }
             />
