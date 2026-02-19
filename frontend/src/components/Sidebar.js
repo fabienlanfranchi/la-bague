@@ -16,7 +16,8 @@ import {
   Book,
   Sparkles,
   Instagram as InstagramIcon,
-  ShoppingBag
+  ShoppingBag,
+  BarChart3
 } from 'lucide-react';
 import { useState } from 'react';
 
