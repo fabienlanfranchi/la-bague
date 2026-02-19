@@ -368,9 +368,9 @@ const MembersPage = () => {
       </Card>
 
       {/* Tableau des membres */}
-      <Card>
+      <Card className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm">
         <CardHeader>
-          <CardTitle>
+          <CardTitle className="font-serif text-white">
             Liste des membres ({filteredMembers.length})
           </CardTitle>
           <CardDescription>
