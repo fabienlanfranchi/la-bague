@@ -373,7 +373,7 @@ const MembersPage = () => {
           <CardTitle className="font-serif text-white">
             Liste des membres ({filteredMembers.length})
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-gray-400">
             Cliquez sur un membre pour le modifier ou le supprimer
           </CardDescription>
         </CardHeader>
