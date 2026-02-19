@@ -425,7 +425,7 @@ const MembersPage = () => {
                         </div>
                       </TableCell>
                       <TableCell className="text-center">
-                        <span className="font-semibold text-green-700">
+                        <span className="font-semibold text-[#D4A024]">
                           {member.pourcentage_presences}%
                         </span>
                       </TableCell>
