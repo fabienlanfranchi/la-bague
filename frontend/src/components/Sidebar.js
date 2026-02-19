@@ -36,6 +36,7 @@ const Sidebar = () => {
     { path: '/jeux', label: 'Jeux', icon: Gamepad2, adminOnly: false },
     { path: '/boutique', label: 'Boutique', icon: ShoppingBag, adminOnly: false },
     { path: '/messages', label: 'Messages', icon: MessageSquare, adminOnly: false },
+    { path: '/sondages', label: 'Sondages', icon: BarChart3, adminOnly: false },
     { path: '/cigarotheque', label: 'Cigarthèque', icon: Book, adminOnly: false },
     { path: '/assistant-ia', label: 'Assistant IA', icon: Sparkles, adminOnly: false },
     { path: '/instagram', label: 'Instagram', icon: InstagramIcon, adminOnly: false, external: true },
