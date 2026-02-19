@@ -14,6 +14,7 @@ import Messages from './pages/Messages';
 import Cigarotheque from './pages/Cigarotheque';
 import AssistantIA from './pages/AssistantIA';
 import Boutique from './pages/Boutique';
+import Sondages from './pages/Sondages';
 
 const Home = () => {
   // Sélectionner une photo aléatoire parmi les 10
