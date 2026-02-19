@@ -381,14 +381,14 @@ const MembersPage = () => {
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Nom</TableHead>
-                  <TableHead>Fonction</TableHead>
-                  <TableHead>Entrée</TableHead>
-                  <TableHead className="text-center">Étoiles</TableHead>
-                  <TableHead className="text-center">Présences</TableHead>
-                  <TableHead className="text-center">Cotisation</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                <TableRow className="border-[#D4A024]/20 hover:bg-[#D4A024]/5">
+                  <TableHead className="text-[#D4A024] font-serif">Nom</TableHead>
+                  <TableHead className="text-[#D4A024] font-serif">Fonction</TableHead>
+                  <TableHead className="text-[#D4A024] font-serif">Entrée</TableHead>
+                  <TableHead className="text-center text-[#D4A024] font-serif">Étoiles</TableHead>
+                  <TableHead className="text-center text-[#D4A024] font-serif">Présences</TableHead>
+                  <TableHead className="text-center text-[#D4A024] font-serif">Cotisation</TableHead>
+                  <TableHead className="text-right text-[#D4A024] font-serif">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
