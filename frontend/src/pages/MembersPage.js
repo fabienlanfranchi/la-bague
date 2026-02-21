@@ -210,7 +210,7 @@ const MembersPage = () => {
                     </DialogDescription>
                   </DialogHeader>
 
-                  <div className="grid gap-4 py-4">
+                  <div className="grid gap-4 py-4 overflow-y-auto flex-1 px-1">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="nom_complet">Nom complet *</Label>
