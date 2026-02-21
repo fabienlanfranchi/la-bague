@@ -139,9 +139,9 @@ const MembersPage = () => {
   const getCotisationBadge = (status) => {
     const badges = {
       0: { label: '✓', color: 'bg-green-100 text-green-800' },
-      1: { label: '1', color: 'bg-yellow-100 text-yellow-800' },
-      2: { label: '2', color: 'bg-orange-100 text-orange-800' },
-      3: { label: '3+', color: 'bg-red-100 text-red-800' },
+      1: { label: '1 an', color: 'bg-yellow-100 text-yellow-800' },
+      2: { label: '2 ans', color: 'bg-orange-100 text-orange-800' },
+      3: { label: '3+ ans', color: 'bg-red-100 text-red-800' },
     };
     const badge = badges[status] || badges[0];
     return (
