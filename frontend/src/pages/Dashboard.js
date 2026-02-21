@@ -113,6 +113,22 @@ const Dashboard = () => {
     toast.success('Résultats copiés ! Vous pouvez les coller dans votre SMS.');
   };
 
+  const handleShowMembersByStars = (stars) => {
+    // Filtrer les membres selon le nombre d'étoiles
+    const filtered = members.filter(m => {
+      const presence = m.pourcentage_presences;
+      if (stars === 4) return presence >= 75;
+      if (stars === 3) return presence >= 50 && presence < 75;
+      if (stars === 2) return presence >= 25 && presence < 50;
+      if (stars === 1) return presence < 25;
+      return false;
+    });
+    
+    setSelectedStars(stars);
+    setFilteredMembers(filtered);
+    setShowMembersModal(true);
+  };
+
   // Dashboard MEMBRE (simplifié)
   if (!isAdmin) {
     return (
