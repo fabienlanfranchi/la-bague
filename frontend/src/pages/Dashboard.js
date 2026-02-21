@@ -240,11 +240,12 @@ const Dashboard = () => {
               {[4, 3, 2, 1].map((stars) => (
                 <div 
                   key={stars}
-                  className="bg-black/30 rounded-lg p-4 border border-[#D4A024]/20"
+                  onClick={() => handleShowMembersByStars(stars)}
+                  className="bg-black/30 rounded-lg p-4 border border-[#D4A024]/20 cursor-pointer hover:bg-[#D4A024]/10 hover:border-[#D4A024]/50 transition-all"
                 >
                   <div className="flex items-center justify-center space-x-1 mb-2">
                     {[...Array(stars)].map((_, i) => (
-                      <Award key={i} className="w-5 h-5 text-[#D4A024] fill-[#D4A024]" />
+                      <Star key={i} className="w-5 h-5 text-[#D4A024] fill-[#D4A024]" />
                     ))}
                   </div>
                   <div className="text-center">
