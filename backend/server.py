@@ -752,16 +752,28 @@ async def delete_transaction(transaction_id: str):
     if not transaction:
         raise HTTPException(status_code=404, detail="Transaction non trouvée")
     
-    # Ajuster le solde du compte (inverser la transaction)
-    compte = await db.comptes.find_one({"id": transaction['compte_id']}, {"_id": 0})
+    # Trouver le compte correspondant
+    compte_mapping = {
+        "Compte": "Compte Bancaire",
+        "chèque": "Compte Bancaire",
+        "Fabien": "Chez Fabien",
+        "Jacques": "Chez Jacques",
+        "Enveloppe bar": "Dehors",
+        "PayPal": "PayPal"
+    }
+    
+    compte_nom = compte_mapping.get(transaction['endroit'], transaction['endroit'])
+    compte = await db.comptes.find_one({"nom": compte_nom}, {"_id": 0})
+    
     if compte:
+        # Ajuster le solde du compte (inverser la transaction)
         if transaction['type'] == "recette":
             nouveau_solde = compte['solde'] - transaction['montant']
         else:  # dépense
             nouveau_solde = compte['solde'] + transaction['montant']
         
         await db.comptes.update_one(
-            {"id": transaction['compte_id']},
+            {"nom": compte_nom},
             {
                 "$set": {
                     "solde": nouveau_solde,
