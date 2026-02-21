@@ -348,7 +348,7 @@ const MembersPage = () => {
                     </div>
                   </div>
 
-                  <DialogFooter>
+                  <DialogFooter className="flex-shrink-0 pt-4 border-t">
                     <Button
                       type="button"
                       variant="outline"
