@@ -75,6 +75,7 @@ const Dashboard = () => {
       
       // Cotisations en attente (situation_cotisation > 0)
       const cotisationsEnAttente = membersData.filter(m => m.situation_cotisation > 0).length;
+      const totalSaisonsDues = membersData.reduce((sum, m) => sum + m.situation_cotisation, 0);
       
       setStats({
         totalMembers,
@@ -83,6 +84,7 @@ const Dashboard = () => {
         currentSeason: 'Saison 13 - 2025',
         membersByStars,
         cotisationsEnAttente,
+        totalSaisonsDues,
       });
     } catch (error) {
       console.error('Erreur lors du chargement des données:', error);
