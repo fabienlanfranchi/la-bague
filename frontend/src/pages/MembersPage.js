@@ -199,8 +199,8 @@ const MembersPage = () => {
                   Ajouter un membre
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                <form onSubmit={handleSubmit}>
+              <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+                <form onSubmit={handleSubmit} className="flex flex-col h-full overflow-hidden">
                   <DialogHeader>
                     <DialogTitle>
                       {editingMember ? 'Modifier le membre' : 'Nouveau membre'}
