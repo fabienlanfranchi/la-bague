@@ -17,6 +17,7 @@ const Dashboard = () => {
     currentSeason: 'Saison 13 - 2025',
     membersByStars: { 4: 0, 3: 0, 2: 0, 1: 0 },
     cotisationsEnAttente: 0,
+    totalSaisonsDues: 0, // Nombre total de saisons dues
   });
 
   // Fonction pour calculer les étoiles selon le pourcentage de présence
