@@ -148,7 +148,7 @@ const Dashboard = () => {
           Présences
         </h2>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           {/* Présence moyenne globale */}
           <Card className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm" data-testid="presence-globale">
             <CardHeader className="pb-3">
@@ -176,21 +176,6 @@ const Dashboard = () => {
                 {stats.avgPresenceSeason}%
               </div>
               <p className="text-xs text-gray-500 mt-1">Saison en cours</p>
-            </CardContent>
-          </Card>
-
-          {/* Total membres */}
-          <Card className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm" data-testid="total-membres">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-serif text-gray-400">
-                Membres Total
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-4xl font-serif font-bold text-[#D4A024]">
-                {stats.totalMembers}
-              </div>
-              <p className="text-xs text-gray-500 mt-1">Membres actifs</p>
             </CardContent>
           </Card>
         </div>
