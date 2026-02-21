@@ -19,6 +19,14 @@ const Dashboard = () => {
     cotisationsEnAttente: 0,
   });
 
+  // Fonction pour calculer les étoiles selon le pourcentage de présence
+  const getStarsFromPercentage = (percentage) => {
+    if (percentage >= 75) return 4;
+    if (percentage >= 50) return 3;
+    if (percentage >= 25) return 2;
+    return 1;
+  };
+
   const [nextEvent, setNextEvent] = useState({
     date: '15 Mars 2025',
     type: 'Repas',
