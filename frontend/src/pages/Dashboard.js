@@ -358,12 +358,12 @@ const Dashboard = () => {
           <CardContent>
             <div className="flex items-center space-x-4">
               <div className="text-5xl font-serif font-bold text-[#D4A024]">
-                {stats.cotisationsEnAttente}
+                {stats.totalSaisonsDues}
               </div>
               <div className="flex-1">
-                <p className="text-white">Membres avec cotisation en retard</p>
+                <p className="text-white font-medium">Saisons de cotisation à recevoir</p>
                 <p className="text-sm text-gray-400 mt-1">
-                  Cotisations annuelles non mensuelles
+                  {stats.cotisationsEnAttente} membre(s) avec cotisation en retard • 200€/an
                 </p>
               </div>
             </div>
