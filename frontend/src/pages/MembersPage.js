@@ -327,9 +327,9 @@ const MembersPage = () => {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="0">À jour (0)</SelectItem>
-                            <SelectItem value="1">Retard 1 mois</SelectItem>
-                            <SelectItem value="2">Retard 2 mois</SelectItem>
-                            <SelectItem value="3">Retard 3+ mois</SelectItem>
+                            <SelectItem value="1">1 année due</SelectItem>
+                            <SelectItem value="2">2 années dues</SelectItem>
+                            <SelectItem value="3">3+ années dues</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
