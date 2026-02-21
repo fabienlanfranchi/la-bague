@@ -588,12 +588,7 @@ async def get_transactions():
 
 @api_router.post("/transactions", response_model=Transaction)
 async def create_transaction(input: TransactionCreate):
-    """Créer une nouvelle transaction"""
-    # Vérifier que le compte existe
-    compte = await db.comptes.find_one({"id": input.compte_id}, {"_id": 0})
-    if not compte:
-        raise HTTPException(status_code=404, detail="Compte non trouvé")
-    
+    """Créer un nouveau mouvement"""
     # Créer la transaction
     trans_dict = input.model_dump()
     if trans_dict['date'] is None:
@@ -607,21 +602,51 @@ async def create_transaction(input: TransactionCreate):
     
     await db.transactions.insert_one(doc)
     
-    # Mettre à jour le solde du compte
-    if trans_obj.type == "recette":
-        nouveau_solde = compte['solde'] + trans_obj.montant
-    else:  # dépense
-        nouveau_solde = compte['solde'] - trans_obj.montant
+    # Trouver le compte correspondant à l'endroit
+    compte_mapping = {
+        "Compte": "Compte Bancaire",
+        "chèque": "Compte Bancaire",
+        "Fabien": "Chez Fabien",
+        "Jacques": "Chez Jacques",
+        "Enveloppe bar": "Dehors",
+        "PayPal": "PayPal"
+    }
     
-    await db.comptes.update_one(
-        {"id": input.compte_id},
-        {
-            "$set": {
-                "solde": nouveau_solde,
-                "updated_at": datetime.now(timezone.utc).isoformat()
+    compte_nom = compte_mapping.get(trans_obj.endroit, trans_obj.endroit)
+    compte = await db.comptes.find_one({"nom": compte_nom}, {"_id": 0})
+    
+    if compte:
+        # Mettre à jour le solde du compte
+        if trans_obj.type == "recette":
+            nouveau_solde = compte['solde'] + trans_obj.montant
+        else:  # dépense
+            nouveau_solde = compte['solde'] - trans_obj.montant
+        
+        await db.comptes.update_one(
+            {"nom": compte_nom},
+            {
+                "$set": {
+                    "solde": nouveau_solde,
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }
             }
-        }
-    )
+        )
+    
+    # Si c'est une cotisation, mettre à jour le membre
+    if trans_obj.objet == "cotisation" and trans_obj.membre_id:
+        membre = await db.members.find_one({"id": trans_obj.membre_id}, {"_id": 0})
+        if membre and trans_obj.type == "recette":
+            # Réduire la situation_cotisation
+            nouvelle_situation = max(0, membre['situation_cotisation'] - 1)
+            await db.members.update_one(
+                {"id": trans_obj.membre_id},
+                {
+                    "$set": {
+                        "situation_cotisation": nouvelle_situation,
+                        "updated_at": datetime.now(timezone.utc).isoformat()
+                    }
+                }
+            )
     
     return trans_obj
 
