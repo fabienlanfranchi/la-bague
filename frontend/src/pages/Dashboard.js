@@ -4,7 +4,7 @@ import { api } from '../services/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Users, TrendingUp, Award, Calendar, DollarSign, MessageSquare, Download } from 'lucide-react';
+import { Users, TrendingUp, Star, Calendar, DollarSign, MessageSquare, Download, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 const Dashboard = () => {
