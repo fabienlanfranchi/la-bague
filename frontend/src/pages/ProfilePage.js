@@ -186,18 +186,53 @@ const ProfilePage = () => {
             </CardContent>
           </Card>
 
-          {/* Cotisation */}
+          {/* Cotisation - Historique des saisons */}
           <Card 
             className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm" 
             data-testid="profile-cotisation"
           >
             <CardHeader>
-              <CardTitle className="text-sm font-serif text-gray-400">Situation cotisation</CardTitle>
+              <CardTitle className="text-sm font-serif text-gray-400">
+                Historique des cotisations
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center space-x-2">
-                <div className={`w-3 h-3 rounded-full ${cotisationStatus.color}`} />
-                <span className="font-semibold text-white">{cotisationStatus.label}</span>
+              <div className="space-y-2">
+                {memberSeasons.map((season) => (
+                  <div
+                    key={season.number}
+                    className={`flex items-center justify-between p-2 rounded-lg border ${
+                      season.isPaid
+                        ? 'bg-green-900/20 border-green-600/30'
+                        : 'bg-red-900/20 border-red-600/30'
+                    }`}
+                  >
+                    <span className={`text-sm font-medium ${
+                      season.isPaid ? 'text-green-400' : 'text-red-400'
+                    }`}>
+                      Saison {season.number}
+                    </span>
+                    <div className={`w-3 h-3 rounded-full ${
+                      season.isPaid ? 'bg-green-500' : 'bg-red-500'
+                    }`} />
+                  </div>
+                ))}
+                
+                {/* Résumé */}
+                <div className="pt-3 mt-3 border-t border-[#D4A024]/20">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-400">Total saisons :</span>
+                    <span className="text-white font-semibold">{memberSeasons.length}</span>
+                  </div>
+                  {currentMember.situation_cotisation > 0 && (
+                    <div className="flex items-center justify-between text-sm mt-1">
+                      <span className="text-gray-400">En attente :</span>
+                      <span className="text-red-400 font-semibold">
+                        {currentMember.situation_cotisation} saison{currentMember.situation_cotisation > 1 ? 's' : ''}
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>
