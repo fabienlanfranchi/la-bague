@@ -165,8 +165,15 @@ const Dashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-4xl font-serif font-bold text-[#D4A024]">
-                {stats.avgPresenceGlobal}%
+              <div className="flex items-center justify-between">
+                <div className="text-4xl font-serif font-bold text-[#D4A024]">
+                  {stats.avgPresenceGlobal}%
+                </div>
+                <div className="flex items-center space-x-0.5">
+                  {[...Array(getStarsFromPercentage(parseFloat(stats.avgPresenceGlobal)))].map((_, i) => (
+                    <Award key={i} className="w-6 h-6 text-[#D4A024] fill-[#D4A024]" />
+                  ))}
+                </div>
               </div>
               <p className="text-xs text-gray-500 mt-1">Tous les membres</p>
             </CardContent>
@@ -180,8 +187,15 @@ const Dashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-4xl font-serif font-bold text-[#D4A024]">
-                {stats.avgPresenceSeason}%
+              <div className="flex items-center justify-between">
+                <div className="text-4xl font-serif font-bold text-[#D4A024]">
+                  {stats.avgPresenceSeason}%
+                </div>
+                <div className="flex items-center space-x-0.5">
+                  {[...Array(getStarsFromPercentage(parseFloat(stats.avgPresenceSeason)))].map((_, i) => (
+                    <Award key={i} className="w-6 h-6 text-[#D4A024] fill-[#D4A024]" />
+                  ))}
+                </div>
               </div>
               <p className="text-xs text-gray-500 mt-1">Saison en cours</p>
             </CardContent>
