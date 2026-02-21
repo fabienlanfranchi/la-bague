@@ -533,6 +533,17 @@ async def create_compte(input: CompteCreate):
     return compte_obj
 
 
+@api_router.delete("/comptes/{compte_id}")
+async def delete_compte(compte_id: str):
+    """Supprimer un compte"""
+    result = await db.comptes.delete_one({"id": compte_id})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Compte non trouvé")
+    
+    return {"message": "Compte supprimé avec succès"}
+
+
 # -------- CATÉGORIES --------
 
 @api_router.get("/categories", response_model=List[Categorie])
