@@ -216,7 +216,7 @@ const Dashboard = () => {
                 </div>
                 <div className="flex items-center space-x-0.5">
                   {[...Array(getStarsFromPercentage(parseFloat(stats.avgPresenceSeason)))].map((_, i) => (
-                    <Award key={i} className="w-6 h-6 text-[#D4A024] fill-[#D4A024]" />
+                    <Star key={i} className="w-6 h-6 text-[#D4A024] fill-[#D4A024]" />
                   ))}
                 </div>
               </div>
