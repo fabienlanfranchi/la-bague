@@ -42,6 +42,10 @@ const Dashboard = () => {
     }
   });
 
+  const [showMembersModal, setShowMembersModal] = useState(false);
+  const [selectedStars, setSelectedStars] = useState(null);
+  const [filteredMembers, setFilteredMembers] = useState([]);
+
   useEffect(() => {
     loadDashboardData();
   }, []);
