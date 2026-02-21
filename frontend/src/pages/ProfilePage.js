@@ -47,17 +47,36 @@ const ProfilePage = () => {
     );
   }
 
-  const getCotisationStatus = (status) => {
-    const statuses = {
-      0: { label: 'À jour', color: 'bg-green-500' },
-      1: { label: 'Retard 1 mois', color: 'bg-yellow-500' },
-      2: { label: 'Retard 2 mois', color: 'bg-orange-500' },
-      3: { label: 'Retard 3+ mois', color: 'bg-red-500' },
-    };
-    return statuses[status] || statuses[0];
+  // Générer toutes les saisons du membre
+  const generateSeasons = () => {
+    const currentYear = 2025; // Année actuelle de la saison 13
+    const currentSeason = 13;
+    const startYear = currentMember.annee_entree;
+    
+    // Calculer la saison d'entrée (Saison 1 = 2013)
+    const startSeason = startYear - 2012; // 2013 - 2012 = 1, 2014 - 2012 = 2, etc.
+    
+    const seasons = [];
+    for (let season = startSeason; season <= currentSeason; season++) {
+      const yearStart = 2012 + season; // Saison 1 = 2013, Saison 2 = 2014, etc.
+      const yearEnd = yearStart + 1;
+      
+      // Déterminer si la cotisation est payée
+      // Les X dernières saisons sont non payées (X = situation_cotisation)
+      const unpaidSeasons = currentMember.situation_cotisation || 0;
+      const isPaid = season <= (currentSeason - unpaidSeasons);
+      
+      seasons.push({
+        number: season,
+        label: `Saison ${season} (${yearStart}-${yearEnd})`,
+        isPaid: isPaid
+      });
+    }
+    
+    return seasons;
   };
 
-  const cotisationStatus = getCotisationStatus(currentMember.situation_cotisation);
+  const memberSeasons = generateSeasons();
 
   return (
     <div className="space-y-8">
