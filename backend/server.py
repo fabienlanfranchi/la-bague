@@ -469,28 +469,28 @@ class CategorieCreate(BaseModel):
 
 
 class Transaction(BaseModel):
-    """Transaction financière (recette ou dépense)"""
+    """Transaction financière (mouvement)"""
     model_config = ConfigDict(extra="ignore")
     
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     type: str  # "recette" ou "dépense"
+    membre_id: Optional[str] = None  # Membre concerné
+    objet: str  # "cotisation", "dette", "album", "tickets", "habits", "autres"
     montant: float
-    categorie: str
-    description: str = ""
-    compte_id: str  # ID du compte concerné
-    membre_id: Optional[str] = None  # Si lié à un membre (ex: cotisation)
+    endroit: str  # "Compte", "chèque", "Fabien", "Jacques", "Enveloppe bar", "PayPal"
+    detail: str = ""  # Détail libre ou format spécial pour dette
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class TransactionCreate(BaseModel):
     date: Optional[datetime] = None
     type: str
-    montant: float
-    categorie: str
-    description: str = ""
-    compte_id: str
     membre_id: Optional[str] = None
+    objet: str
+    montant: float
+    endroit: str
+    detail: str = ""
 
 
 class CotisationPayment(BaseModel):
