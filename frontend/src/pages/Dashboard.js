@@ -407,6 +407,85 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Modal: Liste des membres par étoiles */}
+      {showMembersModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <Card className="bg-[#7A2020] border-2 border-[#D4A024] max-w-2xl w-full max-h-[80vh] flex flex-col">
+            <CardHeader className="flex-shrink-0 border-b border-[#D4A024]/30">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-2xl font-serif text-[#D4A024] flex items-center">
+                  <div className="flex items-center space-x-1 mr-3">
+                    {[...Array(selectedStars)].map((_, i) => (
+                      <Star key={i} className="w-5 h-5 text-[#D4A024] fill-[#D4A024]" />
+                    ))}
+                  </div>
+                  Membres avec {selectedStars} étoile{selectedStars > 1 ? 's' : ''}
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowMembersModal(false)}
+                  className="text-[#D4A024] hover:bg-[#D4A024]/10"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+              <p className="text-sm text-gray-300 mt-2">
+                {selectedStars === 4 && '100-75% de présence'}
+                {selectedStars === 3 && '75-50% de présence'}
+                {selectedStars === 2 && '50-25% de présence'}
+                {selectedStars === 1 && '25-0% de présence'}
+              </p>
+            </CardHeader>
+            <CardContent className="flex-1 overflow-y-auto p-6">
+              <div className="space-y-3">
+                {filteredMembers.length === 0 ? (
+                  <p className="text-gray-400 text-center py-8">
+                    Aucun membre dans cette catégorie
+                  </p>
+                ) : (
+                  filteredMembers.map((membre) => (
+                    <div
+                      key={membre.id}
+                      className="bg-black/40 border border-[#D4A024]/20 rounded-lg p-4 hover:border-[#D4A024]/50 transition-all"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="text-white font-serif font-semibold text-lg">
+                            {membre.nom_complet}
+                          </h3>
+                          <p className="text-sm text-gray-400">
+                            {membre.fonction} • Entrée {membre.saison_entree} {membre.annee_entree}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <div className="flex items-center space-x-1 justify-end mb-1">
+                            {[...Array(membre.etoiles)].map((_, i) => (
+                              <Star key={i} className="w-4 h-4 text-[#D4A024] fill-[#D4A024]" />
+                            ))}
+                          </div>
+                          <p className="text-[#D4A024] font-bold text-xl">
+                            {membre.pourcentage_presences}%
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+            <div className="flex-shrink-0 p-4 border-t border-[#D4A024]/30">
+              <Button
+                onClick={() => setShowMembersModal(false)}
+                className="w-full bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif font-bold"
+              >
+                Fermer
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };
