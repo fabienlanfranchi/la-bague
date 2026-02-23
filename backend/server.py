@@ -502,6 +502,61 @@ class CotisationPayment(BaseModel):
     description: Optional[str] = None
 
 
+# ============ ÉVÉNEMENTS - MODELS ============
+
+class OptionsSondageRepas(BaseModel):
+    """Options pour un sondage de type Repas"""
+    entrees: List[str] = ["Entrée A", "Entrée B"]
+    plats: List[str] = ["Plat A", "Plat B"]
+    desserts: List[str] = ["Dessert A", "Dessert B"]
+
+
+class Evenement(BaseModel):
+    """Événement du club avec sondage"""
+    model_config = ConfigDict(extra="ignore")
+    
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    date: datetime
+    objet: str  # "Repas de printemps", "Apéro été", etc.
+    lieu: str
+    type_sondage: str  # "repas", "apéro", "libre"
+    statut: str = "à venir"  # "à venir", "en cours", "terminé"
+    saison: int  # 1-13
+    options_sondage: Optional[dict] = None  # Pour "repas": {entrees: [], plats: [], desserts: []}
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class EvenementCreate(BaseModel):
+    date: datetime
+    objet: str
+    lieu: str
+    type_sondage: str
+    saison: int
+    options_sondage: Optional[dict] = None
+
+
+class ReponseSondage(BaseModel):
+    """Réponse d'un membre à un sondage d'événement"""
+    model_config = ConfigDict(extra="ignore")
+    
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    evenement_id: str
+    membre_id: str
+    present: bool
+    choix_entree: Optional[str] = None  # Pour type "repas"
+    choix_plat: Optional[str] = None
+    choix_dessert: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class ReponseSondageCreate(BaseModel):
+    membre_id: str
+    present: bool
+    choix_entree: Optional[str] = None
+    choix_plat: Optional[str] = None
+    choix_dessert: Optional[str] = None
+
+
 # ============ COMPTABILITÉ - ROUTES ============
 
 # -------- COMPTES --------
