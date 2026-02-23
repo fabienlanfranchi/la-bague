@@ -279,7 +279,7 @@ const Comptabilite = () => {
                     <th className="p-3 text-sm font-serif text-[#D4A024]">Membre</th>
                     <th className="p-3 text-sm font-serif text-[#D4A024]">Objet</th>
                     <th className="p-3 text-sm font-serif text-[#D4A024] text-right">Montant</th>
-                    <th className="p-3 text-sm font-serif text-[#D4A024]">Endroit</th>
+                    <th className="p-3 text-sm font-serif text-[#D4A024]">Caisse</th>
                     <th className="p-3 text-sm font-serif text-[#D4A024]">Détail</th>
                     <th className="p-3 text-sm font-serif text-[#D4A024]">Actions</th>
                   </tr>
