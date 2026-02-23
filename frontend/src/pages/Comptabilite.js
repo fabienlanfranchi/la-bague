@@ -344,8 +344,8 @@ const Comptabilite = () => {
                         onChange={(e) => setNewMouvement({ ...newMouvement, endroit: e.target.value })}
                         className="w-full px-2 py-1 bg-black/40 border border-[#D4A024]/30 rounded text-white text-sm"
                       >
-                        {endroitOptions.map(end => (
-                          <option key={end} value={end}>{end}</option>
+                        {caisseOptions.map(caisse => (
+                          <option key={caisse} value={caisse}>{caisse}</option>
                         ))}
                       </select>
                     </td>
