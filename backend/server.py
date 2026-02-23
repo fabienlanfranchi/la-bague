@@ -843,6 +843,189 @@ async def delete_transaction(transaction_id: str):
     return {"message": "Transaction supprimée avec succès"}
 
 
+# ============ ÉVÉNEMENTS - ROUTES ============
+
+@api_router.get("/evenements", response_model=List[Evenement])
+async def get_evenements():
+    """Obtenir tous les événements"""
+    evenements = await db.evenements.find({}, {"_id": 0}).sort("date", -1).to_list(1000)
+    
+    for evt in evenements:
+        if isinstance(evt.get('date'), str):
+            evt['date'] = datetime.fromisoformat(evt['date'])
+        if isinstance(evt.get('created_at'), str):
+            evt['created_at'] = datetime.fromisoformat(evt['created_at'])
+    
+    return evenements
+
+
+@api_router.post("/evenements", response_model=Evenement)
+async def create_evenement(input: EvenementCreate):
+    """Créer un nouvel événement"""
+    evt_obj = Evenement(**input.model_dump())
+    
+    doc = evt_obj.model_dump()
+    doc['date'] = doc['date'].isoformat()
+    doc['created_at'] = doc['created_at'].isoformat()
+    
+    await db.evenements.insert_one(doc)
+    return evt_obj
+
+
+@api_router.get("/evenements/{evenement_id}")
+async def get_evenement(evenement_id: str):
+    """Obtenir un événement spécifique"""
+    evt = await db.evenements.find_one({"id": evenement_id}, {"_id": 0})
+    if not evt:
+        raise HTTPException(status_code=404, detail="Événement non trouvé")
+    
+    if isinstance(evt.get('date'), str):
+        evt['date'] = datetime.fromisoformat(evt['date'])
+    if isinstance(evt.get('created_at'), str):
+        evt['created_at'] = datetime.fromisoformat(evt['created_at'])
+    
+    return evt
+
+
+@api_router.get("/evenements/{evenement_id}/stats")
+async def get_evenement_stats(evenement_id: str):
+    """Obtenir les statistiques d'un événement"""
+    evt = await db.evenements.find_one({"id": evenement_id}, {"_id": 0})
+    if not evt:
+        raise HTTPException(status_code=404, detail="Événement non trouvé")
+    
+    # Récupérer toutes les réponses
+    reponses = await db.reponses_sondages.find({"evenement_id": evenement_id}, {"_id": 0}).to_list(1000)
+    
+    # Récupérer tous les membres
+    members = await db.members.find({}, {"_id": 0}).to_list(1000)
+    total_membres = len(members)
+    
+    # Calculer les stats
+    presents = [r for r in reponses if r['present']]
+    absents = [r for r in reponses if not r['present']]
+    non_repondus = total_membres - len(reponses)
+    
+    stats = {
+        "evenement": evt,
+        "total_membres": total_membres,
+        "presents": len(presents),
+        "absents": len(absents),
+        "non_repondus": non_repondus,
+        "reponses": reponses
+    }
+    
+    # Si c'est un repas, compter les choix
+    if evt.get('type_sondage') == 'repas' and presents:
+        from collections import Counter
+        
+        entrees_count = Counter([r.get('choix_entree') for r in presents if r.get('choix_entree')])
+        plats_count = Counter([r.get('choix_plat') for r in presents if r.get('choix_plat')])
+        desserts_count = Counter([r.get('choix_dessert') for r in presents if r.get('choix_dessert')])
+        
+        stats['choix'] = {
+            'entrees': dict(entrees_count),
+            'plats': dict(plats_count),
+            'desserts': dict(desserts_count)
+        }
+    
+    return stats
+
+
+@api_router.post("/evenements/{evenement_id}/reponse")
+async def repondre_sondage(evenement_id: str, input: ReponseSondageCreate):
+    """Répondre au sondage d'un événement"""
+    # Vérifier que l'événement existe
+    evt = await db.evenements.find_one({"id": evenement_id}, {"_id": 0})
+    if not evt:
+        raise HTTPException(status_code=404, detail="Événement non trouvé")
+    
+    # Vérifier si le membre a déjà répondu
+    existing = await db.reponses_sondages.find_one({
+        "evenement_id": evenement_id,
+        "membre_id": input.membre_id
+    }, {"_id": 0})
+    
+    reponse_obj = ReponseSondage(
+        evenement_id=evenement_id,
+        **input.model_dump()
+    )
+    
+    doc = reponse_obj.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    
+    if existing:
+        # Mettre à jour la réponse existante
+        await db.reponses_sondages.update_one(
+            {"evenement_id": evenement_id, "membre_id": input.membre_id},
+            {"$set": doc}
+        )
+    else:
+        # Créer une nouvelle réponse
+        await db.reponses_sondages.insert_one(doc)
+    
+    return {"message": "Réponse enregistrée avec succès", "reponse": reponse_obj}
+
+
+@api_router.get("/evenements/statut/en-cours")
+async def get_evenement_en_cours():
+    """Obtenir l'événement en cours (pour le Dashboard)"""
+    # Chercher un événement avec statut "en cours"
+    evt = await db.evenements.find_one({"statut": "en cours"}, {"_id": 0})
+    
+    if not evt:
+        return None
+    
+    if isinstance(evt.get('date'), str):
+        evt['date'] = datetime.fromisoformat(evt['date'])
+    if isinstance(evt.get('created_at'), str):
+        evt['created_at'] = datetime.fromisoformat(evt['created_at'])
+    
+    # Récupérer les stats
+    reponses = await db.reponses_sondages.find({"evenement_id": evt['id']}, {"_id": 0}).to_list(1000)
+    members = await db.members.find({}, {"_id": 0}).to_list(1000)
+    
+    presents = [r for r in reponses if r['present']]
+    absents = [r for r in reponses if not r['present']]
+    
+    stats = {
+        "evenement": evt,
+        "presents": len(presents),
+        "absents": len(absents),
+        "non_repondus": len(members) - len(reponses)
+    }
+    
+    # Si repas, ajouter les choix
+    if evt.get('type_sondage') == 'repas' and presents:
+        from collections import Counter
+        
+        entrees_count = Counter([r.get('choix_entree') for r in presents if r.get('choix_entree')])
+        plats_count = Counter([r.get('choix_plat') for r in presents if r.get('choix_plat')])
+        desserts_count = Counter([r.get('choix_dessert') for r in presents if r.get('choix_dessert')])
+        
+        stats['choix'] = {
+            'entrees': dict(entrees_count),
+            'plats': dict(plats_count),
+            'desserts': dict(desserts_count)
+        }
+    
+    return stats
+
+
+@api_router.delete("/evenements/{evenement_id}")
+async def delete_evenement(evenement_id: str):
+    """Supprimer un événement"""
+    result = await db.evenements.delete_one({"id": evenement_id})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Événement non trouvé")
+    
+    # Supprimer aussi toutes les réponses associées
+    await db.reponses_sondages.delete_many({"evenement_id": evenement_id})
+    
+    return {"message": "Événement supprimé avec succès"}
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
