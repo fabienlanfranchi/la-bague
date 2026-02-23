@@ -41,7 +41,7 @@ const Comptabilite = () => {
   });
 
   const objetOptions = ['cotisation', 'dette', 'album', 'tickets', 'habits', 'autres'];
-  const endroitOptions = ['Compte', 'chèque', 'Fabien', 'Jacques', 'Enveloppe bar', 'PayPal'];
+  const caisseOptions = ['Compte', 'chèque', 'Fabien', 'Jacques', 'Enveloppe bar', 'PayPal'];
 
   useEffect(() => {
     loadData();
