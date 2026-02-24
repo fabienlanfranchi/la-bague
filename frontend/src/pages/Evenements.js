@@ -386,6 +386,8 @@ const Evenements = () => {
                                     <Badge className={
                                       evt.type_sondage === 'repas' 
                                         ? 'bg-gray-700 text-gray-200' 
+                                        : evt.type_sondage === 'anniversaire'
+                                        ? 'bg-red-700 text-red-200'
                                         : 'bg-blue-700 text-blue-200'
                                     }>
                                       {evt.type_sondage}
@@ -395,22 +397,15 @@ const Evenements = () => {
                                     <p className="text-sm text-gray-400">
                                       {formatDateShort(evt.date)}
                                     </p>
-                                    {evt.total_presents && (
-                                      <p className="text-sm text-[#D4A024] font-semibold flex items-center">
-                                        <Users className="w-3 h-3 mr-1" />
-                                        {evt.total_presents} présents
-                                      </p>
-                                    )}
                                   </div>
                                 </div>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleDeleteEvent(evt.id)}
-                                  className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
+                                {/* Nombre de présents */}
+                                <div className="flex items-center space-x-2 bg-[#D4A024]/20 px-4 py-2 rounded-lg">
+                                  <Users className="w-5 h-5 text-[#D4A024]" />
+                                  <span className="text-[#D4A024] font-bold text-xl">
+                                    {evt.total_presents || 0}
+                                  </span>
+                                </div>
                               </div>
                               
                               {/* Liste des présents (si disponible) */}
