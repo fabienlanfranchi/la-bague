@@ -29,7 +29,8 @@ const Evenements = () => {
   // Formulaire de création
   const [newEvent, setNewEvent] = useState({
     date: '',
-    objet: '',
+    objet_type: 'repas', // repas, apéro, anniversaire, autre
+    objet_texte: '', // Si "autre", texte libre
     lieu: '',
     type_sondage: 'repas',
     saison: 13,
@@ -60,15 +61,34 @@ const Evenements = () => {
 
   const handleCreateEvent = async () => {
     try {
-      if (!newEvent.date || !newEvent.objet || !newEvent.lieu) {
+      if (!newEvent.date || !newEvent.lieu) {
         toast.error('Veuillez remplir tous les champs obligatoires');
         return;
       }
 
+      // Déterminer l'objet selon le type
+      let objet = '';
+      if (newEvent.objet_type === 'autre') {
+        if (!newEvent.objet_texte) {
+          toast.error('Veuillez renseigner un objet');
+          return;
+        }
+        objet = newEvent.objet_texte;
+      } else {
+        objet = newEvent.objet_type.charAt(0).toUpperCase() + newEvent.objet_type.slice(1);
+      }
+
+      // Déterminer le type de sondage
+      const type_sondage = newEvent.objet_type === 'repas' ? 'repas' : 'simple'; // simple = oui/non
+
       const eventData = {
-        ...newEvent,
         date: new Date(newEvent.date).toISOString(),
-        options_sondage: newEvent.type_sondage === 'repas' ? newEvent.options_sondage : null
+        objet: objet,
+        lieu: newEvent.lieu,
+        type_sondage: type_sondage,
+        statut: newEvent.statut,
+        saison: newEvent.saison,
+        options_sondage: type_sondage === 'repas' ? newEvent.options_sondage : null
       };
 
       await axios.post(`${API}/evenements`, eventData);
@@ -77,7 +97,8 @@ const Evenements = () => {
       setShowCreateModal(false);
       setNewEvent({
         date: '',
-        objet: '',
+        objet_type: 'repas',
+        objet_texte: '',
         lieu: '',
         type_sondage: 'repas',
         saison: 13,
@@ -458,14 +479,31 @@ const Evenements = () => {
               {/* Objet */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">Objet *</label>
-                <input
-                  type="text"
-                  value={newEvent.objet}
-                  onChange={(e) => setNewEvent({ ...newEvent, objet: e.target.value })}
-                  placeholder="Ex: Repas de printemps"
+                <select
+                  value={newEvent.objet_type}
+                  onChange={(e) => setNewEvent({ ...newEvent, objet_type: e.target.value })}
                   className="w-full px-3 py-2 bg-black/40 border border-[#D4A024]/30 rounded text-white"
-                />
+                >
+                  <option value="repas">Repas</option>
+                  <option value="apéro">Apéro</option>
+                  <option value="anniversaire">Anniversaire</option>
+                  <option value="autre">Autre (texte libre)</option>
+                </select>
               </div>
+
+              {/* Si "autre", champ texte libre */}
+              {newEvent.objet_type === 'autre' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Précisez l'objet *</label>
+                  <input
+                    type="text"
+                    value={newEvent.objet_texte}
+                    onChange={(e) => setNewEvent({ ...newEvent, objet_texte: e.target.value })}
+                    placeholder="Ex: Sortie cigare, Dégustation..."
+                    className="w-full px-3 py-2 bg-black/40 border border-[#D4A024]/30 rounded text-white"
+                  />
+                </div>
+              )}
 
               {/* Lieu */}
               <div>
@@ -495,22 +533,20 @@ const Evenements = () => {
                 </select>
               </div>
 
-              {/* Type de sondage */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Type de sondage *</label>
-                <select
-                  value={newEvent.type_sondage}
-                  onChange={(e) => setNewEvent({ ...newEvent, type_sondage: e.target.value })}
-                  className="w-full px-3 py-2 bg-black/40 border border-[#D4A024]/30 rounded text-white"
-                >
-                  <option value="repas">Repas</option>
-                  <option value="apéro">Apéro</option>
-                  <option value="libre">Libre</option>
-                </select>
+              {/* Type de sondage (caché, automatique selon l'objet) */}
+              <div className="bg-black/20 p-3 rounded border border-[#D4A024]/20">
+                <p className="text-sm text-gray-400">
+                  💡 Type de sondage : 
+                  {newEvent.objet_type === 'repas' ? (
+                    <span className="text-[#D4A024] ml-2">Complet (Présence + Choix des plats)</span>
+                  ) : (
+                    <span className="text-blue-400 ml-2">Simple (Présence oui/non uniquement)</span>
+                  )}
+                </p>
               </div>
 
               {/* Options pour Repas */}
-              {newEvent.type_sondage === 'repas' && (
+              {newEvent.objet_type === 'repas' && (
                 <div className="space-y-4 bg-black/30 p-4 rounded-lg border border-[#D4A024]/20">
                   <h3 className="text-[#D4A024] font-serif font-semibold">Options du repas</h3>
                   
