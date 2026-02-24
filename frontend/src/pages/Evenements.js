@@ -10,7 +10,8 @@ import {
   ChevronDown,
   ChevronRight,
   X,
-  Trash2
+  Trash2,
+  Clock
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -22,6 +23,7 @@ const Evenements = () => {
   const [evenements, setEvenements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showHistorique, setShowHistorique] = useState(false);
   const [expandedSeasons, setExpandedSeasons] = useState({});
 
   // Formulaire de création
@@ -31,6 +33,7 @@ const Evenements = () => {
     lieu: '',
     type_sondage: 'repas',
     saison: 13,
+    statut: 'à venir',
     options_sondage: {
       entrees: ['Entrée A', 'Entrée B'],
       plats: ['Plat A', 'Plat B'],
@@ -78,6 +81,7 @@ const Evenements = () => {
         lieu: '',
         type_sondage: 'repas',
         saison: 13,
+        statut: 'à venir',
         options_sondage: {
           entrees: ['Entrée A', 'Entrée B'],
           plats: ['Plat A', 'Plat B'],
@@ -117,7 +121,7 @@ const Evenements = () => {
   const addOption = (type) => {
     const newOptions = { ...newEvent.options_sondage };
     const currentList = newOptions[type] || [];
-    const nextLetter = String.fromCharCode(65 + currentList.length); // A, B, C, etc.
+    const nextLetter = String.fromCharCode(65 + currentList.length);
     newOptions[type] = [...currentList, `${type.slice(0, -1)} ${nextLetter}`];
     setNewEvent({ ...newEvent, options_sondage: newOptions });
   };
@@ -131,6 +135,15 @@ const Evenements = () => {
     });
   };
 
+  const formatDateShort = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('fr-FR', { 
+      day: '2-digit', 
+      month: 'short',
+      year: 'numeric'
+    });
+  };
+
   // Grouper les événements par saison
   const evenementsParSaison = evenements.reduce((acc, evt) => {
     const saison = evt.saison || 13;
@@ -139,10 +152,14 @@ const Evenements = () => {
     return acc;
   }, {});
 
-  // Séparer les événements passés et futurs
+  // Trouver le prochain événement (statut "à venir")
   const now = new Date();
-  const evenementsFuturs = evenements.filter(e => new Date(e.date) >= now).sort((a, b) => new Date(a.date) - new Date(b.date));
-  const evenementsPassés = evenements.filter(e => new Date(e.date) < now);
+  const prochainEvenement = evenements
+    .filter(e => e.statut === 'à venir' && new Date(e.date) >= now)
+    .sort((a, b) => new Date(a.date) - new Date(b.date))[0];
+
+  // Événements historiques (terminés)
+  const evenementsHistorique = evenements.filter(e => e.statut === 'terminé');
 
   if (loading) {
     return (
@@ -164,146 +181,209 @@ const Evenements = () => {
         </p>
       </div>
 
-      {/* SECTION 1: HISTORIQUE PAR SAISON */}
+      {/* SECTION 1: PROCHAIN ÉVÉNEMENT (GRAND FORMAT) */}
       <div>
-        <h2 className="text-2xl font-serif font-bold text-white mb-4">
-          📚 Historique des événements
-        </h2>
-        
-        <div className="space-y-3">
-          {[...Array(13)].map((_, i) => {
-            const saisonNum = 13 - i; // De 13 à 1
-            const evts = evenementsParSaison[saisonNum] || [];
-            const evtsPassés = evts.filter(e => new Date(e.date) < now);
-            
-            if (evtsPassés.length === 0) return null;
-
-            return (
-              <Card key={saisonNum} className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm">
-                <CardHeader 
-                  className="cursor-pointer hover:bg-[#D4A024]/10 transition-all"
-                  onClick={() => toggleSeason(saisonNum)}
-                >
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-xl font-serif text-[#D4A024] flex items-center">
-                      {expandedSeasons[saisonNum] ? <ChevronDown className="w-5 h-5 mr-2" /> : <ChevronRight className="w-5 h-5 mr-2" />}
-                      Saison {saisonNum} ({2012 + saisonNum}-{2013 + saisonNum})
-                    </CardTitle>
-                    <Badge className="bg-[#7A2020] text-[#D4A024] border border-[#D4A024]">
-                      {evtsPassés.length} événement(s)
-                    </Badge>
-                  </div>
-                </CardHeader>
-                
-                {expandedSeasons[saisonNum] && (
-                  <CardContent>
-                    <div className="space-y-3">
-                      {evtsPassés.map(evt => (
-                        <div 
-                          key={evt.id}
-                          className="bg-black/30 border border-[#D4A024]/20 rounded-lg p-4"
-                        >
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <h3 className="text-white font-serif font-semibold text-lg mb-2">
-                                {evt.objet}
-                              </h3>
-                              <div className="space-y-1 text-sm text-gray-300">
-                                <div className="flex items-center">
-                                  <Calendar className="w-4 h-4 mr-2 text-[#D4A024]" />
-                                  {formatDate(evt.date)}
-                                </div>
-                                <div className="flex items-center">
-                                  <MapPin className="w-4 h-4 mr-2 text-[#D4A024]" />
-                                  {evt.lieu}
-                                </div>
-                                <Badge className="mt-2">
-                                  {evt.type_sondage}
-                                </Badge>
-                              </div>
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteEvent(evt.id)}
-                              className="text-red-400 hover:text-red-300"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                )}
-              </Card>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* SECTION 2: CRÉER UN ÉVÉNEMENT */}
-      <div className="flex justify-center">
-        <Button
-          onClick={() => setShowCreateModal(true)}
-          className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif font-bold text-lg px-8 py-6"
-        >
-          <Plus className="w-6 h-6 mr-2" />
-          Créer un événement
-        </Button>
-      </div>
-
-      {/* SECTION 3: ÉVÉNEMENTS À VENIR */}
-      {evenementsFuturs.length > 0 && (
-        <div>
-          <h2 className="text-2xl font-serif font-bold text-white mb-4">
-            📅 Événements à venir
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-2xl font-serif font-bold text-white">
+            📅 Prochain événement
           </h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {evenementsFuturs.map(evt => (
-              <Card key={evt.id} className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm">
-                <CardHeader>
-                  <CardTitle className="text-xl font-serif text-white flex items-center justify-between">
-                    <span>{evt.objet}</span>
-                    <Badge className={
-                      evt.statut === 'en cours' 
-                        ? 'bg-green-600 text-white' 
-                        : 'bg-blue-600 text-white'
-                    }>
-                      {evt.statut}
-                    </Badge>
+          <Button
+            onClick={() => setShowCreateModal(true)}
+            className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif font-bold"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            Créer un événement
+          </Button>
+        </div>
+
+        {prochainEvenement ? (
+          /* Événement existant */
+          <Card className="bg-black/40 border-2 border-[#D4A024] backdrop-blur-sm">
+            <CardHeader className="border-b border-[#D4A024]/30">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <CardTitle className="text-3xl font-serif text-[#D4A024] mb-2">
+                    {prochainEvenement.objet}
                   </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2 text-gray-300">
+                  <div className="flex items-center space-x-6 text-gray-300">
                     <div className="flex items-center">
-                      <Calendar className="w-4 h-4 mr-2 text-[#D4A024]" />
-                      {formatDate(evt.date)}
+                      <Calendar className="w-5 h-5 mr-2 text-[#D4A024]" />
+                      <span className="text-lg">{formatDate(prochainEvenement.date)}</span>
                     </div>
                     <div className="flex items-center">
-                      <MapPin className="w-4 h-4 mr-2 text-[#D4A024]" />
-                      {evt.lieu}
+                      <MapPin className="w-5 h-5 mr-2 text-[#D4A024]" />
+                      <span className="text-lg font-semibold">{prochainEvenement.lieu}</span>
                     </div>
-                    <Badge className="mt-2">
-                      Sondage: {evt.type_sondage}
-                    </Badge>
                   </div>
+                </div>
+                <Badge className="bg-green-600 text-white text-lg px-4 py-2">
+                  À venir
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-[#D4A024] font-serif font-semibold mb-2">Type de sondage :</h3>
+                  <Badge className="bg-[#7A2020] text-[#D4A024] border border-[#D4A024] text-base px-3 py-1">
+                    {prochainEvenement.type_sondage}
+                  </Badge>
+                </div>
+
+                {prochainEvenement.type_sondage === 'repas' && prochainEvenement.options_sondage && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                    <div>
+                      <h4 className="text-white font-semibold mb-2">🥗 Entrées</h4>
+                      <ul className="text-gray-300 text-sm space-y-1">
+                        {prochainEvenement.options_sondage.entrees?.map((e, i) => (
+                          <li key={i}>• {e}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div>
+                      <h4 className="text-white font-semibold mb-2">🍖 Plats</h4>
+                      <ul className="text-gray-300 text-sm space-y-1">
+                        {prochainEvenement.options_sondage.plats?.map((p, i) => (
+                          <li key={i}>• {p}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div>
+                      <h4 className="text-white font-semibold mb-2">🍰 Desserts</h4>
+                      <ul className="text-gray-300 text-sm space-y-1">
+                        {prochainEvenement.options_sondage.desserts?.map((d, i) => (
+                          <li key={i}>• {d}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex space-x-3 pt-4 border-t border-[#D4A024]/20">
                   <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDeleteEvent(evt.id)}
-                    className="mt-4 text-red-400 hover:text-red-300 w-full"
+                    className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif"
+                  >
+                    <Users className="w-4 h-4 mr-2" />
+                    Voir les réponses
+                  </Button>
+                  <Button
+                    onClick={() => handleDeleteEvent(prochainEvenement.id)}
+                    variant="outline"
+                    className="border-red-600 text-red-400 hover:bg-red-900/20"
                   >
                     <Trash2 className="w-4 h-4 mr-2" />
                     Supprimer
                   </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          /* Carcasse vide */
+          <Card className="bg-black/40 border-2 border-[#D4A024]/50 backdrop-blur-sm border-dashed">
+            <CardContent className="p-12 text-center">
+              <Clock className="w-16 h-16 text-[#D4A024]/30 mx-auto mb-4" />
+              <h3 className="text-2xl font-serif text-gray-400 mb-2">
+                Aucun événement à venir
+              </h3>
+              <p className="text-gray-500 mb-6">
+                Créez un nouvel événement pour planifier le prochain repas du club
+              </p>
+              <Button
+                onClick={() => setShowCreateModal(true)}
+                className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif font-bold"
+              >
+                <Plus className="w-5 h-5 mr-2" />
+                Créer le prochain événement
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* SECTION 2: HISTORIQUE SAISONS (ACCORDÉON UNIQUE) */}
+      <div>
+        <Card className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm">
+          <CardHeader 
+            className="cursor-pointer hover:bg-[#D4A024]/10 transition-all"
+            onClick={() => setShowHistorique(!showHistorique)}
+          >
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-2xl font-serif text-[#D4A024] flex items-center">
+                {showHistorique ? <ChevronDown className="w-6 h-6 mr-2" /> : <ChevronRight className="w-6 h-6 mr-2" />}
+                📚 Historique Saisons
+              </CardTitle>
+              <Badge className="bg-[#7A2020] text-[#D4A024] border border-[#D4A024]">
+                {evenementsHistorique.length} événements
+              </Badge>
+            </div>
+          </CardHeader>
+          
+          {showHistorique && (
+            <CardContent className="pt-4">
+              <div className="space-y-4">
+                {[...Array(12)].map((_, i) => {
+                  const saisonNum = 12 - i; // De 12 à 1
+                  const evts = evenementsParSaison[saisonNum] || [];
+                  const evtsTermines = evts.filter(e => e.statut === 'terminé').slice(0, 20); // Max 20
+                  
+                  if (evtsTermines.length === 0) return null;
+
+                  return (
+                    <div key={saisonNum}>
+                      <div
+                        className="flex items-center justify-between p-3 bg-black/30 rounded-lg cursor-pointer hover:bg-[#D4A024]/10"
+                        onClick={() => toggleSeason(saisonNum)}
+                      >
+                        <div className="flex items-center">
+                          {expandedSeasons[saisonNum] ? 
+                            <ChevronDown className="w-5 h-5 mr-2 text-[#D4A024]" /> : 
+                            <ChevronRight className="w-5 h-5 mr-2 text-[#D4A024]" />
+                          }
+                          <span className="text-white font-serif font-semibold">
+                            Saison {saisonNum} ({2012 + saisonNum}-{2013 + saisonNum})
+                          </span>
+                        </div>
+                        <Badge className="bg-[#7A2020]/50 text-[#D4A024]">
+                          {evtsTermines.length}
+                        </Badge>
+                      </div>
+
+                      {expandedSeasons[saisonNum] && (
+                        <div className="ml-8 mt-3 space-y-2">
+                          {evtsTermines.map(evt => (
+                            <div 
+                              key={evt.id}
+                              className="flex items-center justify-between p-3 bg-black/20 border border-[#D4A024]/10 rounded hover:border-[#D4A024]/30 transition-all"
+                            >
+                              <div className="flex-1">
+                                <h4 className="text-white font-serif font-semibold text-lg">
+                                  {evt.lieu}
+                                </h4>
+                                <p className="text-sm text-gray-400 mt-1">
+                                  {formatDateShort(evt.date)}
+                                </p>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteEvent(evt.id)}
+                                className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          )}
+        </Card>
+      </div>
 
       {/* Modal: Créer un événement */}
       {showCreateModal && (
@@ -398,9 +478,7 @@ const Evenements = () => {
                   
                   {/* Entrées */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Entrées
-                    </label>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Entrées</label>
                     {newEvent.options_sondage.entrees.map((entree, i) => (
                       <input
                         key={i}
@@ -420,6 +498,7 @@ const Evenements = () => {
                     <Button
                       onClick={() => addOption('entrees')}
                       size="sm"
+                      type="button"
                       className="bg-[#D4A024]/20 hover:bg-[#D4A024]/30 text-[#D4A024]"
                     >
                       <Plus className="w-4 h-4 mr-1" /> Ajouter entrée
@@ -428,9 +507,7 @@ const Evenements = () => {
 
                   {/* Plats */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Plats
-                    </label>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Plats</label>
                     {newEvent.options_sondage.plats.map((plat, i) => (
                       <input
                         key={i}
@@ -450,6 +527,7 @@ const Evenements = () => {
                     <Button
                       onClick={() => addOption('plats')}
                       size="sm"
+                      type="button"
                       className="bg-[#D4A024]/20 hover:bg-[#D4A024]/30 text-[#D4A024]"
                     >
                       <Plus className="w-4 h-4 mr-1" /> Ajouter plat
@@ -458,9 +536,7 @@ const Evenements = () => {
 
                   {/* Desserts */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Desserts
-                    </label>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Desserts</label>
                     {newEvent.options_sondage.desserts.map((dessert, i) => (
                       <input
                         key={i}
@@ -480,6 +556,7 @@ const Evenements = () => {
                     <Button
                       onClick={() => addOption('desserts')}
                       size="sm"
+                      type="button"
                       className="bg-[#D4A024]/20 hover:bg-[#D4A024]/30 text-[#D4A024]"
                     >
                       <Plus className="w-4 h-4 mr-1" /> Ajouter dessert
@@ -492,12 +569,14 @@ const Evenements = () => {
               <div className="flex space-x-3 pt-4">
                 <Button
                   onClick={handleCreateEvent}
+                  type="button"
                   className="flex-1 bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif font-bold"
                 >
                   Créer l'événement
                 </Button>
                 <Button
                   onClick={() => setShowCreateModal(false)}
+                  type="button"
                   variant="outline"
                   className="flex-1 border-[#D4A024] text-[#D4A024] hover:bg-[#D4A024]/10"
                 >
