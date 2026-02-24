@@ -354,24 +354,62 @@ const Evenements = () => {
                           {evtsTermines.map(evt => (
                             <div 
                               key={evt.id}
-                              className="flex items-center justify-between p-3 bg-black/20 border border-[#D4A024]/10 rounded hover:border-[#D4A024]/30 transition-all"
+                              className="bg-black/20 border border-[#D4A024]/10 rounded hover:border-[#D4A024]/30 transition-all"
                             >
-                              <div className="flex-1">
-                                <h4 className="text-white font-serif font-semibold text-lg">
-                                  {evt.lieu}
-                                </h4>
-                                <p className="text-sm text-gray-400 mt-1">
-                                  {formatDateShort(evt.date)}
-                                </p>
+                              <div className="flex items-center justify-between p-3">
+                                <div className="flex-1">
+                                  <div className="flex items-center space-x-3">
+                                    <h4 className="text-white font-serif font-semibold text-lg">
+                                      {evt.lieu}
+                                    </h4>
+                                    <Badge className={
+                                      evt.type_sondage === 'repas' 
+                                        ? 'bg-gray-700 text-gray-200' 
+                                        : 'bg-blue-700 text-blue-200'
+                                    }>
+                                      {evt.type_sondage}
+                                    </Badge>
+                                  </div>
+                                  <div className="flex items-center space-x-4 mt-1">
+                                    <p className="text-sm text-gray-400">
+                                      {formatDateShort(evt.date)}
+                                    </p>
+                                    {evt.total_presents && (
+                                      <p className="text-sm text-[#D4A024] font-semibold flex items-center">
+                                        <Users className="w-3 h-3 mr-1" />
+                                        {evt.total_presents} présents
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDeleteEvent(evt.id)}
+                                  className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
                               </div>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDeleteEvent(evt.id)}
-                                className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
+                              
+                              {/* Liste des présents (si disponible) */}
+                              {evt.presents && evt.presents.length > 0 && (
+                                <div className="px-3 pb-3 pt-0">
+                                  <div className="bg-black/30 rounded p-2 border-t border-[#D4A024]/10">
+                                    <p className="text-xs text-gray-400 mb-1">Membres présents :</p>
+                                    <div className="flex flex-wrap gap-1">
+                                      {evt.presents.map((nom, i) => (
+                                        <span 
+                                          key={i}
+                                          className="text-xs bg-[#D4A024]/10 text-[#D4A024] px-2 py-0.5 rounded"
+                                        >
+                                          {nom}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>
