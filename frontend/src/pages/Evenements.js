@@ -387,9 +387,9 @@ const Evenements = () => {
 
       {/* Modal: Créer un événement */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <Card className="bg-[#7A2020] border-2 border-[#D4A024] max-w-2xl w-full my-8">
-            <CardHeader className="border-b border-[#D4A024]/30">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <Card className="bg-[#7A2020] border-2 border-[#D4A024] max-w-2xl w-full max-h-[90vh] flex flex-col">
+            <CardHeader className="border-b border-[#D4A024]/30 flex-shrink-0">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-2xl font-serif text-[#D4A024]">
                   Créer un événement
@@ -405,7 +405,7 @@ const Evenements = () => {
               </div>
             </CardHeader>
             
-            <CardContent className="space-y-4 py-6">
+            <CardContent className="space-y-4 py-6 overflow-y-auto flex-1">
               {/* Date */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">Date *</label>
@@ -566,24 +566,25 @@ const Evenements = () => {
               )}
 
               {/* Boutons */}
-              <div className="flex space-x-3 pt-4">
-                <Button
-                  onClick={handleCreateEvent}
-                  type="button"
-                  className="flex-1 bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif font-bold"
-                >
-                  Créer l'événement
-                </Button>
-                <Button
-                  onClick={() => setShowCreateModal(false)}
-                  type="button"
-                  variant="outline"
-                  className="flex-1 border-[#D4A024] text-[#D4A024] hover:bg-[#D4A024]/10"
-                >
-                  Annuler
-                </Button>
-              </div>
+              
             </CardContent>
+            <div className="flex-shrink-0 p-4 border-t border-[#D4A024]/30 flex space-x-3">
+              <Button
+                onClick={handleCreateEvent}
+                type="button"
+                className="flex-1 bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif font-bold"
+              >
+                Créer l'événement
+              </Button>
+              <Button
+                onClick={() => setShowCreateModal(false)}
+                type="button"
+                variant="outline"
+                className="flex-1 border-[#D4A024] text-[#D4A024] hover:bg-[#D4A024]/10"
+              >
+                Annuler
+              </Button>
+            </div>
           </Card>
         </div>
       )}
