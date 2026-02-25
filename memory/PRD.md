@@ -31,11 +31,15 @@ Application de gestion pour le club de cigares "La Bague Impériale". Permet de 
 ### Événements (✅ Complet - Mis à jour 2024-12)
 - Section "Prochain événement" avec détails et sondage
 - **Historique des saisons** (13 saisons, 2013-2026)
+- **DEUX MODES D'AFFICHAGE** :
+  1. **Mode Liste** (accordéon) : Navigation par saison, édition ligne par ligne
+  2. **Mode Tableau** (Excel-like) : Édition en masse, sélecteur de saison, sauvegarde groupée
 - **Contrôle total des événements historiques**:
   - Modifier : Lieu, Date (jj/mm/aa), Type (Repas/Apéro/Anniversaire), Nombre de présences
   - Ajouter un événement à une saison
   - Supprimer un événement
   - Tri automatique par date (du 1er au dernier de la saison)
+  - Bouton "Enregistrer tout" pour sauvegarder plusieurs modifications
 - 173 événements dans l'historique
 
 ## API Endpoints
