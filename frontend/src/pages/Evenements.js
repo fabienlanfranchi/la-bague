@@ -11,7 +11,9 @@ import {
   ChevronRight,
   X,
   Trash2,
-  Clock
+  Clock,
+  Edit3,
+  Save
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -25,12 +27,30 @@ const Evenements = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showHistorique, setShowHistorique] = useState(false);
   const [expandedSeasons, setExpandedSeasons] = useState({});
+  
+  // État pour l'édition
+  const [editingEvent, setEditingEvent] = useState(null);
+  const [editForm, setEditForm] = useState({
+    lieu: '',
+    date: '',
+    type_sondage: 'repas',
+    total_presents: 0
+  });
 
-  // Formulaire de création
+  // État pour ajout d'événement dans une saison
+  const [addingToSeason, setAddingToSeason] = useState(null);
+  const [newEventForm, setNewEventForm] = useState({
+    lieu: '',
+    date: '',
+    type_sondage: 'repas',
+    total_presents: 0
+  });
+
+  // Formulaire de création (événement à venir)
   const [newEvent, setNewEvent] = useState({
     date: '',
-    objet_type: 'repas', // repas, apéro, anniversaire, autre
-    objet_texte: '', // Si "autre", texte libre
+    objet_type: 'repas',
+    objet_texte: '',
     lieu: '',
     type_sondage: 'repas',
     saison: 13,
@@ -66,7 +86,6 @@ const Evenements = () => {
         return;
       }
 
-      // Déterminer l'objet selon le type
       let objet = '';
       if (newEvent.objet_type === 'autre') {
         if (!newEvent.objet_texte) {
@@ -78,8 +97,7 @@ const Evenements = () => {
         objet = newEvent.objet_type.charAt(0).toUpperCase() + newEvent.objet_type.slice(1);
       }
 
-      // Déterminer le type de sondage
-      const type_sondage = newEvent.objet_type === 'repas' ? 'repas' : 'simple'; // simple = oui/non
+      const type_sondage = newEvent.objet_type === 'repas' ? 'repas' : 'simple';
 
       const eventData = {
         date: new Date(newEvent.date).toISOString(),
@@ -117,7 +135,9 @@ const Evenements = () => {
     }
   };
 
-  const handleDeleteEvent = async (eventId) => {
+  const handleDeleteEvent = async (eventId, e) => {
+    if (e) e.stopPropagation();
+    
     if (!window.confirm('Êtes-vous sûr de vouloir supprimer cet événement ?')) {
       return;
     }
@@ -129,6 +149,102 @@ const Evenements = () => {
     } catch (error) {
       console.error('Erreur lors de la suppression:', error);
       toast.error('Erreur lors de la suppression');
+    }
+  };
+
+  // ÉDITION D'UN ÉVÉNEMENT
+  const startEditing = (evt, e) => {
+    if (e) e.stopPropagation();
+    setEditingEvent(evt.id);
+    
+    // Convertir la date pour l'input
+    const dateObj = new Date(evt.date);
+    const dateStr = dateObj.toISOString().split('T')[0];
+    
+    setEditForm({
+      lieu: evt.lieu || '',
+      date: dateStr,
+      type_sondage: evt.type_sondage || 'repas',
+      total_presents: evt.total_presents || 0
+    });
+  };
+
+  const cancelEditing = (e) => {
+    if (e) e.stopPropagation();
+    setEditingEvent(null);
+    setEditForm({
+      lieu: '',
+      date: '',
+      type_sondage: 'repas',
+      total_presents: 0
+    });
+  };
+
+  const saveEdit = async (eventId, e) => {
+    if (e) e.stopPropagation();
+    
+    try {
+      // Construire la date avec heure midi pour éviter les problèmes de timezone
+      const dateWithTime = new Date(editForm.date + 'T12:00:00');
+      
+      await axios.put(`${API}/evenements/${eventId}`, {
+        lieu: editForm.lieu,
+        date: dateWithTime.toISOString(),
+        type_sondage: editForm.type_sondage,
+        total_presents: parseInt(editForm.total_presents) || 0
+      });
+      
+      toast.success('Événement modifié');
+      setEditingEvent(null);
+      loadEvenements();
+    } catch (error) {
+      console.error('Erreur lors de la modification:', error);
+      toast.error('Erreur lors de la modification');
+    }
+  };
+
+  // AJOUT D'UN ÉVÉNEMENT DANS UNE SAISON
+  const startAddingToSeason = (saisonNum, e) => {
+    if (e) e.stopPropagation();
+    setAddingToSeason(saisonNum);
+    setNewEventForm({
+      lieu: '',
+      date: '',
+      type_sondage: 'repas',
+      total_presents: 0
+    });
+  };
+
+  const cancelAdding = (e) => {
+    if (e) e.stopPropagation();
+    setAddingToSeason(null);
+  };
+
+  const saveNewEvent = async (saisonNum, e) => {
+    if (e) e.stopPropagation();
+    
+    if (!newEventForm.lieu || !newEventForm.date) {
+      toast.error('Veuillez remplir le lieu et la date');
+      return;
+    }
+
+    try {
+      const dateWithTime = new Date(newEventForm.date + 'T12:00:00');
+      
+      await axios.post(`${API}/evenements/simple`, {
+        lieu: newEventForm.lieu,
+        date: dateWithTime.toISOString(),
+        type_sondage: newEventForm.type_sondage,
+        total_presents: parseInt(newEventForm.total_presents) || 0,
+        saison: saisonNum
+      });
+      
+      toast.success('Événement ajouté');
+      setAddingToSeason(null);
+      loadEvenements();
+    } catch (error) {
+      console.error('Erreur lors de l\'ajout:', error);
+      toast.error('Erreur lors de l\'ajout');
     }
   };
 
@@ -160,18 +276,23 @@ const Evenements = () => {
     const date = new Date(dateString);
     return date.toLocaleDateString('fr-FR', { 
       day: '2-digit', 
-      month: 'short',
-      year: 'numeric'
+      month: '2-digit',
+      year: '2-digit'
     });
   };
 
-  // Grouper les événements par saison
+  // Grouper les événements par saison et trier par date
   const evenementsParSaison = evenements.reduce((acc, evt) => {
     const saison = evt.saison || 13;
     if (!acc[saison]) acc[saison] = [];
     acc[saison].push(evt);
     return acc;
   }, {});
+
+  // Trier chaque saison par date (du premier au dernier de l'année)
+  Object.keys(evenementsParSaison).forEach(saison => {
+    evenementsParSaison[saison].sort((a, b) => new Date(a.date) - new Date(b.date));
+  });
 
   // Trouver le prochain événement (statut "à venir")
   const now = new Date();
@@ -181,6 +302,25 @@ const Evenements = () => {
 
   // Événements historiques (terminés)
   const evenementsHistorique = evenements.filter(e => e.statut === 'terminé');
+
+  // Badge de type avec couleur
+  const getTypeBadge = (type) => {
+    const styles = {
+      'repas': 'bg-gray-700 text-gray-200',
+      'apero': 'bg-blue-700 text-blue-200',
+      'anniversaire': 'bg-red-700 text-red-200'
+    };
+    const labels = {
+      'repas': 'Repas',
+      'apero': 'Apéro',
+      'anniversaire': 'Anniversaire'
+    };
+    return (
+      <Badge className={styles[type] || 'bg-gray-600 text-gray-200'}>
+        {labels[type] || type}
+      </Badge>
+    );
+  };
 
   if (loading) {
     return (
@@ -211,6 +351,7 @@ const Evenements = () => {
           <Button
             onClick={() => setShowCreateModal(true)}
             className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif font-bold"
+            data-testid="create-event-btn"
           >
             <Plus className="w-5 h-5 mr-2" />
             Créer un événement
@@ -218,7 +359,6 @@ const Evenements = () => {
         </div>
 
         {prochainEvenement ? (
-          /* Événement existant */
           <Card className="bg-black/40 border-2 border-[#D4A024] backdrop-blur-sm">
             <CardHeader className="border-b border-[#D4A024]/30">
               <div className="flex items-center justify-between">
@@ -281,14 +421,12 @@ const Evenements = () => {
                 )}
 
                 <div className="flex space-x-3 pt-4 border-t border-[#D4A024]/20">
-                  <Button
-                    className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif"
-                  >
+                  <Button className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif">
                     <Users className="w-4 h-4 mr-2" />
                     Voir les réponses
                   </Button>
                   <Button
-                    onClick={() => handleDeleteEvent(prochainEvenement.id)}
+                    onClick={(e) => handleDeleteEvent(prochainEvenement.id, e)}
                     variant="outline"
                     className="border-red-600 text-red-400 hover:bg-red-900/20"
                   >
@@ -300,7 +438,6 @@ const Evenements = () => {
             </CardContent>
           </Card>
         ) : (
-          /* Carcasse vide */
           <Card className="bg-black/40 border-2 border-[#D4A024]/50 backdrop-blur-sm border-dashed">
             <CardContent className="p-12 text-center">
               <Clock className="w-16 h-16 text-[#D4A024]/30 mx-auto mb-4" />
@@ -322,7 +459,7 @@ const Evenements = () => {
         )}
       </div>
 
-      {/* SECTION 2: HISTORIQUE SAISONS (ACCORDÉON UNIQUE) */}
+      {/* SECTION 2: HISTORIQUE SAISONS (ACCORDÉON) */}
       <div>
         <Card className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm">
           <CardHeader 
@@ -343,15 +480,14 @@ const Evenements = () => {
           {showHistorique && (
             <CardContent className="pt-4">
               <div className="space-y-4">
-                {[...Array(12)].map((_, i) => {
-                  const saisonNum = 12 - i; // De 12 à 1
+                {[...Array(13)].map((_, i) => {
+                  const saisonNum = 13 - i; // De 13 à 1
                   const evts = evenementsParSaison[saisonNum] || [];
-                  const evtsTermines = evts.filter(e => e.statut === 'terminé').slice(0, 20); // Max 20
-                  
-                  if (evtsTermines.length === 0) return null;
+                  const evtsTermines = evts.filter(e => e.statut === 'terminé');
 
                   return (
-                    <div key={saisonNum}>
+                    <div key={saisonNum} data-testid={`season-${saisonNum}`}>
+                      {/* En-tête de la saison */}
                       <div
                         className="flex items-center justify-between p-3 bg-black/30 rounded-lg cursor-pointer hover:bg-[#D4A024]/10"
                         onClick={() => toggleSeason(saisonNum)}
@@ -366,68 +502,230 @@ const Evenements = () => {
                           </span>
                         </div>
                         <Badge className="bg-[#7A2020]/50 text-[#D4A024]">
-                          {evtsTermines.length}
+                          {evtsTermines.length} événement{evtsTermines.length > 1 ? 's' : ''}
                         </Badge>
                       </div>
 
+                      {/* Contenu de la saison */}
                       {expandedSeasons[saisonNum] && (
-                        <div className="ml-8 mt-3 space-y-2">
-                          {evtsTermines.map(evt => (
+                        <div className="ml-4 mt-3 space-y-2">
+                          {/* Liste des événements */}
+                          {evtsTermines.map((evt, idx) => (
                             <div 
                               key={evt.id}
                               className="bg-black/20 border border-[#D4A024]/10 rounded hover:border-[#D4A024]/30 transition-all"
+                              data-testid={`event-${evt.id}`}
                             >
-                              <div className="flex items-center justify-between p-3">
-                                <div className="flex-1">
-                                  <div className="flex items-center space-x-3">
-                                    <h4 className="text-white font-serif font-semibold text-lg">
+                              {editingEvent === evt.id ? (
+                                /* MODE ÉDITION */
+                                <div className="p-4 space-y-3" onClick={(e) => e.stopPropagation()}>
+                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                    {/* Lieu */}
+                                    <div>
+                                      <label className="block text-xs text-gray-400 mb-1">Lieu</label>
+                                      <input
+                                        type="text"
+                                        value={editForm.lieu}
+                                        onChange={(e) => setEditForm({...editForm, lieu: e.target.value})}
+                                        className="w-full px-2 py-1 bg-black/40 border border-[#D4A024]/30 rounded text-white text-sm"
+                                        data-testid={`edit-lieu-${evt.id}`}
+                                      />
+                                    </div>
+                                    {/* Date */}
+                                    <div>
+                                      <label className="block text-xs text-gray-400 mb-1">Date (jj/mm/aa)</label>
+                                      <input
+                                        type="date"
+                                        value={editForm.date}
+                                        onChange={(e) => setEditForm({...editForm, date: e.target.value})}
+                                        className="w-full px-2 py-1 bg-black/40 border border-[#D4A024]/30 rounded text-white text-sm"
+                                        data-testid={`edit-date-${evt.id}`}
+                                      />
+                                    </div>
+                                    {/* Type */}
+                                    <div>
+                                      <label className="block text-xs text-gray-400 mb-1">Type</label>
+                                      <select
+                                        value={editForm.type_sondage}
+                                        onChange={(e) => setEditForm({...editForm, type_sondage: e.target.value})}
+                                        className="w-full px-2 py-1 bg-black/40 border border-[#D4A024]/30 rounded text-white text-sm"
+                                        data-testid={`edit-type-${evt.id}`}
+                                      >
+                                        <option value="repas">Repas</option>
+                                        <option value="apero">Apéro</option>
+                                        <option value="anniversaire">Anniversaire</option>
+                                      </select>
+                                    </div>
+                                    {/* Nombre de présences */}
+                                    <div>
+                                      <label className="block text-xs text-gray-400 mb-1">Présences</label>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        value={editForm.total_presents}
+                                        onChange={(e) => setEditForm({...editForm, total_presents: e.target.value})}
+                                        className="w-full px-2 py-1 bg-black/40 border border-[#D4A024]/30 rounded text-white text-sm"
+                                        data-testid={`edit-presents-${evt.id}`}
+                                      />
+                                    </div>
+                                  </div>
+                                  {/* Boutons */}
+                                  <div className="flex space-x-2 pt-2">
+                                    <Button
+                                      onClick={(e) => saveEdit(evt.id, e)}
+                                      size="sm"
+                                      className="bg-green-600 hover:bg-green-700 text-white"
+                                      data-testid={`save-edit-${evt.id}`}
+                                    >
+                                      <Save className="w-4 h-4 mr-1" />
+                                      Enregistrer
+                                    </Button>
+                                    <Button
+                                      onClick={cancelEditing}
+                                      size="sm"
+                                      variant="outline"
+                                      className="border-gray-500 text-gray-300 hover:bg-gray-800"
+                                    >
+                                      Annuler
+                                    </Button>
+                                    <Button
+                                      onClick={(e) => handleDeleteEvent(evt.id, e)}
+                                      size="sm"
+                                      variant="outline"
+                                      className="border-red-600 text-red-400 hover:bg-red-900/20 ml-auto"
+                                      data-testid={`delete-event-${evt.id}`}
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                /* MODE AFFICHAGE */
+                                <div className="flex items-center justify-between p-3">
+                                  <div className="flex items-center space-x-4 flex-1">
+                                    {/* Numéro */}
+                                    <span className="text-gray-500 text-sm w-6">#{idx + 1}</span>
+                                    {/* Lieu */}
+                                    <h4 className="text-white font-serif font-semibold min-w-[150px]">
                                       {evt.lieu}
                                     </h4>
-                                    <Badge className={
-                                      evt.type_sondage === 'repas' 
-                                        ? 'bg-gray-700 text-gray-200' 
-                                        : evt.type_sondage === 'anniversaire'
-                                        ? 'bg-red-700 text-red-200'
-                                        : 'bg-blue-700 text-blue-200'
-                                    }>
-                                      {evt.type_sondage}
-                                    </Badge>
-                                  </div>
-                                  <div className="flex items-center space-x-4 mt-1">
-                                    <p className="text-sm text-gray-400">
+                                    {/* Date */}
+                                    <span className="text-gray-400 text-sm min-w-[80px]">
                                       {formatDateShort(evt.date)}
-                                    </p>
+                                    </span>
+                                    {/* Type */}
+                                    {getTypeBadge(evt.type_sondage)}
                                   </div>
-                                </div>
-                                {/* Nombre de présents */}
-                                <div className="flex items-center space-x-2 bg-[#D4A024]/20 px-4 py-2 rounded-lg">
-                                  <Users className="w-5 h-5 text-[#D4A024]" />
-                                  <span className="text-[#D4A024] font-bold text-xl">
-                                    {evt.total_presents || 0}
-                                  </span>
-                                </div>
-                              </div>
-                              
-                              {/* Liste des présents (si disponible) */}
-                              {evt.presents && evt.presents.length > 0 && (
-                                <div className="px-3 pb-3 pt-0">
-                                  <div className="bg-black/30 rounded p-2 border-t border-[#D4A024]/10">
-                                    <p className="text-xs text-gray-400 mb-1">Membres présents :</p>
-                                    <div className="flex flex-wrap gap-1">
-                                      {evt.presents.map((nom, i) => (
-                                        <span 
-                                          key={i}
-                                          className="text-xs bg-[#D4A024]/10 text-[#D4A024] px-2 py-0.5 rounded"
-                                        >
-                                          {nom}
-                                        </span>
-                                      ))}
-                                    </div>
+                                  
+                                  {/* Nombre de présents (cliquable) */}
+                                  <div 
+                                    className="flex items-center space-x-2 bg-[#D4A024]/20 px-4 py-2 rounded-lg cursor-pointer hover:bg-[#D4A024]/30 transition-all"
+                                    onClick={(e) => startEditing(evt, e)}
+                                    title="Cliquer pour modifier"
+                                    data-testid={`presents-count-${evt.id}`}
+                                  >
+                                    <Users className="w-5 h-5 text-[#D4A024]" />
+                                    <span className="text-[#D4A024] font-bold text-xl">
+                                      {evt.total_presents || 0}
+                                    </span>
+                                    <Edit3 className="w-4 h-4 text-[#D4A024]/60" />
                                   </div>
                                 </div>
                               )}
                             </div>
                           ))}
+
+                          {/* FORMULAIRE AJOUT D'ÉVÉNEMENT */}
+                          {addingToSeason === saisonNum ? (
+                            <div 
+                              className="bg-[#D4A024]/10 border-2 border-dashed border-[#D4A024]/50 rounded p-4 space-y-3"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <h5 className="text-[#D4A024] font-serif font-semibold">Nouvel événement</h5>
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                {/* Lieu */}
+                                <div>
+                                  <label className="block text-xs text-gray-400 mb-1">Lieu *</label>
+                                  <input
+                                    type="text"
+                                    value={newEventForm.lieu}
+                                    onChange={(e) => setNewEventForm({...newEventForm, lieu: e.target.value})}
+                                    placeholder="Ex: Le Cigare Volant"
+                                    className="w-full px-2 py-1 bg-black/40 border border-[#D4A024]/30 rounded text-white text-sm"
+                                    data-testid={`new-event-lieu-${saisonNum}`}
+                                  />
+                                </div>
+                                {/* Date */}
+                                <div>
+                                  <label className="block text-xs text-gray-400 mb-1">Date *</label>
+                                  <input
+                                    type="date"
+                                    value={newEventForm.date}
+                                    onChange={(e) => setNewEventForm({...newEventForm, date: e.target.value})}
+                                    className="w-full px-2 py-1 bg-black/40 border border-[#D4A024]/30 rounded text-white text-sm"
+                                    data-testid={`new-event-date-${saisonNum}`}
+                                  />
+                                </div>
+                                {/* Type */}
+                                <div>
+                                  <label className="block text-xs text-gray-400 mb-1">Type</label>
+                                  <select
+                                    value={newEventForm.type_sondage}
+                                    onChange={(e) => setNewEventForm({...newEventForm, type_sondage: e.target.value})}
+                                    className="w-full px-2 py-1 bg-black/40 border border-[#D4A024]/30 rounded text-white text-sm"
+                                    data-testid={`new-event-type-${saisonNum}`}
+                                  >
+                                    <option value="repas">Repas</option>
+                                    <option value="apero">Apéro</option>
+                                    <option value="anniversaire">Anniversaire</option>
+                                  </select>
+                                </div>
+                                {/* Nombre */}
+                                <div>
+                                  <label className="block text-xs text-gray-400 mb-1">Présences</label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={newEventForm.total_presents}
+                                    onChange={(e) => setNewEventForm({...newEventForm, total_presents: e.target.value})}
+                                    className="w-full px-2 py-1 bg-black/40 border border-[#D4A024]/30 rounded text-white text-sm"
+                                    data-testid={`new-event-presents-${saisonNum}`}
+                                  />
+                                </div>
+                              </div>
+                              {/* Boutons */}
+                              <div className="flex space-x-2 pt-2">
+                                <Button
+                                  onClick={(e) => saveNewEvent(saisonNum, e)}
+                                  size="sm"
+                                  className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020]"
+                                  data-testid={`save-new-event-${saisonNum}`}
+                                >
+                                  <Plus className="w-4 h-4 mr-1" />
+                                  Ajouter
+                                </Button>
+                                <Button
+                                  onClick={cancelAdding}
+                                  size="sm"
+                                  variant="outline"
+                                  className="border-gray-500 text-gray-300 hover:bg-gray-800"
+                                >
+                                  Annuler
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            /* BOUTON AJOUTER */
+                            <Button
+                              onClick={(e) => startAddingToSeason(saisonNum, e)}
+                              variant="outline"
+                              className="w-full border-dashed border-[#D4A024]/30 text-[#D4A024]/60 hover:text-[#D4A024] hover:border-[#D4A024]/50 hover:bg-[#D4A024]/5"
+                              data-testid={`add-event-to-season-${saisonNum}`}
+                            >
+                              <Plus className="w-4 h-4 mr-2" />
+                              Ajouter un événement à la Saison {saisonNum}
+                            </Button>
+                          )}
                         </div>
                       )}
                     </div>
@@ -439,7 +737,7 @@ const Evenements = () => {
         </Card>
       </div>
 
-      {/* Modal: Créer un événement */}
+      {/* Modal: Créer un événement (à venir) */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <Card className="bg-[#7A2020] border-2 border-[#D4A024] max-w-2xl w-full max-h-[90vh] flex flex-col">
@@ -468,6 +766,7 @@ const Evenements = () => {
                   value={newEvent.date}
                   onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })}
                   className="w-full px-3 py-2 bg-black/40 border border-[#D4A024]/30 rounded text-white"
+                  data-testid="create-event-date"
                 />
               </div>
 
@@ -478,6 +777,7 @@ const Evenements = () => {
                   value={newEvent.objet_type}
                   onChange={(e) => setNewEvent({ ...newEvent, objet_type: e.target.value })}
                   className="w-full px-3 py-2 bg-black/40 border border-[#D4A024]/30 rounded text-white"
+                  data-testid="create-event-type"
                 >
                   <option value="repas">Repas</option>
                   <option value="apéro">Apéro</option>
@@ -486,7 +786,6 @@ const Evenements = () => {
                 </select>
               </div>
 
-              {/* Si "autre", champ texte libre */}
               {newEvent.objet_type === 'autre' && (
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">Précisez l'objet *</label>
@@ -509,6 +808,7 @@ const Evenements = () => {
                   onChange={(e) => setNewEvent({ ...newEvent, lieu: e.target.value })}
                   placeholder="Ex: Restaurant Le Club"
                   className="w-full px-3 py-2 bg-black/40 border border-[#D4A024]/30 rounded text-white"
+                  data-testid="create-event-lieu"
                 />
               </div>
 
@@ -519,6 +819,7 @@ const Evenements = () => {
                   value={newEvent.saison}
                   onChange={(e) => setNewEvent({ ...newEvent, saison: parseInt(e.target.value) })}
                   className="w-full px-3 py-2 bg-black/40 border border-[#D4A024]/30 rounded text-white"
+                  data-testid="create-event-saison"
                 >
                   {[...Array(13)].map((_, i) => (
                     <option key={i + 1} value={i + 1}>
@@ -528,7 +829,7 @@ const Evenements = () => {
                 </select>
               </div>
 
-              {/* Type de sondage (caché, automatique selon l'objet) */}
+              {/* Type de sondage info */}
               <div className="bg-black/20 p-3 rounded border border-[#D4A024]/20">
                 <p className="text-sm text-gray-400">
                   💡 Type de sondage : 
@@ -633,15 +934,14 @@ const Evenements = () => {
                   </div>
                 </div>
               )}
-
-              {/* Boutons */}
-              
             </CardContent>
+            
             <div className="flex-shrink-0 p-4 border-t border-[#D4A024]/30 flex space-x-3">
               <Button
                 onClick={handleCreateEvent}
                 type="button"
                 className="flex-1 bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif font-bold"
+                data-testid="submit-create-event"
               >
                 Créer l'événement
               </Button>
