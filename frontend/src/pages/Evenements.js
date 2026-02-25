@@ -266,6 +266,93 @@ const Evenements = () => {
     }));
   };
 
+  // Fonctions pour le mode tableau
+  const handleTableCellChange = (eventId, field, value) => {
+    setTableEditData(prev => ({
+      ...prev,
+      [eventId]: {
+        ...prev[eventId],
+        [field]: value,
+        modified: true
+      }
+    }));
+  };
+
+  const saveTableRow = async (eventId) => {
+    const changes = tableEditData[eventId];
+    if (!changes || !changes.modified) return;
+
+    try {
+      const updateData = {};
+      if (changes.lieu !== undefined) updateData.lieu = changes.lieu;
+      if (changes.date !== undefined) {
+        const dateWithTime = new Date(changes.date + 'T12:00:00');
+        updateData.date = dateWithTime.toISOString();
+      }
+      if (changes.type_sondage !== undefined) updateData.type_sondage = changes.type_sondage;
+      if (changes.total_presents !== undefined) updateData.total_presents = parseInt(changes.total_presents) || 0;
+
+      await axios.put(`${API}/evenements/${eventId}`, updateData);
+      
+      setTableEditData(prev => ({
+        ...prev,
+        [eventId]: { ...prev[eventId], modified: false }
+      }));
+      
+      toast.success('Événement modifié');
+      loadEvenements();
+    } catch (error) {
+      console.error('Erreur:', error);
+      toast.error('Erreur lors de la modification');
+    }
+  };
+
+  const saveAllTableChanges = async () => {
+    const modifiedEvents = Object.entries(tableEditData).filter(([_, data]) => data.modified);
+    
+    if (modifiedEvents.length === 0) {
+      toast.info('Aucune modification à enregistrer');
+      return;
+    }
+
+    let successCount = 0;
+    for (const [eventId, changes] of modifiedEvents) {
+      try {
+        const updateData = {};
+        if (changes.lieu !== undefined) updateData.lieu = changes.lieu;
+        if (changes.date !== undefined) {
+          const dateWithTime = new Date(changes.date + 'T12:00:00');
+          updateData.date = dateWithTime.toISOString();
+        }
+        if (changes.type_sondage !== undefined) updateData.type_sondage = changes.type_sondage;
+        if (changes.total_presents !== undefined) updateData.total_presents = parseInt(changes.total_presents) || 0;
+
+        await axios.put(`${API}/evenements/${eventId}`, updateData);
+        successCount++;
+      } catch (error) {
+        console.error('Erreur pour', eventId, error);
+      }
+    }
+
+    setTableEditData({});
+    toast.success(`${successCount} événement(s) modifié(s)`);
+    loadEvenements();
+  };
+
+  const getTableValue = (evt, field) => {
+    if (tableEditData[evt.id] && tableEditData[evt.id][field] !== undefined) {
+      return tableEditData[evt.id][field];
+    }
+    if (field === 'date') {
+      return new Date(evt.date).toISOString().split('T')[0];
+    }
+    return evt[field] || '';
+  };
+
+  const isRowModified = (eventId) => {
+    return tableEditData[eventId]?.modified;
+  };
+
   const addOption = (type) => {
     const newOptions = { ...newEvent.options_sondage };
     const currentList = newOptions[type] || [];
