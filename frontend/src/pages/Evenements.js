@@ -600,37 +600,93 @@ const Evenements = () => {
 
             {/* Sélecteur de saison pour le mode tableau */}
             {viewMode === 'table' && (
-              <div className="flex items-center justify-between mt-4 pt-4 border-t border-[#D4A024]/20">
-                <div className="flex items-center space-x-3">
-                  <label className="text-gray-300 text-sm">Saison :</label>
-                  <select
-                    value={selectedSeason}
-                    onChange={(e) => setSelectedSeason(parseInt(e.target.value))}
-                    className="px-3 py-1 bg-black/40 border border-[#D4A024]/30 rounded text-[#D4A024] text-sm"
-                    data-testid="season-selector"
-                  >
-                    {[...Array(13)].map((_, i) => {
-                      const saisonNum = 13 - i;
-                      return (
-                        <option key={saisonNum} value={saisonNum}>
-                          Saison {saisonNum} ({2012 + saisonNum}-{2013 + saisonNum})
-                        </option>
-                      );
-                    })}
-                  </select>
+              <div className="mt-4 pt-4 border-t border-[#D4A024]/20">
+                {/* Titre de la saison bien visible */}
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center space-x-4">
+                    {/* Bouton précédent */}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setSelectedSeason(s => Math.max(1, s - 1))}
+                      disabled={selectedSeason <= 1}
+                      className="border-[#D4A024]/50 text-[#D4A024] hover:bg-[#D4A024]/20 disabled:opacity-30"
+                    >
+                      <ChevronRight className="w-4 h-4 rotate-180" />
+                    </Button>
+                    
+                    {/* Titre de la saison */}
+                    <div className="text-center">
+                      <h3 className="text-2xl font-serif font-bold text-[#D4A024]">
+                        Saison {selectedSeason}
+                      </h3>
+                      <p className="text-gray-400 text-sm">
+                        {2012 + selectedSeason} - {2013 + selectedSeason}
+                      </p>
+                    </div>
+                    
+                    {/* Bouton suivant */}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setSelectedSeason(s => Math.min(13, s + 1))}
+                      disabled={selectedSeason >= 13}
+                      className="border-[#D4A024]/50 text-[#D4A024] hover:bg-[#D4A024]/20 disabled:opacity-30"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  
+                  {/* Sélecteur rapide de saison */}
+                  <div className="flex items-center space-x-2">
+                    <span className="text-gray-400 text-sm">Aller à :</span>
+                    <div className="flex flex-wrap gap-1">
+                      {[13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map(num => (
+                        <button
+                          key={num}
+                          onClick={() => setSelectedSeason(num)}
+                          className={`w-8 h-8 rounded text-sm font-medium transition-colors ${
+                            selectedSeason === num 
+                              ? 'bg-[#D4A024] text-[#7A2020]' 
+                              : 'bg-black/30 text-[#D4A024]/70 hover:bg-[#D4A024]/20 hover:text-[#D4A024]'
+                          }`}
+                          data-testid={`season-btn-${num}`}
+                        >
+                          {num}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
                 
-                {/* Bouton sauvegarder toutes les modifications */}
-                {Object.values(tableEditData).some(d => d.modified) && (
-                  <Button
-                    onClick={saveAllTableChanges}
-                    className="bg-green-600 hover:bg-green-700 text-white"
-                    data-testid="save-all-changes"
-                  >
-                    <Save className="w-4 h-4 mr-2" />
-                    Enregistrer tout ({Object.values(tableEditData).filter(d => d.modified).length})
-                  </Button>
-                )}
+                {/* Stats de la saison + bouton enregistrer */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4 text-sm">
+                    <span className="text-gray-400">
+                      <span className="text-[#D4A024] font-bold">
+                        {(evenementsParSaison[selectedSeason] || []).filter(e => e.statut === 'terminé').length}
+                      </span> événement(s)
+                    </span>
+                    <span className="text-gray-500">|</span>
+                    <span className="text-gray-400">
+                      Total présences : <span className="text-[#D4A024] font-bold">
+                        {(evenementsParSaison[selectedSeason] || []).filter(e => e.statut === 'terminé').reduce((sum, e) => sum + (e.total_presents || 0), 0)}
+                      </span>
+                    </span>
+                  </div>
+                  
+                  {/* Bouton sauvegarder toutes les modifications */}
+                  {Object.values(tableEditData).some(d => d.modified) && (
+                    <Button
+                      onClick={saveAllTableChanges}
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                      data-testid="save-all-changes"
+                    >
+                      <Save className="w-4 h-4 mr-2" />
+                      Enregistrer tout ({Object.values(tableEditData).filter(d => d.modified).length})
+                    </Button>
+                  )}
+                </div>
               </div>
             )}
           </CardHeader>
