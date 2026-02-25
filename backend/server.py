@@ -522,6 +522,7 @@ class Evenement(BaseModel):
     type_sondage: str  # "repas", "apéro", "libre"
     statut: str = "à venir"  # "à venir", "en cours", "terminé"
     saison: int  # 1-13
+    total_presents: int = 0  # Nombre de présents (pour historique)
     options_sondage: Optional[dict] = None  # Pour "repas": {entrees: [], plats: [], desserts: []}
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
