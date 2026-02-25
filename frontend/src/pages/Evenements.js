@@ -13,7 +13,11 @@ import {
   Trash2,
   Clock,
   Edit3,
-  Save
+  Save,
+  Table,
+  List,
+  Download,
+  Upload
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
