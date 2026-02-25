@@ -1026,6 +1026,108 @@ async def delete_evenement(evenement_id: str):
     return {"message": "Événement supprimé avec succès"}
 
 
+# ============ ÉVÉNEMENTS - ÉDITION COMPLÈTE ============
+
+class EvenementUpdate(BaseModel):
+    """Mise à jour complète d'un événement"""
+    date: Optional[datetime] = None
+    lieu: Optional[str] = None
+    type_sondage: Optional[str] = None  # "repas", "apero", "anniversaire"
+    total_presents: Optional[int] = None
+    objet: Optional[str] = None
+
+
+@api_router.put("/evenements/{evenement_id}")
+async def update_evenement(evenement_id: str, input: EvenementUpdate):
+    """Mettre à jour un événement (tous les champs éditables)"""
+    existing = await db.evenements.find_one({"id": evenement_id}, {"_id": 0})
+    
+    if not existing:
+        raise HTTPException(status_code=404, detail="Événement non trouvé")
+    
+    # Préparer les données de mise à jour (seulement les champs fournis)
+    update_data = {}
+    
+    if input.date is not None:
+        update_data['date'] = input.date.isoformat()
+    if input.lieu is not None:
+        update_data['lieu'] = input.lieu
+    if input.type_sondage is not None:
+        update_data['type_sondage'] = input.type_sondage
+        # Mettre à jour l'objet automatiquement selon le type
+        type_to_objet = {
+            'repas': 'Repas',
+            'apero': 'Apéro',
+            'anniversaire': 'Anniversaire'
+        }
+        update_data['objet'] = type_to_objet.get(input.type_sondage, input.type_sondage.capitalize())
+    if input.total_presents is not None:
+        update_data['total_presents'] = input.total_presents
+    if input.objet is not None:
+        update_data['objet'] = input.objet
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="Aucune donnée à mettre à jour")
+    
+    # Mettre à jour dans MongoDB
+    await db.evenements.update_one(
+        {"id": evenement_id},
+        {"$set": update_data}
+    )
+    
+    # Récupérer et retourner l'événement mis à jour
+    updated_evt = await db.evenements.find_one({"id": evenement_id}, {"_id": 0})
+    
+    if isinstance(updated_evt.get('date'), str):
+        updated_evt['date'] = datetime.fromisoformat(updated_evt['date'])
+    if isinstance(updated_evt.get('created_at'), str):
+        updated_evt['created_at'] = datetime.fromisoformat(updated_evt['created_at'])
+    
+    return updated_evt
+
+
+class EvenementCreateSimple(BaseModel):
+    """Création simplifiée d'un événement historique"""
+    date: datetime
+    lieu: str
+    type_sondage: str  # "repas", "apero", "anniversaire"
+    total_presents: int = 0
+    saison: int
+
+
+@api_router.post("/evenements/simple")
+async def create_evenement_simple(input: EvenementCreateSimple):
+    """Créer un événement simplifié (pour l'historique)"""
+    # Déterminer l'objet selon le type
+    type_to_objet = {
+        'repas': 'Repas',
+        'apero': 'Apéro',
+        'anniversaire': 'Anniversaire'
+    }
+    objet = type_to_objet.get(input.type_sondage, input.type_sondage.capitalize())
+    
+    evt_obj = Evenement(
+        date=input.date,
+        objet=objet,
+        lieu=input.lieu,
+        type_sondage=input.type_sondage,
+        saison=input.saison,
+        statut='terminé'
+    )
+    
+    doc = evt_obj.model_dump()
+    doc['date'] = doc['date'].isoformat()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['total_presents'] = input.total_presents
+    
+    await db.evenements.insert_one(doc)
+    
+    return {
+        "message": "Événement créé avec succès",
+        "evenement": {**doc, "date": evt_obj.date, "created_at": evt_obj.created_at}
+    }
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
