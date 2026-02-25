@@ -557,23 +557,277 @@ const Evenements = () => {
         )}
       </div>
 
-      {/* SECTION 2: HISTORIQUE SAISONS (ACCORDÉON) */}
+      {/* SECTION 2: HISTORIQUE SAISONS (ACCORDÉON / TABLEAU) */}
       <div>
         <Card className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm">
-          <CardHeader 
-            className="cursor-pointer hover:bg-[#D4A024]/10 transition-all"
-            onClick={() => setShowHistorique(!showHistorique)}
-          >
-            <div className="flex items-center justify-between">
+          <CardHeader className="border-b border-[#D4A024]/30">
+            <div className="flex items-center justify-between flex-wrap gap-4">
               <CardTitle className="text-2xl font-serif text-[#D4A024] flex items-center">
-                {showHistorique ? <ChevronDown className="w-6 h-6 mr-2" /> : <ChevronRight className="w-6 h-6 mr-2" />}
                 📚 Historique Saisons
               </CardTitle>
-              <Badge className="bg-[#7A2020] text-[#D4A024] border border-[#D4A024]">
-                {evenementsHistorique.length} événements
-              </Badge>
+              
+              <div className="flex items-center space-x-3">
+                {/* Badge nombre total */}
+                <Badge className="bg-[#7A2020] text-[#D4A024] border border-[#D4A024]">
+                  {evenementsHistorique.length} événements
+                </Badge>
+                
+                {/* Toggle Vue */}
+                <div className="flex bg-black/40 rounded-lg p-1 border border-[#D4A024]/30">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setViewMode('list')}
+                    className={`px-3 py-1 ${viewMode === 'list' ? 'bg-[#D4A024] text-[#7A2020]' : 'text-[#D4A024] hover:bg-[#D4A024]/20'}`}
+                    data-testid="view-mode-list"
+                  >
+                    <List className="w-4 h-4 mr-1" />
+                    Liste
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setViewMode('table')}
+                    className={`px-3 py-1 ${viewMode === 'table' ? 'bg-[#D4A024] text-[#7A2020]' : 'text-[#D4A024] hover:bg-[#D4A024]/20'}`}
+                    data-testid="view-mode-table"
+                  >
+                    <Table className="w-4 h-4 mr-1" />
+                    Tableau
+                  </Button>
+                </div>
+              </div>
             </div>
+
+            {/* Sélecteur de saison pour le mode tableau */}
+            {viewMode === 'table' && (
+              <div className="flex items-center justify-between mt-4 pt-4 border-t border-[#D4A024]/20">
+                <div className="flex items-center space-x-3">
+                  <label className="text-gray-300 text-sm">Saison :</label>
+                  <select
+                    value={selectedSeason}
+                    onChange={(e) => setSelectedSeason(parseInt(e.target.value))}
+                    className="px-3 py-1 bg-black/40 border border-[#D4A024]/30 rounded text-[#D4A024] text-sm"
+                    data-testid="season-selector"
+                  >
+                    {[...Array(13)].map((_, i) => {
+                      const saisonNum = 13 - i;
+                      return (
+                        <option key={saisonNum} value={saisonNum}>
+                          Saison {saisonNum} ({2012 + saisonNum}-{2013 + saisonNum})
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+                
+                {/* Bouton sauvegarder toutes les modifications */}
+                {Object.values(tableEditData).some(d => d.modified) && (
+                  <Button
+                    onClick={saveAllTableChanges}
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                    data-testid="save-all-changes"
+                  >
+                    <Save className="w-4 h-4 mr-2" />
+                    Enregistrer tout ({Object.values(tableEditData).filter(d => d.modified).length})
+                  </Button>
+                )}
+              </div>
+            )}
           </CardHeader>
+          
+          {/* VUE TABLEAU */}
+          {viewMode === 'table' && (
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full" data-testid="events-table">
+                  <thead className="bg-black/40">
+                    <tr className="border-b border-[#D4A024]/30">
+                      <th className="px-3 py-3 text-left text-xs font-semibold text-[#D4A024] w-10">#</th>
+                      <th className="px-3 py-3 text-left text-xs font-semibold text-[#D4A024] min-w-[200px]">Lieu</th>
+                      <th className="px-3 py-3 text-left text-xs font-semibold text-[#D4A024] w-36">Date</th>
+                      <th className="px-3 py-3 text-left text-xs font-semibold text-[#D4A024] w-32">Type</th>
+                      <th className="px-3 py-3 text-center text-xs font-semibold text-[#D4A024] w-24">Présences</th>
+                      <th className="px-3 py-3 text-center text-xs font-semibold text-[#D4A024] w-20">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(evenementsParSaison[selectedSeason] || [])
+                      .filter(e => e.statut === 'terminé')
+                      .map((evt, idx) => (
+                        <tr 
+                          key={evt.id}
+                          className={`border-b border-[#D4A024]/10 hover:bg-[#D4A024]/5 transition-colors ${isRowModified(evt.id) ? 'bg-yellow-900/20' : ''}`}
+                          data-testid={`table-row-${evt.id}`}
+                        >
+                          <td className="px-3 py-2 text-gray-500 text-sm">{idx + 1}</td>
+                          <td className="px-3 py-2">
+                            <input
+                              type="text"
+                              value={getTableValue(evt, 'lieu')}
+                              onChange={(e) => handleTableCellChange(evt.id, 'lieu', e.target.value)}
+                              className="w-full px-2 py-1 bg-transparent border border-transparent hover:border-[#D4A024]/30 focus:border-[#D4A024] rounded text-white text-sm transition-colors"
+                              data-testid={`table-lieu-${evt.id}`}
+                            />
+                          </td>
+                          <td className="px-3 py-2">
+                            <input
+                              type="date"
+                              value={getTableValue(evt, 'date')}
+                              onChange={(e) => handleTableCellChange(evt.id, 'date', e.target.value)}
+                              className="w-full px-2 py-1 bg-transparent border border-transparent hover:border-[#D4A024]/30 focus:border-[#D4A024] rounded text-white text-sm transition-colors"
+                              data-testid={`table-date-${evt.id}`}
+                            />
+                          </td>
+                          <td className="px-3 py-2">
+                            <select
+                              value={getTableValue(evt, 'type_sondage')}
+                              onChange={(e) => handleTableCellChange(evt.id, 'type_sondage', e.target.value)}
+                              className="w-full px-2 py-1 bg-transparent border border-transparent hover:border-[#D4A024]/30 focus:border-[#D4A024] rounded text-white text-sm transition-colors"
+                              data-testid={`table-type-${evt.id}`}
+                            >
+                              <option value="repas" className="bg-[#7A2020]">Repas</option>
+                              <option value="apero" className="bg-[#7A2020]">Apéro</option>
+                              <option value="anniversaire" className="bg-[#7A2020]">Anniversaire</option>
+                            </select>
+                          </td>
+                          <td className="px-3 py-2">
+                            <input
+                              type="number"
+                              min="0"
+                              value={getTableValue(evt, 'total_presents')}
+                              onChange={(e) => handleTableCellChange(evt.id, 'total_presents', e.target.value)}
+                              className="w-full px-2 py-1 bg-transparent border border-transparent hover:border-[#D4A024]/30 focus:border-[#D4A024] rounded text-[#D4A024] text-sm text-center font-bold transition-colors"
+                              data-testid={`table-presents-${evt.id}`}
+                            />
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            <div className="flex items-center justify-center space-x-1">
+                              {isRowModified(evt.id) && (
+                                <Button
+                                  onClick={() => saveTableRow(evt.id)}
+                                  size="sm"
+                                  className="h-7 w-7 p-0 bg-green-600 hover:bg-green-700"
+                                  title="Enregistrer"
+                                >
+                                  <Save className="w-3 h-3" />
+                                </Button>
+                              )}
+                              <Button
+                                onClick={(e) => handleDeleteEvent(evt.id, e)}
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 w-7 p-0 text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                                title="Supprimer"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    
+                    {/* Ligne d'ajout */}
+                    {addingToSeason === selectedSeason ? (
+                      <tr className="border-b border-[#D4A024]/30 bg-[#D4A024]/10">
+                        <td className="px-3 py-2 text-gray-500 text-sm">+</td>
+                        <td className="px-3 py-2">
+                          <input
+                            type="text"
+                            value={newEventForm.lieu}
+                            onChange={(e) => setNewEventForm({...newEventForm, lieu: e.target.value})}
+                            placeholder="Nom du lieu"
+                            className="w-full px-2 py-1 bg-black/40 border border-[#D4A024]/30 rounded text-white text-sm"
+                          />
+                        </td>
+                        <td className="px-3 py-2">
+                          <input
+                            type="date"
+                            value={newEventForm.date}
+                            onChange={(e) => setNewEventForm({...newEventForm, date: e.target.value})}
+                            className="w-full px-2 py-1 bg-black/40 border border-[#D4A024]/30 rounded text-white text-sm"
+                          />
+                        </td>
+                        <td className="px-3 py-2">
+                          <select
+                            value={newEventForm.type_sondage}
+                            onChange={(e) => setNewEventForm({...newEventForm, type_sondage: e.target.value})}
+                            className="w-full px-2 py-1 bg-black/40 border border-[#D4A024]/30 rounded text-white text-sm"
+                          >
+                            <option value="repas">Repas</option>
+                            <option value="apero">Apéro</option>
+                            <option value="anniversaire">Anniversaire</option>
+                          </select>
+                        </td>
+                        <td className="px-3 py-2">
+                          <input
+                            type="number"
+                            min="0"
+                            value={newEventForm.total_presents}
+                            onChange={(e) => setNewEventForm({...newEventForm, total_presents: e.target.value})}
+                            className="w-full px-2 py-1 bg-black/40 border border-[#D4A024]/30 rounded text-[#D4A024] text-sm text-center font-bold"
+                          />
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          <div className="flex items-center justify-center space-x-1">
+                            <Button
+                              onClick={(e) => saveNewEvent(selectedSeason, e)}
+                              size="sm"
+                              className="h-7 w-7 p-0 bg-green-600 hover:bg-green-700"
+                              title="Ajouter"
+                            >
+                              <Save className="w-3 h-3" />
+                            </Button>
+                            <Button
+                              onClick={cancelAdding}
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0 text-gray-400 hover:text-gray-300"
+                              title="Annuler"
+                            >
+                              <X className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      <tr 
+                        className="border-b border-[#D4A024]/10 hover:bg-[#D4A024]/5 cursor-pointer transition-colors"
+                        onClick={() => startAddingToSeason(selectedSeason)}
+                      >
+                        <td colSpan={6} className="px-3 py-3 text-center text-[#D4A024]/60 hover:text-[#D4A024]">
+                          <Plus className="w-4 h-4 inline mr-2" />
+                          Ajouter un événement
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              
+              {/* Résumé de la saison */}
+              <div className="px-4 py-3 bg-black/20 border-t border-[#D4A024]/20 flex items-center justify-between">
+                <span className="text-gray-400 text-sm">
+                  Saison {selectedSeason} : {(evenementsParSaison[selectedSeason] || []).filter(e => e.statut === 'terminé').length} événement(s)
+                </span>
+                <span className="text-[#D4A024] text-sm font-semibold">
+                  Total présences : {(evenementsParSaison[selectedSeason] || []).filter(e => e.statut === 'terminé').reduce((sum, e) => sum + (e.total_presents || 0), 0)}
+                </span>
+              </div>
+            </CardContent>
+          )}
+
+          {/* VUE LISTE (ACCORDÉON) */}
+          {viewMode === 'list' && (
+            <>
+              <CardHeader 
+                className="cursor-pointer hover:bg-[#D4A024]/10 transition-all border-t border-[#D4A024]/20"
+                onClick={() => setShowHistorique(!showHistorique)}
+              >
+                <div className="flex items-center">
+                  {showHistorique ? <ChevronDown className="w-5 h-5 mr-2 text-[#D4A024]" /> : <ChevronRight className="w-5 h-5 mr-2 text-[#D4A024]" />}
+                  <span className="text-gray-300">Cliquez pour {showHistorique ? 'réduire' : 'déplier'} les saisons</span>
+                </div>
+              </CardHeader>
           
           {showHistorique && (
             <CardContent className="pt-4">
