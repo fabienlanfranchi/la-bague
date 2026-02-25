@@ -32,6 +32,13 @@ const Evenements = () => {
   const [showHistorique, setShowHistorique] = useState(false);
   const [expandedSeasons, setExpandedSeasons] = useState({});
   
+  // Mode d'affichage : 'list' (accordéon) ou 'table' (tableau)
+  const [viewMode, setViewMode] = useState('list');
+  const [selectedSeason, setSelectedSeason] = useState(13);
+  
+  // État pour l'édition en mode tableau
+  const [tableEditData, setTableEditData] = useState({});
+  
   // État pour l'édition
   const [editingEvent, setEditingEvent] = useState(null);
   const [editForm, setEditForm] = useState({
