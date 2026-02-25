@@ -859,16 +859,6 @@ const Evenements = () => {
                   </tbody>
                 </table>
               </div>
-              
-              {/* Résumé de la saison */}
-              <div className="px-4 py-3 bg-black/20 border-t border-[#D4A024]/20 flex items-center justify-between">
-                <span className="text-gray-400 text-sm">
-                  Saison {selectedSeason} : {(evenementsParSaison[selectedSeason] || []).filter(e => e.statut === 'terminé').length} événement(s)
-                </span>
-                <span className="text-[#D4A024] text-sm font-semibold">
-                  Total présences : {(evenementsParSaison[selectedSeason] || []).filter(e => e.statut === 'terminé').reduce((sum, e) => sum + (e.total_presents || 0), 0)}
-                </span>
-              </div>
             </CardContent>
           )}
 
