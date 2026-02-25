@@ -1086,6 +1086,8 @@ const Evenements = () => {
               </div>
             </CardContent>
           )}
+            </>
+          )}
         </Card>
       </div>
 
