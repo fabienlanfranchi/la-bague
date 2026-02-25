@@ -1122,9 +1122,12 @@ async def create_evenement_simple(input: EvenementCreateSimple):
     
     await db.evenements.insert_one(doc)
     
+    # Récupérer sans _id pour éviter ObjectId
+    created_evt = await db.evenements.find_one({"id": evt_obj.id}, {"_id": 0})
+    
     return {
         "message": "Événement créé avec succès",
-        "evenement": {**doc, "date": evt_obj.date, "created_at": evt_obj.created_at}
+        "evenement": created_evt
     }
 
 
