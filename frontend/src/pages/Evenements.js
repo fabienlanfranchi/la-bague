@@ -1215,18 +1215,34 @@ const Evenements = () => {
               {/* Saison */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">Saison</label>
-                <select
-                  value={newEvent.saison}
-                  onChange={(e) => setNewEvent({ ...newEvent, saison: parseInt(e.target.value) })}
-                  className="w-full px-3 py-2 bg-black/40 border border-[#D4A024]/30 rounded text-white"
-                  data-testid="create-event-saison"
-                >
-                  {[...Array(13)].map((_, i) => (
-                    <option key={i + 1} value={i + 1}>
-                      Saison {i + 1} ({2012 + i + 1}-{2013 + i + 1})
-                    </option>
-                  ))}
-                </select>
+                <div className="flex items-center space-x-3">
+                  <div 
+                    className={`flex-1 px-4 py-3 rounded-lg cursor-pointer transition-all ${
+                      newEvent.saison === 13 
+                        ? 'bg-[#D4A024] text-[#7A2020] font-bold' 
+                        : 'bg-black/40 border border-[#D4A024]/30 text-gray-400 hover:border-[#D4A024]/50'
+                    }`}
+                    onClick={() => setNewEvent({ ...newEvent, saison: 13 })}
+                  >
+                    <div className="text-center">
+                      <span className="text-lg">Saison 13</span>
+                      <span className="text-sm ml-2 opacity-75">(2025-2026)</span>
+                    </div>
+                  </div>
+                  <div 
+                    className={`flex-1 px-4 py-3 rounded-lg cursor-pointer transition-all ${
+                      newEvent.saison === 14 
+                        ? 'bg-[#D4A024] text-[#7A2020] font-bold' 
+                        : 'bg-black/40 border border-[#D4A024]/30 text-gray-400 hover:border-[#D4A024]/50'
+                    }`}
+                    onClick={() => setNewEvent({ ...newEvent, saison: 14 })}
+                  >
+                    <div className="text-center">
+                      <span className="text-lg">Saison 14</span>
+                      <span className="text-sm ml-2 opacity-75">(2026-2027)</span>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Type de sondage info */}
