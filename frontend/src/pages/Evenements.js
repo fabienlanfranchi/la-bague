@@ -1246,15 +1246,48 @@ const Evenements = () => {
               </div>
 
               {/* Type de sondage info */}
-              <div className="bg-black/20 p-3 rounded border border-[#D4A024]/20">
-                <p className="text-sm text-gray-400">
-                  💡 Type de sondage : 
-                  {newEvent.objet_type === 'repas' ? (
-                    <span className="text-[#D4A024] ml-2">Complet (Présence + Choix des plats)</span>
-                  ) : (
-                    <span className="text-blue-400 ml-2">Simple (Présence oui/non uniquement)</span>
-                  )}
-                </p>
+              <div className="bg-black/20 p-4 rounded border border-[#D4A024]/20 space-y-3">
+                <div>
+                  <p className="text-sm text-gray-400">
+                    💡 Type de sondage : 
+                    {newEvent.objet_type === 'repas' ? (
+                      <span className="text-[#D4A024] ml-2">Complet (Présence + Choix des plats)</span>
+                    ) : (
+                      <span className="text-blue-400 ml-2">Simple (Présence oui/non uniquement)</span>
+                    )}
+                  </p>
+                </div>
+                
+                {/* Information sur la date limite du sondage */}
+                <div className="pt-3 border-t border-[#D4A024]/10">
+                  <p className="text-sm font-semibold text-[#D4A024] mb-2">⏰ Date limite du sondage :</p>
+                  <div className="space-y-1 text-xs text-gray-400">
+                    {newEvent.objet_type === 'repas' && (
+                      <p className="flex items-center">
+                        <span className="w-2 h-2 bg-gray-500 rounded-full mr-2"></span>
+                        <strong>Repas :</strong>&nbsp;21h30 le jour de l'événement
+                      </p>
+                    )}
+                    {newEvent.objet_type === 'apéro' && (
+                      <p className="flex items-center">
+                        <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
+                        <strong>Apéro :</strong>&nbsp;19h00 le jour de l'événement
+                      </p>
+                    )}
+                    {newEvent.objet_type === 'anniversaire' && (
+                      <p className="flex items-center">
+                        <span className="w-2 h-2 bg-red-500 rounded-full mr-2"></span>
+                        <strong>Anniversaire :</strong>&nbsp;Minuit le jour de l'événement
+                      </p>
+                    )}
+                    {newEvent.objet_type === 'autre' && (
+                      <p className="flex items-center">
+                        <span className="w-2 h-2 bg-yellow-500 rounded-full mr-2"></span>
+                        <strong>Autre :</strong>&nbsp;21h30 le jour de l'événement (par défaut)
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* Options pour Repas */}
