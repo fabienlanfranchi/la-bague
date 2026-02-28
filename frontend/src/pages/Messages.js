@@ -163,6 +163,112 @@ const Messages = () => {
     }
   };
 
+  // Marquer un message comme lu (vue membre)
+  const markAsRead = async (messageId) => {
+    if (!currentMember?.id) return;
+    
+    // Trouver la notification correspondante
+    const notif = notifications.find(n => n.message_id === messageId);
+    if (notif && !notif.lu) {
+      try {
+        await axios.put(`${API}/notifications/${notif.id}/read`);
+        setReadMessages(prev => new Set([...prev, messageId]));
+        setNotifications(prev => prev.map(n => 
+          n.id === notif.id ? { ...n, lu: true } : n
+        ));
+        toast.success('Message marqué comme lu');
+      } catch (error) {
+        console.error('Erreur:', error);
+      }
+    }
+  };
+
+  // Marquer tous les messages comme lus (vue membre)
+  const markAllAsRead = async () => {
+    if (!currentMember?.id) return;
+    
+    try {
+      await axios.put(`${API}/notifications/${currentMember.id}/read-all`);
+      setReadMessages(new Set(messages.map(m => m.id)));
+      setNotifications(prev => prev.map(n => ({ ...n, lu: true })));
+      toast.success('Tous les messages marqués comme lus');
+    } catch (error) {
+      toast.error('Erreur');
+    }
+  };
+
+  // Sauvegarder un template de message (admin)
+  const saveMessageTemplate = async () => {
+    if (!newMessage.titre || !newMessage.contenu) {
+      toast.error('Veuillez remplir le titre et le contenu');
+      return;
+    }
+
+    try {
+      const templateData = {
+        nom: newMessage.titre,
+        type: newMessage.type,
+        titre: newMessage.titre,
+        contenu: newMessage.contenu
+      };
+
+      if (editingTemplate) {
+        await axios.put(`${API}/message-templates/${editingTemplate.id}`, templateData);
+        toast.success('Template mis à jour');
+      } else {
+        await axios.post(`${API}/message-templates`, templateData);
+        toast.success('Template sauvegardé');
+      }
+
+      // Recharger les templates
+      const response = await axios.get(`${API}/message-templates`);
+      setMessageTemplates(response.data);
+      setEditingTemplate(null);
+    } catch (error) {
+      toast.error('Erreur lors de la sauvegarde');
+    }
+  };
+
+  // Charger un template dans le formulaire
+  const loadTemplate = (template) => {
+    setNewMessage({
+      ...newMessage,
+      type: template.type || 'annonce',
+      titre: template.titre,
+      contenu: template.contenu
+    });
+    setShowTemplatesModal(false);
+    toast.success(`Template "${template.nom}" chargé`);
+  };
+
+  // Supprimer un template
+  const deleteTemplate = async (templateId) => {
+    if (!window.confirm('Supprimer ce template ?')) return;
+    
+    try {
+      await axios.delete(`${API}/message-templates/${templateId}`);
+      setMessageTemplates(prev => prev.filter(t => t.id !== templateId));
+      toast.success('Template supprimé');
+    } catch (error) {
+      toast.error('Erreur');
+    }
+  };
+
+  // Sélectionner/désélectionner tous les membres
+  const selectAllMembers = () => {
+    setNewMessage({
+      ...newMessage,
+      destinataires: membres.map(m => m.id)
+    });
+  };
+
+  const deselectAllMembers = () => {
+    setNewMessage({
+      ...newMessage,
+      destinataires: []
+    });
+  };
+
   const viewMessageStats = async (message) => {
     setSelectedMessage(message);
     if (message.type === 'sondage' || message.sondage_template_id) {
