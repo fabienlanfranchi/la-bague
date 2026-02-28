@@ -558,6 +558,72 @@ class ReponseSondageCreate(BaseModel):
     choix_dessert: Optional[str] = None
 
 
+# ============ MESSAGES & NOTIFICATIONS - MODELS ============
+
+class SondageTemplate(BaseModel):
+    """Template de sondage prédéfini"""
+    model_config = ConfigDict(extra="ignore")
+    
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    nom: str  # "Resto", "Anniversaire", "Apéro", "Album", "Autre"
+    description: Optional[str] = None
+    type_sondage: str  # "repas", "simple", "album", "libre"
+    questions: List[dict] = []  # [{question: str, type: "oui_non" | "choix_multiple" | "choix_unique", options: []}]
+    actif: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class Message(BaseModel):
+    """Message/Annonce du président"""
+    model_config = ConfigDict(extra="ignore")
+    
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    type: str  # "annonce", "rappel_sondage", "rappel_cotisation", "sondage"
+    titre: str
+    contenu: str
+    auteur_id: str  # ID du membre qui envoie (président)
+    destinataires: List[str] = []  # Liste des membre_id, vide = tous
+    evenement_id: Optional[str] = None  # Lié à un événement si applicable
+    sondage_template_id: Optional[str] = None  # Template de sondage utilisé
+    date_limite: Optional[datetime] = None  # Pour les sondages
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class MessageCreate(BaseModel):
+    type: str
+    titre: str
+    contenu: str
+    destinataires: List[str] = []
+    evenement_id: Optional[str] = None
+    sondage_template_id: Optional[str] = None
+    date_limite: Optional[datetime] = None
+
+
+class Notification(BaseModel):
+    """Notification pour un membre (badge rouge)"""
+    model_config = ConfigDict(extra="ignore")
+    
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    membre_id: str
+    type: str  # "message", "sondage", "rappel_cotisation"
+    message_id: Optional[str] = None
+    titre: str
+    lu: bool = False
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class ReponseSondageMessage(BaseModel):
+    """Réponse d'un membre à un sondage de message"""
+    model_config = ConfigDict(extra="ignore")
+    
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    message_id: str
+    membre_id: str
+    reponses: dict  # {question_id: reponse}
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
 # ============ COMPTABILITÉ - ROUTES ============
 
 # -------- COMPTES --------
