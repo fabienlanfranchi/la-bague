@@ -303,6 +303,21 @@ const Messages = () => {
     return <Badge className={styles[type] || 'bg-gray-600'}>{getTypeLabel(type)}</Badge>;
   };
 
+  // Renvoyer un message existant
+  const handleResendMessage = (msg) => {
+    setNewMessage({
+      type: msg.type,
+      titre: msg.titre,
+      contenu: msg.contenu,
+      destinataires: [], // Vide pour permettre de choisir de nouveaux destinataires
+      evenement_id: msg.evenement_id || null,
+      sondage_template_id: msg.sondage_template_id || null,
+      date_limite: ''
+    });
+    setShowCreateModal(true);
+    toast.info('Message chargé - Choisissez les nouveaux destinataires');
+  };
+
   const formatDate = (dateStr) => {
     if (!dateStr) return '';
     return new Date(dateStr).toLocaleDateString('fr-FR', {
