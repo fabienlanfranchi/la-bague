@@ -1419,7 +1419,7 @@ async def get_sondage_stats(message_id: str):
     if message.get("destinataires"):
         total_destinataires = len(message["destinataires"])
     else:
-        total_destinataires = await db.membres.count_documents({})
+        total_destinataires = await db.members.count_documents({})
     
     return {
         "message_id": message_id,
