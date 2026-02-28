@@ -135,7 +135,7 @@ const Sidebar = () => {
                   key={item.path}
                   to={item.path}
                   className={`
-                    flex items-center space-x-3 px-4 py-3 rounded-lg transition-all
+                    flex items-center space-x-3 px-4 py-3 rounded-lg transition-all relative
                     ${
                       isActive(item.path)
                         ? 'bg-[#D4A024]/20 text-[#D4A024] border-l-4 border-[#D4A024]'
@@ -146,6 +146,12 @@ const Sidebar = () => {
                 >
                   <Icon className="w-5 h-5" />
                   <span className="font-medium">{item.label}</span>
+                  {/* Badge de notification pour Messages */}
+                  {item.path === '/messages' && notificationCount > 0 && (
+                    <span className="absolute right-3 bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center">
+                      {notificationCount > 9 ? '9+' : notificationCount}
+                    </span>
+                  )}
                 </Link>
               );
             })}
