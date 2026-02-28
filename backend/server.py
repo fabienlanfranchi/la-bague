@@ -1257,12 +1257,12 @@ async def create_message(input: MessageCreate, request: Request):
     
     # Mode démo : si pas de session, utiliser le premier admin (président)
     if not auteur_id:
-        president = await db.membres.find_one({"fonction": "Président"}, {"id": 1, "_id": 0})
+        president = await db.members.find_one({"fonction": "Président"}, {"id": 1, "_id": 0})
         if president:
             auteur_id = president["id"]
         else:
             # Fallback: premier membre
-            first_member = await db.membres.find_one({}, {"id": 1, "_id": 0})
+            first_member = await db.members.find_one({}, {"id": 1, "_id": 0})
             auteur_id = first_member["id"] if first_member else "system"
     
     message = Message(
