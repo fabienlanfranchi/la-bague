@@ -808,6 +808,58 @@ const Messages = () => {
                     )}
                   </div>
 
+                  {/* Liste des destinataires */}
+                  <div className="bg-black/30 rounded-lg p-4 border border-[#D4A024]/20">
+                    <h4 className="text-[#D4A024] font-semibold mb-3 flex items-center">
+                      <Users className="w-4 h-4 mr-2" />
+                      Destinataires
+                      {selectedMessage.destinataires?.length > 0 ? (
+                        <Badge className="ml-2 bg-[#D4A024] text-[#7A2020]">
+                          {selectedMessage.destinataires.length} membre(s)
+                        </Badge>
+                      ) : (
+                        <Badge className="ml-2 bg-blue-600 text-white">
+                          Tous les membres ({membres.length})
+                        </Badge>
+                      )}
+                    </h4>
+                    
+                    <div className="max-h-48 overflow-y-auto">
+                      {selectedMessage.destinataires?.length > 0 ? (
+                        <div className="grid grid-cols-2 gap-2">
+                          {selectedMessage.destinataires.map((destId) => {
+                            const membre = membres.find(m => m.id === destId);
+                            return (
+                              <div 
+                                key={destId}
+                                className="flex items-center space-x-2 p-2 bg-black/20 rounded"
+                              >
+                                <div className="w-2 h-2 bg-[#D4A024] rounded-full"></div>
+                                <span className="text-white text-sm truncate">
+                                  {membre?.nom_complet || destId}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-2">
+                          {membres.map((membre) => (
+                            <div 
+                              key={membre.id}
+                              className="flex items-center space-x-2 p-2 bg-black/20 rounded"
+                            >
+                              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                              <span className="text-white text-sm truncate">
+                                {membre.nom_complet}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                   {/* Stats du sondage */}
                   {messageStats && (
                     <div className="bg-black/30 rounded-lg p-4 mt-4">
