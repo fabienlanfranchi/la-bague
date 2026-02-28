@@ -1226,11 +1226,22 @@ async def submit_reponse_sondage(input: ReponseSondageEvenement):
     """Soumettre ou mettre à jour une réponse au sondage d'un événement"""
     now = datetime.now(timezone.utc).isoformat()
     
+    # Récupérer le nom du membre
+    membre = await db.members.find_one({"id": input.membre_id}, {"nom_complet": 1, "_id": 0})
+    membre_nom = membre.get("nom_complet", "Un membre") if membre else "Un membre"
+    
+    # Récupérer les infos de l'événement
+    evenement = await db.evenements.find_one({"id": input.evenement_id}, {"objet": 1, "date": 1, "_id": 0})
+    evt_objet = evenement.get("objet", "l'événement") if evenement else "l'événement"
+    
     # Vérifier si une réponse existe déjà
     existing = await db.reponses_evenements.find_one({
         "evenement_id": input.evenement_id,
         "membre_id": input.membre_id
     })
+    
+    action_text = "a modifié sa réponse" if existing else "a répondu"
+    reponse_text = "PRÉSENT" if input.present else "ABSENT"
     
     if existing:
         # Mise à jour
@@ -1244,7 +1255,6 @@ async def submit_reponse_sondage(input: ReponseSondageEvenement):
                 "updated_at": now
             }}
         )
-        return {"message": "Réponse mise à jour", "action": "updated"}
     else:
         # Nouvelle réponse
         doc = {
@@ -1259,7 +1269,24 @@ async def submit_reponse_sondage(input: ReponseSondageEvenement):
             "updated_at": now
         }
         await db.reponses_evenements.insert_one(doc)
-        return {"message": "Réponse enregistrée", "action": "created"}
+    
+    # Créer une notification pour l'admin (président)
+    president = await db.members.find_one({"fonction": "Président"}, {"id": 1, "_id": 0})
+    if president:
+        notif = {
+            "id": str(uuid.uuid4()),
+            "membre_id": president["id"],
+            "type": "reponse_sondage",
+            "titre": f"📊 {membre_nom} {action_text}",
+            "contenu": f"{membre_nom} {action_text} au sondage pour {evt_objet} : {reponse_text}",
+            "evenement_id": input.evenement_id,
+            "repondant_id": input.membre_id,
+            "lu": False,
+            "created_at": now
+        }
+        await db.notifications.insert_one(notif)
+    
+    return {"message": "Réponse mise à jour" if existing else "Réponse enregistrée", "action": "updated" if existing else "created"}
 
 
 @api_router.get("/reponses-sondages/{evenement_id}/{membre_id}")
