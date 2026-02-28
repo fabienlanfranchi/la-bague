@@ -508,10 +508,6 @@ const Dashboard = () => {
           </Card>
         )}
       </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
 
       {/* ========== SECTION 3 : COTISATIONS ========== */}
       <div>
