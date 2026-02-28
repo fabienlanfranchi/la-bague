@@ -55,7 +55,92 @@ const Dashboard = () => {
 
   useEffect(() => {
     loadDashboardData();
+    loadProchainEvenement();
   }, []);
+
+  // Charger le prochain événement et les non-répondants
+  const loadProchainEvenement = async () => {
+    try {
+      const response = await axios.get(`${API}/evenements`);
+      const evenements = response.data;
+      
+      // Trouver le prochain événement (à venir)
+      const now = new Date();
+      const prochain = evenements
+        .filter(e => e.statut === 'à venir' && new Date(e.date) >= now)
+        .sort((a, b) => new Date(a.date) - new Date(b.date))[0];
+      
+      setProchainEvenement(prochain);
+      
+      if (prochain) {
+        // Charger les réponses au sondage pour cet événement
+        await loadNonRepondants(prochain.id);
+      }
+    } catch (error) {
+      console.error('Erreur chargement événement:', error);
+    }
+  };
+
+  // Charger la liste des membres qui n'ont pas répondu au sondage
+  const loadNonRepondants = async (evenementId) => {
+    try {
+      // Récupérer tous les membres
+      const membresRes = await axios.get(`${API}/members`);
+      const allMembres = membresRes.data;
+      
+      // Récupérer les réponses existantes pour cet événement (via messages liés)
+      const messagesRes = await axios.get(`${API}/messages`);
+      const sondageMessage = messagesRes.data.find(m => m.evenement_id === evenementId && m.type === 'sondage');
+      
+      if (sondageMessage) {
+        const reponsesRes = await axios.get(`${API}/sondage-reponses/${sondageMessage.id}`);
+        const respondantIds = reponsesRes.data.map(r => r.membre_id);
+        
+        // Filtrer les non-répondants
+        const nonRep = allMembres.filter(m => !respondantIds.includes(m.id));
+        setNonRepondants(nonRep);
+      } else {
+        // Pas de sondage envoyé = tous sont non-répondants
+        setNonRepondants(allMembres);
+      }
+    } catch (error) {
+      console.error('Erreur chargement non-répondants:', error);
+      setNonRepondants([]);
+    }
+  };
+
+  // Relancer le sondage uniquement aux non-répondants
+  const handleRelanceSondage = async () => {
+    if (!prochainEvenement || nonRepondants.length === 0) {
+      toast.info('Tous les membres ont répondu au sondage');
+      return;
+    }
+
+    setLoadingRelance(true);
+    try {
+      const dateEvt = new Date(prochainEvenement.date).toLocaleDateString('fr-FR', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric'
+      });
+
+      await axios.post(`${API}/messages`, {
+        type: 'rappel_sondage',
+        titre: `⚠️ Rappel : Sondage ${prochainEvenement.objet}`,
+        contenu: `Bonjour,\n\nNous n'avons pas encore reçu votre réponse au sondage pour le ${prochainEvenement.objet} du ${dateEvt} à ${prochainEvenement.lieu}.\n\nMerci de répondre rapidement.\n\nCordialement,\nLe Président`,
+        destinataires: nonRepondants.map(m => m.id),
+        evenement_id: prochainEvenement.id
+      });
+
+      toast.success(`Rappel envoyé à ${nonRepondants.length} membre(s) non-répondant(s)`);
+      loadProchainEvenement(); // Recharger les données
+    } catch (error) {
+      console.error('Erreur relance:', error);
+      toast.error('Erreur lors de l\'envoi du rappel');
+    } finally {
+      setLoadingRelance(false);
+    }
+  };
 
   const loadDashboardData = async () => {
     try {
