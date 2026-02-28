@@ -449,14 +449,25 @@ const Messages = () => {
                         variant="ghost"
                         className="text-[#D4A024] hover:bg-[#D4A024]/20"
                         onClick={(e) => { e.stopPropagation(); viewMessageStats(msg); }}
+                        title="Voir les détails"
                       >
                         <Eye className="w-4 h-4" />
                       </Button>
                       <Button
                         size="sm"
                         variant="ghost"
+                        className="text-blue-400 hover:bg-blue-900/20"
+                        onClick={(e) => { e.stopPropagation(); handleResendMessage(msg); }}
+                        title="Renvoyer ce message"
+                      >
+                        <Forward className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
                         className="text-red-400 hover:bg-red-900/20"
                         onClick={(e) => { e.stopPropagation(); handleDeleteMessage(msg.id); }}
+                        title="Supprimer"
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
