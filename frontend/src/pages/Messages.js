@@ -933,7 +933,6 @@ const Messages = () => {
             );
           })
         )}
-        )}
       </div>
     </div>
   );
