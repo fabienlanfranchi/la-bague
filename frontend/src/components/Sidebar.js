@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { Switch } from '@/components/ui/switch';
@@ -19,12 +19,35 @@ import {
   ShoppingBag,
   BarChart3
 } from 'lucide-react';
-import { useState } from 'react';
+import axios from 'axios';
+
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const API = `${BACKEND_URL}/api`;
 
 const Sidebar = () => {
   const { isAdmin, toggleMode, currentMember } = useUser();
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(true);
+  const [notificationCount, setNotificationCount] = useState(0);
+
+  // Charger le nombre de notifications non lues
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      if (currentMember?.id) {
+        try {
+          const response = await axios.get(`${API}/notifications/${currentMember.id}/count`);
+          setNotificationCount(response.data.count || 0);
+        } catch (error) {
+          console.error('Erreur notifications:', error);
+        }
+      }
+    };
+
+    fetchNotifications();
+    // Rafraîchir toutes les 30 secondes
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [currentMember]);
 
   const isActive = (path) => location.pathname === path;
 
