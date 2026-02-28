@@ -1334,6 +1334,38 @@ async def delete_message(message_id: str):
     return {"message": "Message supprimé"}
 
 
+# ============ TEMPLATES DE MESSAGES - ROUTES ============
+
+@api_router.get("/message-templates")
+async def get_message_templates():
+    """Liste tous les templates de messages"""
+    templates = await db.message_templates.find({}, {"_id": 0}).sort("created_at", -1).to_list(50)
+    return templates
+
+
+@api_router.post("/message-templates")
+async def create_message_template(template: MessageTemplate):
+    """Créer un nouveau template de message"""
+    doc = template.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    await db.message_templates.insert_one(doc)
+    return {"message": "Template créé", "id": template.id}
+
+
+@api_router.put("/message-templates/{template_id}")
+async def update_message_template(template_id: str, update: dict):
+    """Mettre à jour un template"""
+    await db.message_templates.update_one({"id": template_id}, {"$set": update})
+    return {"message": "Template mis à jour"}
+
+
+@api_router.delete("/message-templates/{template_id}")
+async def delete_message_template(template_id: str):
+    """Supprimer un template"""
+    await db.message_templates.delete_one({"id": template_id})
+    return {"message": "Template supprimé"}
+
+
 # ============ NOTIFICATIONS - ROUTES ============
 
 @api_router.get("/notifications/{membre_id}")
