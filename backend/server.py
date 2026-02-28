@@ -1198,6 +1198,229 @@ async def create_evenement_simple(input: EvenementCreateSimple):
     }
 
 
+# ============ TEMPLATES DE SONDAGES - ROUTES ============
+
+@api_router.get("/sondage-templates")
+async def get_sondage_templates():
+    """Liste tous les templates de sondages"""
+    templates = await db.sondage_templates.find({}, {"_id": 0}).to_list(100)
+    return templates
+
+
+@api_router.post("/sondage-templates")
+async def create_sondage_template(template: SondageTemplate):
+    """Créer un nouveau template de sondage"""
+    doc = template.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    await db.sondage_templates.insert_one(doc)
+    return {"message": "Template créé", "template": {**doc, "_id": None}}
+
+
+@api_router.put("/sondage-templates/{template_id}")
+async def update_sondage_template(template_id: str, update: dict):
+    """Mettre à jour un template"""
+    await db.sondage_templates.update_one({"id": template_id}, {"$set": update})
+    updated = await db.sondage_templates.find_one({"id": template_id}, {"_id": 0})
+    return updated
+
+
+@api_router.delete("/sondage-templates/{template_id}")
+async def delete_sondage_template(template_id: str):
+    """Supprimer un template"""
+    await db.sondage_templates.delete_one({"id": template_id})
+    return {"message": "Template supprimé"}
+
+
+# ============ MESSAGES - ROUTES ============
+
+@api_router.get("/messages")
+async def get_messages(membre_id: Optional[str] = None):
+    """Liste les messages (tous ou pour un membre spécifique)"""
+    query = {}
+    if membre_id:
+        # Messages pour ce membre ou pour tous
+        query = {"$or": [{"destinataires": membre_id}, {"destinataires": []}]}
+    
+    messages = await db.messages.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return messages
+
+
+@api_router.post("/messages")
+async def create_message(input: MessageCreate, request: Request):
+    """Créer et envoyer un message"""
+    # Récupérer l'auteur depuis la session
+    session_data = request.session.get("user")
+    if not session_data:
+        raise HTTPException(status_code=401, detail="Non authentifié")
+    
+    auteur_id = session_data.get("membre_id")
+    
+    message = Message(
+        type=input.type,
+        titre=input.titre,
+        contenu=input.contenu,
+        auteur_id=auteur_id,
+        destinataires=input.destinataires,
+        evenement_id=input.evenement_id,
+        sondage_template_id=input.sondage_template_id,
+        date_limite=input.date_limite
+    )
+    
+    doc = message.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    if doc.get('date_limite'):
+        doc['date_limite'] = doc['date_limite'].isoformat()
+    
+    await db.messages.insert_one(doc)
+    
+    # Créer des notifications pour les destinataires
+    if input.destinataires:
+        destinataires = input.destinataires
+    else:
+        # Tous les membres actifs
+        membres = await db.membres.find({"statut": "Actif"}, {"id": 1, "_id": 0}).to_list(100)
+        destinataires = [m["id"] for m in membres]
+    
+    for membre_id in destinataires:
+        notif = Notification(
+            membre_id=membre_id,
+            type="message" if input.type == "annonce" else input.type,
+            message_id=message.id,
+            titre=input.titre
+        )
+        notif_doc = notif.model_dump()
+        notif_doc['created_at'] = notif_doc['created_at'].isoformat()
+        await db.notifications.insert_one(notif_doc)
+    
+    return {"message": "Message envoyé", "id": message.id, "notifications_envoyees": len(destinataires)}
+
+
+@api_router.get("/messages/{message_id}")
+async def get_message(message_id: str):
+    """Récupérer un message par ID"""
+    message = await db.messages.find_one({"id": message_id}, {"_id": 0})
+    if not message:
+        raise HTTPException(status_code=404, detail="Message non trouvé")
+    return message
+
+
+@api_router.delete("/messages/{message_id}")
+async def delete_message(message_id: str):
+    """Supprimer un message"""
+    await db.messages.delete_one({"id": message_id})
+    await db.notifications.delete_many({"message_id": message_id})
+    return {"message": "Message supprimé"}
+
+
+# ============ NOTIFICATIONS - ROUTES ============
+
+@api_router.get("/notifications/{membre_id}")
+async def get_notifications(membre_id: str, non_lues: bool = False):
+    """Récupérer les notifications d'un membre"""
+    query = {"membre_id": membre_id}
+    if non_lues:
+        query["lu"] = False
+    
+    notifications = await db.notifications.find(query, {"_id": 0}).sort("created_at", -1).to_list(50)
+    return notifications
+
+
+@api_router.get("/notifications/{membre_id}/count")
+async def get_notification_count(membre_id: str):
+    """Compter les notifications non lues"""
+    count = await db.notifications.count_documents({"membre_id": membre_id, "lu": False})
+    return {"count": count}
+
+
+@api_router.put("/notifications/{notif_id}/read")
+async def mark_notification_read(notif_id: str):
+    """Marquer une notification comme lue"""
+    await db.notifications.update_one({"id": notif_id}, {"$set": {"lu": True}})
+    return {"message": "Notification marquée comme lue"}
+
+
+@api_router.put("/notifications/{membre_id}/read-all")
+async def mark_all_notifications_read(membre_id: str):
+    """Marquer toutes les notifications d'un membre comme lues"""
+    result = await db.notifications.update_many(
+        {"membre_id": membre_id, "lu": False},
+        {"$set": {"lu": True}}
+    )
+    return {"message": f"{result.modified_count} notifications marquées comme lues"}
+
+
+# ============ RÉPONSES AUX SONDAGES (MESSAGES) - ROUTES ============
+
+@api_router.get("/sondage-reponses/{message_id}")
+async def get_sondage_reponses(message_id: str):
+    """Récupérer toutes les réponses à un sondage"""
+    reponses = await db.sondage_reponses.find({"message_id": message_id}, {"_id": 0}).to_list(100)
+    return reponses
+
+
+@api_router.post("/sondage-reponses/{message_id}")
+async def submit_sondage_reponse(message_id: str, membre_id: str, reponses: dict):
+    """Soumettre ou mettre à jour une réponse à un sondage"""
+    existing = await db.sondage_reponses.find_one({
+        "message_id": message_id,
+        "membre_id": membre_id
+    })
+    
+    now = datetime.now(timezone.utc).isoformat()
+    
+    if existing:
+        # Mise à jour
+        await db.sondage_reponses.update_one(
+            {"id": existing["id"]},
+            {"$set": {"reponses": reponses, "updated_at": now}}
+        )
+        return {"message": "Réponse mise à jour"}
+    else:
+        # Nouvelle réponse
+        reponse = ReponseSondageMessage(
+            message_id=message_id,
+            membre_id=membre_id,
+            reponses=reponses
+        )
+        doc = reponse.model_dump()
+        doc['created_at'] = doc['created_at'].isoformat()
+        doc['updated_at'] = doc['updated_at'].isoformat()
+        await db.sondage_reponses.insert_one(doc)
+        
+        # Marquer la notification comme lue
+        await db.notifications.update_one(
+            {"message_id": message_id, "membre_id": membre_id},
+            {"$set": {"lu": True}}
+        )
+        
+        return {"message": "Réponse enregistrée"}
+
+
+@api_router.get("/sondage-reponses/{message_id}/stats")
+async def get_sondage_stats(message_id: str):
+    """Statistiques d'un sondage (pour le dashboard admin)"""
+    message = await db.messages.find_one({"id": message_id}, {"_id": 0})
+    if not message:
+        raise HTTPException(status_code=404, detail="Message non trouvé")
+    
+    reponses = await db.sondage_reponses.find({"message_id": message_id}, {"_id": 0}).to_list(100)
+    
+    # Compter les destinataires
+    if message.get("destinataires"):
+        total_destinataires = len(message["destinataires"])
+    else:
+        total_destinataires = await db.membres.count_documents({"statut": "Actif"})
+    
+    return {
+        "message_id": message_id,
+        "titre": message.get("titre"),
+        "total_destinataires": total_destinataires,
+        "total_reponses": len(reponses),
+        "taux_reponse": round(len(reponses) / total_destinataires * 100, 1) if total_destinataires > 0 else 0,
+        "reponses": reponses
+    }
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
