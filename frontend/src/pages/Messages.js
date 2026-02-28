@@ -577,10 +577,32 @@ const Messages = () => {
 
                 {/* Destinataires */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Destinataires
-                    <span className="text-gray-500 ml-2">(vide = tous les membres)</span>
-                  </label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-medium text-gray-300">
+                      Destinataires
+                      <span className="text-gray-500 ml-2">(vide = tous les membres)</span>
+                    </label>
+                    <div className="flex space-x-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={selectAllMembers}
+                        className="text-xs border-green-600/50 text-green-400 hover:bg-green-900/20"
+                      >
+                        <Check className="w-3 h-3 mr-1" />
+                        Tous
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={deselectAllMembers}
+                        className="text-xs border-gray-600/50 text-gray-400 hover:bg-gray-900/20"
+                      >
+                        <X className="w-3 h-3 mr-1" />
+                        Aucun
+                      </Button>
+                    </div>
+                  </div>
                   <div className="max-h-40 overflow-y-auto bg-black/30 rounded p-2 space-y-1">
                     {membres.map((membre) => (
                       <label
