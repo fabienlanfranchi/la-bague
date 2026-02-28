@@ -1439,6 +1439,75 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
+@app.on_event("startup")
+async def init_sondage_templates():
+    """Initialiser les templates de sondages par défaut"""
+    existing = await db.sondage_templates.count_documents({})
+    if existing == 0:
+        templates = [
+            {
+                "id": str(uuid.uuid4()),
+                "nom": "Resto",
+                "description": "Sondage pour un repas au restaurant",
+                "type_sondage": "repas",
+                "questions": [
+                    {"id": "presence", "question": "Serez-vous présent ?", "type": "oui_non", "options": ["Oui", "Non"]},
+                    {"id": "entree", "question": "Choix de l'entrée", "type": "choix_unique", "options": []},
+                    {"id": "plat", "question": "Choix du plat", "type": "choix_unique", "options": []},
+                    {"id": "dessert", "question": "Choix du dessert", "type": "choix_unique", "options": []}
+                ],
+                "actif": True,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            },
+            {
+                "id": str(uuid.uuid4()),
+                "nom": "Apéro",
+                "description": "Sondage pour un apéro",
+                "type_sondage": "simple",
+                "questions": [
+                    {"id": "presence", "question": "Serez-vous présent ?", "type": "oui_non", "options": ["Oui", "Non"]}
+                ],
+                "actif": True,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            },
+            {
+                "id": str(uuid.uuid4()),
+                "nom": "Anniversaire",
+                "description": "Sondage pour un anniversaire du club",
+                "type_sondage": "simple",
+                "questions": [
+                    {"id": "presence", "question": "Serez-vous présent ?", "type": "oui_non", "options": ["Oui", "Non"]}
+                ],
+                "actif": True,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            },
+            {
+                "id": str(uuid.uuid4()),
+                "nom": "Album",
+                "description": "Sondage pour commander l'album photo",
+                "type_sondage": "album",
+                "questions": [
+                    {"id": "commande", "question": "Souhaitez-vous commander l'album ?", "type": "oui_non", "options": ["Oui", "Non"]},
+                    {"id": "quantite", "question": "Combien d'exemplaires ?", "type": "choix_unique", "options": ["1", "2", "3", "4", "5"]}
+                ],
+                "actif": True,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            },
+            {
+                "id": str(uuid.uuid4()),
+                "nom": "Autre",
+                "description": "Sondage personnalisé",
+                "type_sondage": "libre",
+                "questions": [],
+                "actif": True,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+        ]
+        await db.sondage_templates.insert_many(templates)
+        logger.info("Templates de sondages initialisés")
+
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
