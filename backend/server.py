@@ -1248,12 +1248,22 @@ async def get_messages(membre_id: Optional[str] = None):
 @api_router.post("/messages")
 async def create_message(input: MessageCreate, request: Request):
     """Créer et envoyer un message"""
-    # Récupérer l'auteur depuis la session
+    # Récupérer l'auteur depuis la session (ou utiliser un ID par défaut en mode démo)
     session_data = request.session.get("user")
-    if not session_data:
-        raise HTTPException(status_code=401, detail="Non authentifié")
+    auteur_id = None
     
-    auteur_id = session_data.get("membre_id")
+    if session_data:
+        auteur_id = session_data.get("membre_id")
+    
+    # Mode démo : si pas de session, utiliser le premier admin (président)
+    if not auteur_id:
+        president = await db.membres.find_one({"fonction": "Président"}, {"id": 1, "_id": 0})
+        if president:
+            auteur_id = president["id"]
+        else:
+            # Fallback: premier membre
+            first_member = await db.membres.find_one({}, {"id": 1, "_id": 0})
+            auteur_id = first_member["id"] if first_member else "system"
     
     message = Message(
         type=input.type,
