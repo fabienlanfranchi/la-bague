@@ -406,19 +406,26 @@ const Dashboard = () => {
       const membresRes = await axios.get(`${API}/members`);
       const allMembres = membresRes.data;
       
-      // Récupérer les réponses existantes pour cet événement (via messages liés)
-      const messagesRes = await axios.get(`${API}/messages`);
-      const sondageMessage = messagesRes.data.find(m => m.evenement_id === evenementId && m.type === 'sondage');
-      
-      if (sondageMessage) {
-        const reponsesRes = await axios.get(`${API}/sondage-reponses/${sondageMessage.id}`);
-        const respondantIds = reponsesRes.data.map(r => r.membre_id);
+      // Récupérer les réponses directes à l'événement
+      try {
+        const reponsesRes = await axios.get(`${API}/reponses-sondages/${evenementId}`);
+        const respondantIds = reponsesRes.data.reponses?.map(r => r.membre_id) || [];
+        
+        // Mettre à jour les stats du sondage
+        setNextEvent(prev => ({
+          ...prev,
+          sondageResults: {
+            ...prev.sondageResults,
+            presents: reponsesRes.data.presents || 0,
+            absents: reponsesRes.data.absents || 0
+          }
+        }));
         
         // Filtrer les non-répondants
         const nonRep = allMembres.filter(m => !respondantIds.includes(m.id));
         setNonRepondants(nonRep);
-      } else {
-        // Pas de sondage envoyé = tous sont non-répondants
+      } catch (error) {
+        // Pas encore de réponses = tous sont non-répondants
         setNonRepondants(allMembres);
       }
     } catch (error) {
