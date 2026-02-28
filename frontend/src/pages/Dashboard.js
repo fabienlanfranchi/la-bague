@@ -365,58 +365,110 @@ const Dashboard = () => {
           Prochain Événement
         </h2>
 
-        <Card className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-2xl font-serif text-white mb-2">
-                  {nextEvent.type} du {nextEvent.date}
-                </CardTitle>
-                <Badge className="bg-green-600">Sondage en cours</Badge>
-              </div>
-              <Button
-                onClick={handleExportSMS}
-                className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Export SMS
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-              {/* Présences */}
-              <div>
-                <h3 className="text-lg font-serif text-white mb-3 flex items-center">
-                  <Users className="w-5 h-5 mr-2 text-[#D4A024]" />
-                  Présences
-                </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-green-900/20 border border-green-600/30 rounded-lg p-4">
-                    <div className="text-3xl font-serif font-bold text-green-400">
-                      {nextEvent.sondageResults.presents}
-                    </div>
-                    <div className="text-sm text-gray-400">Présents</div>
-                  </div>
-                  <div className="bg-red-900/20 border border-red-600/30 rounded-lg p-4">
-                    <div className="text-3xl font-serif font-bold text-red-400">
-                      {nextEvent.sondageResults.absents}
-                    </div>
-                    <div className="text-sm text-gray-400">Absents</div>
+        {prochainEvenement ? (
+          <Card className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm">
+            <CardHeader>
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <div>
+                  <CardTitle className="text-2xl font-serif text-white mb-2">
+                    {prochainEvenement.objet} - {new Date(prochainEvenement.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}
+                  </CardTitle>
+                  <div className="flex items-center space-x-2">
+                    <Badge className="bg-green-600">Sondage en cours</Badge>
+                    <span className="text-gray-400 text-sm">📍 {prochainEvenement.lieu}</span>
                   </div>
                 </div>
+                <div className="flex space-x-2">
+                  {/* Bouton Relancer les non-répondants */}
+                  {nonRepondants.length > 0 && (
+                    <Button
+                      onClick={handleRelanceSondage}
+                      disabled={loadingRelance}
+                      className="bg-yellow-600 hover:bg-yellow-700 text-white font-serif"
+                      data-testid="relancer-sondage-btn"
+                    >
+                      {loadingRelance ? (
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Bell className="w-4 h-4 mr-2" />
+                      )}
+                      Relancer ({nonRepondants.length})
+                    </Button>
+                  )}
+                  <Button
+                    onClick={handleExportSMS}
+                    className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Export SMS
+                  </Button>
+                </div>
               </div>
-
-              {/* Choix des plats */}
-              <div>
-                <h3 className="text-lg font-serif text-white mb-3">
-                  🍽️ Choix des Plats
-                </h3>
-                <div className="space-y-3">
-                  <div>
-                    <div className="flex items-center justify-between text-sm mb-1">
-                      <span className="text-white">Entrées</span>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                {/* Statut des réponses */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="bg-green-900/20 border border-green-600/30 rounded-lg p-4 text-center">
+                    <div className="text-3xl font-serif font-bold text-green-400">
+                      {members.length - nonRepondants.length}
                     </div>
+                    <div className="text-sm text-gray-400">Ont répondu</div>
+                  </div>
+                  <div className="bg-yellow-900/20 border border-yellow-600/30 rounded-lg p-4 text-center">
+                    <div className="text-3xl font-serif font-bold text-yellow-400">
+                      {nonRepondants.length}
+                    </div>
+                    <div className="text-sm text-gray-400">Non-répondants</div>
+                  </div>
+                  <div className="bg-blue-900/20 border border-blue-600/30 rounded-lg p-4 text-center">
+                    <div className="text-3xl font-serif font-bold text-blue-400">
+                      {members.length > 0 ? Math.round((members.length - nonRepondants.length) / members.length * 100) : 0}%
+                    </div>
+                    <div className="text-sm text-gray-400">Taux de réponse</div>
+                  </div>
+                </div>
+
+                {/* Liste des non-répondants */}
+                {nonRepondants.length > 0 && (
+                  <div className="bg-black/30 rounded-lg p-4 border border-yellow-600/30">
+                    <h4 className="text-yellow-400 font-semibold mb-3 flex items-center">
+                      <Bell className="w-4 h-4 mr-2" />
+                      Membres n'ayant pas répondu ({nonRepondants.length})
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {nonRepondants.slice(0, 10).map((m) => (
+                        <Badge key={m.id} className="bg-yellow-900/50 text-yellow-300 border border-yellow-600/30">
+                          {m.nom_complet}
+                        </Badge>
+                      ))}
+                      {nonRepondants.length > 10 && (
+                        <Badge className="bg-gray-800 text-gray-400">
+                          +{nonRepondants.length - 10} autres
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-3">
+                      💡 Cliquez sur "Relancer" pour envoyer un rappel uniquement à ces membres
+                    </p>
+                  </div>
+                )}
+
+                {/* Message si tout le monde a répondu */}
+                {nonRepondants.length === 0 && members.length > 0 && (
+                  <div className="bg-green-900/20 border border-green-600/30 rounded-lg p-4 text-center">
+                    <div className="text-green-400 font-semibold">
+                      ✅ Tous les membres ont répondu au sondage !
+                    </div>
+                  </div>
+                )}
+
+                {/* Données mockées pour les choix (à connecter plus tard) */}
+                <div className="border-t border-[#D4A024]/20 pt-4">
+                  <h3 className="text-lg font-serif text-white mb-3">
+                    🍽️ Choix des Plats (exemple)
+                  </h3>
+                  <div className="space-y-3">
                     <div className="grid grid-cols-2 gap-2">
                       <div className="bg-black/30 rounded p-2 text-center border border-[#D4A024]/20">
                         <div className="text-xl font-bold text-[#D4A024]">{nextEvent.sondageResults.entreeA}</div>
@@ -426,12 +478,6 @@ const Dashboard = () => {
                         <div className="text-xl font-bold text-[#D4A024]">{nextEvent.sondageResults.entreeB}</div>
                         <div className="text-xs text-gray-500">Entrée B</div>
                       </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between text-sm mb-1">
-                      <span className="text-white">Plats Principaux</span>
                     </div>
                     <div className="grid grid-cols-3 gap-2">
                       <div className="bg-black/30 rounded p-2 text-center border border-[#D4A024]/20">
@@ -450,6 +496,18 @@ const Dashboard = () => {
                   </div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm">
+            <CardContent className="py-8 text-center">
+              <Calendar className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+              <p className="text-gray-400">Aucun événement à venir</p>
+              <p className="text-gray-500 text-sm mt-1">Créez un événement depuis l'onglet Événements</p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
             </div>
           </CardContent>
         </Card>
