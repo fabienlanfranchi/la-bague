@@ -22,7 +22,9 @@ import {
   CheckCheck,
   Save,
   FileText,
-  Edit3
+  Edit3,
+  Forward,
+  RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
