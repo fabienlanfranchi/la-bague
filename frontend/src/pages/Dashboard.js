@@ -4,12 +4,19 @@ import { api } from '../services/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Users, TrendingUp, Star, Calendar, DollarSign, MessageSquare, Download, X } from 'lucide-react';
+import { Users, TrendingUp, Star, Calendar, DollarSign, MessageSquare, Download, X, Bell, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
+import axios from 'axios';
+
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const API = `${BACKEND_URL}/api`;
 
 const Dashboard = () => {
   const { isAdmin } = useUser();
   const [members, setMembers] = useState([]);
+  const [prochainEvenement, setProchainEvenement] = useState(null);
+  const [nonRepondants, setNonRepondants] = useState([]);
+  const [loadingRelance, setLoadingRelance] = useState(false);
   const [stats, setStats] = useState({
     totalMembers: 0,
     avgPresenceGlobal: 0,
