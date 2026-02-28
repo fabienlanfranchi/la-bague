@@ -1210,6 +1210,93 @@ async def create_evenement_simple(input: EvenementCreateSimple):
     }
 
 
+# ============ RÉPONSES AUX SONDAGES D'ÉVÉNEMENTS ============
+
+class ReponseSondageEvenement(BaseModel):
+    evenement_id: str
+    membre_id: str
+    present: bool
+    choix_entree: Optional[str] = None
+    choix_plat: Optional[str] = None
+    choix_dessert: Optional[str] = None
+
+
+@api_router.post("/reponses-sondages")
+async def submit_reponse_sondage(input: ReponseSondageEvenement):
+    """Soumettre ou mettre à jour une réponse au sondage d'un événement"""
+    now = datetime.now(timezone.utc).isoformat()
+    
+    # Vérifier si une réponse existe déjà
+    existing = await db.reponses_evenements.find_one({
+        "evenement_id": input.evenement_id,
+        "membre_id": input.membre_id
+    })
+    
+    if existing:
+        # Mise à jour
+        await db.reponses_evenements.update_one(
+            {"evenement_id": input.evenement_id, "membre_id": input.membre_id},
+            {"$set": {
+                "present": input.present,
+                "choix_entree": input.choix_entree,
+                "choix_plat": input.choix_plat,
+                "choix_dessert": input.choix_dessert,
+                "updated_at": now
+            }}
+        )
+        return {"message": "Réponse mise à jour", "action": "updated"}
+    else:
+        # Nouvelle réponse
+        doc = {
+            "id": str(uuid.uuid4()),
+            "evenement_id": input.evenement_id,
+            "membre_id": input.membre_id,
+            "present": input.present,
+            "choix_entree": input.choix_entree,
+            "choix_plat": input.choix_plat,
+            "choix_dessert": input.choix_dessert,
+            "created_at": now,
+            "updated_at": now
+        }
+        await db.reponses_evenements.insert_one(doc)
+        return {"message": "Réponse enregistrée", "action": "created"}
+
+
+@api_router.get("/reponses-sondages/{evenement_id}/{membre_id}")
+async def get_reponse_membre(evenement_id: str, membre_id: str):
+    """Récupérer la réponse d'un membre à un événement"""
+    reponse = await db.reponses_evenements.find_one({
+        "evenement_id": evenement_id,
+        "membre_id": membre_id
+    }, {"_id": 0})
+    
+    if not reponse:
+        raise HTTPException(status_code=404, detail="Réponse non trouvée")
+    
+    return reponse
+
+
+@api_router.get("/reponses-sondages/{evenement_id}")
+async def get_reponses_evenement(evenement_id: str):
+    """Récupérer toutes les réponses à un événement"""
+    reponses = await db.reponses_evenements.find(
+        {"evenement_id": evenement_id}, 
+        {"_id": 0}
+    ).to_list(100)
+    
+    # Compter les présents/absents
+    presents = len([r for r in reponses if r.get("present")])
+    absents = len([r for r in reponses if not r.get("present")])
+    
+    return {
+        "evenement_id": evenement_id,
+        "total_reponses": len(reponses),
+        "presents": presents,
+        "absents": absents,
+        "reponses": reponses
+    }
+
+
 # ============ TEMPLATES DE SONDAGES - ROUTES ============
 
 @api_router.get("/sondage-templates")
