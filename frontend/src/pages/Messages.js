@@ -837,15 +837,31 @@ const Messages = () => {
   }
 
   // ============ VUE MEMBRE ============
+  const unreadCount = notifications.filter(n => !n.lu).length;
+  
   return (
     <div className="space-y-8">
-      <div className="text-center md:text-left">
-        <h1 className="text-4xl md:text-5xl font-serif font-bold text-white mb-2">
-          Messages
-        </h1>
-        <p className="text-[#D4A024] text-lg font-serif">
-          Annonces et communications du club
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-4xl md:text-5xl font-serif font-bold text-white mb-2">
+            Messages
+          </h1>
+          <p className="text-[#D4A024] text-lg font-serif">
+            Annonces et communications du club
+          </p>
+        </div>
+        
+        {/* Bouton "Tout lu" */}
+        {unreadCount > 0 && (
+          <Button
+            onClick={markAllAsRead}
+            className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif"
+            data-testid="mark-all-read-btn"
+          >
+            <CheckCheck className="w-5 h-5 mr-2" />
+            Tout marquer comme lu ({unreadCount})
+          </Button>
+        )}
       </div>
 
       {/* Liste des messages pour le membre */}
@@ -858,34 +874,65 @@ const Messages = () => {
             </CardContent>
           </Card>
         ) : (
-          messages.map((msg) => (
-            <Card
-              key={msg.id}
-              className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm hover:border-[#D4A024]/50 transition-all"
-            >
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    {getTypeBadge(msg.type)}
-                    <CardTitle className="text-lg font-serif text-white">
-                      {msg.titre}
-                    </CardTitle>
+          messages.map((msg) => {
+            const isRead = readMessages.has(msg.id);
+            
+            return (
+              <Card
+                key={msg.id}
+                className={`bg-black/40 border-2 backdrop-blur-sm transition-all ${
+                  isRead 
+                    ? 'border-[#D4A024]/20 opacity-80' 
+                    : 'border-[#D4A024]/50 hover:border-[#D4A024]'
+                }`}
+              >
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      {/* Indicateur non lu */}
+                      {!isRead && (
+                        <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" title="Non lu" />
+                      )}
+                      {getTypeBadge(msg.type)}
+                      <CardTitle className={`text-lg font-serif ${isRead ? 'text-gray-400' : 'text-white'}`}>
+                        {msg.titre}
+                      </CardTitle>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <span className="text-gray-500 text-sm">{formatDate(msg.created_at)}</span>
+                      {/* Bouton œil pour marquer comme lu */}
+                      {!isRead ? (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => markAsRead(msg.id)}
+                          className="text-[#D4A024] hover:bg-[#D4A024]/20"
+                          title="Marquer comme lu"
+                        >
+                          <Eye className="w-5 h-5" />
+                        </Button>
+                      ) : (
+                        <EyeOff className="w-5 h-5 text-gray-600" title="Lu" />
+                      )}
+                    </div>
                   </div>
-                  <span className="text-gray-500 text-sm">{formatDate(msg.created_at)}</span>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-300 whitespace-pre-wrap">{msg.contenu}</p>
-                
-                {msg.date_limite && (
-                  <div className="mt-3 flex items-center text-yellow-400 text-sm">
-                    <Clock className="w-4 h-4 mr-2" />
-                    Date limite : {formatDate(msg.date_limite)}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))
+                </CardHeader>
+                <CardContent>
+                  <p className={`whitespace-pre-wrap ${isRead ? 'text-gray-500' : 'text-gray-300'}`}>
+                    {msg.contenu}
+                  </p>
+                  
+                  {msg.date_limite && (
+                    <div className="mt-3 flex items-center text-yellow-400 text-sm">
+                      <Clock className="w-4 h-4 mr-2" />
+                      Date limite : {formatDate(msg.date_limite)}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })
+        )}
         )}
       </div>
     </div>
