@@ -599,6 +599,18 @@ class MessageCreate(BaseModel):
     date_limite: Optional[datetime] = None
 
 
+class MessageTemplate(BaseModel):
+    """Template de message réutilisable"""
+    model_config = ConfigDict(extra="ignore")
+    
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    nom: str
+    type: str = "annonce"
+    titre: str
+    contenu: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
 class Notification(BaseModel):
     """Notification pour un membre (badge rouge)"""
     model_config = ConfigDict(extra="ignore")
