@@ -28,6 +28,19 @@ Application de gestion pour le club de cigares "La Bague Impériale". Permet de 
 - Ajout de recettes/dépenses avec mise à jour automatique des soldes
 - Gestion des cotisations (200€/saison)
 
+### Messages (✅ Complet - Février 2026)
+- **Vue Admin** :
+  - Créer des annonces, rappels cotisation, rappels sondage, nouveaux sondages
+  - 4 boutons raccourcis pour les types de messages courants
+  - Sélection des destinataires (tous ou spécifiques)
+  - Lien vers événement (pour sondages)
+  - Choix du template de sondage (Resto, Apéro, Anniversaire, Album, Autre)
+  - Historique des messages avec statistiques
+- **Notifications** :
+  - Badge rouge sur l'onglet Messages (compteur de non-lus)
+  - Rafraîchissement automatique toutes les 30 secondes
+- **Templates de sondages** créés automatiquement au démarrage
+
 ### Événements (✅ Complet - Mis à jour 2024-12)
 - Section "Prochain événement" avec détails et sondage
 - **Historique des saisons** (13 saisons, 2013-2026)
