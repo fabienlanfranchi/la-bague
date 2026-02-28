@@ -577,7 +577,7 @@ const Messages = () => {
 
                 {/* Destinataires */}
                 <div>
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center justify-between mb-3">
                     <label className="text-sm font-medium text-gray-300">
                       Destinataires
                       <span className="text-gray-500 ml-2">(vide = tous les membres)</span>
@@ -603,42 +603,61 @@ const Messages = () => {
                       </Button>
                     </div>
                   </div>
-                  <div className="max-h-40 overflow-y-auto bg-black/30 rounded p-2 space-y-1">
-                    {membres.map((membre) => (
-                      <label
-                        key={membre.id}
-                        className="flex items-center space-x-2 p-2 hover:bg-[#D4A024]/10 rounded cursor-pointer"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={newMessage.destinataires.includes(membre.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setNewMessage({
-                                ...newMessage,
-                                destinataires: [...newMessage.destinataires, membre.id]
-                              });
-                            } else {
-                              setNewMessage({
-                                ...newMessage,
-                                destinataires: newMessage.destinataires.filter(id => id !== membre.id)
-                              });
-                            }
-                          }}
-                          className="rounded border-[#D4A024]/50"
-                        />
-                        <span className="text-white text-sm">{membre.nom_complet}</span>
-                        {membre.situation_cotisation > 0 && (
-                          <Badge className="bg-red-600 text-xs">Cotisation due</Badge>
-                        )}
-                      </label>
-                    ))}
+                  
+                  {/* Compteur de sélection */}
+                  <div className="flex items-center justify-between mb-2 px-2">
+                    <span className="text-sm text-gray-400">
+                      {membres.length} membre(s) au total
+                    </span>
+                    {newMessage.destinataires.length > 0 && (
+                      <Badge className="bg-[#D4A024] text-[#7A2020]">
+                        {newMessage.destinataires.length} sélectionné(s)
+                      </Badge>
+                    )}
                   </div>
-                  {newMessage.destinataires.length > 0 && (
-                    <p className="text-[#D4A024] text-sm mt-2">
-                      {newMessage.destinataires.length} membre(s) sélectionné(s)
-                    </p>
-                  )}
+                  
+                  {/* Liste des membres - Plus grande */}
+                  <div className="h-64 overflow-y-auto bg-black/30 rounded-lg border border-[#D4A024]/20 p-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      {membres.map((membre) => (
+                        <label
+                          key={membre.id}
+                          className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer transition-all ${
+                            newMessage.destinataires.includes(membre.id)
+                              ? 'bg-[#D4A024]/20 border border-[#D4A024]/50'
+                              : 'bg-black/20 border border-transparent hover:bg-[#D4A024]/10 hover:border-[#D4A024]/30'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={newMessage.destinataires.includes(membre.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setNewMessage({
+                                  ...newMessage,
+                                  destinataires: [...newMessage.destinataires, membre.id]
+                                });
+                              } else {
+                                setNewMessage({
+                                  ...newMessage,
+                                  destinataires: newMessage.destinataires.filter(id => id !== membre.id)
+                                });
+                              }
+                            }}
+                            className="w-4 h-4 rounded border-[#D4A024]/50 text-[#D4A024] focus:ring-[#D4A024]"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <span className="text-white text-sm font-medium block truncate">
+                              {membre.nom_complet}
+                            </span>
+                          </div>
+                          {membre.situation_cotisation > 0 && (
+                            <Badge className="bg-red-600 text-xs flex-shrink-0">Cotisation due</Badge>
+                          )}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </CardContent>
 
