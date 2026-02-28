@@ -65,6 +65,40 @@ const Messages = () => {
     loadData();
   }, []);
 
+  // Charger les notifications pour le membre
+  useEffect(() => {
+    const loadNotifications = async () => {
+      if (currentMember?.id && !isAdmin) {
+        try {
+          const response = await axios.get(`${API}/notifications/${currentMember.id}`);
+          setNotifications(response.data);
+          // Marquer les messages déjà lus
+          const read = new Set(response.data.filter(n => n.lu).map(n => n.message_id));
+          setReadMessages(read);
+        } catch (error) {
+          console.error('Erreur notifications:', error);
+        }
+      }
+    };
+    loadNotifications();
+  }, [currentMember, isAdmin]);
+
+  // Charger les templates de messages (admin)
+  useEffect(() => {
+    const loadMessageTemplates = async () => {
+      if (isAdmin) {
+        try {
+          const response = await axios.get(`${API}/message-templates`);
+          setMessageTemplates(response.data);
+        } catch (error) {
+          // Pas grave si pas de templates
+          console.log('Pas de templates de messages');
+        }
+      }
+    };
+    loadMessageTemplates();
+  }, [isAdmin]);
+
   const loadData = async () => {
     try {
       setLoading(true);
@@ -76,7 +110,7 @@ const Messages = () => {
       ]);
       setMessages(messagesRes.data);
       setTemplates(templatesRes.data);
-      setMembres(membresRes.data.filter(m => m.statut === 'Actif'));
+      setMembres(membresRes.data);
       setEvenements(evenementsRes.data.filter(e => e.statut === 'à venir'));
     } catch (error) {
       console.error('Erreur chargement:', error);
