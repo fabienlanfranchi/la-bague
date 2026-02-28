@@ -17,7 +17,12 @@ import {
   Check,
   Clock,
   Trash2,
-  Eye
+  Eye,
+  EyeOff,
+  CheckCheck,
+  Save,
+  FileText,
+  Edit3
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -26,7 +31,7 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const Messages = () => {
-  const { user, isAdmin } = useUser();
+  const { user, isAdmin, currentMember } = useUser();
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -35,6 +40,15 @@ const Messages = () => {
   const [evenements, setEvenements] = useState([]);
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [messageStats, setMessageStats] = useState(null);
+  
+  // Notifications pour la vue membre
+  const [notifications, setNotifications] = useState([]);
+  const [readMessages, setReadMessages] = useState(new Set());
+  
+  // Templates de messages (pour admin)
+  const [messageTemplates, setMessageTemplates] = useState([]);
+  const [showTemplatesModal, setShowTemplatesModal] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState(null);
 
   // Formulaire de création
   const [newMessage, setNewMessage] = useState({
