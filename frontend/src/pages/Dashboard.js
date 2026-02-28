@@ -4,12 +4,330 @@ import { api } from '../services/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Users, TrendingUp, Star, Calendar, DollarSign, MessageSquare, Download, X, Bell, RefreshCw } from 'lucide-react';
+import { Users, TrendingUp, Star, Calendar, DollarSign, MessageSquare, Download, X, Bell, RefreshCw, Check, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
+
+// ============ COMPOSANT DASHBOARD MEMBRE ============
+const DashboardMembre = ({ prochainEvenement, currentMember }) => {
+  const [reponse, setReponse] = useState(null); // null, 'oui', 'non'
+  const [reponseEnvoyee, setReponseEnvoyee] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [existingReponse, setExistingReponse] = useState(null);
+
+  // Charger la réponse existante du membre
+  useEffect(() => {
+    const loadExistingReponse = async () => {
+      if (!prochainEvenement?.id || !currentMember?.id) return;
+      
+      try {
+        // Chercher les réponses au sondage de cet événement
+        const response = await axios.get(`${API}/reponses-sondages/${prochainEvenement.id}/${currentMember.id}`);
+        if (response.data) {
+          setExistingReponse(response.data);
+          setReponse(response.data.present ? 'oui' : 'non');
+          setReponseEnvoyee(true);
+        }
+      } catch (error) {
+        // Pas de réponse existante, c'est normal
+        console.log('Pas de réponse existante');
+      }
+    };
+    
+    loadExistingReponse();
+  }, [prochainEvenement, currentMember]);
+
+  // Calculer la date limite du sondage selon le type d'événement
+  const getDateLimiteSondage = (evenement) => {
+    if (!evenement) return null;
+    const dateEvt = new Date(evenement.date);
+    
+    if (evenement.type_sondage === 'repas' || evenement.objet?.toLowerCase().includes('repas')) {
+      dateEvt.setHours(21, 30, 0, 0);
+      return dateEvt;
+    } else if (evenement.type_sondage === 'apero' || evenement.objet?.toLowerCase().includes('apéro')) {
+      dateEvt.setHours(19, 0, 0, 0);
+      return dateEvt;
+    } else if (evenement.type_sondage === 'anniversaire' || evenement.objet?.toLowerCase().includes('anniversaire')) {
+      dateEvt.setHours(23, 59, 59, 0);
+      return dateEvt;
+    }
+    dateEvt.setHours(21, 30, 0, 0);
+    return dateEvt;
+  };
+
+  const dateLimite = getDateLimiteSondage(prochainEvenement);
+  const now = new Date();
+  const sondageActif = dateLimite && now < dateLimite;
+
+  const formatDateLimite = (date) => {
+    if (!date) return '';
+    return date.toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  // Envoyer la réponse au sondage
+  const handleSubmitReponse = async () => {
+    if (!reponse || !currentMember?.id || !prochainEvenement?.id) {
+      toast.error('Veuillez sélectionner une réponse');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await axios.post(`${API}/reponses-sondages`, {
+        evenement_id: prochainEvenement.id,
+        membre_id: currentMember.id,
+        present: reponse === 'oui'
+      });
+      
+      setReponseEnvoyee(true);
+      toast.success('Votre réponse a été enregistrée !');
+    } catch (error) {
+      console.error('Erreur:', error);
+      toast.error('Erreur lors de l\'envoi de la réponse');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-8">
+      <div className="mb-8">
+        <h1 className="text-4xl font-serif font-bold text-white mb-2">
+          Bienvenue à La Bague Impériale
+        </h1>
+        <p className="text-[#D4A024] text-lg font-serif">
+          Votre espace membre {currentMember?.nom_complet && `- ${currentMember.nom_complet}`}
+        </p>
+      </div>
+
+      {/* SONDAGE EN COURS */}
+      {prochainEvenement && (
+        <Card className={`bg-black/40 border-2 backdrop-blur-sm ${
+          reponseEnvoyee 
+            ? 'border-green-500' 
+            : sondageActif 
+              ? 'border-yellow-500/50' 
+              : 'border-red-500/50'
+        }`}>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-2xl font-serif text-white flex items-center">
+                <Calendar className="w-6 h-6 mr-3 text-[#D4A024]" />
+                Prochain événement
+              </CardTitle>
+              {reponseEnvoyee ? (
+                <Badge className="bg-green-600 text-white flex items-center">
+                  <CheckCircle className="w-4 h-4 mr-1" />
+                  Réponse envoyée
+                </Badge>
+              ) : sondageActif ? (
+                <Badge className="bg-yellow-600 text-white animate-pulse">
+                  En attente de réponse
+                </Badge>
+              ) : (
+                <Badge className="bg-red-600 text-white">
+                  Sondage fermé
+                </Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Détails de l'événement */}
+            <div className="bg-black/30 rounded-lg p-4 border border-[#D4A024]/20">
+              <h3 className="text-xl font-serif text-[#D4A024] mb-2">
+                {prochainEvenement.objet}
+              </h3>
+              <div className="space-y-2 text-gray-300">
+                <p className="flex items-center">
+                  <Calendar className="w-4 h-4 mr-2 text-[#D4A024]" />
+                  {new Date(prochainEvenement.date).toLocaleDateString('fr-FR', {
+                    weekday: 'long',
+                    day: '2-digit',
+                    month: 'long',
+                    year: 'numeric'
+                  })}
+                </p>
+                <p className="flex items-center">
+                  <span className="mr-2">📍</span>
+                  {prochainEvenement.lieu}
+                </p>
+              </div>
+            </div>
+
+            {/* Date limite du sondage */}
+            {dateLimite && (
+              <div className={`rounded-lg p-3 border ${
+                reponseEnvoyee
+                  ? 'bg-green-900/20 border-green-600/30'
+                  : sondageActif 
+                    ? 'bg-yellow-900/20 border-yellow-600/30' 
+                    : 'bg-red-900/20 border-red-600/30'
+              }`}>
+                <p className={`text-sm flex items-center ${
+                  reponseEnvoyee
+                    ? 'text-green-400'
+                    : sondageActif 
+                      ? 'text-yellow-400' 
+                      : 'text-red-400'
+                }`}>
+                  {reponseEnvoyee ? (
+                    <>
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      Vous avez répondu : <strong className="ml-1">{reponse === 'oui' ? 'PRÉSENT' : 'ABSENT'}</strong>
+                    </>
+                  ) : (
+                    <>
+                      <Bell className="w-4 h-4 mr-2" />
+                      {sondageActif 
+                        ? `Date limite : ${formatDateLimite(dateLimite)}`
+                        : `Sondage clôturé depuis le ${formatDateLimite(dateLimite)}`
+                      }
+                    </>
+                  )}
+                </p>
+              </div>
+            )}
+
+            {/* Formulaire de sondage */}
+            {sondageActif && (
+              <div className={`rounded-lg p-4 border ${
+                reponseEnvoyee 
+                  ? 'bg-green-900/20 border-green-500/50' 
+                  : 'bg-[#D4A024]/10 border-[#D4A024]/30'
+              }`}>
+                <h4 className={`font-semibold mb-4 flex items-center ${
+                  reponseEnvoyee ? 'text-green-400' : 'text-[#D4A024]'
+                }`}>
+                  {reponseEnvoyee ? (
+                    <>
+                      <CheckCircle className="w-5 h-5 mr-2" />
+                      Réponse enregistrée
+                    </>
+                  ) : (
+                    <>
+                      <MessageSquare className="w-5 h-5 mr-2" />
+                      Votre réponse
+                    </>
+                  )}
+                </h4>
+                
+                {/* Présence */}
+                <div className="mb-4">
+                  <p className="text-white mb-3">Serez-vous présent ?</p>
+                  <div className="flex space-x-3">
+                    <Button
+                      variant="outline"
+                      onClick={() => { setReponse('oui'); setReponseEnvoyee(false); }}
+                      className={`flex-1 transition-all duration-200 ${
+                        reponse === 'oui'
+                          ? 'bg-green-600 border-green-500 text-white font-bold shadow-lg shadow-green-500/30'
+                          : 'border-green-600/50 text-green-400 hover:bg-green-900/30'
+                      }`}
+                    >
+                      <Check className={`w-5 h-5 mr-2 ${reponse === 'oui' ? 'animate-bounce' : ''}`} />
+                      OUI, je serai présent
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => { setReponse('non'); setReponseEnvoyee(false); }}
+                      className={`flex-1 transition-all duration-200 ${
+                        reponse === 'non'
+                          ? 'bg-red-600 border-red-500 text-white font-bold shadow-lg shadow-red-500/30'
+                          : 'border-red-600/50 text-red-400 hover:bg-red-900/30'
+                      }`}
+                    >
+                      <X className={`w-5 h-5 mr-2 ${reponse === 'non' ? 'animate-bounce' : ''}`} />
+                      NON, absent
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Confirmation visuelle */}
+                {reponseEnvoyee && (
+                  <div className="bg-green-900/30 border border-green-500/50 rounded-lg p-3 mb-4">
+                    <p className="text-green-400 text-center font-semibold flex items-center justify-center">
+                      <CheckCircle className="w-5 h-5 mr-2" />
+                      Votre réponse "{reponse === 'oui' ? 'PRÉSENT' : 'ABSENT'}" a été enregistrée !
+                    </p>
+                    <p className="text-green-400/70 text-center text-sm mt-1">
+                      Vous pouvez modifier votre réponse jusqu'à la date limite
+                    </p>
+                  </div>
+                )}
+
+                {/* Bouton d'envoi */}
+                <Button 
+                  onClick={handleSubmitReponse}
+                  disabled={!reponse || loading}
+                  className={`w-full font-bold transition-all duration-200 ${
+                    reponseEnvoyee
+                      ? 'bg-green-600 hover:bg-green-700 text-white'
+                      : 'bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020]'
+                  }`}
+                >
+                  {loading ? (
+                    <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
+                  ) : reponseEnvoyee ? (
+                    <CheckCircle className="w-5 h-5 mr-2" />
+                  ) : (
+                    <MessageSquare className="w-5 h-5 mr-2" />
+                  )}
+                  {reponseEnvoyee ? 'Modifier ma réponse' : 'Enregistrer ma réponse'}
+                </Button>
+              </div>
+            )}
+
+            {/* Message si sondage fermé */}
+            {!sondageActif && (
+              <div className="bg-gray-900/50 rounded-lg p-4 text-center">
+                <p className="text-gray-400">
+                  Le sondage pour cet événement est terminé.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Pas d'événement */}
+      {!prochainEvenement && (
+        <Card className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm">
+          <CardContent className="py-8 text-center">
+            <Calendar className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+            <p className="text-gray-400">Aucun événement à venir</p>
+            <p className="text-gray-500 text-sm mt-1">Vous serez notifié dès qu'un événement sera programmé</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* À propos du club */}
+      <Card className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm">
+        <CardHeader>
+          <CardTitle className="text-2xl font-serif text-white">
+            🎩 À propos du Club
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-gray-300 leading-relaxed">
+            Bienvenue dans votre espace membre de La Bague Impériale, club d'amateurs de cigares de prestige.
+            Consultez votre profil, participez aux sondages, et restez informé des prochains événements.
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
 
 const Dashboard = () => {
   const { isAdmin } = useUser();
