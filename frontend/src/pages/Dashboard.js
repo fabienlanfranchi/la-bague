@@ -330,7 +330,7 @@ const DashboardMembre = ({ prochainEvenement, currentMember }) => {
 
 
 const Dashboard = () => {
-  const { isAdmin } = useUser();
+  const { isAdmin, currentMember } = useUser();
   const [members, setMembers] = useState([]);
   const [prochainEvenement, setProchainEvenement] = useState(null);
   const [nonRepondants, setNonRepondants] = useState([]);
