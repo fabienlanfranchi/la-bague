@@ -1,4 +1,8 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import axios from 'axios';
+
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const API = `${BACKEND_URL}/api`;
 
 const UserContext = createContext();
 
@@ -14,8 +18,29 @@ export const UserProvider = ({ children }) => {
   // Mode : 'admin' (Président) ou 'member' (Membre)
   const [mode, setMode] = useState('admin');
   
-  // Données du membre actuellement connecté (simulé pour l'instant)
+  // Données du membre actuellement connecté
   const [currentMember, setCurrentMember] = useState(null);
+  const [members, setMembers] = useState([]);
+
+  // Charger les membres au démarrage
+  useEffect(() => {
+    const loadMembers = async () => {
+      try {
+        const response = await axios.get(`${API}/members`);
+        setMembers(response.data);
+        // Par défaut, on utilise Fabien Lanfranchi comme membre de test
+        const fabien = response.data.find(m => m.nom_complet?.includes('Fabien Lanfranchi'));
+        if (fabien) {
+          setCurrentMember(fabien);
+        } else if (response.data.length > 0) {
+          setCurrentMember(response.data[0]);
+        }
+      } catch (error) {
+        console.error('Erreur chargement membres:', error);
+      }
+    };
+    loadMembers();
+  }, []);
 
   const toggleMode = () => {
     setMode(prevMode => prevMode === 'admin' ? 'member' : 'admin');
@@ -32,6 +57,7 @@ export const UserProvider = ({ children }) => {
         isAdmin,
         currentMember,
         setCurrentMember,
+        members,
       }}
     >
       {children}
