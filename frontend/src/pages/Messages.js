@@ -642,23 +642,110 @@ const Messages = () => {
                 </div>
               </CardContent>
 
-              <div className="flex-shrink-0 p-4 border-t border-[#D4A024]/30 flex space-x-3">
-                <Button
-                  onClick={handleCreateMessage}
-                  className="flex-1 bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif font-bold"
-                  data-testid="send-message-btn"
-                >
-                  <Send className="w-4 h-4 mr-2" />
-                  Envoyer
-                </Button>
-                <Button
-                  onClick={() => setShowCreateModal(false)}
-                  variant="outline"
-                  className="flex-1 border-[#D4A024] text-[#D4A024] hover:bg-[#D4A024]/10"
-                >
-                  Annuler
-                </Button>
+              <div className="flex-shrink-0 p-4 border-t border-[#D4A024]/30 space-y-3">
+                {/* Boutons de template */}
+                <div className="flex space-x-2">
+                  <Button
+                    onClick={saveMessageTemplate}
+                    size="sm"
+                    variant="outline"
+                    className="border-blue-600/50 text-blue-400 hover:bg-blue-900/20"
+                  >
+                    <Save className="w-4 h-4 mr-1" />
+                    Sauvegarder comme template
+                  </Button>
+                  <Button
+                    onClick={() => setShowTemplatesModal(true)}
+                    size="sm"
+                    variant="outline"
+                    className="border-[#D4A024]/50 text-[#D4A024] hover:bg-[#D4A024]/20"
+                  >
+                    <FileText className="w-4 h-4 mr-1" />
+                    Charger un template
+                  </Button>
+                </div>
+                
+                {/* Boutons d'action */}
+                <div className="flex space-x-3">
+                  <Button
+                    onClick={handleCreateMessage}
+                    className="flex-1 bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif font-bold"
+                    data-testid="send-message-btn"
+                  >
+                    <Send className="w-4 h-4 mr-2" />
+                    Envoyer
+                  </Button>
+                  <Button
+                    onClick={() => setShowCreateModal(false)}
+                    variant="outline"
+                    className="flex-1 border-[#D4A024] text-[#D4A024] hover:bg-[#D4A024]/10"
+                  >
+                    Annuler
+                  </Button>
+                </div>
               </div>
+            </Card>
+          </div>
+        )}
+
+        {/* Modal Templates de messages */}
+        {showTemplatesModal && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4">
+            <Card className="bg-[#7A2020] border-2 border-[#D4A024] max-w-lg w-full max-h-[70vh] flex flex-col">
+              <CardHeader className="border-b border-[#D4A024]/30 flex-shrink-0">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-xl font-serif text-[#D4A024]">
+                    Templates de messages
+                  </CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowTemplatesModal(false)}
+                    className="text-[#D4A024] hover:bg-[#D4A024]/10"
+                  >
+                    <X className="w-5 h-5" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="py-4 overflow-y-auto flex-1">
+                {messageTemplates.length === 0 ? (
+                  <p className="text-gray-400 text-center py-8">
+                    Aucun template sauvegardé.<br />
+                    Créez un message puis cliquez sur "Sauvegarder comme template".
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {messageTemplates.map((tmpl) => (
+                      <div
+                        key={tmpl.id}
+                        className="flex items-center justify-between p-3 bg-black/30 rounded border border-[#D4A024]/10 hover:border-[#D4A024]/30"
+                      >
+                        <div className="flex-1">
+                          <h4 className="text-white font-semibold text-sm">{tmpl.nom}</h4>
+                          <p className="text-gray-400 text-xs line-clamp-1">{tmpl.contenu}</p>
+                        </div>
+                        <div className="flex space-x-1">
+                          <Button
+                            size="sm"
+                            onClick={() => loadTemplate(tmpl)}
+                            className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020]"
+                          >
+                            Utiliser
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => deleteTemplate(tmpl.id)}
+                            className="text-red-400 hover:bg-red-900/20"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
             </Card>
           </div>
         )}
