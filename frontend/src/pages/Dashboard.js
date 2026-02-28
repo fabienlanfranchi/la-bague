@@ -221,8 +221,46 @@ const Dashboard = () => {
     setShowMembersModal(true);
   };
 
-  // Dashboard MEMBRE (simplifié)
+  // Dashboard MEMBRE (avec sondage)
   if (!isAdmin) {
+    // Calculer la date limite du sondage selon le type d'événement
+    const getDateLimiteSondage = (evenement) => {
+      if (!evenement) return null;
+      const dateEvt = new Date(evenement.date);
+      
+      if (evenement.type_sondage === 'repas' || evenement.objet?.toLowerCase().includes('repas')) {
+        // Resto : 21h30 le jour de l'événement
+        dateEvt.setHours(21, 30, 0, 0);
+        return dateEvt;
+      } else if (evenement.type_sondage === 'apero' || evenement.objet?.toLowerCase().includes('apéro')) {
+        // Apéro : 19h00 le jour de l'événement
+        dateEvt.setHours(19, 0, 0, 0);
+        return dateEvt;
+      } else if (evenement.type_sondage === 'anniversaire' || evenement.objet?.toLowerCase().includes('anniversaire')) {
+        // Anniversaire : minuit le jour de l'événement
+        dateEvt.setHours(23, 59, 59, 0);
+        return dateEvt;
+      }
+      // Par défaut : 21h30
+      dateEvt.setHours(21, 30, 0, 0);
+      return dateEvt;
+    };
+
+    const dateLimite = getDateLimiteSondage(prochainEvenement);
+    const now = new Date();
+    const sondageActif = dateLimite && now < dateLimite;
+
+    const formatDateLimite = (date) => {
+      if (!date) return '';
+      return date.toLocaleDateString('fr-FR', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    };
+
     return (
       <div className="space-y-8">
         <div className="mb-8">
@@ -234,6 +272,137 @@ const Dashboard = () => {
           </p>
         </div>
 
+        {/* SONDAGE EN COURS */}
+        {prochainEvenement && (
+          <Card className={`bg-black/40 border-2 backdrop-blur-sm ${
+            sondageActif ? 'border-green-500/50' : 'border-red-500/50'
+          }`}>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-2xl font-serif text-white flex items-center">
+                  <Calendar className="w-6 h-6 mr-3 text-[#D4A024]" />
+                  Prochain événement
+                </CardTitle>
+                {sondageActif ? (
+                  <Badge className="bg-green-600 text-white animate-pulse">
+                    Sondage ouvert
+                  </Badge>
+                ) : (
+                  <Badge className="bg-red-600 text-white">
+                    Sondage fermé
+                  </Badge>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Détails de l'événement */}
+              <div className="bg-black/30 rounded-lg p-4 border border-[#D4A024]/20">
+                <h3 className="text-xl font-serif text-[#D4A024] mb-2">
+                  {prochainEvenement.objet}
+                </h3>
+                <div className="space-y-2 text-gray-300">
+                  <p className="flex items-center">
+                    <Calendar className="w-4 h-4 mr-2 text-[#D4A024]" />
+                    {new Date(prochainEvenement.date).toLocaleDateString('fr-FR', {
+                      weekday: 'long',
+                      day: '2-digit',
+                      month: 'long',
+                      year: 'numeric'
+                    })}
+                  </p>
+                  <p className="flex items-center">
+                    <span className="mr-2">📍</span>
+                    {prochainEvenement.lieu}
+                  </p>
+                </div>
+              </div>
+
+              {/* Date limite du sondage */}
+              {dateLimite && (
+                <div className={`rounded-lg p-3 border ${
+                  sondageActif 
+                    ? 'bg-yellow-900/20 border-yellow-600/30' 
+                    : 'bg-red-900/20 border-red-600/30'
+                }`}>
+                  <p className={`text-sm flex items-center ${sondageActif ? 'text-yellow-400' : 'text-red-400'}`}>
+                    <Bell className="w-4 h-4 mr-2" />
+                    {sondageActif 
+                      ? `Date limite pour répondre : ${formatDateLimite(dateLimite)}`
+                      : `Sondage clôturé depuis le ${formatDateLimite(dateLimite)}`
+                    }
+                  </p>
+                </div>
+              )}
+
+              {/* Formulaire de sondage */}
+              {sondageActif && (
+                <div className="bg-[#D4A024]/10 rounded-lg p-4 border border-[#D4A024]/30">
+                  <h4 className="text-[#D4A024] font-semibold mb-4 flex items-center">
+                    <MessageSquare className="w-5 h-5 mr-2" />
+                    Votre réponse
+                  </h4>
+                  
+                  {/* Présence */}
+                  <div className="mb-4">
+                    <p className="text-white mb-2">Serez-vous présent ?</p>
+                    <div className="flex space-x-3">
+                      <Button
+                        variant="outline"
+                        className="flex-1 border-green-600 text-green-400 hover:bg-green-900/30"
+                      >
+                        ✓ Oui
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="flex-1 border-red-600 text-red-400 hover:bg-red-900/30"
+                      >
+                        ✗ Non
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Options pour les repas */}
+                  {(prochainEvenement.type_sondage === 'repas' || prochainEvenement.objet?.toLowerCase().includes('repas')) && (
+                    <div className="space-y-4 pt-4 border-t border-[#D4A024]/20">
+                      <p className="text-gray-400 text-sm">
+                        🍽️ Vos choix de plats seront affichés ici une fois configurés par le président
+                      </p>
+                    </div>
+                  )}
+
+                  <Button 
+                    className="w-full mt-4 bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-bold"
+                    disabled={!sondageActif}
+                  >
+                    Enregistrer ma réponse
+                  </Button>
+                </div>
+              )}
+
+              {/* Message si sondage fermé */}
+              {!sondageActif && (
+                <div className="bg-gray-900/50 rounded-lg p-4 text-center">
+                  <p className="text-gray-400">
+                    Le sondage pour cet événement est terminé.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Pas d'événement */}
+        {!prochainEvenement && (
+          <Card className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm">
+            <CardContent className="py-8 text-center">
+              <Calendar className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+              <p className="text-gray-400">Aucun événement à venir</p>
+              <p className="text-gray-500 text-sm mt-1">Vous serez notifié dès qu'un événement sera programmé</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* À propos du club */}
         <Card className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm">
           <CardHeader>
             <CardTitle className="text-2xl font-serif text-white">
