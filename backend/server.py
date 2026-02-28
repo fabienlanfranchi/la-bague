@@ -1288,8 +1288,8 @@ async def create_message(input: MessageCreate, request: Request):
         destinataires = input.destinataires
     else:
         # Tous les membres (actifs ou non - tous reçoivent les messages)
-        membres = await db.membres.find({}, {"id": 1, "_id": 0}).to_list(100)
-        destinataires = [m["id"] for m in membres]
+        members_list = await db.members.find({}, {"id": 1, "_id": 0}).to_list(100)
+        destinataires = [m["id"] for m in members_list]
     
     for membre_id in destinataires:
         notif = Notification(
