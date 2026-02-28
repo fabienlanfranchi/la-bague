@@ -31,23 +31,28 @@ const Sidebar = () => {
   const [notificationCount, setNotificationCount] = useState(0);
 
   // Charger le nombre de notifications non lues
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      if (currentMember?.id) {
-        try {
-          const response = await axios.get(`${API}/notifications/${currentMember.id}/count`);
-          setNotificationCount(response.data.count || 0);
-        } catch (error) {
-          console.error('Erreur notifications:', error);
-        }
+  const fetchNotifications = async () => {
+    if (currentMember?.id) {
+      try {
+        const response = await axios.get(`${API}/notifications/${currentMember.id}/count`);
+        setNotificationCount(response.data.count || 0);
+      } catch (error) {
+        console.error('Erreur notifications:', error);
       }
-    };
+    }
+  };
 
+  useEffect(() => {
     fetchNotifications();
-    // Rafraîchir toutes les 30 secondes
-    const interval = setInterval(fetchNotifications, 30000);
+    // Rafraîchir toutes les 10 secondes (plus fréquent pour réactivité)
+    const interval = setInterval(fetchNotifications, 10000);
     return () => clearInterval(interval);
   }, [currentMember]);
+
+  // Rafraîchir quand on change de page (notamment quand on quitte Messages)
+  useEffect(() => {
+    fetchNotifications();
+  }, [location.pathname]);
 
   const isActive = (path) => location.pathname === path;
 
