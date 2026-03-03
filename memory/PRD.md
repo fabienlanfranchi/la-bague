@@ -7,7 +7,7 @@ Application de gestion pour le club de cigares "La Bague Impériale". Permet de 
 - **Frontend**: React, Tailwind CSS, shadcn/ui
 - **Backend**: FastAPI, Motor (async MongoDB)
 - **Database**: MongoDB
-- **URL Preview**: https://cigar-club-events.preview.emergentagent.com
+- **URL Preview**: https://club-polls-admin.preview.emergentagent.com
 
 ## Fonctionnalités Implémentées
 
