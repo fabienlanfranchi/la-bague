@@ -2393,6 +2393,91 @@ async def get_statistiques_globales():
     }
 
 
+@api_router.get("/statistiques/saisons-resume")
+async def get_statistiques_saisons_resume():
+    """Statistiques résumées par saison avec % moyens de présence par type d'événement"""
+    # Récupérer toutes les configs de saisons
+    configs = await db.saisons_config.find({}, {"_id": 0}).sort("saison", 1).to_list(100)
+    
+    # Récupérer tous les membres
+    members = await db.members.find({}, {"_id": 0, "id": 1, "annee_entree": 1, "saisons_exclues": 1}).to_list(100)
+    
+    # Récupérer toutes les présences
+    presences = await db.presences_membres.find({}, {"_id": 0}).to_list(10000)
+    
+    # Regrouper les présences par saison
+    presences_by_saison = {}
+    for p in presences:
+        saison = p["saison"]
+        if saison not in presences_by_saison:
+            presences_by_saison[saison] = []
+        presences_by_saison[saison].append(p)
+    
+    # Calculer les stats pour chaque saison
+    stats = []
+    for config in configs:
+        saison = config["saison"]
+        nb_aperos = config.get("nb_aperos", 0)
+        nb_repas = config.get("nb_repas", 0)
+        nb_anniversaires = config.get("nb_anniversaires", 0)
+        total_events = nb_aperos + nb_repas + nb_anniversaires
+        
+        if total_events == 0:
+            continue
+        
+        # Trouver les membres actifs cette saison
+        membres_actifs = []
+        for m in members:
+            premiere_saison = m.get("annee_entree", 2013) - 2012
+            saisons_exclues = m.get("saisons_exclues", [])
+            if saison >= premiere_saison and saison not in saisons_exclues:
+                membres_actifs.append(m["id"])
+        
+        # Calculer les présences totales et moyennes
+        total_pres_aperos = 0
+        total_pres_repas = 0
+        total_pres_anniversaires = 0
+        
+        saison_presences = presences_by_saison.get(saison, [])
+        for p in saison_presences:
+            if p["membre_id"] in membres_actifs:
+                total_pres_aperos += p.get("presences_aperos", 0)
+                total_pres_repas += p.get("presences_repas", 0)
+                total_pres_anniversaires += p.get("presences_anniversaires", 0)
+        
+        nb_membres_actifs = len(membres_actifs)
+        
+        # Calculer les % moyens (présences / (événements × membres actifs))
+        max_pres_aperos = nb_aperos * nb_membres_actifs
+        max_pres_repas = nb_repas * nb_membres_actifs
+        max_pres_anniversaires = nb_anniversaires * nb_membres_actifs
+        max_pres_total = total_events * nb_membres_actifs
+        
+        total_pres = total_pres_aperos + total_pres_repas + total_pres_anniversaires
+        
+        pct_aperos = round(total_pres_aperos / max_pres_aperos * 100, 1) if max_pres_aperos > 0 else 0
+        pct_repas = round(total_pres_repas / max_pres_repas * 100, 1) if max_pres_repas > 0 else 0
+        pct_anniversaires = round(total_pres_anniversaires / max_pres_anniversaires * 100, 1) if max_pres_anniversaires > 0 else 0
+        pct_global = round(total_pres / max_pres_total * 100, 1) if max_pres_total > 0 else 0
+        
+        stats.append({
+            "saison": saison,
+            "annee_debut": 2012 + saison,
+            "annee_fin": 2013 + saison,
+            "nb_aperos": nb_aperos,
+            "nb_repas": nb_repas,
+            "nb_anniversaires": nb_anniversaires,
+            "total_events": total_events,
+            "membres_actifs": nb_membres_actifs,
+            "pct_aperos": pct_aperos,
+            "pct_repas": pct_repas,
+            "pct_anniversaires": pct_anniversaires,
+            "pct_global": pct_global
+        })
+    
+    return stats
+
+
 @api_router.get("/statistiques/saison/{saison}")
 async def get_statistiques_saison(saison: int):
     """Statistiques pour une saison spécifique avec tous les membres"""

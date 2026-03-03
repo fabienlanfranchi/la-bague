@@ -21,6 +21,9 @@ export default function Statistiques() {
   // Pour le tri des colonnes
   const [sortColumn, setSortColumn] = useState('pct_global');
   const [sortDirection, setSortDirection] = useState('desc'); // 'asc' ou 'desc'
+  
+  // Stats résumées par saison (depuis l'API)
+  const [saisonsResume, setSaisonsResume] = useState([]);
 
   // Charger les données
   const loadData = useCallback(async () => {
@@ -42,6 +45,11 @@ export default function Statistiques() {
         configsDict[config.saison] = config;
       }
       setSaisonsConfig(configsDict);
+
+      // Charger les stats résumées par saison
+      const saisonsResumeRes = await fetch(`${API_URL}/api/statistiques/saisons-resume`);
+      const saisonsResumeData = await saisonsResumeRes.json();
+      setSaisonsResume(saisonsResumeData || []);
 
       // Charger les présences de la saison sélectionnée
       await loadSaisonPresences(selectedSaison);
@@ -163,53 +171,9 @@ export default function Statistiques() {
     });
   }, [globalStats, sortColumn, sortDirection]);
 
-  // Calculer les stats par saison (pour la vue "Stats Saison")
-  const saisonsStats = useMemo(() => {
-    const stats = [];
-    const allConfigs = Object.values(saisonsConfig);
-    
-    for (const config of allConfigs) {
-      const saison = config.saison;
-      if (!saison) continue;
-      
-      // Calculer les présences totales pour cette saison
-      let totalPresAperos = 0;
-      let totalPresRepas = 0;
-      let totalPresAnniv = 0;
-      let membresActifs = 0;
-      
-      for (const stat of globalStats) {
-        // Vérifier si le membre était actif cette saison
-        const premiereSaison = stat.premiere_saison || 1;
-        const saisonsExclues = stat.saisons_exclues || [];
-        
-        if (saison >= premiereSaison && !saisonsExclues.includes(saison)) {
-          membresActifs++;
-          // On devrait avoir les présences par saison, mais on utilise les données disponibles
-        }
-      }
-      
-      const nbAperos = config.nb_aperos || 0;
-      const nbRepas = config.nb_repas || 0;
-      const nbAnniv = config.nb_anniversaires || 0;
-      const totalEvents = nbAperos + nbRepas + nbAnniv;
-      
-      stats.push({
-        saison: saison,
-        nb_aperos: nbAperos,
-        nb_repas: nbRepas,
-        nb_anniversaires: nbAnniv,
-        total_events: totalEvents,
-        membres_actifs: membresActifs
-      });
-    }
-    
-    return stats.sort((a, b) => a.saison - b.saison);
-  }, [saisonsConfig, globalStats]);
-
-  // Stats saisons triées
+  // Stats saisons triées (depuis l'API)
   const sortedSaisonsStats = useMemo(() => {
-    return [...saisonsStats].sort((a, b) => {
+    return [...saisonsResume].sort((a, b) => {
       let aVal = a[sortColumn] || 0;
       let bVal = b[sortColumn] || 0;
       if (sortDirection === 'asc') {
@@ -217,7 +181,7 @@ export default function Statistiques() {
       }
       return bVal - aVal;
     });
-  }, [saisonsStats, sortColumn, sortDirection]);
+  }, [saisonsResume, sortColumn, sortDirection]);
 
   // Icône de tri pour les en-têtes
   const SortIcon = ({ column }) => {
@@ -713,12 +677,12 @@ export default function Statistiques() {
           </CardContent>
         </Card>
       ) : (
-        /* Vue Stats Saisons */
+        /* Vue Stats Saisons - % par événement */
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-amber-600" />
-              Stats par Saison
+              Stats par Saison - % Présence Moyen
               <span className="text-sm font-normal text-stone-500 ml-2">(Cliquez sur un en-tête pour trier)</span>
             </CardTitle>
           </CardHeader>
@@ -734,34 +698,40 @@ export default function Statistiques() {
                       <span className="flex items-center">Saison <SortIcon column="saison" /></span>
                     </th>
                     <th 
-                      className="px-4 py-3 text-center text-sm font-semibold text-stone-700 cursor-pointer hover:bg-stone-200"
-                      onClick={() => handleSort('nb_aperos')}
+                      className="px-4 py-3 text-center text-sm font-semibold text-amber-600 cursor-pointer hover:bg-stone-200"
+                      onClick={() => handleSort('pct_aperos')}
                     >
-                      <span className="flex items-center justify-center">Apéros <SortIcon column="nb_aperos" /></span>
+                      <span className="flex items-center justify-center">% Apéros <SortIcon column="pct_aperos" /></span>
                     </th>
                     <th 
-                      className="px-4 py-3 text-center text-sm font-semibold text-stone-700 cursor-pointer hover:bg-stone-200"
-                      onClick={() => handleSort('nb_repas')}
+                      className="px-4 py-3 text-center text-sm font-semibold text-blue-600 cursor-pointer hover:bg-stone-200"
+                      onClick={() => handleSort('pct_repas')}
                     >
-                      <span className="flex items-center justify-center">Repas <SortIcon column="nb_repas" /></span>
+                      <span className="flex items-center justify-center">% Repas <SortIcon column="pct_repas" /></span>
                     </th>
                     <th 
-                      className="px-4 py-3 text-center text-sm font-semibold text-stone-700 cursor-pointer hover:bg-stone-200"
-                      onClick={() => handleSort('nb_anniversaires')}
+                      className="px-4 py-3 text-center text-sm font-semibold text-purple-600 cursor-pointer hover:bg-stone-200"
+                      onClick={() => handleSort('pct_anniversaires')}
                     >
-                      <span className="flex items-center justify-center">Anniv. <SortIcon column="nb_anniversaires" /></span>
+                      <span className="flex items-center justify-center">% Anniv. <SortIcon column="pct_anniversaires" /></span>
                     </th>
                     <th 
                       className="px-4 py-3 text-center text-sm font-semibold text-amber-700 bg-amber-50 cursor-pointer hover:bg-amber-100"
-                      onClick={() => handleSort('total_events')}
+                      onClick={() => handleSort('pct_global')}
                     >
-                      <span className="flex items-center justify-center">Total Événements <SortIcon column="total_events" /></span>
+                      <span className="flex items-center justify-center">% Global <SortIcon column="pct_global" /></span>
                     </th>
                     <th 
-                      className="px-4 py-3 text-center text-sm font-semibold text-stone-700 cursor-pointer hover:bg-stone-200"
+                      className="px-4 py-3 text-center text-sm font-semibold text-stone-500 cursor-pointer hover:bg-stone-200"
+                      onClick={() => handleSort('total_events')}
+                    >
+                      <span className="flex items-center justify-center">Nb Évén. <SortIcon column="total_events" /></span>
+                    </th>
+                    <th 
+                      className="px-4 py-3 text-center text-sm font-semibold text-stone-500 cursor-pointer hover:bg-stone-200"
                       onClick={() => handleSort('membres_actifs')}
                     >
-                      <span className="flex items-center justify-center">Membres Actifs <SortIcon column="membres_actifs" /></span>
+                      <span className="flex items-center justify-center">Membres <SortIcon column="membres_actifs" /></span>
                     </th>
                   </tr>
                 </thead>
@@ -773,34 +743,57 @@ export default function Statistiques() {
                     >
                       <td className="px-4 py-2">
                         <span className="font-medium text-stone-800">Saison {stat.saison}</span>
-                        <span className="ml-2 text-xs text-stone-400">({2012 + stat.saison}-{2013 + stat.saison})</span>
+                        <span className="ml-2 text-xs text-stone-400">({stat.annee_debut}-{stat.annee_fin})</span>
                       </td>
                       <td className="px-4 py-2 text-center">
-                        <span className={`font-semibold ${stat.nb_aperos > 0 ? 'text-amber-600' : 'text-stone-400'}`}>
-                          {stat.nb_aperos}
+                        <span className={`font-semibold ${
+                          stat.pct_aperos >= 75 ? 'text-green-600' :
+                          stat.pct_aperos >= 50 ? 'text-amber-600' :
+                          stat.pct_aperos > 0 ? 'text-red-500' :
+                          'text-stone-400'
+                        }`}>
+                          {stat.pct_aperos > 0 ? `${stat.pct_aperos}%` : '-'}
                         </span>
+                        <div className="text-xs text-stone-400">{stat.nb_aperos} évén.</div>
                       </td>
                       <td className="px-4 py-2 text-center">
-                        <span className={`font-semibold ${stat.nb_repas > 0 ? 'text-blue-600' : 'text-stone-400'}`}>
-                          {stat.nb_repas}
+                        <span className={`font-semibold ${
+                          stat.pct_repas >= 75 ? 'text-green-600' :
+                          stat.pct_repas >= 50 ? 'text-blue-600' :
+                          stat.pct_repas > 0 ? 'text-red-500' :
+                          'text-stone-400'
+                        }`}>
+                          {stat.pct_repas > 0 ? `${stat.pct_repas}%` : '-'}
                         </span>
+                        <div className="text-xs text-stone-400">{stat.nb_repas} évén.</div>
                       </td>
                       <td className="px-4 py-2 text-center">
-                        <span className={`font-semibold ${stat.nb_anniversaires > 0 ? 'text-purple-600' : 'text-stone-400'}`}>
-                          {stat.nb_anniversaires}
+                        <span className={`font-semibold ${
+                          stat.pct_anniversaires >= 75 ? 'text-green-600' :
+                          stat.pct_anniversaires >= 50 ? 'text-purple-600' :
+                          stat.pct_anniversaires > 0 ? 'text-red-500' :
+                          'text-stone-400'
+                        }`}>
+                          {stat.pct_anniversaires > 0 ? `${stat.pct_anniversaires}%` : '-'}
                         </span>
+                        <div className="text-xs text-stone-400">{stat.nb_anniversaires} évén.</div>
                       </td>
                       <td className="px-4 py-2 text-center bg-amber-50">
                         <span className={`font-bold text-lg ${
-                          stat.total_events >= 10 ? 'text-green-600' :
-                          stat.total_events >= 5 ? 'text-amber-600' :
-                          'text-stone-600'
+                          stat.pct_global >= 75 ? 'text-green-600' :
+                          stat.pct_global >= 50 ? 'text-amber-600' :
+                          stat.pct_global >= 25 ? 'text-orange-500' :
+                          stat.pct_global > 0 ? 'text-red-500' :
+                          'text-stone-400'
                         }`}>
-                          {stat.total_events}
+                          {stat.pct_global > 0 ? `${stat.pct_global}%` : '-'}
                         </span>
                       </td>
-                      <td className="px-4 py-2 text-center">
-                        <span className="text-stone-600">{stat.membres_actifs}</span>
+                      <td className="px-4 py-2 text-center text-stone-600">
+                        {stat.total_events}
+                      </td>
+                      <td className="px-4 py-2 text-center text-stone-600">
+                        {stat.membres_actifs}
                       </td>
                     </tr>
                   ))}
