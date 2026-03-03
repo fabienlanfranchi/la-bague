@@ -11,7 +11,7 @@ export default function Statistiques() {
   const [membres, setMembres] = useState([]);
   const [saisonsConfig, setSaisonsConfig] = useState({});
   const [presences, setPresences] = useState({});
-  const [selectedSaison, setSelectedSaison] = useState(14);
+  const [selectedSaison, setSelectedSaison] = useState(1);  // Commencer par la saison 1
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
