@@ -61,6 +61,7 @@ const MembersPage = () => {
     autres_infos: '',
     email: '',
     is_president: false,
+    saisons_exclues: [],  // Saisons où le membre était en sommeil
   });
 
   useEffect(() => {
@@ -144,6 +145,7 @@ const MembersPage = () => {
         autres_infos: member.autres_infos || '',
         email: member.email || '',
         is_president: member.is_president || false,
+        saisons_exclues: member.saisons_exclues || [],
       });
     } else {
       setEditingMember(null);
@@ -161,6 +163,7 @@ const MembersPage = () => {
         autres_infos: '',
         email: '',
         is_president: false,
+        saisons_exclues: [],
       });
     }
     setDialogOpen(true);
@@ -461,6 +464,43 @@ const MembersPage = () => {
                       <Label htmlFor="is_president" className="text-amber-800 font-medium cursor-pointer">
                         Ce membre est le Président du club
                       </Label>
+                    </div>
+
+                    {/* Saisons exclues (en sommeil) */}
+                    <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <Label className="text-gray-700 font-medium mb-2 block">
+                        Saisons exclues (membre en sommeil)
+                      </Label>
+                      <p className="text-xs text-gray-500 mb-2">
+                        Cochez les saisons où ce membre était en pause/sommeil (ne seront pas comptées dans ses stats)
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {[1,2,3,4,5,6,7,8,9,10,11,12,13].map((saison) => (
+                          <label 
+                            key={saison} 
+                            className={`flex items-center gap-1 px-2 py-1 rounded cursor-pointer text-sm ${
+                              formData.saisons_exclues?.includes(saison) 
+                                ? 'bg-red-100 border border-red-300 text-red-700' 
+                                : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-100'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={formData.saisons_exclues?.includes(saison)}
+                              onChange={(e) => {
+                                const currentExclues = formData.saisons_exclues || [];
+                                if (e.target.checked) {
+                                  setFormData({ ...formData, saisons_exclues: [...currentExclues, saison].sort((a,b) => a-b) });
+                                } else {
+                                  setFormData({ ...formData, saisons_exclues: currentExclues.filter(s => s !== saison) });
+                                }
+                              }}
+                              className="w-3 h-3"
+                            />
+                            S{saison}
+                          </label>
+                        ))}
+                      </div>
                     </div>
                   </div>
 

@@ -52,6 +52,7 @@ class Member(BaseModel):
     etoiles: int = 1  # 1 à 4
     situation_cotisation: int = 0  # 0, 1, 2 ou 3
     autres_infos: str = ""
+    saisons_exclues: List[int] = []  # Saisons où le membre était en sommeil (ex: [5, 6, 7])
     
     # Authentification
     email: Optional[str] = None
@@ -336,6 +337,7 @@ async def get_members():
     """Obtenir tous les membres avec % de présence et étoiles calculés dynamiquement
     
     IMPORTANT: Les stats ne comptent qu'à partir de la saison d'entrée du membre
+    et excluent les saisons où le membre était en sommeil (saisons_exclues)
     """
     members = await db.members.find({}, {"_id": 0}).to_list(1000)
     
@@ -374,6 +376,7 @@ async def get_members():
     for member in members:
         membre_presences = presences_by_membre.get(member["id"], [])
         premiere_saison = get_premiere_saison(member)
+        saisons_exclues = set(member.get("saisons_exclues", []))
         
         total_presences = 0
         total_events = 0
@@ -383,6 +386,9 @@ async def get_members():
             # IGNORER les saisons avant l'entrée du membre
             if saison < premiere_saison:
                 continue
+            # IGNORER les saisons exclues (membre en sommeil)
+            if saison in saisons_exclues:
+                continue
                 
             config = configs_dict.get(saison, {})
             
@@ -390,11 +396,11 @@ async def get_members():
             total_events += config.get("nb_aperos", 0) + config.get("nb_repas", 0) + config.get("nb_anniversaires", 0)
         
         # Ajouter aussi les événements des saisons où le membre n'a pas encore de données de présence
-        # mais où il aurait dû être compté (saisons après son entrée)
+        # mais où il aurait dû être compté (saisons après son entrée, hors saisons exclues)
         for saison, config in configs_dict.items():
-            if saison >= premiere_saison:
+            if saison >= premiere_saison and saison not in saisons_exclues:
                 # Vérifier si on a déjà compté cette saison
-                saison_already_counted = any(p["saison"] == saison for p in membre_presences)
+                saison_already_counted = any(p["saison"] == saison for p in membre_presences if p["saison"] >= premiere_saison and p["saison"] not in saisons_exclues)
                 if not saison_already_counted:
                     # Ajouter les événements de cette saison (présences = 0)
                     total_events += config.get("nb_aperos", 0) + config.get("nb_repas", 0) + config.get("nb_anniversaires", 0)
@@ -2007,15 +2013,17 @@ async def get_presences_by_membre(membre_id: str):
     """Récupérer les présences d'un membre (toutes saisons depuis son entrée)
     
     IMPORTANT: Ne compte que les saisons à partir de l'entrée du membre
+    et exclut les saisons où il était en sommeil
     """
-    # Récupérer les infos du membre pour connaître sa date d'entrée
-    membre = await db.members.find_one({"id": membre_id}, {"_id": 0, "annee_entree": 1})
+    # Récupérer les infos du membre pour connaître sa date d'entrée et saisons exclues
+    membre = await db.members.find_one({"id": membre_id}, {"_id": 0, "annee_entree": 1, "saisons_exclues": 1})
     if not membre:
         raise HTTPException(status_code=404, detail="Membre non trouvé")
     
     # Calculer la première saison du membre (Saison 1 = 2013)
     annee_entree = membre.get("annee_entree", 2013)
     premiere_saison = annee_entree - 2012
+    saisons_exclues = set(membre.get("saisons_exclues", []))
     
     presences = await db.presences_membres.find({"membre_id": membre_id}, {"_id": 0}).sort("saison", 1).to_list(100)
     
@@ -2023,7 +2031,7 @@ async def get_presences_by_membre(membre_id: str):
     configs = await db.saisons_config.find({}, {"_id": 0}).to_list(100)
     configs_dict = {c["saison"]: c for c in configs}
     
-    # Calculer les statistiques - UNIQUEMENT pour les saisons >= premiere_saison
+    # Calculer les statistiques - UNIQUEMENT pour les saisons >= premiere_saison et hors saisons exclues
     stats = []
     total_aperos = 0
     total_repas = 0
@@ -2040,6 +2048,9 @@ async def get_presences_by_membre(membre_id: str):
         
         # IGNORER les saisons avant l'entrée du membre
         if saison < premiere_saison:
+            continue
+        # IGNORER les saisons exclues (membre en sommeil)
+        if saison in saisons_exclues:
             continue
             
         saisons_traitees.add(saison)
@@ -2086,7 +2097,7 @@ async def get_presences_by_membre(membre_id: str):
     
     # Ajouter les saisons où le membre n'a pas de données mais devrait être compté
     for saison, config in sorted(configs_dict.items()):
-        if saison >= premiere_saison and saison not in saisons_traitees:
+        if saison >= premiere_saison and saison not in saisons_traitees and saison not in saisons_exclues:
             nb_aperos = config.get("nb_aperos", 0)
             nb_repas = config.get("nb_repas", 0)
             nb_anniversaires = config.get("nb_anniversaires", 0)
@@ -2122,6 +2133,7 @@ async def get_presences_by_membre(membre_id: str):
     return {
         "membre_id": membre_id,
         "premiere_saison": premiere_saison,
+        "saisons_exclues": list(saisons_exclues),
         "par_saison": stats,
         "totaux": {
             "presences_aperos": total_aperos,
@@ -2281,9 +2293,10 @@ async def get_statistiques_globales():
     """Statistiques globales de tous les membres
     
     IMPORTANT: Ne compte que les saisons à partir de l'entrée de chaque membre
+    et exclut les saisons où ils étaient en sommeil
     """
     # Récupérer tous les membres
-    members = await db.members.find({}, {"_id": 0, "id": 1, "nom_complet": 1, "numero_membre": 1, "annee_entree": 1}).to_list(100)
+    members = await db.members.find({}, {"_id": 0, "id": 1, "nom_complet": 1, "numero_membre": 1, "annee_entree": 1, "saisons_exclues": 1}).to_list(100)
     
     # Récupérer toutes les présences
     presences = await db.presences_membres.find({}, {"_id": 0}).to_list(10000)
@@ -2309,6 +2322,7 @@ async def get_statistiques_globales():
         # Calculer la première saison du membre (Saison 1 = 2013)
         annee_entree = member.get("annee_entree", 2013)
         premiere_saison = annee_entree - 2012
+        saisons_exclues = set(member.get("saisons_exclues", []))
         
         total_aperos = 0
         total_repas = 0
@@ -2325,6 +2339,9 @@ async def get_statistiques_globales():
             # IGNORER les saisons avant l'entrée du membre
             if saison < premiere_saison:
                 continue
+            # IGNORER les saisons exclues
+            if saison in saisons_exclues:
+                continue
                 
             saisons_traitees.add(saison)
             config = configs_dict.get(saison, {})
@@ -2336,9 +2353,9 @@ async def get_statistiques_globales():
             total_events_repas += config.get("nb_repas", 0)
             total_events_anniversaires += config.get("nb_anniversaires", 0)
         
-        # Ajouter les événements des saisons non traitées mais après l'entrée
+        # Ajouter les événements des saisons non traitées mais après l'entrée (hors exclues)
         for saison, config in configs_dict.items():
-            if saison >= premiere_saison and saison not in saisons_traitees:
+            if saison >= premiere_saison and saison not in saisons_traitees and saison not in saisons_exclues:
                 total_events_aperos += config.get("nb_aperos", 0)
                 total_events_repas += config.get("nb_repas", 0)
                 total_events_anniversaires += config.get("nb_anniversaires", 0)
@@ -2352,6 +2369,7 @@ async def get_statistiques_globales():
             "numero_membre": member["numero_membre"],
             "annee_entree": member.get("annee_entree"),
             "premiere_saison": premiere_saison,
+            "saisons_exclues": list(saisons_exclues),
             "presences_aperos": total_aperos,
             "total_aperos": total_events_aperos,
             "pct_aperos": round(total_aperos / total_events_aperos * 100, 1) if total_events_aperos > 0 else 0,
@@ -2451,6 +2469,7 @@ class MemberFullUpdate(BaseModel):
     email: Optional[str] = None
     is_president: Optional[bool] = None
     is_validated: Optional[bool] = None
+    saisons_exclues: Optional[List[int]] = None  # Saisons où le membre était en sommeil
 
 
 @api_router.put("/admin/members/{member_id}")
