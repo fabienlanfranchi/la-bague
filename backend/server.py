@@ -2225,6 +2225,105 @@ async def admin_update_member(member_id: str, input: MemberFullUpdate):
     return updated
 
 
+# ============ EXPORT / IMPORT - SAUVEGARDE DES DONNÉES ============
+
+@api_router.get("/export/all")
+async def export_all_data():
+    """Exporter toutes les données de l'application pour sauvegarde"""
+    try:
+        # Récupérer toutes les collections importantes
+        members = await db.members.find({}, {"_id": 0}).to_list(10000)
+        presences = await db.presences_membres.find({}, {"_id": 0}).to_list(100000)
+        saisons_config = await db.saisons_config.find({}, {"_id": 0}).to_list(100)
+        events = await db.events.find({}, {"_id": 0}).to_list(10000)
+        transactions = await db.transactions.find({}, {"_id": 0}).to_list(100000)
+        comptes = await db.comptes.find({}, {"_id": 0}).to_list(100)
+        messages = await db.messages.find({}, {"_id": 0}).to_list(10000)
+        notifications = await db.notifications.find({}, {"_id": 0}).to_list(100000)
+        reponses_sondages = await db.reponses_sondages.find({}, {"_id": 0}).to_list(100000)
+        message_templates = await db.message_templates.find({}, {"_id": 0}).to_list(1000)
+        
+        export_data = {
+            "export_date": datetime.now(timezone.utc).isoformat(),
+            "version": "1.0",
+            "data": {
+                "members": members,
+                "presences_membres": presences,
+                "saisons_config": saisons_config,
+                "events": events,
+                "transactions": transactions,
+                "comptes": comptes,
+                "messages": messages,
+                "notifications": notifications,
+                "reponses_sondages": reponses_sondages,
+                "message_templates": message_templates
+            },
+            "counts": {
+                "members": len(members),
+                "presences_membres": len(presences),
+                "saisons_config": len(saisons_config),
+                "events": len(events),
+                "transactions": len(transactions),
+                "comptes": len(comptes),
+                "messages": len(messages),
+                "notifications": len(notifications),
+                "reponses_sondages": len(reponses_sondages),
+                "message_templates": len(message_templates)
+            }
+        }
+        
+        return export_data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur lors de l'export: {str(e)}")
+
+
+class ImportData(BaseModel):
+    export_date: str
+    version: str
+    data: dict
+    counts: dict
+
+
+@api_router.post("/import/all")
+async def import_all_data(import_data: ImportData):
+    """Importer les données depuis une sauvegarde (REMPLACE les données existantes)"""
+    try:
+        data = import_data.data
+        results = {}
+        
+        # Importer chaque collection
+        collections_map = {
+            "members": db.members,
+            "presences_membres": db.presences_membres,
+            "saisons_config": db.saisons_config,
+            "events": db.events,
+            "transactions": db.transactions,
+            "comptes": db.comptes,
+            "messages": db.messages,
+            "notifications": db.notifications,
+            "reponses_sondages": db.reponses_sondages,
+            "message_templates": db.message_templates
+        }
+        
+        for collection_name, collection in collections_map.items():
+            if collection_name in data and data[collection_name]:
+                # Supprimer les données existantes
+                await collection.delete_many({})
+                # Insérer les nouvelles données
+                await collection.insert_many(data[collection_name])
+                results[collection_name] = len(data[collection_name])
+            else:
+                results[collection_name] = 0
+        
+        return {
+            "message": "Import réussi",
+            "import_date": import_data.export_date,
+            "imported_counts": results
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur lors de l'import: {str(e)}")
+
+
 # Include the router in the main app
 app.include_router(api_router)
 

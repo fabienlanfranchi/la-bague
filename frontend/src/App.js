@@ -16,6 +16,7 @@ import AssistantIA from './pages/AssistantIA';
 import Boutique from './pages/Boutique';
 import Sondages from './pages/Sondages';
 import Statistiques from './pages/Statistiques';
+import Sauvegarde from './pages/Sauvegarde';
 
 const Home = () => {
   // Sélectionner une photo aléatoire parmi les 10
@@ -182,6 +183,14 @@ function App() {
               element={
                 <AppLayout>
                   <Statistiques />
+                </AppLayout>
+              }
+            />
+            <Route
+              path="/sauvegarde"
+              element={
+                <AppLayout>
+                  <Sauvegarde />
                 </AppLayout>
               }
             />
