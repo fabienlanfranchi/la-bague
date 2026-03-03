@@ -333,7 +333,7 @@ async def create_member(input: MemberCreate):
 
 @api_router.get("/members", response_model=List[Member])
 async def get_members():
-    """Obtenir tous les membres avec % de présence calculé dynamiquement"""
+    """Obtenir tous les membres avec % de présence et étoiles calculés dynamiquement"""
     members = await db.members.find({}, {"_id": 0}).to_list(1000)
     
     # Récupérer toutes les présences et configs pour calculer les vrais %
@@ -349,7 +349,18 @@ async def get_members():
             presences_by_membre[membre_id] = []
         presences_by_membre[membre_id].append(p)
     
-    # Calculer le % réel pour chaque membre
+    # Fonction pour calculer les étoiles selon le %
+    def calculate_stars(percentage):
+        if percentage >= 75:
+            return 4
+        elif percentage >= 50:
+            return 3
+        elif percentage >= 25:
+            return 2
+        else:
+            return 1
+    
+    # Calculer le % réel et les étoiles pour chaque membre
     for member in members:
         membre_presences = presences_by_membre.get(member["id"], [])
         
@@ -366,7 +377,9 @@ async def get_members():
         # Mettre à jour le pourcentage calculé
         if total_events > 0:
             member["pourcentage_presences"] = round(total_presences / total_events * 100, 1)
-        # Si pas de données de présence, garder l'ancien % (données importées)
+            # Calculer les étoiles automatiquement
+            member["etoiles"] = calculate_stars(member["pourcentage_presences"])
+        # Si pas de données de présence, garder les anciennes valeurs (données importées)
         
         # Convert ISO string timestamps back to datetime objects
         if isinstance(member.get('created_at'), str):
@@ -379,7 +392,7 @@ async def get_members():
 
 @api_router.get("/members/{member_id}", response_model=Member)
 async def get_member(member_id: str):
-    """Obtenir un membre par ID avec % de présence calculé"""
+    """Obtenir un membre par ID avec % de présence et étoiles calculés"""
     member = await db.members.find_one({"id": member_id}, {"_id": 0})
     
     if not member:
@@ -402,6 +415,16 @@ async def get_member(member_id: str):
     
     if total_events > 0:
         member["pourcentage_presences"] = round(total_presences / total_events * 100, 1)
+        # Calculer les étoiles automatiquement
+        pct = member["pourcentage_presences"]
+        if pct >= 75:
+            member["etoiles"] = 4
+        elif pct >= 50:
+            member["etoiles"] = 3
+        elif pct >= 25:
+            member["etoiles"] = 2
+        else:
+            member["etoiles"] = 1
     
     # Convert ISO string timestamps back to datetime objects
     if isinstance(member.get('created_at'), str):
