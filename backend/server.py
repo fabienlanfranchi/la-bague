@@ -1589,6 +1589,570 @@ async def get_sondage_stats(message_id: str):
     }
 
 
+# ============ STATISTIQUES & PRÉSENCES - MODELS ============
+
+class SaisonConfig(BaseModel):
+    """Configuration d'une saison (nombre d'événements par type)"""
+    model_config = ConfigDict(extra="ignore")
+    
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    saison: int  # 1 à 14+
+    nb_aperos: int = 0
+    nb_repas: int = 0
+    nb_anniversaires: int = 0
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class SaisonConfigCreate(BaseModel):
+    saison: int
+    nb_aperos: int = 0
+    nb_repas: int = 0
+    nb_anniversaires: int = 0
+
+
+class SaisonConfigUpdate(BaseModel):
+    nb_aperos: Optional[int] = None
+    nb_repas: Optional[int] = None
+    nb_anniversaires: Optional[int] = None
+
+
+class PresenceMembre(BaseModel):
+    """Présences d'un membre pour une saison donnée"""
+    model_config = ConfigDict(extra="ignore")
+    
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    membre_id: str  # Lié au compte membre
+    saison: int
+    presences_aperos: int = 0
+    presences_repas: int = 0
+    presences_anniversaires: int = 0
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class PresenceMembreCreate(BaseModel):
+    membre_id: str
+    saison: int
+    presences_aperos: int = 0
+    presences_repas: int = 0
+    presences_anniversaires: int = 0
+
+
+class PresenceMembreUpdate(BaseModel):
+    presences_aperos: Optional[int] = None
+    presences_repas: Optional[int] = None
+    presences_anniversaires: Optional[int] = None
+
+
+class PresenceBulkUpdate(BaseModel):
+    """Pour mise à jour en masse d'une saison entière"""
+    saison: int
+    presences: List[dict]  # [{membre_id, presences_aperos, presences_repas, presences_anniversaires}]
+
+
+# ============ STATISTIQUES - ROUTES ============
+
+# -------- CONFIG SAISONS (nombre d'événements) --------
+
+@api_router.get("/saisons-config")
+async def get_saisons_config():
+    """Récupérer la config de toutes les saisons"""
+    configs = await db.saisons_config.find({}, {"_id": 0}).sort("saison", 1).to_list(100)
+    return configs
+
+
+@api_router.get("/saisons-config/{saison}")
+async def get_saison_config(saison: int):
+    """Récupérer la config d'une saison"""
+    config = await db.saisons_config.find_one({"saison": saison}, {"_id": 0})
+    if not config:
+        # Créer une config vide si elle n'existe pas
+        config = {
+            "id": str(uuid.uuid4()),
+            "saison": saison,
+            "nb_aperos": 0,
+            "nb_repas": 0,
+            "nb_anniversaires": 0,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.saisons_config.insert_one(config)
+    return config
+
+
+@api_router.post("/saisons-config")
+async def create_saison_config(input: SaisonConfigCreate):
+    """Créer ou mettre à jour la config d'une saison"""
+    existing = await db.saisons_config.find_one({"saison": input.saison})
+    
+    now = datetime.now(timezone.utc).isoformat()
+    
+    if existing:
+        # Mise à jour
+        await db.saisons_config.update_one(
+            {"saison": input.saison},
+            {"$set": {
+                "nb_aperos": input.nb_aperos,
+                "nb_repas": input.nb_repas,
+                "nb_anniversaires": input.nb_anniversaires,
+                "updated_at": now
+            }}
+        )
+    else:
+        # Création
+        doc = {
+            "id": str(uuid.uuid4()),
+            "saison": input.saison,
+            "nb_aperos": input.nb_aperos,
+            "nb_repas": input.nb_repas,
+            "nb_anniversaires": input.nb_anniversaires,
+            "created_at": now,
+            "updated_at": now
+        }
+        await db.saisons_config.insert_one(doc)
+    
+    config = await db.saisons_config.find_one({"saison": input.saison}, {"_id": 0})
+    return config
+
+
+@api_router.put("/saisons-config/{saison}")
+async def update_saison_config(saison: int, input: SaisonConfigUpdate):
+    """Mettre à jour la config d'une saison"""
+    existing = await db.saisons_config.find_one({"saison": saison})
+    
+    if not existing:
+        raise HTTPException(status_code=404, detail="Saison non trouvée")
+    
+    update_data = {k: v for k, v in input.model_dump().items() if v is not None}
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    await db.saisons_config.update_one({"saison": saison}, {"$set": update_data})
+    
+    config = await db.saisons_config.find_one({"saison": saison}, {"_id": 0})
+    return config
+
+
+# -------- PRÉSENCES MEMBRES --------
+
+@api_router.get("/presences")
+async def get_all_presences():
+    """Récupérer toutes les présences"""
+    presences = await db.presences_membres.find({}, {"_id": 0}).to_list(10000)
+    return presences
+
+
+@api_router.get("/presences/saison/{saison}")
+async def get_presences_by_saison(saison: int):
+    """Récupérer les présences pour une saison"""
+    presences = await db.presences_membres.find({"saison": saison}, {"_id": 0}).to_list(100)
+    
+    # Récupérer la config de la saison
+    config = await db.saisons_config.find_one({"saison": saison}, {"_id": 0})
+    
+    return {
+        "saison": saison,
+        "config": config,
+        "presences": presences
+    }
+
+
+@api_router.get("/presences/membre/{membre_id}")
+async def get_presences_by_membre(membre_id: str):
+    """Récupérer les présences d'un membre (toutes saisons)"""
+    presences = await db.presences_membres.find({"membre_id": membre_id}, {"_id": 0}).sort("saison", 1).to_list(100)
+    
+    # Récupérer toutes les configs de saisons
+    configs = await db.saisons_config.find({}, {"_id": 0}).to_list(100)
+    configs_dict = {c["saison"]: c for c in configs}
+    
+    # Calculer les statistiques
+    stats = []
+    total_aperos = 0
+    total_repas = 0
+    total_anniversaires = 0
+    total_events_aperos = 0
+    total_events_repas = 0
+    total_events_anniversaires = 0
+    
+    for p in presences:
+        saison = p["saison"]
+        config = configs_dict.get(saison, {})
+        
+        nb_aperos = config.get("nb_aperos", 0)
+        nb_repas = config.get("nb_repas", 0)
+        nb_anniversaires = config.get("nb_anniversaires", 0)
+        
+        pres_aperos = p.get("presences_aperos", 0)
+        pres_repas = p.get("presences_repas", 0)
+        pres_anniversaires = p.get("presences_anniversaires", 0)
+        
+        # Accumuler pour le total
+        total_aperos += pres_aperos
+        total_repas += pres_repas
+        total_anniversaires += pres_anniversaires
+        total_events_aperos += nb_aperos
+        total_events_repas += nb_repas
+        total_events_anniversaires += nb_anniversaires
+        
+        # Calculer les % par saison
+        pct_aperos = round(pres_aperos / nb_aperos * 100, 1) if nb_aperos > 0 else 0
+        pct_repas = round(pres_repas / nb_repas * 100, 1) if nb_repas > 0 else 0
+        pct_anniversaires = round(pres_anniversaires / nb_anniversaires * 100, 1) if nb_anniversaires > 0 else 0
+        
+        total_pres = pres_aperos + pres_repas + pres_anniversaires
+        total_events = nb_aperos + nb_repas + nb_anniversaires
+        pct_global = round(total_pres / total_events * 100, 1) if total_events > 0 else 0
+        
+        stats.append({
+            "saison": saison,
+            "presences_aperos": pres_aperos,
+            "nb_aperos": nb_aperos,
+            "pct_aperos": pct_aperos,
+            "presences_repas": pres_repas,
+            "nb_repas": nb_repas,
+            "pct_repas": pct_repas,
+            "presences_anniversaires": pres_anniversaires,
+            "nb_anniversaires": nb_anniversaires,
+            "pct_anniversaires": pct_anniversaires,
+            "pct_global_saison": pct_global
+        })
+    
+    # Calculer les totaux généraux
+    total_all_pres = total_aperos + total_repas + total_anniversaires
+    total_all_events = total_events_aperos + total_events_repas + total_events_anniversaires
+    
+    return {
+        "membre_id": membre_id,
+        "par_saison": stats,
+        "totaux": {
+            "presences_aperos": total_aperos,
+            "total_aperos": total_events_aperos,
+            "pct_aperos": round(total_aperos / total_events_aperos * 100, 1) if total_events_aperos > 0 else 0,
+            "presences_repas": total_repas,
+            "total_repas": total_events_repas,
+            "pct_repas": round(total_repas / total_events_repas * 100, 1) if total_events_repas > 0 else 0,
+            "presences_anniversaires": total_anniversaires,
+            "total_anniversaires": total_events_anniversaires,
+            "pct_anniversaires": round(total_anniversaires / total_events_anniversaires * 100, 1) if total_events_anniversaires > 0 else 0,
+            "presences_total": total_all_pres,
+            "events_total": total_all_events,
+            "pct_global": round(total_all_pres / total_all_events * 100, 1) if total_all_events > 0 else 0
+        }
+    }
+
+
+@api_router.post("/presences")
+async def create_or_update_presence(input: PresenceMembreCreate):
+    """Créer ou mettre à jour les présences d'un membre pour une saison"""
+    existing = await db.presences_membres.find_one({
+        "membre_id": input.membre_id,
+        "saison": input.saison
+    })
+    
+    now = datetime.now(timezone.utc).isoformat()
+    
+    if existing:
+        # Mise à jour
+        await db.presences_membres.update_one(
+            {"membre_id": input.membre_id, "saison": input.saison},
+            {"$set": {
+                "presences_aperos": input.presences_aperos,
+                "presences_repas": input.presences_repas,
+                "presences_anniversaires": input.presences_anniversaires,
+                "updated_at": now
+            }}
+        )
+    else:
+        # Création
+        doc = {
+            "id": str(uuid.uuid4()),
+            "membre_id": input.membre_id,
+            "saison": input.saison,
+            "presences_aperos": input.presences_aperos,
+            "presences_repas": input.presences_repas,
+            "presences_anniversaires": input.presences_anniversaires,
+            "created_at": now,
+            "updated_at": now
+        }
+        await db.presences_membres.insert_one(doc)
+    
+    presence = await db.presences_membres.find_one(
+        {"membre_id": input.membre_id, "saison": input.saison}, 
+        {"_id": 0}
+    )
+    return presence
+
+
+@api_router.put("/presences/{membre_id}/{saison}")
+async def update_presence(membre_id: str, saison: int, input: PresenceMembreUpdate):
+    """Mettre à jour les présences d'un membre pour une saison"""
+    existing = await db.presences_membres.find_one({
+        "membre_id": membre_id,
+        "saison": saison
+    })
+    
+    if not existing:
+        raise HTTPException(status_code=404, detail="Enregistrement de présence non trouvé")
+    
+    update_data = {k: v for k, v in input.model_dump().items() if v is not None}
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    await db.presences_membres.update_one(
+        {"membre_id": membre_id, "saison": saison},
+        {"$set": update_data}
+    )
+    
+    presence = await db.presences_membres.find_one(
+        {"membre_id": membre_id, "saison": saison}, 
+        {"_id": 0}
+    )
+    return presence
+
+
+@api_router.post("/presences/bulk")
+async def bulk_update_presences(input: PresenceBulkUpdate):
+    """Mise à jour en masse des présences pour une saison"""
+    saison = input.saison
+    now = datetime.now(timezone.utc).isoformat()
+    
+    updated_count = 0
+    created_count = 0
+    
+    for p in input.presences:
+        membre_id = p.get("membre_id")
+        if not membre_id:
+            continue
+        
+        existing = await db.presences_membres.find_one({
+            "membre_id": membre_id,
+            "saison": saison
+        })
+        
+        if existing:
+            await db.presences_membres.update_one(
+                {"membre_id": membre_id, "saison": saison},
+                {"$set": {
+                    "presences_aperos": p.get("presences_aperos", 0),
+                    "presences_repas": p.get("presences_repas", 0),
+                    "presences_anniversaires": p.get("presences_anniversaires", 0),
+                    "updated_at": now
+                }}
+            )
+            updated_count += 1
+        else:
+            doc = {
+                "id": str(uuid.uuid4()),
+                "membre_id": membre_id,
+                "saison": saison,
+                "presences_aperos": p.get("presences_aperos", 0),
+                "presences_repas": p.get("presences_repas", 0),
+                "presences_anniversaires": p.get("presences_anniversaires", 0),
+                "created_at": now,
+                "updated_at": now
+            }
+            await db.presences_membres.insert_one(doc)
+            created_count += 1
+    
+    return {
+        "message": f"Mise à jour terminée",
+        "saison": saison,
+        "updated": updated_count,
+        "created": created_count
+    }
+
+
+@api_router.delete("/presences/{membre_id}/{saison}")
+async def delete_presence(membre_id: str, saison: int):
+    """Supprimer les présences d'un membre pour une saison"""
+    result = await db.presences_membres.delete_one({
+        "membre_id": membre_id,
+        "saison": saison
+    })
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Enregistrement non trouvé")
+    
+    return {"message": "Présences supprimées"}
+
+
+# -------- STATISTIQUES GLOBALES --------
+
+@api_router.get("/statistiques/global")
+async def get_statistiques_globales():
+    """Statistiques globales de tous les membres"""
+    # Récupérer tous les membres
+    members = await db.members.find({}, {"_id": 0, "id": 1, "nom_complet": 1, "numero_membre": 1, "annee_entree": 1}).to_list(100)
+    
+    # Récupérer toutes les présences
+    presences = await db.presences_membres.find({}, {"_id": 0}).to_list(10000)
+    
+    # Récupérer toutes les configs de saisons
+    configs = await db.saisons_config.find({}, {"_id": 0}).to_list(100)
+    configs_dict = {c["saison"]: c for c in configs}
+    
+    # Regrouper les présences par membre
+    presences_by_membre = {}
+    for p in presences:
+        membre_id = p["membre_id"]
+        if membre_id not in presences_by_membre:
+            presences_by_membre[membre_id] = []
+        presences_by_membre[membre_id].append(p)
+    
+    # Calculer les stats pour chaque membre
+    stats = []
+    for member in members:
+        membre_id = member["id"]
+        membre_presences = presences_by_membre.get(membre_id, [])
+        
+        total_aperos = 0
+        total_repas = 0
+        total_anniversaires = 0
+        total_events_aperos = 0
+        total_events_repas = 0
+        total_events_anniversaires = 0
+        
+        for p in membre_presences:
+            saison = p["saison"]
+            config = configs_dict.get(saison, {})
+            
+            total_aperos += p.get("presences_aperos", 0)
+            total_repas += p.get("presences_repas", 0)
+            total_anniversaires += p.get("presences_anniversaires", 0)
+            total_events_aperos += config.get("nb_aperos", 0)
+            total_events_repas += config.get("nb_repas", 0)
+            total_events_anniversaires += config.get("nb_anniversaires", 0)
+        
+        total_pres = total_aperos + total_repas + total_anniversaires
+        total_events = total_events_aperos + total_events_repas + total_events_anniversaires
+        
+        stats.append({
+            "membre_id": membre_id,
+            "nom_complet": member["nom_complet"],
+            "numero_membre": member["numero_membre"],
+            "annee_entree": member.get("annee_entree"),
+            "presences_aperos": total_aperos,
+            "total_aperos": total_events_aperos,
+            "pct_aperos": round(total_aperos / total_events_aperos * 100, 1) if total_events_aperos > 0 else 0,
+            "presences_repas": total_repas,
+            "total_repas": total_events_repas,
+            "pct_repas": round(total_repas / total_events_repas * 100, 1) if total_events_repas > 0 else 0,
+            "presences_anniversaires": total_anniversaires,
+            "total_anniversaires": total_events_anniversaires,
+            "pct_anniversaires": round(total_anniversaires / total_events_anniversaires * 100, 1) if total_events_anniversaires > 0 else 0,
+            "presences_total": total_pres,
+            "events_total": total_events,
+            "pct_global": round(total_pres / total_events * 100, 1) if total_events > 0 else 0
+        })
+    
+    # Trier par % global décroissant
+    stats.sort(key=lambda x: x["pct_global"], reverse=True)
+    
+    return {
+        "membres": stats,
+        "saisons_config": configs
+    }
+
+
+@api_router.get("/statistiques/saison/{saison}")
+async def get_statistiques_saison(saison: int):
+    """Statistiques pour une saison spécifique avec tous les membres"""
+    # Récupérer tous les membres
+    members = await db.members.find({}, {"_id": 0, "id": 1, "nom_complet": 1, "numero_membre": 1, "annee_entree": 1}).to_list(100)
+    
+    # Récupérer la config de la saison
+    config = await db.saisons_config.find_one({"saison": saison}, {"_id": 0})
+    if not config:
+        config = {
+            "saison": saison,
+            "nb_aperos": 0,
+            "nb_repas": 0,
+            "nb_anniversaires": 0
+        }
+    
+    # Récupérer les présences de cette saison
+    presences = await db.presences_membres.find({"saison": saison}, {"_id": 0}).to_list(100)
+    presences_dict = {p["membre_id"]: p for p in presences}
+    
+    # Construire les stats pour chaque membre
+    stats = []
+    for member in members:
+        membre_id = member["id"]
+        presence = presences_dict.get(membre_id, {})
+        
+        pres_aperos = presence.get("presences_aperos", 0)
+        pres_repas = presence.get("presences_repas", 0)
+        pres_anniversaires = presence.get("presences_anniversaires", 0)
+        
+        nb_aperos = config.get("nb_aperos", 0)
+        nb_repas = config.get("nb_repas", 0)
+        nb_anniversaires = config.get("nb_anniversaires", 0)
+        
+        total_pres = pres_aperos + pres_repas + pres_anniversaires
+        total_events = nb_aperos + nb_repas + nb_anniversaires
+        
+        stats.append({
+            "membre_id": membre_id,
+            "nom_complet": member["nom_complet"],
+            "numero_membre": member["numero_membre"],
+            "presences_aperos": pres_aperos,
+            "presences_repas": pres_repas,
+            "presences_anniversaires": pres_anniversaires,
+            "pct_aperos": round(pres_aperos / nb_aperos * 100, 1) if nb_aperos > 0 else 0,
+            "pct_repas": round(pres_repas / nb_repas * 100, 1) if nb_repas > 0 else 0,
+            "pct_anniversaires": round(pres_anniversaires / nb_anniversaires * 100, 1) if nb_anniversaires > 0 else 0,
+            "pct_global": round(total_pres / total_events * 100, 1) if total_events > 0 else 0
+        })
+    
+    # Trier par numéro de membre
+    stats.sort(key=lambda x: x["numero_membre"])
+    
+    return {
+        "saison": saison,
+        "config": config,
+        "membres": stats
+    }
+
+
+# ============ ADMIN - ÉDITION COMPLÈTE DES MEMBRES ============
+
+class MemberFullUpdate(BaseModel):
+    """Mise à jour complète d'un membre par l'admin"""
+    numero_membre: Optional[int] = None
+    nom_complet: Optional[str] = None
+    fonction: Optional[str] = None
+    annee_entree: Optional[int] = None
+    saison_entree: Optional[str] = None
+    pourcentage_presences: Optional[float] = None
+    etoiles: Optional[int] = None
+    situation_cotisation: Optional[int] = None
+    autres_infos: Optional[str] = None
+    email: Optional[str] = None
+    is_president: Optional[bool] = None
+    is_validated: Optional[bool] = None
+
+
+@api_router.put("/admin/members/{member_id}")
+async def admin_update_member(member_id: str, input: MemberFullUpdate):
+    """Mise à jour complète d'un membre par l'admin (tous les champs)"""
+    existing = await db.members.find_one({"id": member_id}, {"_id": 0})
+    
+    if not existing:
+        raise HTTPException(status_code=404, detail="Membre non trouvé")
+    
+    # Préparer les données de mise à jour
+    update_data = {k: v for k, v in input.model_dump().items() if v is not None}
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    # Mettre à jour
+    await db.members.update_one({"id": member_id}, {"$set": update_data})
+    
+    # Récupérer le membre mis à jour
+    updated = await db.members.find_one({"id": member_id}, {"_id": 0})
+    
+    return updated
+
+
 # Include the router in the main app
 app.include_router(api_router)
 

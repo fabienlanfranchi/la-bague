@@ -15,6 +15,7 @@ import Cigarotheque from './pages/Cigarotheque';
 import AssistantIA from './pages/AssistantIA';
 import Boutique from './pages/Boutique';
 import Sondages from './pages/Sondages';
+import Statistiques from './pages/Statistiques';
 
 const Home = () => {
   // Sélectionner une photo aléatoire parmi les 10
@@ -173,6 +174,14 @@ function App() {
               element={
                 <AppLayout>
                   <Sondages />
+                </AppLayout>
+              }
+            />
+            <Route
+              path="/statistiques"
+              element={
+                <AppLayout>
+                  <Statistiques />
                 </AppLayout>
               }
             />

@@ -31,6 +31,8 @@ import {
 import { Star, Plus, Pencil, Trash2, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
+const API_URL = process.env.REACT_APP_BACKEND_URL;
+
 const MembersPage = () => {
   const [members, setMembers] = useState([]);
   const [filteredMembers, setFilteredMembers] = useState([]);
@@ -39,6 +41,7 @@ const MembersPage = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
   const [formData, setFormData] = useState({
+    numero_membre: 0,
     nom_complet: '',
     fonction: '',
     annee_entree: new Date().getFullYear(),
@@ -47,6 +50,8 @@ const MembersPage = () => {
     etoiles: 1,
     situation_cotisation: 0,
     autres_infos: '',
+    email: '',
+    is_president: false,
   });
 
   useEffect(() => {
@@ -79,6 +84,7 @@ const MembersPage = () => {
     if (member) {
       setEditingMember(member);
       setFormData({
+        numero_membre: member.numero_membre || 0,
         nom_complet: member.nom_complet,
         fonction: member.fonction,
         annee_entree: member.annee_entree,
@@ -87,10 +93,15 @@ const MembersPage = () => {
         etoiles: member.etoiles,
         situation_cotisation: member.situation_cotisation,
         autres_infos: member.autres_infos || '',
+        email: member.email || '',
+        is_president: member.is_president || false,
       });
     } else {
       setEditingMember(null);
+      // Calculer le prochain numéro de membre
+      const maxNumero = members.reduce((max, m) => Math.max(max, m.numero_membre || 0), 0);
       setFormData({
+        numero_membre: maxNumero + 1,
         nom_complet: '',
         fonction: '',
         annee_entree: new Date().getFullYear(),
@@ -99,6 +110,8 @@ const MembersPage = () => {
         etoiles: 1,
         situation_cotisation: 0,
         autres_infos: '',
+        email: '',
+        is_president: false,
       });
     }
     setDialogOpen(true);
@@ -108,7 +121,13 @@ const MembersPage = () => {
     e.preventDefault();
     try {
       if (editingMember) {
-        await api.updateMember(editingMember.id, formData);
+        // Utiliser la route admin pour une mise à jour complète
+        const response = await fetch(`${API_URL}/api/admin/members/${editingMember.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData)
+        });
+        if (!response.ok) throw new Error('Erreur mise à jour');
         toast.success('Membre mis à jour avec succès');
       } else {
         await api.createMember(formData);
@@ -211,8 +230,20 @@ const MembersPage = () => {
                   </DialogHeader>
 
                   <div className="grid gap-4 py-4 overflow-y-auto flex-1 px-1">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-4">
                       <div>
+                        <Label htmlFor="numero_membre">N° Membre *</Label>
+                        <Input
+                          id="numero_membre"
+                          type="number"
+                          value={formData.numero_membre}
+                          onChange={(e) =>
+                            setFormData({ ...formData, numero_membre: parseInt(e.target.value) })
+                          }
+                          required
+                        />
+                      </div>
+                      <div className="col-span-2">
                         <Label htmlFor="nom_complet">Nom complet *</Label>
                         <Input
                           id="nom_complet"
@@ -223,6 +254,9 @@ const MembersPage = () => {
                           required
                         />
                       </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="fonction">Fonction *</Label>
                         <Input
@@ -233,6 +267,18 @@ const MembersPage = () => {
                           }
                           placeholder="Ex: Président, Trésorier..."
                           required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="email">Email</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          value={formData.email}
+                          onChange={(e) =>
+                            setFormData({ ...formData, email: e.target.value })
+                          }
+                          placeholder="email@exemple.com"
                         />
                       </div>
                     </div>
@@ -276,7 +322,10 @@ const MembersPage = () => {
 
                     <div className="grid grid-cols-3 gap-4">
                       <div>
-                        <Label htmlFor="pourcentage_presences">% Présences</Label>
+                        <Label htmlFor="pourcentage_presences" className="flex items-center gap-1">
+                          % Présences
+                          <span className="text-xs text-gray-400">(ancien)</span>
+                        </Label>
                         <Input
                           id="pourcentage_presences"
                           type="number"
@@ -290,6 +339,8 @@ const MembersPage = () => {
                               pourcentage_presences: parseFloat(e.target.value),
                             })
                           }
+                          className="bg-gray-100"
+                          title="Ce champ est obsolète. Utilisez l'onglet Statistiques pour les vraies présences."
                         />
                       </div>
                       <div>
@@ -346,6 +397,22 @@ const MembersPage = () => {
                         placeholder="Informations supplémentaires..."
                       />
                     </div>
+
+                    {/* Option Président */}
+                    <div className="flex items-center space-x-2 p-3 bg-amber-50 rounded-lg border border-amber-200">
+                      <input
+                        type="checkbox"
+                        id="is_president"
+                        checked={formData.is_president}
+                        onChange={(e) =>
+                          setFormData({ ...formData, is_president: e.target.checked })
+                        }
+                        className="w-4 h-4 text-amber-600 border-amber-300 rounded focus:ring-amber-500"
+                      />
+                      <Label htmlFor="is_president" className="text-amber-800 font-medium cursor-pointer">
+                        Ce membre est le Président du club
+                      </Label>
+                    </div>
                   </div>
 
                   <DialogFooter className="flex-shrink-0 pt-4 border-t">
@@ -382,6 +449,7 @@ const MembersPage = () => {
             <Table>
               <TableHeader>
                 <TableRow className="border-[#D4A024]/20 hover:bg-[#D4A024]/5">
+                  <TableHead className="text-[#D4A024] font-serif w-12">#</TableHead>
                   <TableHead className="text-[#D4A024] font-serif">Nom</TableHead>
                   <TableHead className="text-[#D4A024] font-serif">Fonction</TableHead>
                   <TableHead className="text-[#D4A024] font-serif">Entrée</TableHead>
@@ -394,15 +462,21 @@ const MembersPage = () => {
               <TableBody>
                 {filteredMembers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-gray-500 py-8">
+                    <TableCell colSpan={8} className="text-center text-gray-500 py-8">
                       Aucun membre trouvé
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredMembers.map((member) => (
                     <TableRow key={member.id} data-testid={`member-row-${member.id}`} className="border-[#D4A024]/20 hover:bg-[#D4A024]/5">
+                      <TableCell className="text-gray-500 font-mono text-sm">
+                        {member.numero_membre}
+                      </TableCell>
                       <TableCell className="font-medium text-white">
                         {member.nom_complet}
+                        {member.is_president && (
+                          <span className="ml-2 text-xs bg-amber-600 text-white px-1.5 py-0.5 rounded">PRÉS.</span>
+                        )}
                       </TableCell>
                       <TableCell>
                         <span className="text-sm text-gray-400">

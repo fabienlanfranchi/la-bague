@@ -17,7 +17,8 @@ import {
   Sparkles,
   Instagram as InstagramIcon,
   ShoppingBag,
-  BarChart3
+  BarChart3,
+  PieChart
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -65,6 +66,7 @@ const Sidebar = () => {
     { path: '/boutique', label: 'Boutique', icon: ShoppingBag, adminOnly: false },
     { path: '/messages', label: 'Messages', icon: MessageSquare, adminOnly: false },
     { path: '/sondages', label: 'Sondages', icon: BarChart3, adminOnly: false },
+    { path: '/statistiques', label: 'Statistiques', icon: PieChart, adminOnly: true },
     { path: '/cigarotheque', label: 'Cigarthèque', icon: Book, adminOnly: false },
     { path: '/assistant-ia', label: 'Assistant IA', icon: Sparkles, adminOnly: false },
     { path: '/instagram', label: 'Instagram', icon: InstagramIcon, adminOnly: false, external: true },
