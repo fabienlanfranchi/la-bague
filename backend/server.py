@@ -333,11 +333,42 @@ async def create_member(input: MemberCreate):
 
 @api_router.get("/members", response_model=List[Member])
 async def get_members():
-    """Obtenir tous les membres"""
+    """Obtenir tous les membres avec % de présence calculé dynamiquement"""
     members = await db.members.find({}, {"_id": 0}).to_list(1000)
     
-    # Convert ISO string timestamps back to datetime objects
+    # Récupérer toutes les présences et configs pour calculer les vrais %
+    all_presences = await db.presences_membres.find({}, {"_id": 0}).to_list(10000)
+    all_configs = await db.saisons_config.find({}, {"_id": 0}).to_list(100)
+    
+    # Créer des dictionnaires pour accès rapide
+    configs_dict = {c["saison"]: c for c in all_configs}
+    presences_by_membre = {}
+    for p in all_presences:
+        membre_id = p["membre_id"]
+        if membre_id not in presences_by_membre:
+            presences_by_membre[membre_id] = []
+        presences_by_membre[membre_id].append(p)
+    
+    # Calculer le % réel pour chaque membre
     for member in members:
+        membre_presences = presences_by_membre.get(member["id"], [])
+        
+        total_presences = 0
+        total_events = 0
+        
+        for p in membre_presences:
+            saison = p["saison"]
+            config = configs_dict.get(saison, {})
+            
+            total_presences += p.get("presences_aperos", 0) + p.get("presences_repas", 0) + p.get("presences_anniversaires", 0)
+            total_events += config.get("nb_aperos", 0) + config.get("nb_repas", 0) + config.get("nb_anniversaires", 0)
+        
+        # Mettre à jour le pourcentage calculé
+        if total_events > 0:
+            member["pourcentage_presences"] = round(total_presences / total_events * 100, 1)
+        # Si pas de données de présence, garder l'ancien % (données importées)
+        
+        # Convert ISO string timestamps back to datetime objects
         if isinstance(member.get('created_at'), str):
             member['created_at'] = datetime.fromisoformat(member['created_at'])
         if isinstance(member.get('updated_at'), str):
@@ -348,11 +379,29 @@ async def get_members():
 
 @api_router.get("/members/{member_id}", response_model=Member)
 async def get_member(member_id: str):
-    """Obtenir un membre par ID"""
+    """Obtenir un membre par ID avec % de présence calculé"""
     member = await db.members.find_one({"id": member_id}, {"_id": 0})
     
     if not member:
         raise HTTPException(status_code=404, detail="Membre non trouvé")
+    
+    # Calculer le % réel de présence
+    presences = await db.presences_membres.find({"membre_id": member_id}, {"_id": 0}).to_list(100)
+    configs = await db.saisons_config.find({}, {"_id": 0}).to_list(100)
+    configs_dict = {c["saison"]: c for c in configs}
+    
+    total_presences = 0
+    total_events = 0
+    
+    for p in presences:
+        saison = p["saison"]
+        config = configs_dict.get(saison, {})
+        
+        total_presences += p.get("presences_aperos", 0) + p.get("presences_repas", 0) + p.get("presences_anniversaires", 0)
+        total_events += config.get("nb_aperos", 0) + config.get("nb_repas", 0) + config.get("nb_anniversaires", 0)
+    
+    if total_events > 0:
+        member["pourcentage_presences"] = round(total_presences / total_events * 100, 1)
     
     # Convert ISO string timestamps back to datetime objects
     if isinstance(member.get('created_at'), str):
