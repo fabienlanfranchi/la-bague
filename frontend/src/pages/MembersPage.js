@@ -28,10 +28,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Star, Plus, Pencil, Trash2, Search } from 'lucide-react';
+import { Star, Plus, Pencil, Trash2, Search, User, TrendingUp, Calendar, X, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
+
+// Saison en cours
+const SAISON_EN_COURS = 13;
 
 const MembersPage = () => {
   const [members, setMembers] = useState([]);
@@ -40,6 +43,12 @@ const MembersPage = () => {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
+  
+  // Pour la vue profil détaillé
+  const [selectedMember, setSelectedMember] = useState(null);
+  const [memberStats, setMemberStats] = useState(null);
+  const [loadingStats, setLoadingStats] = useState(false);
+  
   const [formData, setFormData] = useState({
     numero_membre: 0,
     nom_complet: '',
@@ -78,6 +87,46 @@ const MembersPage = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Charger les stats d'un membre
+  const loadMemberStats = async (memberId) => {
+    setLoadingStats(true);
+    try {
+      const response = await fetch(`${API_URL}/api/presences/membre/${memberId}`);
+      const data = await response.json();
+      setMemberStats(data);
+    } catch (error) {
+      console.error('Erreur chargement stats:', error);
+      setMemberStats(null);
+    }
+    setLoadingStats(false);
+  };
+
+  // Ouvrir le profil détaillé d'un membre
+  const handleViewMember = async (member) => {
+    setSelectedMember(member);
+    await loadMemberStats(member.id);
+  };
+
+  // Fermer le profil détaillé
+  const handleCloseMemberView = () => {
+    setSelectedMember(null);
+    setMemberStats(null);
+  };
+
+  // Calculer les étoiles selon le %
+  const getStarsFromPercentage = (pct) => {
+    if (pct >= 75) return 4;
+    if (pct >= 50) return 3;
+    if (pct >= 25) return 2;
+    return 1;
+  };
+
+  // Obtenir les stats de la saison en cours
+  const getCurrentSeasonStats = () => {
+    if (!memberStats?.par_saison) return null;
+    return memberStats.par_saison.find(s => s.saison === SAISON_EN_COURS);
   };
 
   const handleOpenDialog = (member = null) => {
@@ -468,7 +517,12 @@ const MembersPage = () => {
                   </TableRow>
                 ) : (
                   filteredMembers.map((member) => (
-                    <TableRow key={member.id} data-testid={`member-row-${member.id}`} className="border-[#D4A024]/20 hover:bg-[#D4A024]/5">
+                    <TableRow 
+                      key={member.id} 
+                      data-testid={`member-row-${member.id}`} 
+                      className="border-[#D4A024]/20 hover:bg-[#D4A024]/5 cursor-pointer"
+                      onClick={() => handleViewMember(member)}
+                    >
                       <TableCell className="text-gray-500 font-mono text-sm">
                         {member.numero_membre}
                       </TableCell>
@@ -507,7 +561,7 @@ const MembersPage = () => {
                         {getCotisationBadge(member.situation_cotisation)}
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end space-x-2">
+                        <div className="flex items-center justify-end space-x-2" onClick={(e) => e.stopPropagation()}>
                           <Button
                             variant="ghost"
                             size="sm"
@@ -535,6 +589,203 @@ const MembersPage = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Modal Profil Détaillé du Membre */}
+      {selectedMember && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={handleCloseMemberView}>
+          <Card 
+            className="bg-[#1a1a1a] border-2 border-[#D4A024] max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <CardHeader className="border-b border-[#D4A024]/30">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-2xl font-serif text-[#D4A024] flex items-center gap-3">
+                    <User className="w-6 h-6" />
+                    {selectedMember.nom_complet}
+                    {selectedMember.is_president && (
+                      <span className="text-sm bg-amber-600 text-white px-2 py-1 rounded">PRÉSIDENT</span>
+                    )}
+                  </CardTitle>
+                  <CardDescription className="text-gray-400 mt-1">
+                    {selectedMember.fonction} • Membre #{selectedMember.numero_membre} • Depuis {selectedMember.annee_entree}
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleCloseMemberView}
+                  className="text-gray-400 hover:text-white"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+            </CardHeader>
+            
+            <CardContent className="p-6 space-y-6">
+              {loadingStats ? (
+                <div className="text-center py-8 text-gray-400">Chargement des statistiques...</div>
+              ) : (
+                <>
+                  {/* ========== PRÉSENCE TOTAL ========== */}
+                  <div className="bg-gradient-to-r from-[#D4A024]/20 to-transparent rounded-lg p-5 border border-[#D4A024]/30">
+                    <h3 className="text-lg font-serif text-[#D4A024] mb-4 flex items-center gap-2">
+                      <TrendingUp className="w-5 h-5" />
+                      Présence Total
+                    </h3>
+                    
+                    {/* % Global et Étoiles */}
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-4">
+                        <span className="text-4xl font-bold text-white">
+                          {memberStats?.totaux?.pct_global || selectedMember.pourcentage_presences || 0}%
+                        </span>
+                        <div className="flex items-center gap-1">
+                          {[...Array(getStarsFromPercentage(memberStats?.totaux?.pct_global || selectedMember.pourcentage_presences || 0))].map((_, i) => (
+                            <Star key={i} className="w-6 h-6 text-yellow-400 fill-yellow-400" />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Détail par type */}
+                    <div className="grid grid-cols-4 gap-3 text-center">
+                      <div className="bg-black/30 rounded-lg p-3">
+                        <div className="text-amber-400 font-bold text-lg">
+                          {memberStats?.totaux?.presences_aperos || 0}/{memberStats?.totaux?.total_aperos || 0}
+                        </div>
+                        <div className="text-xs text-gray-400">Apéros</div>
+                      </div>
+                      <div className="bg-black/30 rounded-lg p-3">
+                        <div className="text-blue-400 font-bold text-lg">
+                          {memberStats?.totaux?.presences_repas || 0}/{memberStats?.totaux?.total_repas || 0}
+                        </div>
+                        <div className="text-xs text-gray-400">Repas</div>
+                      </div>
+                      <div className="bg-black/30 rounded-lg p-3">
+                        <div className="text-purple-400 font-bold text-lg">
+                          {memberStats?.totaux?.presences_anniversaires || 0}/{memberStats?.totaux?.total_anniversaires || 0}
+                        </div>
+                        <div className="text-xs text-gray-400">Anniversaires</div>
+                      </div>
+                      <div className="bg-[#D4A024]/20 rounded-lg p-3 border border-[#D4A024]/50">
+                        <div className="text-[#D4A024] font-bold text-lg">
+                          {memberStats?.totaux?.presences_total || 0}/{memberStats?.totaux?.events_total || 0}
+                        </div>
+                        <div className="text-xs text-gray-400">Total</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ========== SAISON EN COURS ========== */}
+                  <div className="bg-gradient-to-r from-green-900/20 to-transparent rounded-lg p-5 border border-green-600/30">
+                    <h3 className="text-lg font-serif text-green-400 mb-4 flex items-center gap-2">
+                      <Calendar className="w-5 h-5" />
+                      Saison en cours ({SAISON_EN_COURS})
+                    </h3>
+                    
+                    {(() => {
+                      const saisonStats = getCurrentSeasonStats();
+                      if (!saisonStats) {
+                        return (
+                          <div className="text-center py-4 text-gray-500">
+                            Pas de données pour la saison {SAISON_EN_COURS}
+                          </div>
+                        );
+                      }
+                      
+                      return (
+                        <>
+                          {/* % Saison */}
+                          <div className="flex items-center gap-4 mb-4">
+                            <span className="text-3xl font-bold text-white">
+                              {saisonStats.pct_global_saison || 0}%
+                            </span>
+                            <div className="flex items-center gap-1">
+                              {[...Array(getStarsFromPercentage(saisonStats.pct_global_saison || 0))].map((_, i) => (
+                                <Star key={i} className="w-5 h-5 text-yellow-400 fill-yellow-400" />
+                              ))}
+                            </div>
+                          </div>
+                          
+                          {/* Détail saison */}
+                          <div className="grid grid-cols-4 gap-3 text-center">
+                            <div className="bg-black/30 rounded-lg p-3">
+                              <div className="text-amber-400 font-bold">
+                                {saisonStats.presences_aperos || 0}/{saisonStats.nb_aperos || 0}
+                              </div>
+                              <div className="text-xs text-gray-400">Apéros</div>
+                            </div>
+                            <div className="bg-black/30 rounded-lg p-3">
+                              <div className="text-blue-400 font-bold">
+                                {saisonStats.presences_repas || 0}/{saisonStats.nb_repas || 0}
+                              </div>
+                              <div className="text-xs text-gray-400">Repas</div>
+                            </div>
+                            <div className="bg-black/30 rounded-lg p-3">
+                              <div className="text-purple-400 font-bold">
+                                {saisonStats.presences_anniversaires || 0}/{saisonStats.nb_anniversaires || 0}
+                              </div>
+                              <div className="text-xs text-gray-400">Anniversaires</div>
+                            </div>
+                            <div className="bg-green-900/30 rounded-lg p-3 border border-green-600/50">
+                              <div className="text-green-400 font-bold">
+                                {(saisonStats.presences_aperos || 0) + (saisonStats.presences_repas || 0) + (saisonStats.presences_anniversaires || 0)}/
+                                {(saisonStats.nb_aperos || 0) + (saisonStats.nb_repas || 0) + (saisonStats.nb_anniversaires || 0)}
+                              </div>
+                              <div className="text-xs text-gray-400">Saison</div>
+                            </div>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+
+                  {/* ========== COTISATIONS ========== */}
+                  <div className="bg-gradient-to-r from-gray-800/50 to-transparent rounded-lg p-5 border border-gray-600/30">
+                    <h3 className="text-lg font-serif text-gray-300 mb-3">Cotisations</h3>
+                    <div className="flex items-center gap-4">
+                      {selectedMember.situation_cotisation === 0 ? (
+                        <span className="text-green-400 font-semibold">✓ À jour</span>
+                      ) : (
+                        <span className="text-red-400 font-semibold">
+                          {selectedMember.situation_cotisation} saison(s) en attente
+                        </span>
+                      )}
+                    </div>
+                    {selectedMember.autres_infos && (
+                      <p className="text-gray-500 text-sm mt-3 italic">
+                        {selectedMember.autres_infos}
+                      </p>
+                    )}
+                  </div>
+                </>
+              )}
+              
+              {/* Boutons d'action */}
+              <div className="flex gap-3 pt-4 border-t border-[#D4A024]/20">
+                <Button
+                  variant="outline"
+                  className="flex-1 border-[#D4A024] text-[#D4A024] hover:bg-[#D4A024]/10"
+                  onClick={() => {
+                    handleCloseMemberView();
+                    handleOpenDialog(selectedMember);
+                  }}
+                >
+                  <Pencil className="w-4 h-4 mr-2" />
+                  Modifier
+                </Button>
+                <Button
+                  className="flex-1 bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020]"
+                  onClick={handleCloseMemberView}
+                >
+                  Fermer
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };
