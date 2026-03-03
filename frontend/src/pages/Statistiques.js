@@ -99,7 +99,7 @@ export default function Statistiques() {
 
   // Mettre à jour la config de la saison
   const handleConfigChange = (field, value) => {
-    const numValue = parseInt(value) || 0;
+    const numValue = value === '' ? 0 : parseInt(value) || 0;
     setSaisonsConfig(prev => ({
       ...prev,
       [selectedSaison]: {
@@ -113,7 +113,7 @@ export default function Statistiques() {
 
   // Mettre à jour les présences d'un membre
   const handlePresenceChange = (membreId, field, value) => {
-    const numValue = parseInt(value) || 0;
+    const numValue = value === '' ? 0 : parseInt(value) || 0;
     const config = getCurrentConfig();
     
     // Validation: ne pas dépasser le nombre d'événements
@@ -133,6 +133,9 @@ export default function Statistiques() {
     }));
     setHasChanges(true);
   };
+
+  // Afficher la valeur pour les inputs (vide si 0)
+  const displayValue = (val) => val === 0 ? '' : val;
 
   // Sauvegarder toutes les modifications
   const handleSave = async () => {
@@ -298,9 +301,10 @@ export default function Statistiques() {
                   <Input
                     type="number"
                     min="0"
-                    value={config.nb_aperos || 0}
+                    value={displayValue(config.nb_aperos || 0)}
                     onChange={(e) => handleConfigChange('nb_aperos', e.target.value)}
                     className="text-center text-lg font-semibold"
+                    placeholder="0"
                   />
                 </div>
                 <div>
@@ -310,9 +314,10 @@ export default function Statistiques() {
                   <Input
                     type="number"
                     min="0"
-                    value={config.nb_repas || 0}
+                    value={displayValue(config.nb_repas || 0)}
                     onChange={(e) => handleConfigChange('nb_repas', e.target.value)}
                     className="text-center text-lg font-semibold"
+                    placeholder="0"
                   />
                 </div>
                 <div>
@@ -322,9 +327,10 @@ export default function Statistiques() {
                   <Input
                     type="number"
                     min="0"
-                    value={config.nb_anniversaires || 0}
+                    value={displayValue(config.nb_anniversaires || 0)}
                     onChange={(e) => handleConfigChange('nb_anniversaires', e.target.value)}
                     className="text-center text-lg font-semibold"
+                    placeholder="0"
                   />
                 </div>
               </div>
@@ -397,9 +403,10 @@ export default function Statistiques() {
                               type="number"
                               min="0"
                               max={config.nb_aperos || 999}
-                              value={pres.presences_aperos || 0}
+                              value={displayValue(pres.presences_aperos || 0)}
                               onChange={(e) => handlePresenceChange(membre.id, 'presences_aperos', e.target.value)}
                               className="w-20 mx-auto text-center"
+                              placeholder="0"
                               data-testid={`input-aperos-${membre.numero_membre}`}
                             />
                           </td>
@@ -408,9 +415,10 @@ export default function Statistiques() {
                               type="number"
                               min="0"
                               max={config.nb_repas || 999}
-                              value={pres.presences_repas || 0}
+                              value={displayValue(pres.presences_repas || 0)}
                               onChange={(e) => handlePresenceChange(membre.id, 'presences_repas', e.target.value)}
                               className="w-20 mx-auto text-center"
+                              placeholder="0"
                               data-testid={`input-repas-${membre.numero_membre}`}
                             />
                           </td>
@@ -419,9 +427,10 @@ export default function Statistiques() {
                               type="number"
                               min="0"
                               max={config.nb_anniversaires || 999}
-                              value={pres.presences_anniversaires || 0}
+                              value={displayValue(pres.presences_anniversaires || 0)}
                               onChange={(e) => handlePresenceChange(membre.id, 'presences_anniversaires', e.target.value)}
                               className="w-20 mx-auto text-center"
+                              placeholder="0"
                               data-testid={`input-anniversaires-${membre.numero_membre}`}
                             />
                           </td>
