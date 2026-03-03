@@ -1012,7 +1012,11 @@ async def get_evenements():
 
 @api_router.post("/evenements", response_model=Evenement)
 async def create_evenement(input: EvenementCreate):
-    """Créer un nouvel événement"""
+    """Créer un nouvel événement
+    
+    AUTOMATISATION: Met à jour automatiquement le nombre d'événements de la saison
+    """
+    now = datetime.now(timezone.utc).isoformat()
     evt_obj = Evenement(**input.model_dump())
     
     doc = evt_obj.model_dump()
@@ -1020,6 +1024,41 @@ async def create_evenement(input: EvenementCreate):
     doc['created_at'] = doc['created_at'].isoformat()
     
     await db.evenements.insert_one(doc)
+    
+    # ========== AUTOMATISATION: Mettre à jour la config de la saison ==========
+    if evt_obj.saison and evt_obj.type_sondage:
+        type_field_map = {
+            "apero": "nb_aperos",
+            "apéro": "nb_aperos",
+            "repas": "nb_repas",
+            "anniversaire": "nb_anniversaires"
+        }
+        config_field = type_field_map.get(evt_obj.type_sondage.lower())
+        
+        if config_field:
+            # Vérifier si la config de saison existe
+            saison_config = await db.saisons_config.find_one({"saison": evt_obj.saison})
+            
+            if saison_config:
+                # Incrémenter le compteur
+                await db.saisons_config.update_one(
+                    {"saison": evt_obj.saison},
+                    {"$inc": {config_field: 1}, "$set": {"updated_at": now}}
+                )
+            else:
+                # Créer la config avec 1 événement
+                new_config = {
+                    "id": str(uuid.uuid4()),
+                    "saison": evt_obj.saison,
+                    "nb_aperos": 1 if config_field == "nb_aperos" else 0,
+                    "nb_repas": 1 if config_field == "nb_repas" else 0,
+                    "nb_anniversaires": 1 if config_field == "nb_anniversaires" else 0,
+                    "created_at": now,
+                    "updated_at": now
+                }
+                await db.saisons_config.insert_one(new_config)
+    # ========== FIN AUTOMATISATION ==========
+    
     return evt_obj
 
 
@@ -1248,7 +1287,12 @@ class EvenementCreateSimple(BaseModel):
 
 @api_router.post("/evenements/simple")
 async def create_evenement_simple(input: EvenementCreateSimple):
-    """Créer un événement simplifié (pour l'historique)"""
+    """Créer un événement simplifié (pour l'historique)
+    
+    AUTOMATISATION: Met à jour automatiquement le nombre d'événements de la saison
+    """
+    now = datetime.now(timezone.utc).isoformat()
+    
     # Déterminer l'objet selon le type
     type_to_objet = {
         'repas': 'Repas',
@@ -1273,6 +1317,39 @@ async def create_evenement_simple(input: EvenementCreateSimple):
     
     await db.evenements.insert_one(doc)
     
+    # ========== AUTOMATISATION: Mettre à jour la config de la saison ==========
+    type_field_map = {
+        "apero": "nb_aperos",
+        "apéro": "nb_aperos",
+        "repas": "nb_repas",
+        "anniversaire": "nb_anniversaires"
+    }
+    config_field = type_field_map.get(input.type_sondage.lower())
+    
+    if config_field:
+        # Vérifier si la config de saison existe
+        saison_config = await db.saisons_config.find_one({"saison": input.saison})
+        
+        if saison_config:
+            # Incrémenter le compteur
+            await db.saisons_config.update_one(
+                {"saison": input.saison},
+                {"$inc": {config_field: 1}, "$set": {"updated_at": now}}
+            )
+        else:
+            # Créer la config avec 1 événement
+            new_config = {
+                "id": str(uuid.uuid4()),
+                "saison": input.saison,
+                "nb_aperos": 1 if config_field == "nb_aperos" else 0,
+                "nb_repas": 1 if config_field == "nb_repas" else 0,
+                "nb_anniversaires": 1 if config_field == "nb_anniversaires" else 0,
+                "created_at": now,
+                "updated_at": now
+            }
+            await db.saisons_config.insert_one(new_config)
+    # ========== FIN AUTOMATISATION ==========
+    
     # Récupérer sans _id pour éviter ObjectId
     created_evt = await db.evenements.find_one({"id": evt_obj.id}, {"_id": 0})
     
@@ -1295,7 +1372,11 @@ class ReponseSondageEvenement(BaseModel):
 
 @api_router.post("/reponses-sondages")
 async def submit_reponse_sondage(input: ReponseSondageEvenement):
-    """Soumettre ou mettre à jour une réponse au sondage d'un événement"""
+    """Soumettre ou mettre à jour une réponse au sondage d'un événement
+    
+    AUTOMATISATION DES STATISTIQUES:
+    - Met à jour automatiquement les présences du membre dans la saison correspondante
+    """
     now = datetime.now(timezone.utc).isoformat()
     
     # Récupérer le nom du membre
@@ -1303,8 +1384,10 @@ async def submit_reponse_sondage(input: ReponseSondageEvenement):
     membre_nom = membre.get("nom_complet", "Un membre") if membre else "Un membre"
     
     # Récupérer les infos de l'événement
-    evenement = await db.evenements.find_one({"id": input.evenement_id}, {"objet": 1, "date": 1, "_id": 0})
+    evenement = await db.evenements.find_one({"id": input.evenement_id}, {"objet": 1, "date": 1, "type_sondage": 1, "saison": 1, "_id": 0})
     evt_objet = evenement.get("objet", "l'événement") if evenement else "l'événement"
+    evt_type = evenement.get("type_sondage", "").lower() if evenement else ""
+    evt_saison = evenement.get("saison") if evenement else None
     
     # Vérifier si une réponse existe déjà
     existing = await db.reponses_evenements.find_one({
@@ -1312,6 +1395,7 @@ async def submit_reponse_sondage(input: ReponseSondageEvenement):
         "membre_id": input.membre_id
     })
     
+    old_present = existing.get("present", False) if existing else False
     action_text = "a modifié sa réponse" if existing else "a répondu"
     reponse_text = "PRÉSENT" if input.present else "ABSENT"
     
@@ -1341,6 +1425,70 @@ async def submit_reponse_sondage(input: ReponseSondageEvenement):
             "updated_at": now
         }
         await db.reponses_evenements.insert_one(doc)
+    
+    # ========== AUTOMATISATION DES STATISTIQUES DE PRÉSENCE ==========
+    if evt_saison and evt_type:
+        # Déterminer le champ de présence à mettre à jour
+        type_field_map = {
+            "apero": "presences_aperos",
+            "apéro": "presences_aperos",
+            "repas": "presences_repas",
+            "anniversaire": "presences_anniversaires"
+        }
+        presence_field = type_field_map.get(evt_type)
+        
+        if presence_field:
+            # Récupérer ou créer l'enregistrement de présence du membre pour cette saison
+            membre_presence = await db.presences_membres.find_one({
+                "membre_id": input.membre_id,
+                "saison": evt_saison
+            })
+            
+            if not membre_presence:
+                # Créer un nouvel enregistrement
+                membre_presence = {
+                    "id": str(uuid.uuid4()),
+                    "membre_id": input.membre_id,
+                    "saison": evt_saison,
+                    "presences_aperos": 0,
+                    "presences_repas": 0,
+                    "presences_anniversaires": 0,
+                    "created_at": now,
+                    "updated_at": now
+                }
+                await db.presences_membres.insert_one(membre_presence)
+            
+            # Calculer le delta de présence
+            # Si nouvelle réponse: +1 si présent
+            # Si modification: +1 si passe à présent, -1 si passe à absent
+            if not existing:
+                # Nouvelle réponse
+                if input.present:
+                    delta = 1
+                else:
+                    delta = 0  # Absent = on ne compte pas
+            else:
+                # Modification
+                if input.present and not old_present:
+                    delta = 1  # Passe de absent à présent
+                elif not input.present and old_present:
+                    delta = -1  # Passe de présent à absent
+                else:
+                    delta = 0  # Pas de changement
+            
+            if delta != 0:
+                # Mettre à jour les présences du membre
+                current_value = membre_presence.get(presence_field, 0)
+                new_value = max(0, current_value + delta)  # Jamais négatif
+                
+                await db.presences_membres.update_one(
+                    {"membre_id": input.membre_id, "saison": evt_saison},
+                    {"$set": {
+                        presence_field: new_value,
+                        "updated_at": now
+                    }}
+                )
+    # ========== FIN AUTOMATISATION ==========
     
     # Créer une notification pour l'admin (président)
     president = await db.members.find_one({"fonction": "Président"}, {"id": 1, "_id": 0})
