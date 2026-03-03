@@ -667,15 +667,21 @@ const MembersPage = () => {
                 <div className="text-center py-8 text-gray-400">Chargement des statistiques...</div>
               ) : (
                 <>
-                  {/* ========== PRÉSENCE TOTAL ========== */}
-                  <div className="bg-gradient-to-r from-[#D4A024]/20 to-transparent rounded-lg p-5 border border-[#D4A024]/30">
-                    <h3 className="text-lg font-serif text-[#D4A024] mb-4 flex items-center gap-2">
-                      <TrendingUp className="w-5 h-5" />
-                      Présence Total
+                  {/* ========== PRÉSENCE TOTAL (cliquable) ========== */}
+                  <div 
+                    className="bg-gradient-to-r from-[#D4A024]/20 to-transparent rounded-lg p-5 border border-[#D4A024]/30 cursor-pointer hover:border-[#D4A024]/60 transition-colors"
+                    onClick={() => setShowPresenceDetail(!showPresenceDetail)}
+                  >
+                    <h3 className="text-lg font-serif text-[#D4A024] mb-4 flex items-center justify-between">
+                      <span className="flex items-center gap-2">
+                        <TrendingUp className="w-5 h-5" />
+                        Présence Total
+                      </span>
+                      <ChevronRight className={`w-5 h-5 text-[#D4A024] transition-transform ${showPresenceDetail ? 'rotate-90' : ''}`} />
                     </h3>
                     
-                    {/* % Global et Étoiles - TOTAL EN HAUT */}
-                    <div className="flex items-center justify-between mb-4 p-3 bg-[#D4A024]/10 rounded-lg border border-[#D4A024]/30">
+                    {/* % Global et Étoiles + Total */}
+                    <div className="flex items-center justify-between p-3 bg-[#D4A024]/10 rounded-lg border border-[#D4A024]/30">
                       <div className="flex items-center gap-4">
                         <span className="text-4xl font-bold text-white">
                           {memberStats?.totaux?.pct_global || selectedMember.pourcentage_presences || 0}%
@@ -686,56 +692,44 @@ const MembersPage = () => {
                           ))}
                         </div>
                       </div>
-                      <div className="grid grid-cols-4 gap-4 text-center">
-                        <div>
-                          <div className="text-amber-400 font-bold">{memberStats?.totaux?.presences_aperos || 0}/{memberStats?.totaux?.total_aperos || 0}</div>
-                          <div className="text-xs text-gray-400">Apéros</div>
+                      <div className="text-right">
+                        <div className="text-[#D4A024] font-bold text-2xl">
+                          {memberStats?.totaux?.presences_total || 0}/{memberStats?.totaux?.events_total || 0}
                         </div>
-                        <div>
-                          <div className="text-blue-400 font-bold">{memberStats?.totaux?.presences_repas || 0}/{memberStats?.totaux?.total_repas || 0}</div>
-                          <div className="text-xs text-gray-400">Repas</div>
-                        </div>
-                        <div>
-                          <div className="text-purple-400 font-bold">{memberStats?.totaux?.presences_anniversaires || 0}/{memberStats?.totaux?.total_anniversaires || 0}</div>
-                          <div className="text-xs text-gray-400">Anniv.</div>
-                        </div>
-                        <div>
-                          <div className="text-[#D4A024] font-bold">{memberStats?.totaux?.presences_total || 0}/{memberStats?.totaux?.events_total || 0}</div>
-                          <div className="text-xs text-gray-400">Total</div>
-                        </div>
+                        <div className="text-xs text-gray-400">Présences / Événements</div>
                       </div>
                     </div>
                     
-                    {/* Tableau détaillé par saison */}
-                    {memberStats?.par_saison && memberStats.par_saison.length > 0 && (
-                      <div className="overflow-x-auto mt-4">
+                    {/* Tableau simplifié par saison (visible au clic) */}
+                    {showPresenceDetail && memberStats?.par_saison && memberStats.par_saison.length > 0 && (
+                      <div className="overflow-x-auto mt-4" onClick={(e) => e.stopPropagation()}>
                         <table className="w-full text-sm">
                           <thead className="bg-black/40">
                             <tr>
-                              <th className="px-3 py-2 text-left text-[#D4A024] font-semibold">Saison</th>
-                              <th className="px-3 py-2 text-center text-amber-400 font-semibold">Apéros</th>
-                              <th className="px-3 py-2 text-center text-blue-400 font-semibold">Repas</th>
-                              <th className="px-3 py-2 text-center text-purple-400 font-semibold">Anniv.</th>
-                              <th className="px-3 py-2 text-center text-[#D4A024] font-semibold">% Saison</th>
+                              <th className="px-4 py-2 text-left text-[#D4A024] font-semibold">Saison</th>
+                              <th className="px-4 py-2 text-center text-gray-300 font-semibold">Présences / Événements</th>
+                              <th className="px-4 py-2 text-center text-[#D4A024] font-semibold">%</th>
                             </tr>
                           </thead>
                           <tbody>
-                            {memberStats.par_saison.map((s, idx) => (
-                              <tr key={s.saison} className={idx % 2 === 0 ? 'bg-black/20' : 'bg-black/10'}>
-                                <td className="px-3 py-2 text-white font-medium">S{s.saison}</td>
-                                <td className="px-3 py-2 text-center text-amber-400">{s.presences_aperos}/{s.nb_aperos}</td>
-                                <td className="px-3 py-2 text-center text-blue-400">{s.presences_repas}/{s.nb_repas}</td>
-                                <td className="px-3 py-2 text-center text-purple-400">{s.presences_anniversaires}/{s.nb_anniversaires}</td>
-                                <td className="px-3 py-2 text-center">
-                                  <span className={`font-bold ${
-                                    s.pct_global_saison >= 75 ? 'text-green-400' :
-                                    s.pct_global_saison >= 50 ? 'text-[#D4A024]' :
-                                    s.pct_global_saison >= 25 ? 'text-orange-400' :
-                                    'text-red-400'
-                                  }`}>{s.pct_global_saison}%</span>
-                                </td>
-                              </tr>
-                            ))}
+                            {memberStats.par_saison.map((s, idx) => {
+                              const totalPres = (s.presences_aperos || 0) + (s.presences_repas || 0) + (s.presences_anniversaires || 0);
+                              const totalEvents = (s.nb_aperos || 0) + (s.nb_repas || 0) + (s.nb_anniversaires || 0);
+                              return (
+                                <tr key={s.saison} className={idx % 2 === 0 ? 'bg-black/20' : 'bg-black/10'}>
+                                  <td className="px-4 py-2 text-white font-medium">Saison {s.saison}</td>
+                                  <td className="px-4 py-2 text-center text-gray-300">{totalPres}/{totalEvents}</td>
+                                  <td className="px-4 py-2 text-center">
+                                    <span className={`font-bold ${
+                                      s.pct_global_saison >= 75 ? 'text-green-400' :
+                                      s.pct_global_saison >= 50 ? 'text-[#D4A024]' :
+                                      s.pct_global_saison >= 25 ? 'text-orange-400' :
+                                      'text-red-400'
+                                    }`}>{s.pct_global_saison}%</span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>
