@@ -48,6 +48,7 @@ const MembersPage = () => {
   const [selectedMember, setSelectedMember] = useState(null);
   const [memberStats, setMemberStats] = useState(null);
   const [loadingStats, setLoadingStats] = useState(false);
+  const [showPresenceDetail, setShowPresenceDetail] = useState(false);
   
   const [formData, setFormData] = useState({
     numero_membre: 0,
@@ -107,6 +108,7 @@ const MembersPage = () => {
   // Ouvrir le profil détaillé d'un membre
   const handleViewMember = async (member) => {
     setSelectedMember(member);
+    setShowPresenceDetail(false);  // Réinitialiser
     await loadMemberStats(member.id);
   };
 

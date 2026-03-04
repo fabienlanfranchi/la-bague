@@ -6,6 +6,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
+import math
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from typing import List, Optional
@@ -19,6 +20,22 @@ load_dotenv(ROOT_DIR / '.env')
 
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# Fonction d'arrondi personnalisée
+# - 0.1 à 0.4 → arrondi à l'inférieur
+# - 0.5 → on garde
+# - 0.6 à 0.9 → arrondi au supérieur
+def custom_round(value):
+    """Arrondi personnalisé pour les pourcentages"""
+    decimal_part = value - int(value)
+    decimal_first = round((decimal_part * 10) % 10)
+    
+    if decimal_first <= 4:
+        return math.floor(value)
+    elif decimal_first >= 6:
+        return math.ceil(value)
+    else:  # 0.5
+        return round(value, 1)
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
