@@ -133,7 +133,9 @@ const DashboardMembre = ({ prochainEvenement, currentMember }) => {
     const dateEvt = new Date(evenement.date);
     
     if (evenement.type_sondage === 'repas' || evenement.objet?.toLowerCase().includes('repas')) {
-      dateEvt.setHours(21, 30, 0, 0);
+      // Repas : minuit (00:00 du jour suivant) pour pouvoir consulter les réponses en cas de conflit
+      dateEvt.setDate(dateEvt.getDate() + 1);
+      dateEvt.setHours(0, 0, 0, 0);
       return dateEvt;
     } else if (evenement.type_sondage === 'apero' || evenement.objet?.toLowerCase().includes('apéro')) {
       dateEvt.setHours(19, 0, 0, 0);

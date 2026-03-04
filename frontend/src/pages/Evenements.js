@@ -39,6 +39,11 @@ const Evenements = () => {
   // État pour l'édition en mode tableau
   const [tableEditData, setTableEditData] = useState({});
   
+  // État pour afficher la liste des répondants
+  const [showRepondantsModal, setShowRepondantsModal] = useState(false);
+  const [repondantsData, setRepondantsData] = useState({ evenement: null, reponses: [], membres: [] });
+  const [loadingRepondants, setLoadingRepondants] = useState(false);
+  
   // État pour l'édition
   const [editingEvent, setEditingEvent] = useState(null);
   const [editForm, setEditForm] = useState({
@@ -87,6 +92,42 @@ const Evenements = () => {
       toast.error('Erreur lors du chargement des événements');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Charger les réponses d'un événement pour voir qui a répondu quoi
+  const loadRepondants = async (evenement) => {
+    setLoadingRepondants(true);
+    setShowRepondantsModal(true);
+    try {
+      // Charger les réponses pour cet événement
+      const reponsesRes = await axios.get(`${API}/reponses-sondages/${evenement.id}`);
+      const reponsesData = reponsesRes.data || {};
+      const reponses = reponsesData.reponses || [];
+      
+      // Charger la liste des membres
+      const membresRes = await axios.get(`${API}/members`);
+      const membres = membresRes.data || [];
+      
+      // Associer les noms aux réponses
+      const reponsesAvecNoms = reponses.map(r => {
+        const membre = membres.find(m => m.id === r.membre_id);
+        return {
+          ...r,
+          nom_complet: membre?.nom_complet || 'Inconnu'
+        };
+      });
+      
+      setRepondantsData({
+        evenement,
+        reponses: reponsesAvecNoms,
+        membres
+      });
+    } catch (error) {
+      console.error('Erreur chargement répondants:', error);
+      toast.error('Erreur lors du chargement des répondants');
+    } finally {
+      setLoadingRepondants(false);
     }
   };
 
@@ -519,7 +560,11 @@ const Evenements = () => {
                 )}
 
                 <div className="flex space-x-3 pt-4 border-t border-[#D4A024]/20">
-                  <Button className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif">
+                  <Button 
+                    onClick={() => loadRepondants(prochainEvenement)}
+                    className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif"
+                    data-testid="voir-reponses-btn"
+                  >
                     <Users className="w-4 h-4 mr-2" />
                     Voir les réponses
                   </Button>
@@ -1015,18 +1060,20 @@ const Evenements = () => {
                                     {getTypeBadge(evt.type_sondage)}
                                   </div>
                                   
-                                  {/* Nombre de présents (cliquable) */}
+                                  {/* Nombre de présents (cliquable pour voir la liste) */}
                                   <div 
                                     className="flex items-center space-x-2 bg-[#D4A024]/20 px-4 py-2 rounded-lg cursor-pointer hover:bg-[#D4A024]/30 transition-all"
-                                    onClick={(e) => startEditing(evt, e)}
-                                    title="Cliquer pour modifier"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      loadRepondants(evt);
+                                    }}
+                                    title="Cliquer pour voir les répondants"
                                     data-testid={`presents-count-${evt.id}`}
                                   >
                                     <Users className="w-5 h-5 text-[#D4A024]" />
                                     <span className="text-[#D4A024] font-bold text-xl">
                                       {evt.total_presents || 0}
                                     </span>
-                                    <Edit3 className="w-4 h-4 text-[#D4A024]/60" />
                                   </div>
                                 </div>
                               )}
@@ -1265,7 +1312,7 @@ const Evenements = () => {
                     {newEvent.objet_type === 'repas' && (
                       <p className="flex items-center">
                         <span className="w-2 h-2 bg-gray-500 rounded-full mr-2"></span>
-                        <strong>Repas :</strong>&nbsp;21h30 le jour de l'événement
+                        <strong>Repas :</strong>&nbsp;Minuit (00h00) le jour suivant
                       </p>
                     )}
                     {newEvent.objet_type === 'apéro' && (
@@ -1401,6 +1448,115 @@ const Evenements = () => {
                 className="flex-1 border-[#D4A024] text-[#D4A024] hover:bg-[#D4A024]/10"
               >
                 Annuler
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* MODAL LISTE DES RÉPONDANTS */}
+      {showRepondantsModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <Card className="bg-[#1C1917] border-2 border-[#D4A024] w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+            <CardHeader className="border-b border-[#D4A024]/30 flex-shrink-0">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-xl font-serif text-white">
+                    Réponses au sondage
+                  </CardTitle>
+                  {repondantsData.evenement && (
+                    <p className="text-gray-400 text-sm mt-1">
+                      {repondantsData.evenement.objet} - {formatDateShort(repondantsData.evenement.date)}
+                    </p>
+                  )}
+                </div>
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowRepondantsModal(false)}
+                  className="text-gray-400 hover:text-white"
+                >
+                  <X className="w-6 h-6" />
+                </Button>
+              </div>
+            </CardHeader>
+            
+            <CardContent className="flex-1 overflow-y-auto py-4">
+              {loadingRepondants ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin w-8 h-8 border-4 border-[#D4A024] border-t-transparent rounded-full mx-auto"></div>
+                  <p className="text-gray-400 mt-4">Chargement...</p>
+                </div>
+              ) : repondantsData.reponses.length === 0 ? (
+                <div className="text-center py-8">
+                  <Users className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+                  <p className="text-gray-400">Aucune réponse pour le moment</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {/* Résumé */}
+                  <div className="flex items-center justify-between mb-4 p-3 bg-black/30 rounded-lg">
+                    <span className="text-gray-300">Total réponses</span>
+                    <div className="flex items-center space-x-4">
+                      <Badge className="bg-green-600 text-white">
+                        {repondantsData.reponses.filter(r => r.present).length} Présents
+                      </Badge>
+                      <Badge className="bg-red-600 text-white">
+                        {repondantsData.reponses.filter(r => !r.present).length} Absents
+                      </Badge>
+                    </div>
+                  </div>
+                  
+                  {/* Liste des présents */}
+                  {repondantsData.reponses.filter(r => r.present).length > 0 && (
+                    <div className="mb-4">
+                      <h4 className="text-green-400 font-semibold mb-2 flex items-center">
+                        <span className="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
+                        Présents ({repondantsData.reponses.filter(r => r.present).length})
+                      </h4>
+                      <div className="space-y-1">
+                        {repondantsData.reponses.filter(r => r.present).map((r, idx) => (
+                          <div key={idx} className="flex items-center justify-between p-2 bg-green-500/10 border border-green-500/30 rounded">
+                            <span className="text-white">{r.nom_complet}</span>
+                            {/* Afficher les choix du repas si c'est un sondage repas */}
+                            {r.choix_entree || r.choix_plat || r.choix_dessert ? (
+                              <div className="flex space-x-2 text-xs">
+                                {r.choix_entree && <Badge className="bg-amber-600/50">{r.choix_entree}</Badge>}
+                                {r.choix_plat && <Badge className="bg-blue-600/50">{r.choix_plat}</Badge>}
+                                {r.choix_dessert && <Badge className="bg-purple-600/50">{r.choix_dessert}</Badge>}
+                              </div>
+                            ) : null}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Liste des absents */}
+                  {repondantsData.reponses.filter(r => !r.present).length > 0 && (
+                    <div>
+                      <h4 className="text-red-400 font-semibold mb-2 flex items-center">
+                        <span className="w-3 h-3 bg-red-500 rounded-full mr-2"></span>
+                        Absents ({repondantsData.reponses.filter(r => !r.present).length})
+                      </h4>
+                      <div className="space-y-1">
+                        {repondantsData.reponses.filter(r => !r.present).map((r, idx) => (
+                          <div key={idx} className="flex items-center p-2 bg-red-500/10 border border-red-500/30 rounded">
+                            <span className="text-gray-400">{r.nom_complet}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+            
+            <div className="flex-shrink-0 p-4 border-t border-[#D4A024]/30">
+              <Button
+                onClick={() => setShowRepondantsModal(false)}
+                className="w-full bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif"
+              >
+                Fermer
               </Button>
             </div>
           </Card>
