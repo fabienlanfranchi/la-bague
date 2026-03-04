@@ -424,7 +424,7 @@ async def get_members():
         
         # Mettre à jour le pourcentage calculé
         if total_events > 0:
-            member["pourcentage_presences"] = round(total_presences / total_events * 100, 1)
+            member["pourcentage_presences"] = custom_round(total_presences / total_events * 100)
             # Calculer les étoiles automatiquement
             member["etoiles"] = calculate_stars(member["pourcentage_presences"])
         # Si pas de données de présence, garder les anciennes valeurs (données importées)
@@ -462,7 +462,7 @@ async def get_member(member_id: str):
         total_events += config.get("nb_aperos", 0) + config.get("nb_repas", 0) + config.get("nb_anniversaires", 0)
     
     if total_events > 0:
-        member["pourcentage_presences"] = round(total_presences / total_events * 100, 1)
+        member["pourcentage_presences"] = custom_round(total_presences / total_events * 100)
         # Calculer les étoiles automatiquement
         pct = member["pourcentage_presences"]
         if pct >= 75:
@@ -1852,7 +1852,7 @@ async def get_sondage_stats(message_id: str):
         "titre": message.get("titre"),
         "total_destinataires": total_destinataires,
         "total_reponses": len(reponses),
-        "taux_reponse": round(len(reponses) / total_destinataires * 100, 1) if total_destinataires > 0 else 0,
+        "taux_reponse": custom_round(len(reponses) / total_destinataires * 100) if total_destinataires > 0 else 0,
         "reponses": reponses
     }
 
@@ -2090,13 +2090,13 @@ async def get_presences_by_membre(membre_id: str):
         total_events_anniversaires += nb_anniversaires
         
         # Calculer les % par saison
-        pct_aperos = round(pres_aperos / nb_aperos * 100, 1) if nb_aperos > 0 else 0
-        pct_repas = round(pres_repas / nb_repas * 100, 1) if nb_repas > 0 else 0
-        pct_anniversaires = round(pres_anniversaires / nb_anniversaires * 100, 1) if nb_anniversaires > 0 else 0
+        pct_aperos = custom_round(pres_aperos / nb_aperos * 100) if nb_aperos > 0 else 0
+        pct_repas = custom_round(pres_repas / nb_repas * 100) if nb_repas > 0 else 0
+        pct_anniversaires = custom_round(pres_anniversaires / nb_anniversaires * 100) if nb_anniversaires > 0 else 0
         
         total_pres = pres_aperos + pres_repas + pres_anniversaires
         total_events = nb_aperos + nb_repas + nb_anniversaires
-        pct_global = round(total_pres / total_events * 100, 1) if total_events > 0 else 0
+        pct_global = custom_round(total_pres / total_events * 100) if total_events > 0 else 0
         
         stats.append({
             "saison": saison,
@@ -2155,16 +2155,16 @@ async def get_presences_by_membre(membre_id: str):
         "totaux": {
             "presences_aperos": total_aperos,
             "total_aperos": total_events_aperos,
-            "pct_aperos": round(total_aperos / total_events_aperos * 100, 1) if total_events_aperos > 0 else 0,
+            "pct_aperos": custom_round(total_aperos / total_events_aperos * 100) if total_events_aperos > 0 else 0,
             "presences_repas": total_repas,
             "total_repas": total_events_repas,
-            "pct_repas": round(total_repas / total_events_repas * 100, 1) if total_events_repas > 0 else 0,
+            "pct_repas": custom_round(total_repas / total_events_repas * 100) if total_events_repas > 0 else 0,
             "presences_anniversaires": total_anniversaires,
             "total_anniversaires": total_events_anniversaires,
-            "pct_anniversaires": round(total_anniversaires / total_events_anniversaires * 100, 1) if total_events_anniversaires > 0 else 0,
+            "pct_anniversaires": custom_round(total_anniversaires / total_events_anniversaires * 100) if total_events_anniversaires > 0 else 0,
             "presences_total": total_all_pres,
             "events_total": total_all_events,
-            "pct_global": round(total_all_pres / total_all_events * 100, 1) if total_all_events > 0 else 0
+            "pct_global": custom_round(total_all_pres / total_all_events * 100) if total_all_events > 0 else 0
         }
     }
 
@@ -2389,16 +2389,16 @@ async def get_statistiques_globales():
             "saisons_exclues": list(saisons_exclues),
             "presences_aperos": total_aperos,
             "total_aperos": total_events_aperos,
-            "pct_aperos": round(total_aperos / total_events_aperos * 100, 1) if total_events_aperos > 0 else 0,
+            "pct_aperos": custom_round(total_aperos / total_events_aperos * 100) if total_events_aperos > 0 else 0,
             "presences_repas": total_repas,
             "total_repas": total_events_repas,
-            "pct_repas": round(total_repas / total_events_repas * 100, 1) if total_events_repas > 0 else 0,
+            "pct_repas": custom_round(total_repas / total_events_repas * 100) if total_events_repas > 0 else 0,
             "presences_anniversaires": total_anniversaires,
             "total_anniversaires": total_events_anniversaires,
-            "pct_anniversaires": round(total_anniversaires / total_events_anniversaires * 100, 1) if total_events_anniversaires > 0 else 0,
+            "pct_anniversaires": custom_round(total_anniversaires / total_events_anniversaires * 100) if total_events_anniversaires > 0 else 0,
             "presences_total": total_pres,
             "events_total": total_events,
-            "pct_global": round(total_pres / total_events * 100, 1) if total_events > 0 else 0
+            "pct_global": custom_round(total_pres / total_events * 100) if total_events > 0 else 0
         })
     
     # Trier par % global décroissant
@@ -2472,10 +2472,10 @@ async def get_statistiques_saisons_resume():
         
         total_pres = total_pres_aperos + total_pres_repas + total_pres_anniversaires
         
-        pct_aperos = round(total_pres_aperos / max_pres_aperos * 100, 1) if max_pres_aperos > 0 else 0
-        pct_repas = round(total_pres_repas / max_pres_repas * 100, 1) if max_pres_repas > 0 else 0
-        pct_anniversaires = round(total_pres_anniversaires / max_pres_anniversaires * 100, 1) if max_pres_anniversaires > 0 else 0
-        pct_global = round(total_pres / max_pres_total * 100, 1) if max_pres_total > 0 else 0
+        pct_aperos = custom_round(total_pres_aperos / max_pres_aperos * 100) if max_pres_aperos > 0 else 0
+        pct_repas = custom_round(total_pres_repas / max_pres_repas * 100) if max_pres_repas > 0 else 0
+        pct_anniversaires = custom_round(total_pres_anniversaires / max_pres_anniversaires * 100) if max_pres_anniversaires > 0 else 0
+        pct_global = custom_round(total_pres / max_pres_total * 100) if max_pres_total > 0 else 0
         
         stats.append({
             "saison": saison,
@@ -2539,10 +2539,10 @@ async def get_statistiques_saison(saison: int):
             "presences_aperos": pres_aperos,
             "presences_repas": pres_repas,
             "presences_anniversaires": pres_anniversaires,
-            "pct_aperos": round(pres_aperos / nb_aperos * 100, 1) if nb_aperos > 0 else 0,
-            "pct_repas": round(pres_repas / nb_repas * 100, 1) if nb_repas > 0 else 0,
-            "pct_anniversaires": round(pres_anniversaires / nb_anniversaires * 100, 1) if nb_anniversaires > 0 else 0,
-            "pct_global": round(total_pres / total_events * 100, 1) if total_events > 0 else 0
+            "pct_aperos": custom_round(pres_aperos / nb_aperos * 100) if nb_aperos > 0 else 0,
+            "pct_repas": custom_round(pres_repas / nb_repas * 100) if nb_repas > 0 else 0,
+            "pct_anniversaires": custom_round(pres_anniversaires / nb_anniversaires * 100) if nb_anniversaires > 0 else 0,
+            "pct_global": custom_round(total_pres / total_events * 100) if total_events > 0 else 0
         })
     
     # Trier par numéro de membre
