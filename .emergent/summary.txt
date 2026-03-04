@@ -1,84 +1,68 @@
 <analysis>**original_problem_statement:**
-The user wants to continue the development of a cigar club management application called La Bague Impériale. The project was cloned from a GitHub repository.
+The user wants to continue the development of a cigar club management application called La Bague Impériale. The project began by fixing event data imports, then evolved into building a full CRUD event management system. The focus then shifted to building a messaging/polling system.
 
-The initial tasks were:
-1.  Apply a star rating system (⭐️) to the club's average attendance on the admin dashboard.
-2.  Fix the member profile page to show a detailed history of paid (green) and unpaid (red) membership fee seasons.
-3.  Build a new Comptabilité (Accounting) tab from scratch.
-
-During development, the user provided numerous corrections and new requirements, including:
-*   Fixing a frozen Edit Member modal.
-*   Correcting all account balances and data inconsistencies (e.g., number of pending fees).
-*   Refining the UI on the dashboard to make statistics clickable.
-*   Providing a new roadmap for the admin section with multiple new tabs (Événements, Messages, etc.).
-*   Specifying a complete redesign of the Comptabilité tab with an interactive Mouvements (transactions) table.
-*   Starting the development of the Événements (Events) tab, for which the user provided 12+ seasons of historical data via screenshots.
-
-The current focus is on fixing the Événements tab, as the data imported from the user's screenshots is full of errors (wrong attendee counts, incorrect event types, missing events). The user's latest request is to be able to edit the attendee count manually to overcome the import issues.
+The most recent and significant pivot was initiated by the user to completely overhaul the member statistics system. The goal is to replace static, imported percentage data with a fully dynamic, automated, and interconnected system. This new system must:
+- Calculate all statistics (presence percentages, star ratings) dynamically from raw presence data.
+- Account for each member's club entry date, ignoring seasons prior to their membership.
+- Allow for specific excluded seasons for members who were temporarily inactive.
+- Automatically update member presence records when they respond Présent to event polls.
+- Provide the admin with total control over all data, including detailed member information and historical statistics.
 
 **User's preferred language**: Français
 
 **what currently exists?**
-A full-stack application (React frontend, FastAPI backend, MongoDB) for managing a cigar club. The app features member management, a detailed admin dashboard with statistics, and a complete accounting section. The Événements (Events) tab is partially built, but the historical data displayed is incorrect and is the main point of failure.
+A full-stack application (React frontend, FastAPI backend, MongoDB).
+- **Admin Section:** Features a Dashboard, Member Management (), Accounting (), and Events ().
+- **Complete Statistics System:** A new, comprehensive system has been built from scratch.
+    - **Backend:** New data models (, ) and numerous API endpoints have been added to  to handle the calculation and storage of all statistics.
+    - **Frontend - Statistics Page ():** A new admin page with three distinct views:
+        1.  **Saisie:** A grid for manually inputting historical presence data for each member, season by season.
+        2.  **Stats Membres:** A sortable table providing a global overview of every member's automatically calculated statistics.
+        3.  **Stats Saisons:** A sortable table to compare season-over-season performance (currently being modified).
+    - **Frontend - Member Profiles:** The  page now features a detailed profile view for each member, showing their global and season-by-season stats, all calculated automatically.
+- **Full Automation (Répercussions):** The statistics system is fully interconnected.
+    - Creating a new event automatically updates the total number of events for that season.
+    - A member responding Présent to a poll automatically updates their presence record.
+    - All percentages and star ratings across the entire application (Member list, Dashboard, Profile pages) are then recalculated and updated in real-time.
+- **Data Backup:** A  page allows the admin to export the entire database to a JSON file and restore it from a backup.
 
 **Last working item**:
-*   **Last item agent was working:** The agent was trying to fix the Événements page, where the number of attendees () for all past events was incorrectly displayed as 0. The agent had confirmed the data was in the database but was failing to display it on the frontend. The user, frustrated with the data import issues, requested a way to edit the number manually.
-*   **Status:** BLOCKED
+*   **Last item agent was working:** The user identified a flaw in the Stats Saisons view: historical season stats were skewed because they were calculated using only *current* members, making older seasons appear more successful than they were. The user requested to modify this view to allow **manual entry of aggregated percentages and member counts for past seasons (1-12)**, while keeping the current season (13) and future ones fully automated. The agent started implementing this by adding  fields to the  backend model and creating a new endpoint to save this manual data.
+*   **Status:** IN PROGRESS
 *   **Agent Testing Done:** N
-*   **Which testing method agent to use?** Frontend testing agent to verify that the attendee count for each event is correctly displayed or editable as per the final implementation.
+*   **Which testing method agent to use?** both
 *   **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-*   **Issue 1 (P0):** Attendee count for past events shows 0 on the Événements page.
-*   **Issue 2 (P1):** Data for seasons 5-13 needs to be correctly re-imported once the user provides it in the new, clearer format.
-*   **Issue 3 (P2):** The event type (Repas, Apéro, Anniversaire) is incorrect for many events due to faulty imports.
+*   **Issue 1 (P0):** Stats Saisons view requires manual override for historical data.
+*   **Issue 2 (P2):** Admin notifications are not detailed (superseded by stats work).
+*   **Issue 3 (P2):** Admin cannot see the list of members who voted on a poll (superseded by stats work).
 
 **Issues Detail:**
-*   **Issue 1:** The number of attendees for past events is not being displayed.
-    *   **Attempted fixes:** The agent re-ran the import script and restarted services, then checked the database. The issue seems to be in the API response or frontend rendering.
+*   **Issue 1: Stats Saisons view requires manual override for historical data.**
+    *   **Attempted fixes:** The agent successfully added new fields to the  model and MongoDB collection (e.g., , ). A new backend endpoint  was also created to save this data.
     *   **Next debug checklist:**
-        1.  The user's last request was: *Let me click on the yellow number with the little man icon to edit it manually.* The top priority is to implement this manual edit functionality.
-        2.  Create a new backend endpoint (e.g., ) to update the  count.
-        3.  In , make the attendee count display clickable.
-        4.  On click, show a modal or an inline input to allow the user to enter the correct number and call the new endpoint to save it.
-    *   **Why fix this issue and what will be achieved with the fix?** To unblock the user and allow them to correct the historical data directly, bypassing the problematic import process.
+        1.  Modify the frontend file .
+        2.  In the Stats Saisons view, for any season <= 12, render text input fields for , , , and .
+        3.  The backend should be modified to prioritize displaying these manual values when they exist.
+        4.  Create a Save button for each row (or a global save) that calls the new  endpoint to persist the manually entered data.
+        5.  Ensure that for season 13 and above, the view remains automated and does not show input fields.
+    *   **Why fix this issue and what will be achieved with the fix?** To provide an accurate historical view of season performance, which is critical for the user's analysis.
     *   **Status:** IN PROGRESS
-    *   **Is recurring issue?** Y
+    *   **Is recurring issue?** N
     *   **Should Test frontend/backend/both after fix?** Both.
     *   **Blocked on other issue:** None.
-
-*   **Issue 2:** Incomplete and incorrect event data for seasons 5-13.
-    *   **Attempted fixes:** N/A.
-    *   **Next debug checklist:** Wait for the user to provide the remaining data (seasons 5-13) in the new clear format. Then, update and run the  script.
-    *   **Why fix this issue and what will be achieved with the fix?** To ensure the application has a complete and accurate history of all club events.
-    *   **Status:** BLOCKED
-    *   **Is recurring issue?** Y
-    *   **Should Test frontend/backend/both after fix?** Both.
-    *   **Blocked on other issue:** None.
-
-*   **Issue 3:** Incorrect event types.
-    *   **Attempted fixes:** None.
-    *   **Next debug checklist:** After receiving the new data (Issue 2), ensure the import script correctly identifies 'repas', 'apero', and 'anniversaire' types and saves them.
-    *   **Why fix this issue and what will be achieved with the fix?** To correctly categorize events in the history view.
-    *   **Status:** NOT STARTED
-    *   **Is recurring issue?** Y
-    *   **Should Test frontend/backend/both after fix?** Both.
-    *   **Blocked on other issue:** Issue 2.
 
 **In progress Task List**:
-*   **Task 1:** Implement Manual Editing of Attendee Count
-    *   **Where to resume:**  and .
-    *   **What will be achieved with this?** The user will be able to manually correct the number of attendees for each past event, fixing the data inaccuracies.
-    *   **Status:** NOT STARTED
-    *   **Should Test frontend/backend/both after fix?** Both.
-    *   **Blocked on something:** None.
+*   **Task 1 (P3):** Implement Resend Message functionality.
+    *   **Where to resume:** . The button exists, but the logic to pre-fill the New Message modal is missing.
+    *   **Status:** IN PROGRESS (Stale)
 
 **Upcoming and Future Tasks**
-*   **Upcoming Tasks:**
-    *   **(P0) Implement the Créer un événement form logic** in  with a dynamic survey based on the event type ('Repas' vs. 'Apéro'/'Anniversaire').
-    *   **(P1) Build the Messages tab** with internal messaging, notifications, and polling features.
-    *   **(P2)** Implement dashboard répercussions (automatic updates) for live event polls.
 
+*   **Upcoming Tasks:**
+    *   **(P1)** Complete detailed admin notifications (panel and backend endpoint).
+    *   **(P1)** Allow admin to see who voted on polls (clickable count -> modal).
 *   **Future Tasks:**
     *   Build the Jeux (Games) tab.
     *   Build the Boutique (Shop) tab.
@@ -87,84 +71,96 @@ A full-stack application (React frontend, FastAPI backend, MongoDB) for managing
     *   Build the Instagram tab.
 
 **Completed work in this session**
-*   **Dashboard:** Implemented and fixed the star rating (⭐) system for member attendance, including making the stats boxes clickable to show member lists.
-*   **Membres:** Fixed the Edit Member modal and implemented a new UI in member profiles to show a colored history of paid/unpaid seasons.
-*   **Data Restoration:** Cloned the project from GitHub and restored the database with 35 members.
-*   **Comptabilité:** Built the entire accounting feature, including backend APIs and a complete frontend UI with an interactive transaction table and automatic balance updates. Corrected all data inconsistencies as requested by the user.
+-   **Statistics System Overhaul:** Built an entire dynamic statistics system from the ground up, including backend models (, ), dozens of new API endpoints, and a new Statistiques admin page with multiple views (, , ).
+-   **Full Statistics Automation:**
+    - All percentages and star ratings are now calculated dynamically and updated app-wide.
+    - Calculations intelligently factor in a member's entry date and any excluded seasons.
+    - Event creation and poll responses are now directly linked to the statistics system for seamless real-time updates.
+-   **Enhanced Member Management:** The admin now has total control to edit all member fields, including president status and excluded seasons, via an improved form on the  page.
+-   **Detailed Member Profiles:** Implemented a new profile view accessible from the  page, showing a member's complete, automated statistical history in a collapsible, easy-to-read format.
+-   **Data Backup/Restore:** Created a new  page allowing the admin to export and import the entire application database with one click.
+-   **UI/UX Improvements:** Implemented custom percentage rounding, made statistics tables sortable, and fixed various UI display bugs based on user feedback.
 
 **Earlier issues found/mentioned but not fixed**
-None.
+*   The original issue of importing event data is now obsolete, as the user has opted to manually enter all historical presence data into the new, more robust statistics system.
 
 **Known issue recurrence from previous fork**
-N/A.
+N/A
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-*   **Frontend:** React, Tailwind CSS, shadcn/ui, React Router
-*   **Backend:** FastAPI, Motor (async Pymongo)
-*   **Database:** MongoDB
-*   **Architecture:** Full-stack with a React SPA and a FastAPI backend.
+*   **Frontend:** React, Tailwind CSS, shadcn/ui. State management within components using  and .
+*   **Backend:** FastAPI, Motor (async Pymongo), Pydantic. Heavy use of aggregation pipelines in MongoDB for dynamic calculations.
+*   **Architecture:** The  file is now a large monolith containing routes for members, events, messages, and all new statistics logic. It is the primary candidate for refactoring into smaller, dedicated API routers.
 
 **key DB schema**
-*   **membres:** 
-*   **transactions:** 
-*   **comptes:** 
-*   **events:** 
+*   **members:** 
+*   **saisons_config:** 
+*   **presences_membres:** 
 
 **changes in tech stack**
 None.
 
 **All files of reference**
-*   : Contains all backend logic for members, accounting, and events.
-*   : The current file of focus, responsible for displaying event history.
-*   : The completed accounting page.
-*   : The admin dashboard with clickable stats.
-*   : The problematic script for importing historical event data.
+*   : Contains all new backend logic for statistics calculation and data manipulation.
+*   : New file that houses the entire frontend for the statistics feature (Saisie, Stats Membres, Stats Saisons views).
+*   : Heavily modified to include the new detailed member profile modal and connect the member list to the new automated stats.
+*   : Updated with new routes for  and .
+*   : Updated with new navigation links.
+*   : New file for the data backup feature.
 
 **Areas that need refactoring**:
-*    is a large monolith and could be split into multiple routers for better maintainability.
-*   The  is fragile and has caused numerous issues. The data seeding process needs to be more robust.
+*    is critically oversized. The logic for members, events, messages, and statistics should be broken out into separate files under a new  directory to improve maintainability.
 
 **key api endpoints**
-*    (GET, POST)
-*    (GET, POST)
-*    (POST)
-*    (GET, POST)
+*   
+*   
+*   
+*   
+*   
+*   
+*    **(New, for current task)**
+*   
+*   
+*   
 
 **Critical Info for New Agent**
-*   The user is very detail-oriented. **Répercussions** is a key term meaning automatic updates elsewhere in the app.
-*   The data import process for events has been a major failure point. The user's immediate request is to **implement manual editing for the attendee count** on the Événements page. This is your top priority.
-*   The membership fee () is **200€**.
-*   For future imports, event types are based on colors in the user's screenshots: Grey background = Repas, White background = Apéro, Red cell = Anniversaire.
+*   The user has completely pivoted to building out this new, comprehensive statistics system. This is the **highest priority**. All previous tasks (notifications, resend message) are now secondary.
+*   The user is highly engaged and technically astute. They value clear logic and full automation (Répercussions). It is effective to confirm their logic (Vous avez raison) and then build upon it.
+*   The immediate next step is to finish the last user request: allowing manual overrides for historical season stats (S1-S12) in the Stats Saisons view. The backend work for this is already partially done.
 
 **documents and test reports created in this job**
-*   
-*   
+*    - Updated with the new statistics system features.
 
 **Last 10 User Messages and any pending HUMAN messages**
-The user's recent messages all revolve around the numerous errors in the imported event data: wrong attendee counts, incorrect event types (Repas/Apéro), and wrong total number of events.
-
-**Pending HUMAN message (Highest Priority):**
-I suggest, in the histories, to enter the number manually... Let me click on the yellow number with the little man icon.
-This is a direct instruction to stop trying to fix the import and instead build a manual editing feature for the attendee count.
+1.  **User (Pending):** The Stats Saisons view is flawed because it only uses current members, skewing historical data. For seasons 1-12, I need to enter the final percentages and member counts manually. Season 13+ should remain automated.
+2.  **Agent:** Acknowledged the issue and began implementation.
+3.  **User:** Inquired if the agent had paused due to system messages about context window limits.
+4.  **Agent:** Reassured the user and continued working.
+5.  **User:** Again asked if the session was ending.
+6.  **Agent:** Reassured again.
+7.  **User:** The view-switcher buttons (Saisie, Stats Membres, Stats Saisons) are unreadable when not selected. **(COMPLETED)**
+8.  **User:** All percentages should be rounded according to a specific custom rule. **(COMPLETED)**
+9.  **User:** Several messages expressing concern about the agent pausing due to context window exhaustion.
+10. **Agent:** Reassured the user while continuing to work through the system pauses.
 
 **Project Health Check:**
-*   **Broken:** The event history on the Événements page is displaying incorrect data, making it unusable.
+*   **Broken:** The Stats Saisons view provides misleading historical data, which is the exact problem the agent is currently fixing.
 *   **Mocked:** None.
 
 **3rd Party Integrations**
 None currently implemented. An Assistant IA is planned for the future.
 
 **Testing status**
-*   **Testing agent used:** No
-*   **Troubleshoot agent used:** No
-*   **Test files created:** None
-*   **Known regressions:** The event data import has repeatedly failed to capture all details correctly.
+*   **Testing agent used after significant changes:** NO
+*   **Troubleshoot agent used after agent stuck in loop:** NO
+*   **Test files created:** []
+*   **Known regressions:** None.
 
 **Credentials to test flow:**
-N/A
+N/A. The application simulates admin/member views without a formal login system.
 
 **What agent forgot to execute**
-The agent repeatedly failed to correctly parse and import the event data from the user's screenshots, consistently missing the attendee count, event types, and total number of events. The agent has not yet started implementing the user's latest request to switch to a manual editing feature.</analysis>
+The agent was in the middle of implementing the user's last request when the session was forked. The backend models and a new endpoint were created, but the crucial frontend implementation and the backend logic to use the new manual data are still pending.</analysis>

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { ChevronLeft, ChevronRight, Save, BarChart3, Users, Calendar, RefreshCw, Check, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, TrendingUp } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Save, BarChart3, Users, Calendar, RefreshCw, Check, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, TrendingUp, Edit, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -24,6 +24,10 @@ export default function Statistiques() {
   
   // Stats résumées par saison (depuis l'API)
   const [saisonsResume, setSaisonsResume] = useState([]);
+  
+  // État pour les modifications manuelles des saisons historiques
+  const [saisonsManuelEdits, setSaisonsManuelEdits] = useState({});
+  const [savingSaisons, setSavingSaisons] = useState(false);
 
   // Charger les données
   const loadData = useCallback(async () => {
@@ -191,6 +195,83 @@ export default function Statistiques() {
     return sortDirection === 'asc' 
       ? <ArrowUp className="h-3 w-3 ml-1 text-amber-600" />
       : <ArrowDown className="h-3 w-3 ml-1 text-amber-600" />;
+  };
+
+  // Gérer les modifications manuelles des saisons historiques
+  const handleSaisonManuelChange = (saison, field, value) => {
+    const numValue = value === '' ? null : parseInt(value) || 0;
+    setSaisonsManuelEdits(prev => ({
+      ...prev,
+      [saison]: {
+        ...prev[saison],
+        [field]: numValue
+      }
+    }));
+  };
+
+  // Obtenir la valeur à afficher pour une saison (éditée ou originale)
+  const getSaisonValue = (stat, field) => {
+    const edited = saisonsManuelEdits[stat.saison]?.[field];
+    if (edited !== undefined) return edited;
+    return stat[field] || 0;
+  };
+
+  // Calculer la moyenne pour une saison avec les valeurs éditées
+  const calculateMoyenne = (stat, type) => {
+    const presField = `presences_membres_${type}`;
+    const nbField = `nb_${type}`;
+    
+    const presences = getSaisonValue(stat, presField);
+    const nbEvents = stat[nbField] || 0;
+    
+    if (nbEvents === 0 || presences === null) return '-';
+    return (presences / nbEvents).toFixed(1);
+  };
+
+  // Sauvegarder les données manuelles d'une saison
+  const handleSaveSaisonManuel = async (saison) => {
+    const edits = saisonsManuelEdits[saison];
+    if (!edits) return;
+
+    setSavingSaisons(true);
+    try {
+      const stat = saisonsResume.find(s => s.saison === saison);
+      
+      await fetch(`${API_URL}/api/saisons-config/${saison}/manual-stats`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          presences_membres_aperos: edits.presences_membres_aperos ?? stat?.presences_membres_aperos,
+          presences_membres_repas: edits.presences_membres_repas ?? stat?.presences_membres_repas,
+          presences_membres_anniversaires: edits.presences_membres_anniversaires ?? stat?.presences_membres_anniversaires,
+          nb_membres_manuel: edits.membres_actifs ?? stat?.membres_actifs
+        })
+      });
+
+      toast.success(`Saison ${saison} sauvegardée !`);
+      
+      // Recharger les données
+      const saisonsResumeRes = await fetch(`${API_URL}/api/statistiques/saisons-resume`);
+      const saisonsResumeData = await saisonsResumeRes.json();
+      setSaisonsResume(saisonsResumeData || []);
+      
+      // Nettoyer les éditions de cette saison
+      setSaisonsManuelEdits(prev => {
+        const newEdits = { ...prev };
+        delete newEdits[saison];
+        return newEdits;
+      });
+      
+    } catch (error) {
+      console.error('Erreur sauvegarde saison:', error);
+      toast.error('Erreur lors de la sauvegarde');
+    }
+    setSavingSaisons(false);
+  };
+
+  // Vérifier si une saison a des modifications non sauvegardées
+  const hasSaisonChanges = (saison) => {
+    return saisonsManuelEdits[saison] && Object.keys(saisonsManuelEdits[saison]).length > 0;
   };
 
   // Sauvegarder toutes les modifications
@@ -683,14 +764,20 @@ export default function Statistiques() {
           </CardContent>
         </Card>
       ) : (
-        /* Vue Stats Saisons - % par événement */
+        /* Vue Stats Saisons - MOYENNES par événement */
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-amber-600" />
-              Stats par Saison - % Présence Moyen
+              Stats par Saison - Moyenne de Présences
               <span className="text-sm font-normal text-stone-500 ml-2">(Cliquez sur un en-tête pour trier)</span>
             </CardTitle>
+            <p className="text-sm text-stone-500 mt-2">
+              <Edit className="h-4 w-4 inline mr-1" />
+              Saisons 1-12 : Saisie manuelle du nombre total de présences membres
+              <Lock className="h-4 w-4 inline mx-2" />
+              Saison 13+ : Calcul automatique
+            </p>
           </CardHeader>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
@@ -698,111 +785,182 @@ export default function Statistiques() {
                 <thead className="bg-stone-100">
                   <tr>
                     <th 
-                      className="px-4 py-3 text-left text-sm font-semibold text-stone-700 cursor-pointer hover:bg-stone-200"
+                      className="px-3 py-3 text-left text-sm font-semibold text-stone-700 cursor-pointer hover:bg-stone-200"
                       onClick={() => handleSort('saison')}
                     >
                       <span className="flex items-center">Saison <SortIcon column="saison" /></span>
                     </th>
-                    <th 
-                      className="px-4 py-3 text-center text-sm font-semibold text-amber-600 cursor-pointer hover:bg-stone-200"
-                      onClick={() => handleSort('pct_aperos')}
-                    >
-                      <span className="flex items-center justify-center">% Apéros <SortIcon column="pct_aperos" /></span>
+                    <th className="px-2 py-3 text-center text-xs font-semibold text-stone-500">
+                      Nb Membres
+                    </th>
+                    <th className="px-2 py-3 text-center text-xs font-semibold text-amber-600" colSpan="2">
+                      Apéros
+                      <div className="text-xs font-normal">(Prés. / Moy.)</div>
+                    </th>
+                    <th className="px-2 py-3 text-center text-xs font-semibold text-blue-600" colSpan="2">
+                      Repas
+                      <div className="text-xs font-normal">(Prés. / Moy.)</div>
+                    </th>
+                    <th className="px-2 py-3 text-center text-xs font-semibold text-purple-600" colSpan="2">
+                      Anniversaires
+                      <div className="text-xs font-normal">(Prés. / Moy.)</div>
                     </th>
                     <th 
-                      className="px-4 py-3 text-center text-sm font-semibold text-blue-600 cursor-pointer hover:bg-stone-200"
-                      onClick={() => handleSort('pct_repas')}
+                      className="px-3 py-3 text-center text-sm font-semibold text-amber-700 bg-amber-50 cursor-pointer hover:bg-amber-100"
+                      onClick={() => handleSort('moy_global')}
                     >
-                      <span className="flex items-center justify-center">% Repas <SortIcon column="pct_repas" /></span>
+                      <span className="flex items-center justify-center">Moy. Globale <SortIcon column="moy_global" /></span>
                     </th>
-                    <th 
-                      className="px-4 py-3 text-center text-sm font-semibold text-purple-600 cursor-pointer hover:bg-stone-200"
-                      onClick={() => handleSort('pct_anniversaires')}
-                    >
-                      <span className="flex items-center justify-center">% Anniv. <SortIcon column="pct_anniversaires" /></span>
-                    </th>
-                    <th 
-                      className="px-4 py-3 text-center text-sm font-semibold text-amber-700 bg-amber-50 cursor-pointer hover:bg-amber-100"
-                      onClick={() => handleSort('pct_global')}
-                    >
-                      <span className="flex items-center justify-center">% Global <SortIcon column="pct_global" /></span>
-                    </th>
-                    <th 
-                      className="px-4 py-3 text-center text-sm font-semibold text-stone-500 cursor-pointer hover:bg-stone-200"
-                      onClick={() => handleSort('total_events')}
-                    >
-                      <span className="flex items-center justify-center">Nb Évén. <SortIcon column="total_events" /></span>
-                    </th>
-                    <th 
-                      className="px-4 py-3 text-center text-sm font-semibold text-stone-500 cursor-pointer hover:bg-stone-200"
-                      onClick={() => handleSort('membres_actifs')}
-                    >
-                      <span className="flex items-center justify-center">Membres <SortIcon column="membres_actifs" /></span>
+                    <th className="px-2 py-3 text-center text-xs font-semibold text-stone-500">
+                      Action
                     </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {sortedSaisonsStats.map((stat, index) => (
-                    <tr 
-                      key={stat.saison} 
-                      className={`border-b border-stone-100 hover:bg-stone-50 ${index % 2 === 0 ? 'bg-white' : 'bg-stone-50/50'}`}
-                    >
-                      <td className="px-4 py-2">
-                        <span className="font-medium text-stone-800">Saison {stat.saison}</span>
-                        <span className="ml-2 text-xs text-stone-400">({stat.annee_debut}-{stat.annee_fin})</span>
-                      </td>
-                      <td className="px-4 py-2 text-center">
-                        <span className={`font-semibold ${
-                          stat.pct_aperos >= 75 ? 'text-green-600' :
-                          stat.pct_aperos >= 50 ? 'text-amber-600' :
-                          stat.pct_aperos > 0 ? 'text-red-500' :
-                          'text-stone-400'
-                        }`}>
-                          {stat.pct_aperos > 0 ? `${stat.pct_aperos}%` : '-'}
-                        </span>
-                        <div className="text-xs text-stone-400">{stat.nb_aperos} évén.</div>
-                      </td>
-                      <td className="px-4 py-2 text-center">
-                        <span className={`font-semibold ${
-                          stat.pct_repas >= 75 ? 'text-green-600' :
-                          stat.pct_repas >= 50 ? 'text-blue-600' :
-                          stat.pct_repas > 0 ? 'text-red-500' :
-                          'text-stone-400'
-                        }`}>
-                          {stat.pct_repas > 0 ? `${stat.pct_repas}%` : '-'}
-                        </span>
-                        <div className="text-xs text-stone-400">{stat.nb_repas} évén.</div>
-                      </td>
-                      <td className="px-4 py-2 text-center">
-                        <span className={`font-semibold ${
-                          stat.pct_anniversaires >= 75 ? 'text-green-600' :
-                          stat.pct_anniversaires >= 50 ? 'text-purple-600' :
-                          stat.pct_anniversaires > 0 ? 'text-red-500' :
-                          'text-stone-400'
-                        }`}>
-                          {stat.pct_anniversaires > 0 ? `${stat.pct_anniversaires}%` : '-'}
-                        </span>
-                        <div className="text-xs text-stone-400">{stat.nb_anniversaires} évén.</div>
-                      </td>
-                      <td className="px-4 py-2 text-center bg-amber-50">
-                        <span className={`font-bold text-lg ${
-                          stat.pct_global >= 75 ? 'text-green-600' :
-                          stat.pct_global >= 50 ? 'text-amber-600' :
-                          stat.pct_global >= 25 ? 'text-orange-500' :
-                          stat.pct_global > 0 ? 'text-red-500' :
-                          'text-stone-400'
-                        }`}>
-                          {stat.pct_global > 0 ? `${stat.pct_global}%` : '-'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2 text-center text-stone-600">
-                        {stat.total_events}
-                      </td>
-                      <td className="px-4 py-2 text-center text-stone-600">
-                        {stat.membres_actifs}
-                      </td>
-                    </tr>
-                  ))}
+                  {sortedSaisonsStats.map((stat, index) => {
+                    const isEditable = stat.saison <= 12;
+                    const hasChanges = hasSaisonChanges(stat.saison);
+                    
+                    return (
+                      <tr 
+                        key={stat.saison} 
+                        className={`border-b border-stone-100 hover:bg-stone-50 ${index % 2 === 0 ? 'bg-white' : 'bg-stone-50/50'} ${hasChanges ? 'bg-amber-50/50' : ''}`}
+                      >
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-1">
+                            {isEditable ? (
+                              <Edit className="h-3 w-3 text-amber-500" />
+                            ) : (
+                              <Lock className="h-3 w-3 text-stone-400" />
+                            )}
+                            <span className="font-medium text-stone-800">S{stat.saison}</span>
+                          </div>
+                          <span className="text-xs text-stone-400">{stat.annee_debut}-{stat.annee_fin}</span>
+                        </td>
+                        
+                        {/* Nombre de membres */}
+                        <td className="px-2 py-2 text-center">
+                          {isEditable ? (
+                            <Input
+                              type="number"
+                              min="0"
+                              value={getSaisonValue(stat, 'membres_actifs') || ''}
+                              onChange={(e) => handleSaisonManuelChange(stat.saison, 'membres_actifs', e.target.value)}
+                              className="w-14 mx-auto text-center text-sm h-8"
+                              placeholder="0"
+                            />
+                          ) : (
+                            <span className="text-stone-600">{stat.membres_actifs}</span>
+                          )}
+                        </td>
+                        
+                        {/* Apéros - Présences */}
+                        <td className="px-1 py-2 text-center">
+                          {isEditable ? (
+                            <Input
+                              type="number"
+                              min="0"
+                              value={getSaisonValue(stat, 'presences_membres_aperos') || ''}
+                              onChange={(e) => handleSaisonManuelChange(stat.saison, 'presences_membres_aperos', e.target.value)}
+                              className="w-14 mx-auto text-center text-sm h-8"
+                              placeholder="0"
+                              disabled={stat.nb_aperos === 0}
+                            />
+                          ) : (
+                            <span className="text-xs text-stone-500">{stat.presences_membres_aperos || 0}</span>
+                          )}
+                          <div className="text-xs text-stone-400">/ {stat.nb_aperos} év.</div>
+                        </td>
+                        {/* Apéros - Moyenne */}
+                        <td className="px-1 py-2 text-center bg-amber-50/30">
+                          <span className="font-semibold text-amber-600">
+                            {isEditable ? calculateMoyenne(stat, 'aperos') : (stat.moy_aperos || '-')}
+                          </span>
+                        </td>
+                        
+                        {/* Repas - Présences */}
+                        <td className="px-1 py-2 text-center">
+                          {isEditable ? (
+                            <Input
+                              type="number"
+                              min="0"
+                              value={getSaisonValue(stat, 'presences_membres_repas') || ''}
+                              onChange={(e) => handleSaisonManuelChange(stat.saison, 'presences_membres_repas', e.target.value)}
+                              className="w-14 mx-auto text-center text-sm h-8"
+                              placeholder="0"
+                              disabled={stat.nb_repas === 0}
+                            />
+                          ) : (
+                            <span className="text-xs text-stone-500">{stat.presences_membres_repas || 0}</span>
+                          )}
+                          <div className="text-xs text-stone-400">/ {stat.nb_repas} év.</div>
+                        </td>
+                        {/* Repas - Moyenne */}
+                        <td className="px-1 py-2 text-center bg-blue-50/30">
+                          <span className="font-semibold text-blue-600">
+                            {isEditable ? calculateMoyenne(stat, 'repas') : (stat.moy_repas || '-')}
+                          </span>
+                        </td>
+                        
+                        {/* Anniversaires - Présences */}
+                        <td className="px-1 py-2 text-center">
+                          {isEditable ? (
+                            <Input
+                              type="number"
+                              min="0"
+                              value={getSaisonValue(stat, 'presences_membres_anniversaires') || ''}
+                              onChange={(e) => handleSaisonManuelChange(stat.saison, 'presences_membres_anniversaires', e.target.value)}
+                              className="w-14 mx-auto text-center text-sm h-8"
+                              placeholder="0"
+                              disabled={stat.nb_anniversaires === 0}
+                            />
+                          ) : (
+                            <span className="text-xs text-stone-500">{stat.presences_membres_anniversaires || 0}</span>
+                          )}
+                          <div className="text-xs text-stone-400">/ {stat.nb_anniversaires} év.</div>
+                        </td>
+                        {/* Anniversaires - Moyenne */}
+                        <td className="px-1 py-2 text-center bg-purple-50/30">
+                          <span className="font-semibold text-purple-600">
+                            {isEditable ? calculateMoyenne(stat, 'anniversaires') : (stat.moy_anniversaires || '-')}
+                          </span>
+                        </td>
+                        
+                        {/* Moyenne Globale */}
+                        <td className="px-3 py-2 text-center bg-amber-50">
+                          <span className="font-bold text-lg text-amber-700">
+                            {isEditable ? (
+                              (() => {
+                                const totalPres = (getSaisonValue(stat, 'presences_membres_aperos') || 0) +
+                                                  (getSaisonValue(stat, 'presences_membres_repas') || 0) +
+                                                  (getSaisonValue(stat, 'presences_membres_anniversaires') || 0);
+                                const totalEvts = stat.total_events || 0;
+                                return totalEvts > 0 ? (totalPres / totalEvts).toFixed(1) : '-';
+                              })()
+                            ) : (stat.moy_global || '-')}
+                          </span>
+                        </td>
+                        
+                        {/* Action */}
+                        <td className="px-2 py-2 text-center">
+                          {isEditable && (
+                            <Button
+                              size="sm"
+                              onClick={() => handleSaveSaisonManuel(stat.saison)}
+                              disabled={!hasChanges || savingSaisons}
+                              className={`h-7 px-2 text-xs ${hasChanges ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'bg-stone-200 text-stone-400'}`}
+                            >
+                              {savingSaisons ? (
+                                <RefreshCw className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <Save className="h-3 w-3" />
+                              )}
+                            </Button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

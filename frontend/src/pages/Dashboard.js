@@ -343,6 +343,9 @@ const Dashboard = () => {
     membersByStars: { 4: 0, 3: 0, 2: 0, 1: 0 },
     cotisationsEnAttente: 0,
     totalSaisonsDues: 0, // Nombre total de saisons dues
+    // Nouvelles moyennes de présence par événement
+    moyPresenceGlobal: 0,
+    moyPresenceSaison: 0,
   });
 
   // Fonction pour calculer les étoiles selon le pourcentage de présence
@@ -475,7 +478,7 @@ const Dashboard = () => {
       // Calcul des statistiques
       const totalMembers = membersData.length;
       
-      // Présence moyenne globale
+      // Présence moyenne globale (%)
       const avgPresenceGlobal = membersData.reduce((sum, m) => sum + m.pourcentage_presences, 0) / totalMembers || 0;
       
       // Présence moyenne saison en cours (Saison 13 - 2025)
@@ -498,6 +501,18 @@ const Dashboard = () => {
       const cotisationsEnAttente = membersData.filter(m => m.situation_cotisation > 0).length;
       const totalSaisonsDues = membersData.reduce((sum, m) => sum + m.situation_cotisation, 0);
       
+      // Charger les moyennes de présence depuis l'API
+      let moyPresenceGlobal = 0;
+      let moyPresenceSaison = 0;
+      try {
+        const moyennesRes = await fetch(`${API}/statistiques/moyennes-dashboard`);
+        const moyennesData = await moyennesRes.json();
+        moyPresenceGlobal = moyennesData.moy_global || 0;
+        moyPresenceSaison = moyennesData.moy_saison_actuelle || 0;
+      } catch (e) {
+        console.log('Moyennes non disponibles');
+      }
+      
       setStats({
         totalMembers,
         avgPresenceGlobal: avgPresenceGlobal.toFixed(1),
@@ -506,6 +521,8 @@ const Dashboard = () => {
         membersByStars,
         cotisationsEnAttente,
         totalSaisonsDues,
+        moyPresenceGlobal,
+        moyPresenceSaison,
       });
     } catch (error) {
       console.error('Erreur lors du chargement des données:', error);
@@ -581,8 +598,14 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
-                <div className="text-4xl font-serif font-bold text-[#D4A024]">
-                  {stats.avgPresenceGlobal}%
+                <div>
+                  <div className="text-4xl font-serif font-bold text-[#D4A024]">
+                    {stats.avgPresenceGlobal}%
+                  </div>
+                  <div className="text-lg text-white/80 mt-1">
+                    <span className="text-2xl font-bold text-white">{stats.moyPresenceGlobal}</span>
+                    <span className="text-sm text-gray-400 ml-1">présents/évén.</span>
+                  </div>
                 </div>
                 <div className="flex items-center space-x-0.5">
                   {[...Array(getStarsFromPercentage(parseFloat(stats.avgPresenceGlobal)))].map((_, i) => (
@@ -590,7 +613,7 @@ const Dashboard = () => {
                   ))}
                 </div>
               </div>
-              <p className="text-xs text-gray-500 mt-1">Tous les membres</p>
+              <p className="text-xs text-gray-500 mt-1">Tous les membres - Toutes saisons</p>
             </CardContent>
           </Card>
 
@@ -603,8 +626,14 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
-                <div className="text-4xl font-serif font-bold text-[#D4A024]">
-                  {stats.avgPresenceSeason}%
+                <div>
+                  <div className="text-4xl font-serif font-bold text-[#D4A024]">
+                    {stats.avgPresenceSeason}%
+                  </div>
+                  <div className="text-lg text-white/80 mt-1">
+                    <span className="text-2xl font-bold text-white">{stats.moyPresenceSaison}</span>
+                    <span className="text-sm text-gray-400 ml-1">présents/évén.</span>
+                  </div>
                 </div>
                 <div className="flex items-center space-x-0.5">
                   {[...Array(getStarsFromPercentage(parseFloat(stats.avgPresenceSeason)))].map((_, i) => (

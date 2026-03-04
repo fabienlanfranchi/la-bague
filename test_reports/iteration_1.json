@@ -1,0 +1,72 @@
+{
+  "summary": "Completed testing of La Bague Impériale club management app - Statistics features for moyennes (averages) display and manual data entry for historical seasons",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_statistiques_api.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_statistiques_api.py"
+  ],
+  "success_rate": {
+    "backend": "100% (14/14 tests passed)",
+    "frontend": "100% (All tested features working)"
+  },
+  "test_credentials": "No authentication required - Development mode",
+  "seed_data_creation": "Test manual stats saved for saisons 2, 3, and 4 during API testing",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All statistics APIs working correctly. Stats Saisons view shows moyennes (averages) instead of percentages. Seasons 1-12 have editable input fields for manual data entry. Season 13+ is read-only with automatic calculation.",
+  "tested_features": {
+    "api_saisons_resume": {
+      "endpoint": "/api/statistiques/saisons-resume",
+      "status": "PASS",
+      "details": "Returns moy_aperos, moy_repas, moy_anniversaires, moy_global correctly"
+    },
+    "api_moyennes_dashboard": {
+      "endpoint": "/api/statistiques/moyennes-dashboard",
+      "status": "PASS",
+      "details": "Returns moy_global and moy_saison_actuelle correctly"
+    },
+    "api_manual_stats": {
+      "endpoint": "POST /api/saisons-config/{saison}/manual-stats",
+      "status": "PASS",
+      "details": "Saves manual presence data for historical seasons 1-12"
+    },
+    "dashboard_moyennes_display": {
+      "component": "Dashboard",
+      "status": "PASS",
+      "details": "Shows '11.6 présents/évén.' for global average and '16.1 présents/évén.' for current season alongside percentages"
+    },
+    "stats_saisons_view": {
+      "component": "Statistiques > Stats Saisons",
+      "status": "PASS",
+      "details": "Displays moyennes (averages) instead of percentages in 'Prés. / Moy.' columns. Shows Moy. Globale column"
+    },
+    "editable_historical_seasons": {
+      "component": "Statistiques > Stats Saisons",
+      "status": "PASS",
+      "details": "Seasons 1-12 have input fields for manual data entry (Nb Membres, Présences Apéros/Repas/Anniversaires)"
+    },
+    "readonly_current_seasons": {
+      "component": "Statistiques > Stats Saisons",
+      "status": "PASS",
+      "details": "Season 13+ is read-only with automatic calculation (no input fields)"
+    },
+    "save_button_functionality": {
+      "component": "Statistiques > Stats Saisons",
+      "status": "PASS",
+      "details": "Save button per row works - showed 'Saison 2 sauvegardée !' toast notification"
+    }
+  }
+}
