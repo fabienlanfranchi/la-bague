@@ -5,14 +5,24 @@ Gestion d'un club de cigares avec 35 membres.
 
 ## Fonctionnalités implémentées
 
-### Statistiques de présences (COMPLET)
+### Statistiques de présences (COMPLET - Mis à jour 04/03/2026)
 - **Saisie par saison** : Tableau pour entrer présences (Apéros, Repas, Anniversaires)
-- **Stats Membres** : Vue globale triable par colonne
-- **Stats Saisons** : % de présence moyen par saison/type
+- **Stats Membres** : Vue globale triable par colonne avec % de présence
+- **Stats Saisons** : **MOYENNES de présences par événement** (remplace les %)
+  - Colonnes : Saison | Nb Membres | Apéros (Prés./Moy.) | Repas (Prés./Moy.) | Anniv. (Prés./Moy.) | Moy. Globale
+  - Saisons 1-12 : Saisie manuelle des présences totales
+  - Saisons 13+ : Calcul automatique depuis les données de présence membres
+  - Bouton de sauvegarde par ligne pour les saisons historiques
+- **Dashboard** : Affiche % ET moyennes de présences (présents/évén.)
 - **Profil membre** : Tableau simplifié Saison | Présences/Événements | % (cliquable)
 - **Automatisation complète** : % et étoiles calculés automatiquement
 - **Règles** : Saisons exclues pour membres en sommeil, première saison selon année d'entrée
 - **Arrondi personnalisé** : 0.1-0.4 → inférieur, 0.5 → garde, 0.6-0.9 → supérieur
+
+### Endpoints API Statistiques
+- `GET /api/statistiques/saisons-resume` : Stats par saison avec moyennes
+- `GET /api/statistiques/moyennes-dashboard` : Moyennes globale et saison actuelle
+- `POST /api/saisons-config/{saison}/manual-stats` : Sauvegarde données manuelles
 
 ### Membres
 - CRUD complet avec contrôle admin total
