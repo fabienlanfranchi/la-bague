@@ -2571,8 +2571,8 @@ async def get_statistiques_moyennes_dashboard():
     """Moyennes de présence pour le Dashboard admin
     
     Retourne:
-    - Moyennes globales (toutes saisons confondues)
-    - Moyennes de la saison actuelle (13)
+    - Moyennes globales (toutes saisons confondues) + moyenne repas
+    - Moyennes de la saison actuelle (13) + moyenne repas
     - Pourcentage moyen des membres pour la saison actuelle
     """
     CURRENT_SEASON = 13
@@ -2604,10 +2604,14 @@ async def get_statistiques_moyennes_dashboard():
     # Variables pour calculer les totaux globaux
     total_pres_global = 0
     total_events_global = 0
+    total_pres_repas_global = 0
+    total_nb_repas_global = 0
     
     # Variables pour la saison actuelle
     total_pres_current = 0
     total_events_current = 0
+    total_pres_repas_current = 0
+    total_nb_repas_current = 0
     
     for saison, config in configs_dict.items():
         nb_aperos = config.get("nb_aperos", 0)
@@ -2625,6 +2629,7 @@ async def get_statistiques_moyennes_dashboard():
             pres = (config.get("presences_membres_aperos", 0) or 0) + \
                    (config.get("presences_membres_repas", 0) or 0) + \
                    (config.get("presences_membres_anniversaires", 0) or 0)
+            pres_repas = config.get("presences_membres_repas", 0) or 0
         else:
             # Calcul automatique
             membres_actifs = []
@@ -2635,23 +2640,33 @@ async def get_statistiques_moyennes_dashboard():
                     membres_actifs.append(m["id"])
             
             pres = 0
+            pres_repas = 0
             saison_presences = presences_by_saison.get(saison, [])
             for p in saison_presences:
                 if p["membre_id"] in membres_actifs:
                     pres += p.get("presences_aperos", 0) + p.get("presences_repas", 0) + p.get("presences_anniversaires", 0)
+                    pres_repas += p.get("presences_repas", 0)
         
         # Ajouter aux totaux globaux
         total_pres_global += pres
         total_events_global += total_events
+        total_pres_repas_global += pres_repas
+        total_nb_repas_global += nb_repas
         
         # Si c'est la saison actuelle
         if saison == CURRENT_SEASON:
             total_pres_current = pres
             total_events_current = total_events
+            total_pres_repas_current = pres_repas
+            total_nb_repas_current = nb_repas
     
     # Calculer les moyennes de présence par événement
     moy_global = round(total_pres_global / total_events_global, 1) if total_events_global > 0 else 0
     moy_current = round(total_pres_current / total_events_current, 1) if total_events_current > 0 else 0
+    
+    # Moyennes REPAS spécifiquement
+    moy_repas_global = round(total_pres_repas_global / total_nb_repas_global, 1) if total_nb_repas_global > 0 else 0
+    moy_repas_current = round(total_pres_repas_current / total_nb_repas_current, 1) if total_nb_repas_current > 0 else 0
     
     # Calculer le POURCENTAGE MOYEN des membres pour la saison actuelle
     current_config = configs_dict.get(CURRENT_SEASON, {})
@@ -2682,9 +2697,11 @@ async def get_statistiques_moyennes_dashboard():
     
     return {
         "moy_global": moy_global,
+        "moy_repas_global": moy_repas_global,
         "total_events_global": total_events_global,
         "total_presences_global": total_pres_global,
         "moy_saison_actuelle": moy_current,
+        "moy_repas_saison": moy_repas_current,
         "saison_actuelle": CURRENT_SEASON,
         "total_events_saison": total_events_current,
         "total_presences_saison": total_pres_current,

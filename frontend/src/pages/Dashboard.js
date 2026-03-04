@@ -338,7 +338,7 @@ const Dashboard = () => {
   const [stats, setStats] = useState({
     totalMembers: 0,
     avgPresenceGlobal: 0,
-    avgPresenceSeason: 0,  // % moyen de la saison actuelle (calculé par le backend)
+    avgPresenceSeason: 0,
     currentSeason: 'Saison 13 - 2025',
     membersByStars: { 4: 0, 3: 0, 2: 0, 1: 0 },
     cotisationsEnAttente: 0,
@@ -346,6 +346,8 @@ const Dashboard = () => {
     // Moyennes de présence par événement
     moyPresenceGlobal: 0,
     moyPresenceSaison: 0,
+    moyRepasGlobal: 0,
+    moyRepasSaison: 0,
     nbMembresActifsSaison: 0,
   });
 
@@ -499,6 +501,8 @@ const Dashboard = () => {
       // Charger les moyennes de présence ET le % moyen de la saison depuis l'API
       let moyPresenceGlobal = 0;
       let moyPresenceSaison = 0;
+      let moyRepasGlobal = 0;
+      let moyRepasSaison = 0;
       let avgPresenceSeason = 0;
       let nbMembresActifsSaison = 0;
       try {
@@ -506,6 +510,8 @@ const Dashboard = () => {
         const moyennesData = await moyennesRes.json();
         moyPresenceGlobal = moyennesData.moy_global || 0;
         moyPresenceSaison = moyennesData.moy_saison_actuelle || 0;
+        moyRepasGlobal = moyennesData.moy_repas_global || 0;
+        moyRepasSaison = moyennesData.moy_repas_saison || 0;
         avgPresenceSeason = moyennesData.pct_moyen_saison_actuelle || 0;
         nbMembresActifsSaison = moyennesData.nb_membres_actifs_saison || 0;
       } catch (e) {
@@ -522,6 +528,8 @@ const Dashboard = () => {
         totalSaisonsDues,
         moyPresenceGlobal,
         moyPresenceSaison,
+        moyRepasGlobal,
+        moyRepasSaison,
         nbMembresActifsSaison,
       });
     } catch (error) {
@@ -602,9 +610,15 @@ const Dashboard = () => {
                   <div className="text-4xl font-serif font-bold text-[#D4A024]">
                     {stats.avgPresenceGlobal}%
                   </div>
-                  <div className="text-lg text-white/80 mt-1">
-                    <span className="text-2xl font-bold text-white">{stats.moyPresenceGlobal}</span>
-                    <span className="text-sm text-gray-400 ml-1">présents/évén.</span>
+                  <div className="flex gap-4 mt-2">
+                    <div>
+                      <span className="text-2xl font-bold text-white">{stats.moyPresenceGlobal}</span>
+                      <span className="text-xs text-gray-400 ml-1">prés./évén.</span>
+                    </div>
+                    <div className="border-l border-gray-600 pl-4">
+                      <span className="text-2xl font-bold text-blue-400">{stats.moyRepasGlobal}</span>
+                      <span className="text-xs text-gray-400 ml-1">prés./repas</span>
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center space-x-0.5">
@@ -630,9 +644,15 @@ const Dashboard = () => {
                   <div className="text-4xl font-serif font-bold text-[#D4A024]">
                     {stats.avgPresenceSeason}%
                   </div>
-                  <div className="text-lg text-white/80 mt-1">
-                    <span className="text-2xl font-bold text-white">{stats.moyPresenceSaison}</span>
-                    <span className="text-sm text-gray-400 ml-1">présents/évén.</span>
+                  <div className="flex gap-4 mt-2">
+                    <div>
+                      <span className="text-2xl font-bold text-white">{stats.moyPresenceSaison}</span>
+                      <span className="text-xs text-gray-400 ml-1">prés./évén.</span>
+                    </div>
+                    <div className="border-l border-gray-600 pl-4">
+                      <span className="text-2xl font-bold text-blue-400">{stats.moyRepasSaison}</span>
+                      <span className="text-xs text-gray-400 ml-1">prés./repas</span>
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center space-x-0.5">
