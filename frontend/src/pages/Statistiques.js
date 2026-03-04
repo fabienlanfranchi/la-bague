@@ -285,7 +285,9 @@ export default function Statistiques() {
           <Button
             variant={viewMode === 'saison' ? 'default' : 'outline'}
             onClick={() => setViewMode('saison')}
-            className={viewMode === 'saison' ? 'bg-amber-600 hover:bg-amber-700' : ''}
+            className={viewMode === 'saison' 
+              ? 'bg-amber-600 hover:bg-amber-700 text-white' 
+              : 'bg-stone-100 border-stone-300 text-stone-600 hover:bg-stone-200 hover:text-stone-800'}
           >
             <Calendar className="h-4 w-4 mr-2" />
             Saisie
@@ -293,7 +295,9 @@ export default function Statistiques() {
           <Button
             variant={viewMode === 'global' ? 'default' : 'outline'}
             onClick={() => setViewMode('global')}
-            className={viewMode === 'global' ? 'bg-amber-600 hover:bg-amber-700' : ''}
+            className={viewMode === 'global' 
+              ? 'bg-amber-600 hover:bg-amber-700 text-white' 
+              : 'bg-stone-100 border-stone-300 text-stone-600 hover:bg-stone-200 hover:text-stone-800'}
           >
             <Users className="h-4 w-4 mr-2" />
             Stats Membres
@@ -301,7 +305,9 @@ export default function Statistiques() {
           <Button
             variant={viewMode === 'stats_saison' ? 'default' : 'outline'}
             onClick={() => setViewMode('stats_saison')}
-            className={viewMode === 'stats_saison' ? 'bg-amber-600 hover:bg-amber-700' : ''}
+            className={viewMode === 'stats_saison' 
+              ? 'bg-amber-600 hover:bg-amber-700 text-white' 
+              : 'bg-stone-100 border-stone-300 text-stone-600 hover:bg-stone-200 hover:text-stone-800'}
           >
             <TrendingUp className="h-4 w-4 mr-2" />
             Stats Saisons
