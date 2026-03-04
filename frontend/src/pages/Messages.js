@@ -47,6 +47,9 @@ const Messages = () => {
   const [notifications, setNotifications] = useState([]);
   const [readMessages, setReadMessages] = useState(new Set());
   
+  // Message ouvert en modal (vue membre)
+  const [openedMemberMessage, setOpenedMemberMessage] = useState(null);
+  
   // Templates de messages (pour admin)
   const [messageTemplates, setMessageTemplates] = useState([]);
   const [showTemplatesModal, setShowTemplatesModal] = useState(false);
@@ -938,6 +941,27 @@ const Messages = () => {
   // ============ VUE MEMBRE ============
   const unreadCount = notifications.filter(n => !n.lu).length;
   
+  // Ouvrir un message et le marquer comme lu automatiquement
+  const openMessage = async (msg) => {
+    setOpenedMemberMessage(msg);
+    
+    // Marquer comme lu si pas encore lu
+    if (!readMessages.has(msg.id)) {
+      const notif = notifications.find(n => n.message_id === msg.id);
+      if (notif && !notif.lu) {
+        try {
+          await axios.put(`${API}/notifications/${notif.id}/read`);
+          setReadMessages(prev => new Set([...prev, msg.id]));
+          setNotifications(prev => prev.map(n => 
+            n.id === notif.id ? { ...n, lu: true } : n
+          ));
+        } catch (error) {
+          console.error('Erreur:', error);
+        }
+      }
+    }
+  };
+  
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -979,11 +1003,13 @@ const Messages = () => {
             return (
               <Card
                 key={msg.id}
-                className={`bg-black/40 border-2 backdrop-blur-sm transition-all ${
+                onClick={() => openMessage(msg)}
+                className={`bg-black/40 border-2 backdrop-blur-sm transition-all cursor-pointer ${
                   isRead 
-                    ? 'border-[#D4A024]/20 opacity-80' 
+                    ? 'border-[#D4A024]/20 opacity-80 hover:opacity-100' 
                     : 'border-[#D4A024]/50 hover:border-[#D4A024]'
                 }`}
+                data-testid={`message-card-${msg.id}`}
               >
                 <CardHeader>
                   <div className="flex items-center justify-between">
@@ -999,27 +1025,21 @@ const Messages = () => {
                     </div>
                     <div className="flex items-center space-x-3">
                       <span className="text-gray-500 text-sm">{formatDate(msg.created_at)}</span>
-                      {/* Bouton œil pour marquer comme lu */}
-                      {!isRead ? (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => markAsRead(msg.id)}
-                          className="text-[#D4A024] hover:bg-[#D4A024]/20"
-                          title="Marquer comme lu"
-                        >
-                          <Eye className="w-5 h-5" />
-                        </Button>
-                      ) : (
+                      {isRead ? (
                         <EyeOff className="w-5 h-5 text-gray-600" title="Lu" />
+                      ) : (
+                        <Eye className="w-5 h-5 text-[#D4A024]" title="Cliquez pour lire" />
                       )}
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <p className={`whitespace-pre-wrap ${isRead ? 'text-gray-500' : 'text-gray-300'}`}>
+                  <p className={`whitespace-pre-wrap line-clamp-2 ${isRead ? 'text-gray-500' : 'text-gray-300'}`}>
                     {msg.contenu}
                   </p>
+                  {msg.contenu && msg.contenu.length > 150 && (
+                    <p className="text-[#D4A024] text-sm mt-2">Cliquez pour voir le message complet...</p>
+                  )}
                   
                   {msg.date_limite && (
                     <div className="mt-3 flex items-center text-yellow-400 text-sm">
@@ -1033,6 +1053,65 @@ const Messages = () => {
           })
         )}
       </div>
+
+      {/* Modal pour afficher le message complet */}
+      {openedMemberMessage && (
+        <div 
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+          onClick={() => setOpenedMemberMessage(null)}
+        >
+          <Card 
+            className="bg-[#1C1917] border-2 border-[#D4A024] w-full max-w-2xl max-h-[80vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <CardHeader className="border-b border-[#D4A024]/30">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  {getTypeBadge(openedMemberMessage.type)}
+                  <CardTitle className="text-xl font-serif text-white">
+                    {openedMemberMessage.titre}
+                  </CardTitle>
+                </div>
+                <Button
+                  variant="ghost"
+                  onClick={() => setOpenedMemberMessage(null)}
+                  className="text-gray-400 hover:text-white"
+                >
+                  <X className="w-6 h-6" />
+                </Button>
+              </div>
+              <p className="text-gray-500 text-sm mt-2">
+                {formatDate(openedMemberMessage.created_at)}
+              </p>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="prose prose-invert max-w-none">
+                <p className="text-gray-200 whitespace-pre-wrap text-base leading-relaxed">
+                  {openedMemberMessage.contenu}
+                </p>
+              </div>
+              
+              {openedMemberMessage.date_limite && (
+                <div className="mt-6 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                  <div className="flex items-center text-yellow-400">
+                    <Clock className="w-5 h-5 mr-2" />
+                    <span className="font-semibold">Date limite : {formatDate(openedMemberMessage.date_limite)}</span>
+                  </div>
+                </div>
+              )}
+              
+              <div className="mt-6 flex justify-end">
+                <Button
+                  onClick={() => setOpenedMemberMessage(null)}
+                  className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif"
+                >
+                  Fermer
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };
