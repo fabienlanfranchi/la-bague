@@ -481,9 +481,6 @@ const Dashboard = () => {
       // Calcul des statistiques
       const totalMembers = membersData.length;
       
-      // Présence moyenne globale (%) - moyenne des % de tous les membres
-      const avgPresenceGlobal = membersData.reduce((sum, m) => sum + m.pourcentage_presences, 0) / totalMembers || 0;
-      
       // Calcul des étoiles selon les présences
       const membersByStars = { 4: 0, 3: 0, 2: 0, 1: 0 };
       membersData.forEach(m => {
@@ -498,21 +495,25 @@ const Dashboard = () => {
       const cotisationsEnAttente = membersData.filter(m => m.situation_cotisation > 0).length;
       const totalSaisonsDues = membersData.reduce((sum, m) => sum + m.situation_cotisation, 0);
       
-      // Charger les moyennes de présence ET le % moyen de la saison depuis l'API
+      // Charger TOUTES les stats depuis l'API (calcul basé sur données historiques)
+      let pctGlobal = 0;
       let moyPresenceGlobal = 0;
-      let moyPresenceSaison = 0;
       let moyRepasGlobal = 0;
+      let pctSaisonActuelle = 0;
+      let moyPresenceSaison = 0;
       let moyRepasSaison = 0;
-      let avgPresenceSeason = 0;
       let nbMembresActifsSaison = 0;
       try {
         const moyennesRes = await fetch(`${API}/statistiques/moyennes-dashboard`);
         const moyennesData = await moyennesRes.json();
+        // Stats globales
+        pctGlobal = moyennesData.pct_global || 0;
         moyPresenceGlobal = moyennesData.moy_global || 0;
-        moyPresenceSaison = moyennesData.moy_saison_actuelle || 0;
         moyRepasGlobal = moyennesData.moy_repas_global || 0;
+        // Stats saison actuelle
+        pctSaisonActuelle = moyennesData.pct_saison_actuelle || 0;
+        moyPresenceSaison = moyennesData.moy_saison_actuelle || 0;
         moyRepasSaison = moyennesData.moy_repas_saison || 0;
-        avgPresenceSeason = moyennesData.pct_moyen_saison_actuelle || 0;
         nbMembresActifsSaison = moyennesData.nb_membres_actifs_saison || 0;
       } catch (e) {
         console.log('Moyennes non disponibles');
@@ -520,8 +521,8 @@ const Dashboard = () => {
       
       setStats({
         totalMembers,
-        avgPresenceGlobal: avgPresenceGlobal.toFixed(1),
-        avgPresenceSeason: avgPresenceSeason.toFixed(1),
+        avgPresenceGlobal: pctGlobal.toFixed(1),
+        avgPresenceSeason: pctSaisonActuelle.toFixed(1),
         currentSeason: 'Saison 13 - 2025',
         membersByStars,
         cotisationsEnAttente,

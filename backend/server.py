@@ -2570,14 +2570,14 @@ async def get_statistiques_saisons_resume():
 async def get_statistiques_moyennes_dashboard():
     """Moyennes de présence pour le Dashboard admin
     
-    Retourne:
-    - Moyennes globales (toutes saisons confondues) + moyenne repas
-    - Moyennes de la saison actuelle (13) + moyenne repas
-    - Pourcentage moyen des membres pour la saison actuelle
+    Calcul basé sur les données historiques du tableau Stats Saisons:
+    - % Global = Total présences / (Σ nb_événements × nb_membres par saison) × 100
+    - Moyenne globale = Total présences / Total événements
+    - Moyenne repas = Total présences repas / Total repas
     """
     CURRENT_SEASON = 13
     
-    # Récupérer toutes les configs de saisons
+    # Récupérer toutes les configs de saisons (contient les données manuelles pour S1-12)
     configs = await db.saisons_config.find({}, {"_id": 0}).to_list(100)
     configs_dict = {c["saison"]: c for c in configs}
     
@@ -2596,42 +2596,47 @@ async def get_statistiques_moyennes_dashboard():
         if saison not in presences_by_saison:
             presences_by_saison[saison] = []
         presences_by_saison[saison].append(p)
-        
-        # Index par saison + membre
         key = (saison, membre_id)
         presences_by_saison_membre[key] = p
     
-    # Variables pour calculer les totaux globaux
+    # ========== CALCULS GLOBAUX (toutes saisons) ==========
+    # Totaux pour les moyennes
     total_pres_global = 0
     total_events_global = 0
     total_pres_repas_global = 0
     total_nb_repas_global = 0
+    
+    # Totaux pour le % (présences / présences possibles)
+    total_pres_possible_global = 0  # = Σ (nb_événements × nb_membres) par saison
     
     # Variables pour la saison actuelle
     total_pres_current = 0
     total_events_current = 0
     total_pres_repas_current = 0
     total_nb_repas_current = 0
+    nb_membres_current = 0
     
     for saison, config in configs_dict.items():
         nb_aperos = config.get("nb_aperos", 0)
         nb_repas = config.get("nb_repas", 0)
         nb_anniversaires = config.get("nb_anniversaires", 0)
-        total_events = nb_aperos + nb_repas + nb_anniversaires
+        total_events_saison = nb_aperos + nb_repas + nb_anniversaires
         
-        if total_events == 0:
+        if total_events_saison == 0:
             continue
         
         is_manuel = config.get("is_manuel", False)
         
         if is_manuel and saison <= 12:
-            # Données manuelles
-            pres = (config.get("presences_membres_aperos", 0) or 0) + \
-                   (config.get("presences_membres_repas", 0) or 0) + \
-                   (config.get("presences_membres_anniversaires", 0) or 0)
+            # DONNÉES MANUELLES pour les saisons historiques
+            pres_aperos = config.get("presences_membres_aperos", 0) or 0
             pres_repas = config.get("presences_membres_repas", 0) or 0
+            pres_anniv = config.get("presences_membres_anniversaires", 0) or 0
+            pres_total = pres_aperos + pres_repas + pres_anniv
+            nb_membres_saison = config.get("nb_membres_manuel", 0) or 0
         else:
-            # Calcul automatique
+            # CALCUL AUTOMATIQUE pour les saisons récentes (13+)
+            # Trouver les membres actifs cette saison
             membres_actifs = []
             for m in members:
                 premiere_saison = m.get("annee_entree", 2013) - 2012
@@ -2639,74 +2644,71 @@ async def get_statistiques_moyennes_dashboard():
                 if saison >= premiere_saison and saison not in saisons_exclues:
                     membres_actifs.append(m["id"])
             
-            pres = 0
+            nb_membres_saison = len(membres_actifs)
+            
+            # Calculer les présences
+            pres_aperos = 0
             pres_repas = 0
+            pres_anniv = 0
             saison_presences = presences_by_saison.get(saison, [])
             for p in saison_presences:
                 if p["membre_id"] in membres_actifs:
-                    pres += p.get("presences_aperos", 0) + p.get("presences_repas", 0) + p.get("presences_anniversaires", 0)
+                    pres_aperos += p.get("presences_aperos", 0)
                     pres_repas += p.get("presences_repas", 0)
+                    pres_anniv += p.get("presences_anniversaires", 0)
+            pres_total = pres_aperos + pres_repas + pres_anniv
         
-        # Ajouter aux totaux globaux
-        total_pres_global += pres
-        total_events_global += total_events
+        # Ajouter aux totaux GLOBAUX
+        total_pres_global += pres_total
+        total_events_global += total_events_saison
         total_pres_repas_global += pres_repas
         total_nb_repas_global += nb_repas
         
+        # Présences possibles = événements × membres actifs cette saison
+        if nb_membres_saison > 0:
+            total_pres_possible_global += total_events_saison * nb_membres_saison
+        
         # Si c'est la saison actuelle
         if saison == CURRENT_SEASON:
-            total_pres_current = pres
-            total_events_current = total_events
+            total_pres_current = pres_total
+            total_events_current = total_events_saison
             total_pres_repas_current = pres_repas
             total_nb_repas_current = nb_repas
+            nb_membres_current = nb_membres_saison
     
-    # Calculer les moyennes de présence par événement
+    # ========== CALCUL DES RÉSULTATS ==========
+    
+    # % de présence global = présences réelles / présences possibles × 100
+    pct_global = round(total_pres_global / total_pres_possible_global * 100, 1) if total_pres_possible_global > 0 else 0
+    
+    # Moyenne de présence par événement (tous types)
     moy_global = round(total_pres_global / total_events_global, 1) if total_events_global > 0 else 0
-    moy_current = round(total_pres_current / total_events_current, 1) if total_events_current > 0 else 0
     
-    # Moyennes REPAS spécifiquement
+    # Moyenne de présence aux repas
     moy_repas_global = round(total_pres_repas_global / total_nb_repas_global, 1) if total_nb_repas_global > 0 else 0
+    
+    # Calculs pour la saison actuelle
+    pres_possible_current = total_events_current * nb_membres_current if nb_membres_current > 0 else 0
+    pct_current = round(total_pres_current / pres_possible_current * 100, 1) if pres_possible_current > 0 else 0
+    moy_current = round(total_pres_current / total_events_current, 1) if total_events_current > 0 else 0
     moy_repas_current = round(total_pres_repas_current / total_nb_repas_current, 1) if total_nb_repas_current > 0 else 0
     
-    # Calculer le POURCENTAGE MOYEN des membres pour la saison actuelle
-    current_config = configs_dict.get(CURRENT_SEASON, {})
-    nb_aperos_current = current_config.get("nb_aperos", 0)
-    nb_repas_current = current_config.get("nb_repas", 0)
-    nb_anniversaires_current = current_config.get("nb_anniversaires", 0)
-    total_events_member = nb_aperos_current + nb_repas_current + nb_anniversaires_current
-    
-    pct_membres_current = []
-    for m in members:
-        premiere_saison = m.get("annee_entree", 2013) - 2012
-        saisons_exclues = m.get("saisons_exclues", [])
-        
-        # Ce membre est-il actif pour la saison actuelle ?
-        if CURRENT_SEASON >= premiere_saison and CURRENT_SEASON not in saisons_exclues:
-            # Récupérer ses présences pour cette saison
-            p = presences_by_saison_membre.get((CURRENT_SEASON, m["id"]))
-            if p and total_events_member > 0:
-                pres_membre = p.get("presences_aperos", 0) + p.get("presences_repas", 0) + p.get("presences_anniversaires", 0)
-                pct = (pres_membre / total_events_member) * 100
-                pct_membres_current.append(pct)
-            elif total_events_member > 0:
-                # Membre actif mais pas de présences enregistrées = 0%
-                pct_membres_current.append(0)
-    
-    # Moyenne des % des membres
-    pct_moyen_saison = round(sum(pct_membres_current) / len(pct_membres_current), 1) if pct_membres_current else 0
-    
     return {
+        # Stats GLOBALES (toutes saisons)
+        "pct_global": pct_global,
         "moy_global": moy_global,
         "moy_repas_global": moy_repas_global,
         "total_events_global": total_events_global,
         "total_presences_global": total_pres_global,
+        "total_pres_possible_global": total_pres_possible_global,
+        # Stats SAISON ACTUELLE
+        "pct_saison_actuelle": pct_current,
         "moy_saison_actuelle": moy_current,
         "moy_repas_saison": moy_repas_current,
         "saison_actuelle": CURRENT_SEASON,
         "total_events_saison": total_events_current,
         "total_presences_saison": total_pres_current,
-        "pct_moyen_saison_actuelle": pct_moyen_saison,
-        "nb_membres_actifs_saison": len(pct_membres_current)
+        "nb_membres_actifs_saison": nb_membres_current
     }
 
 
