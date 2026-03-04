@@ -1868,6 +1868,13 @@ class SaisonConfig(BaseModel):
     nb_aperos: int = 0
     nb_repas: int = 0
     nb_anniversaires: int = 0
+    # Champs manuels pour stats historiques (saisons 1-12)
+    pct_aperos_manuel: Optional[float] = None
+    pct_repas_manuel: Optional[float] = None
+    pct_anniversaires_manuel: Optional[float] = None
+    pct_global_manuel: Optional[float] = None
+    nb_membres_manuel: Optional[int] = None
+    is_manuel: bool = False  # True = utiliser les valeurs manuelles
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
