@@ -286,15 +286,10 @@ const DashboardMembre = ({ prochainEvenement, currentMember }) => {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {/* % Global */}
+              {/* % Global Saison */}
               <div className="bg-black/30 rounded-lg p-4 text-center border border-[#D4A024]/20">
-                <p className="text-gray-400 text-sm mb-1">Présence globale</p>
+                <p className="text-gray-400 text-sm mb-1">Présence saison</p>
                 <p className="text-3xl font-bold text-[#D4A024]">{statsPerso.pct_global}%</p>
-                <div className="flex justify-center mt-2">
-                  {[...Array(statsPerso.pct_global >= 75 ? 4 : statsPerso.pct_global >= 50 ? 3 : statsPerso.pct_global >= 25 ? 2 : 1)].map((_, i) => (
-                    <Star key={i} className="w-4 h-4 text-[#D4A024] fill-[#D4A024]" />
-                  ))}
-                </div>
               </div>
               
               {/* Apéros */}
