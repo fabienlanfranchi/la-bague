@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import {
   Calendar,
   MapPin,
@@ -51,6 +52,16 @@ const Evenements = () => {
     date: '',
     type_sondage: 'repas',
     total_presents: 0
+  });
+  
+  // État pour la modal d'édition
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editModalEvent, setEditModalEvent] = useState(null);
+  const [editModalForm, setEditModalForm] = useState({
+    objet: '',
+    lieu: '',
+    date: '',
+    type_sondage: 'repas',
   });
 
   // État pour ajout d'événement dans une saison
@@ -201,6 +212,48 @@ const Evenements = () => {
     } catch (error) {
       console.error('Erreur lors de la suppression:', error);
       toast.error('Erreur lors de la suppression');
+    }
+  };
+
+  // MODAL D'ÉDITION D'UN ÉVÉNEMENT
+  const openEditModal = (evt) => {
+    setEditModalEvent(evt);
+    const dateObj = new Date(evt.date);
+    const dateStr = dateObj.toISOString().split('T')[0];
+    
+    setEditModalForm({
+      objet: evt.objet || '',
+      lieu: evt.lieu || '',
+      date: dateStr,
+      type_sondage: evt.type_sondage || 'repas',
+    });
+    setShowEditModal(true);
+  };
+
+  const closeEditModal = () => {
+    setShowEditModal(false);
+    setEditModalEvent(null);
+  };
+
+  const saveEditModal = async () => {
+    if (!editModalEvent) return;
+    
+    try {
+      const dateWithTime = new Date(editModalForm.date + 'T12:00:00');
+      
+      await axios.put(`${API}/evenements/${editModalEvent.id}`, {
+        objet: editModalForm.objet,
+        lieu: editModalForm.lieu,
+        date: dateWithTime.toISOString(),
+        type_sondage: editModalForm.type_sondage,
+      });
+      
+      toast.success('Événement modifié avec succès');
+      closeEditModal();
+      loadEvenements();
+    } catch (error) {
+      console.error('Erreur lors de la modification:', error);
+      toast.error('Erreur lors de la modification');
     }
   };
 
@@ -567,6 +620,15 @@ const Evenements = () => {
                   >
                     <Users className="w-4 h-4 mr-2" />
                     Voir les réponses
+                  </Button>
+                  <Button
+                    onClick={() => openEditModal(prochainEvenement)}
+                    variant="outline"
+                    className="border-[#D4A024] text-[#D4A024] hover:bg-[#D4A024]/10"
+                    data-testid="modifier-event-btn"
+                  >
+                    <Edit3 className="w-4 h-4 mr-2" />
+                    Modifier
                   </Button>
                   <Button
                     onClick={(e) => handleDeleteEvent(prochainEvenement.id, e)}
@@ -1557,6 +1619,93 @@ const Evenements = () => {
                 className="w-full bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif"
               >
                 Fermer
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* MODAL ÉDITION D'UN ÉVÉNEMENT */}
+      {showEditModal && editModalEvent && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <Card className="bg-[#1C1917] border-2 border-[#D4A024] w-full max-w-lg">
+            <CardHeader className="border-b border-[#D4A024]/30">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xl font-serif text-white">
+                  Modifier l'événement
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  onClick={closeEditModal}
+                  className="text-gray-400 hover:text-white"
+                >
+                  <X className="w-6 h-6" />
+                </Button>
+              </div>
+            </CardHeader>
+            
+            <CardContent className="py-6 space-y-4">
+              {/* Objet */}
+              <div>
+                <label className="text-gray-300 text-sm mb-2 block">Objet / Description</label>
+                <Input
+                  value={editModalForm.objet}
+                  onChange={(e) => setEditModalForm({ ...editModalForm, objet: e.target.value })}
+                  className="bg-black/30 border-[#D4A024]/30 text-white"
+                  placeholder="Ex: Repas de mars"
+                />
+              </div>
+              
+              {/* Date */}
+              <div>
+                <label className="text-gray-300 text-sm mb-2 block">Date</label>
+                <Input
+                  type="date"
+                  value={editModalForm.date}
+                  onChange={(e) => setEditModalForm({ ...editModalForm, date: e.target.value })}
+                  className="bg-black/30 border-[#D4A024]/30 text-white"
+                />
+              </div>
+              
+              {/* Lieu */}
+              <div>
+                <label className="text-gray-300 text-sm mb-2 block">Lieu</label>
+                <Input
+                  value={editModalForm.lieu}
+                  onChange={(e) => setEditModalForm({ ...editModalForm, lieu: e.target.value })}
+                  className="bg-black/30 border-[#D4A024]/30 text-white"
+                  placeholder="Ex: Restaurant XYZ"
+                />
+              </div>
+              
+              {/* Type */}
+              <div>
+                <label className="text-gray-300 text-sm mb-2 block">Type d'événement</label>
+                <select
+                  value={editModalForm.type_sondage}
+                  onChange={(e) => setEditModalForm({ ...editModalForm, type_sondage: e.target.value })}
+                  className="w-full bg-black/30 border border-[#D4A024]/30 text-white rounded-md px-3 py-2"
+                >
+                  <option value="repas">Repas</option>
+                  <option value="apero">Apéro</option>
+                  <option value="anniversaire">Anniversaire</option>
+                </select>
+              </div>
+            </CardContent>
+            
+            <div className="flex-shrink-0 p-4 border-t border-[#D4A024]/30 flex space-x-3">
+              <Button
+                onClick={saveEditModal}
+                className="flex-1 bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif font-bold"
+              >
+                Enregistrer
+              </Button>
+              <Button
+                onClick={closeEditModal}
+                variant="outline"
+                className="flex-1 border-[#D4A024] text-[#D4A024] hover:bg-[#D4A024]/10"
+              >
+                Annuler
               </Button>
             </div>
           </Card>
