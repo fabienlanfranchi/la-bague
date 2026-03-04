@@ -338,14 +338,15 @@ const Dashboard = () => {
   const [stats, setStats] = useState({
     totalMembers: 0,
     avgPresenceGlobal: 0,
-    avgPresenceSeason: 0,
+    avgPresenceSeason: 0,  // % moyen de la saison actuelle (calculé par le backend)
     currentSeason: 'Saison 13 - 2025',
     membersByStars: { 4: 0, 3: 0, 2: 0, 1: 0 },
     cotisationsEnAttente: 0,
-    totalSaisonsDues: 0, // Nombre total de saisons dues
-    // Nouvelles moyennes de présence par événement
+    totalSaisonsDues: 0,
+    // Moyennes de présence par événement
     moyPresenceGlobal: 0,
     moyPresenceSaison: 0,
+    nbMembresActifsSaison: 0,
   });
 
   // Fonction pour calculer les étoiles selon le pourcentage de présence
@@ -478,14 +479,8 @@ const Dashboard = () => {
       // Calcul des statistiques
       const totalMembers = membersData.length;
       
-      // Présence moyenne globale (%)
+      // Présence moyenne globale (%) - moyenne des % de tous les membres
       const avgPresenceGlobal = membersData.reduce((sum, m) => sum + m.pourcentage_presences, 0) / totalMembers || 0;
-      
-      // Présence moyenne saison en cours (Saison 13 - 2025)
-      const currentSeasonMembers = membersData.filter(m => m.saison_entree === 'Saison 13');
-      const avgPresenceSeason = currentSeasonMembers.length > 0
-        ? currentSeasonMembers.reduce((sum, m) => sum + m.pourcentage_presences, 0) / currentSeasonMembers.length
-        : 0;
       
       // Calcul des étoiles selon les présences
       const membersByStars = { 4: 0, 3: 0, 2: 0, 1: 0 };
@@ -501,14 +496,18 @@ const Dashboard = () => {
       const cotisationsEnAttente = membersData.filter(m => m.situation_cotisation > 0).length;
       const totalSaisonsDues = membersData.reduce((sum, m) => sum + m.situation_cotisation, 0);
       
-      // Charger les moyennes de présence depuis l'API
+      // Charger les moyennes de présence ET le % moyen de la saison depuis l'API
       let moyPresenceGlobal = 0;
       let moyPresenceSaison = 0;
+      let avgPresenceSeason = 0;
+      let nbMembresActifsSaison = 0;
       try {
         const moyennesRes = await fetch(`${API}/statistiques/moyennes-dashboard`);
         const moyennesData = await moyennesRes.json();
         moyPresenceGlobal = moyennesData.moy_global || 0;
         moyPresenceSaison = moyennesData.moy_saison_actuelle || 0;
+        avgPresenceSeason = moyennesData.pct_moyen_saison_actuelle || 0;
+        nbMembresActifsSaison = moyennesData.nb_membres_actifs_saison || 0;
       } catch (e) {
         console.log('Moyennes non disponibles');
       }
@@ -523,6 +522,7 @@ const Dashboard = () => {
         totalSaisonsDues,
         moyPresenceGlobal,
         moyPresenceSaison,
+        nbMembresActifsSaison,
       });
     } catch (error) {
       console.error('Erreur lors du chargement des données:', error);
