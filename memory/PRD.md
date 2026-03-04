@@ -8,11 +8,16 @@ Gestion d'un club de cigares avec 35 membres.
 ### Statistiques de présences (COMPLET - Mis à jour 04/03/2026)
 - **Saisie par saison** : Tableau pour entrer présences (Apéros, Repas, Anniversaires)
 - **Stats Membres** : Vue globale triable par colonne avec % de présence
-- **Stats Saisons** : **MOYENNES de présences par événement** (remplace les %)
-  - Colonnes : Saison | Nb Membres | Apéros (Prés./Moy.) | Repas (Prés./Moy.) | Anniv. (Prés./Moy.) | Moy. Globale
-  - Saisons 1-12 : Saisie manuelle des présences totales
-  - Saisons 13+ : Calcul automatique depuis les données de présence membres
-  - Bouton de sauvegarde par ligne pour les saisons historiques
+- **Stats Saisons** : **MOYENNES de présences par événement** avec TOGGLE Tableau/Graphique
+  - **Mode Tableau** :
+    - Colonnes : Saison | Nb Membres | Apéros (Prés./Moy.) | Repas (Prés./Moy.) | Anniv. (Prés./Moy.) | Moy. Globale
+    - Saisons 1-12 : Saisie manuelle des présences totales
+    - Saisons 13+ : Calcul automatique depuis les données de présence membres
+    - Bouton de sauvegarde par ligne pour les saisons historiques
+  - **Mode Graphique** :
+    - Graphique linéaire : Évolution des moyennes par type d'événement
+    - Graphique barres : Comparaison par saison (Apéros, Repas, Anniv.)
+    - Graphique barres : Évolution du nombre de membres
 - **Dashboard** : Affiche % ET moyennes de présences (présents/évén.)
 - **Profil membre** : Tableau simplifié Saison | Présences/Événements | % (cliquable)
 - **Automatisation complète** : % et étoiles calculés automatiquement

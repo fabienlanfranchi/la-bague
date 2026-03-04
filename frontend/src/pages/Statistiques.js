@@ -2,8 +2,9 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { ChevronLeft, ChevronRight, Save, BarChart3, Users, Calendar, RefreshCw, Check, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, TrendingUp, Edit, Lock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Save, BarChart3, Users, Calendar, RefreshCw, Check, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, TrendingUp, Edit, Lock, Table, LineChart } from 'lucide-react';
 import { toast } from 'sonner';
+import { LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -28,6 +29,9 @@ export default function Statistiques() {
   // État pour les modifications manuelles des saisons historiques
   const [saisonsManuelEdits, setSaisonsManuelEdits] = useState({});
   const [savingSaisons, setSavingSaisons] = useState(false);
+  
+  // Mode d'affichage Stats Saisons : 'tableau' ou 'graphique'
+  const [statsSaisonDisplayMode, setStatsSaisonDisplayMode] = useState('tableau');
 
   // Charger les données
   const loadData = useCallback(async () => {
@@ -186,6 +190,22 @@ export default function Statistiques() {
       return bVal - aVal;
     });
   }, [saisonsResume, sortColumn, sortDirection]);
+
+  // Données préparées pour le graphique (triées par saison)
+  const chartData = useMemo(() => {
+    return [...saisonsResume]
+      .sort((a, b) => a.saison - b.saison)
+      .map(stat => ({
+        name: `S${stat.saison}`,
+        saison: stat.saison,
+        fullName: `Saison ${stat.saison} (${stat.annee_debut}-${stat.annee_fin})`,
+        'Moy. Apéros': stat.moy_aperos || 0,
+        'Moy. Repas': stat.moy_repas || 0,
+        'Moy. Anniv.': stat.moy_anniversaires || 0,
+        'Moy. Globale': stat.moy_global || 0,
+        membres: stat.membres_actifs || 0
+      }));
+  }, [saisonsResume]);
 
   // Icône de tri pour les en-têtes
   const SortIcon = ({ column }) => {
@@ -767,20 +787,128 @@ export default function Statistiques() {
         /* Vue Stats Saisons - MOYENNES par événement */
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-amber-600" />
-              Stats par Saison - Moyenne de Présences
-              <span className="text-sm font-normal text-stone-500 ml-2">(Cliquez sur un en-tête pour trier)</span>
-            </CardTitle>
-            <p className="text-sm text-stone-500 mt-2">
-              <Edit className="h-4 w-4 inline mr-1" />
-              Saisons 1-12 : Saisie manuelle du nombre total de présences membres
-              <Lock className="h-4 w-4 inline mx-2" />
-              Saison 13+ : Calcul automatique
-            </p>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-amber-600" />
+                  Stats par Saison - Moyenne de Présences
+                </CardTitle>
+                {statsSaisonDisplayMode === 'tableau' && (
+                  <p className="text-sm text-stone-500 mt-2">
+                    <Edit className="h-4 w-4 inline mr-1" />
+                    Saisons 1-12 : Saisie manuelle
+                    <Lock className="h-4 w-4 inline mx-2" />
+                    Saison 13+ : Calcul automatique
+                  </p>
+                )}
+              </div>
+              {/* Toggle Tableau / Graphique */}
+              <div className="flex gap-2">
+                <Button
+                  variant={statsSaisonDisplayMode === 'tableau' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setStatsSaisonDisplayMode('tableau')}
+                  className={statsSaisonDisplayMode === 'tableau' 
+                    ? 'bg-amber-600 hover:bg-amber-700 text-white' 
+                    : 'bg-stone-100 border-stone-300 text-stone-600 hover:bg-stone-200'}
+                >
+                  <Table className="h-4 w-4 mr-1" />
+                  Tableau
+                </Button>
+                <Button
+                  variant={statsSaisonDisplayMode === 'graphique' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setStatsSaisonDisplayMode('graphique')}
+                  className={statsSaisonDisplayMode === 'graphique' 
+                    ? 'bg-amber-600 hover:bg-amber-700 text-white' 
+                    : 'bg-stone-100 border-stone-300 text-stone-600 hover:bg-stone-200'}
+                >
+                  <LineChart className="h-4 w-4 mr-1" />
+                  Graphique
+                </Button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
+            {statsSaisonDisplayMode === 'graphique' ? (
+              /* Mode Graphique */
+              <div className="p-6 space-y-8">
+                {/* Graphique Lignes - Évolution des moyennes */}
+                <div>
+                  <h3 className="text-lg font-semibold text-stone-700 mb-4">Évolution des Moyennes de Présences</h3>
+                  <div className="h-80 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RechartsLineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
+                        <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                        <YAxis tick={{ fontSize: 12 }} domain={[0, 'auto']} />
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: '#1c1917', border: '1px solid #d4a024', borderRadius: '8px' }}
+                          labelStyle={{ color: '#d4a024', fontWeight: 'bold' }}
+                          itemStyle={{ color: '#fff' }}
+                          formatter={(value, name) => [`${value} présents/évén.`, name]}
+                          labelFormatter={(label) => chartData.find(d => d.name === label)?.fullName || label}
+                        />
+                        <Legend />
+                        <Line type="monotone" dataKey="Moy. Globale" stroke="#d97706" strokeWidth={3} dot={{ fill: '#d97706', r: 5 }} activeDot={{ r: 8 }} />
+                        <Line type="monotone" dataKey="Moy. Apéros" stroke="#f59e0b" strokeWidth={2} dot={{ fill: '#f59e0b', r: 4 }} />
+                        <Line type="monotone" dataKey="Moy. Repas" stroke="#3b82f6" strokeWidth={2} dot={{ fill: '#3b82f6', r: 4 }} />
+                        <Line type="monotone" dataKey="Moy. Anniv." stroke="#8b5cf6" strokeWidth={2} dot={{ fill: '#8b5cf6', r: 4 }} />
+                      </RechartsLineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Graphique Barres - Comparaison par saison */}
+                <div>
+                  <h3 className="text-lg font-semibold text-stone-700 mb-4">Comparaison par Saison</h3>
+                  <div className="h-80 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
+                        <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                        <YAxis tick={{ fontSize: 12 }} domain={[0, 'auto']} />
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: '#1c1917', border: '1px solid #d4a024', borderRadius: '8px' }}
+                          labelStyle={{ color: '#d4a024', fontWeight: 'bold' }}
+                          itemStyle={{ color: '#fff' }}
+                          formatter={(value, name) => [`${value} présents/évén.`, name]}
+                          labelFormatter={(label) => chartData.find(d => d.name === label)?.fullName || label}
+                        />
+                        <Legend />
+                        <Bar dataKey="Moy. Apéros" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="Moy. Repas" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="Moy. Anniv." fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Graphique Membres */}
+                <div>
+                  <h3 className="text-lg font-semibold text-stone-700 mb-4">Évolution du Nombre de Membres</h3>
+                  <div className="h-64 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
+                        <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                        <YAxis tick={{ fontSize: 12 }} domain={[0, 'auto']} />
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: '#1c1917', border: '1px solid #d4a024', borderRadius: '8px' }}
+                          labelStyle={{ color: '#d4a024', fontWeight: 'bold' }}
+                          itemStyle={{ color: '#fff' }}
+                          formatter={(value) => [`${value} membres`, 'Nb Membres']}
+                          labelFormatter={(label) => chartData.find(d => d.name === label)?.fullName || label}
+                        />
+                        <Bar dataKey="membres" fill="#78716c" radius={[4, 4, 0, 0]} name="Nb Membres" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* Mode Tableau */
+              <div className="overflow-x-auto">
               <table className="w-full" data-testid="saison-stats-table">
                 <thead className="bg-stone-100">
                   <tr>
@@ -963,7 +1091,8 @@ export default function Statistiques() {
                   })}
                 </tbody>
               </table>
-            </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
