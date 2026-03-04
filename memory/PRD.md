@@ -5,24 +5,16 @@ Gestion d'un club de cigares avec 35 membres.
 
 ## Fonctionnalités implémentées
 
-### Statistiques de présences (COMPLET - Mis à jour 04/03/2026)
-- **Saisie par saison** : Tableau pour entrer présences (Apéros, Repas, Anniversaires)
-- **Stats Membres** : Vue globale triable par colonne avec % de présence
-- **Stats Saisons** : **MOYENNES de présences par événement** avec TOGGLE Tableau/Graphique
-  - **Mode Tableau** :
-    - Colonnes : Saison | Nb Membres | Apéros (Prés./Moy.) | Repas (Prés./Moy.) | Anniv. (Prés./Moy.) | Moy. Globale
-    - Saisons 1-12 : Saisie manuelle des présences totales
-    - Saisons 13+ : Calcul automatique depuis les données de présence membres
-  - **Mode Graphique** :
-    - Graphique linéaire : Évolution des moyennes par type d'événement
-    - Graphique barres : Comparaison par saison (Apéros, Repas, Anniv.)
-    - Graphique barres : Évolution du nombre de membres
-- **Dashboard** : Statistiques calculées depuis les données historiques (Stats Saisons)
-  - % Global = Total présences / (Σ événements × membres par saison) × 100
-  - Moyenne par événement + Moyenne Repas spécifique
-  - Pour Global ET Saison en cours
-- **Profil membre** : Tableau simplifié Saison | Présences/Événements | % (cliquable)
-- **Automatisation complète** : % et étoiles calculés automatiquement
+### Dashboard Membre (Mis à jour 04/03/2026)
+- **Stats perso Saison 13** : % global + détail Apéros/Repas/Anniversaires avec étoiles
+- **Messages non lus** : Affichés en haut avec pastille rouge, disparaissent quand lus (clic ouvre modal)
+- **Sondage en cours** : Réponse OUI/NON avec date limite
+- **Menu "Messages" masqué** pour les membres (admin only)
+
+### Statistiques de présences (COMPLET)
+- **Stats Saisons** : MOYENNES avec toggle Tableau/Graphique
+- **Calcul % global** basé sur données historiques (nb membres par saison)
+- **Dashboard Admin** : % + moyennes + moyenne repas (global et saison)
 
 ### Endpoints API Statistiques
 - `GET /api/statistiques/saisons-resume` : Stats par saison avec moyennes
@@ -34,8 +26,9 @@ Gestion d'un club de cigares avec 35 membres.
 - Étoiles automatiques selon % (4★ ≥75%, 3★ ≥50%, 2★ ≥25%, 1★ <25%)
 
 ### Messages & Sondages
-- Envoi de messages/sondages aux membres
-- Réponses automatisent les présences
+- Admin : Envoi de messages/sondages
+- Membre : Messages non lus dans Dashboard (pas d'onglet séparé)
+- Réponses sondages automatisent les présences en temps réel
 
 ### Sauvegarde
 - Export/Import JSON complet

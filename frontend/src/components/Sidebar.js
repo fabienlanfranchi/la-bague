@@ -65,7 +65,7 @@ const Sidebar = () => {
     { path: '/evenements', label: 'Événements', icon: Calendar, adminOnly: false },
     { path: '/jeux', label: 'Jeux', icon: Gamepad2, adminOnly: false },
     { path: '/boutique', label: 'Boutique', icon: ShoppingBag, adminOnly: false },
-    { path: '/messages', label: 'Messages', icon: MessageSquare, adminOnly: false },
+    { path: '/messages', label: 'Messages', icon: MessageSquare, adminOnly: true },
     { path: '/sondages', label: 'Sondages', icon: BarChart3, adminOnly: false },
     { path: '/statistiques', label: 'Statistiques', icon: PieChart, adminOnly: true },
     { path: '/sauvegarde', label: 'Sauvegarde', icon: Save, adminOnly: true },

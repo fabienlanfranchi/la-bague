@@ -17,6 +17,60 @@ const DashboardMembre = ({ prochainEvenement, currentMember }) => {
   const [reponseEnvoyee, setReponseEnvoyee] = useState(false);
   const [loading, setLoading] = useState(false);
   const [existingReponse, setExistingReponse] = useState(null);
+  
+  // Messages non lus
+  const [messagesNonLus, setMessagesNonLus] = useState([]);
+  const [messageOuvert, setMessageOuvert] = useState(null);
+  
+  // Stats personnelles
+  const [statsPerso, setStatsPerso] = useState(null);
+
+  // Charger les messages non lus et les stats perso
+  useEffect(() => {
+    const loadMemberData = async () => {
+      if (!currentMember?.id) return;
+      
+      try {
+        // Charger les notifications (messages non lus)
+        const notifResponse = await axios.get(`${API}/notifications/${currentMember.id}`);
+        const notifications = notifResponse.data || [];
+        
+        // Filtrer les non lus et récupérer les messages correspondants
+        const nonLusNotifs = notifications.filter(n => !n.lu && n.message_id);
+        
+        if (nonLusNotifs.length > 0) {
+          // Charger les détails des messages
+          const messagesResponse = await axios.get(`${API}/messages`);
+          const allMessages = messagesResponse.data || [];
+          
+          const messagesAvecNotif = nonLusNotifs.map(notif => {
+            const msg = allMessages.find(m => m.id === notif.message_id);
+            return msg ? { ...msg, notif_id: notif.id } : null;
+          }).filter(Boolean);
+          
+          setMessagesNonLus(messagesAvecNotif);
+        }
+        
+        // Charger les stats personnelles pour la saison 13
+        const statsResponse = await axios.get(`${API}/statistiques/saison/13`);
+        const statsData = statsResponse.data;
+        
+        if (statsData && statsData.membres) {
+          const membreStats = statsData.membres.find(m => m.membre_id === currentMember.id);
+          if (membreStats) {
+            setStatsPerso({
+              ...membreStats,
+              config: statsData.config
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Erreur chargement données membre:', error);
+      }
+    };
+    
+    loadMemberData();
+  }, [currentMember]);
 
   // Charger la réponse existante du membre
   useEffect(() => {
@@ -39,6 +93,39 @@ const DashboardMembre = ({ prochainEvenement, currentMember }) => {
     
     loadExistingReponse();
   }, [prochainEvenement, currentMember]);
+
+  // Ouvrir un message et le marquer comme lu
+  const openMessage = async (msg) => {
+    setMessageOuvert(msg);
+    
+    // Marquer comme lu via l'API
+    if (msg.notif_id) {
+      try {
+        await axios.put(`${API}/notifications/${msg.notif_id}/read`);
+        // Retirer le message de la liste des non lus
+        setMessagesNonLus(prev => prev.filter(m => m.id !== msg.id));
+      } catch (error) {
+        console.error('Erreur marquage lu:', error);
+      }
+    }
+  };
+
+  // Fermer le message
+  const closeMessage = () => {
+    setMessageOuvert(null);
+  };
+
+  // Formater la date
+  const formatDate = (dateStr) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
 
   // Calculer la date limite du sondage selon le type d'événement
   const getDateLimiteSondage = (evenement) => {
@@ -109,6 +196,137 @@ const DashboardMembre = ({ prochainEvenement, currentMember }) => {
           Votre espace membre {currentMember?.nom_complet && `- ${currentMember.nom_complet}`}
         </p>
       </div>
+
+      {/* MESSAGES NON LUS */}
+      {messagesNonLus.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-xl font-serif text-white flex items-center">
+            <MessageSquare className="w-5 h-5 mr-2 text-red-400" />
+            Messages non lus ({messagesNonLus.length})
+          </h2>
+          {messagesNonLus.map((msg) => (
+            <Card 
+              key={msg.id}
+              onClick={() => openMessage(msg)}
+              className="bg-black/40 border-2 border-red-500/50 backdrop-blur-sm cursor-pointer hover:border-red-400 transition-all"
+              data-testid={`unread-message-${msg.id}`}
+            >
+              <CardContent className="py-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start space-x-3">
+                    <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse mt-2" />
+                    <div>
+                      <h3 className="text-white font-semibold">{msg.titre}</h3>
+                      <p className="text-gray-400 text-sm line-clamp-2 mt-1">{msg.contenu}</p>
+                      <p className="text-gray-500 text-xs mt-2">{formatDate(msg.created_at)}</p>
+                    </div>
+                  </div>
+                  <Badge className="bg-red-600 text-white text-xs">
+                    Non lu
+                  </Badge>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* MODAL MESSAGE COMPLET */}
+      {messageOuvert && (
+        <div 
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+          onClick={closeMessage}
+        >
+          <Card 
+            className="bg-[#1C1917] border-2 border-[#D4A024] w-full max-w-2xl max-h-[80vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <CardHeader className="border-b border-[#D4A024]/30">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xl font-serif text-white">
+                  {messageOuvert.titre}
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  onClick={closeMessage}
+                  className="text-gray-400 hover:text-white"
+                >
+                  <X className="w-6 h-6" />
+                </Button>
+              </div>
+              <p className="text-gray-500 text-sm mt-2">
+                {formatDate(messageOuvert.created_at)}
+              </p>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <p className="text-gray-200 whitespace-pre-wrap text-base leading-relaxed">
+                {messageOuvert.contenu}
+              </p>
+              <div className="mt-6 flex justify-end">
+                <Button
+                  onClick={closeMessage}
+                  className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif"
+                >
+                  Fermer
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* STATS PERSONNELLES SAISON 13 */}
+      {statsPerso && (
+        <Card className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="text-xl font-serif text-white flex items-center">
+              <TrendingUp className="w-5 h-5 mr-2 text-[#D4A024]" />
+              Vos statistiques - Saison 13
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {/* % Global */}
+              <div className="bg-black/30 rounded-lg p-4 text-center border border-[#D4A024]/20">
+                <p className="text-gray-400 text-sm mb-1">Présence globale</p>
+                <p className="text-3xl font-bold text-[#D4A024]">{statsPerso.pct_global}%</p>
+                <div className="flex justify-center mt-2">
+                  {[...Array(statsPerso.pct_global >= 75 ? 4 : statsPerso.pct_global >= 50 ? 3 : statsPerso.pct_global >= 25 ? 2 : 1)].map((_, i) => (
+                    <Star key={i} className="w-4 h-4 text-[#D4A024] fill-[#D4A024]" />
+                  ))}
+                </div>
+              </div>
+              
+              {/* Apéros */}
+              <div className="bg-black/30 rounded-lg p-4 text-center border border-amber-500/20">
+                <p className="text-gray-400 text-sm mb-1">Apéros</p>
+                <p className="text-2xl font-bold text-amber-400">
+                  {statsPerso.presences_aperos}/{statsPerso.config?.nb_aperos || 0}
+                </p>
+                <p className="text-amber-400/70 text-sm">{statsPerso.pct_aperos}%</p>
+              </div>
+              
+              {/* Repas */}
+              <div className="bg-black/30 rounded-lg p-4 text-center border border-blue-500/20">
+                <p className="text-gray-400 text-sm mb-1">Repas</p>
+                <p className="text-2xl font-bold text-blue-400">
+                  {statsPerso.presences_repas}/{statsPerso.config?.nb_repas || 0}
+                </p>
+                <p className="text-blue-400/70 text-sm">{statsPerso.pct_repas}%</p>
+              </div>
+              
+              {/* Anniversaires */}
+              <div className="bg-black/30 rounded-lg p-4 text-center border border-purple-500/20">
+                <p className="text-gray-400 text-sm mb-1">Anniversaires</p>
+                <p className="text-2xl font-bold text-purple-400">
+                  {statsPerso.presences_anniversaires}/{statsPerso.config?.nb_anniversaires || 0}
+                </p>
+                <p className="text-purple-400/70 text-sm">{statsPerso.pct_anniversaires}%</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* SONDAGE EN COURS */}
       {prochainEvenement && (
