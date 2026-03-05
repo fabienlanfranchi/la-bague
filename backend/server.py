@@ -1252,14 +1252,80 @@ async def get_evenement_en_cours():
 
 @api_router.delete("/evenements/{evenement_id}")
 async def delete_evenement(evenement_id: str):
-    """Supprimer un événement"""
+    """Supprimer un événement
+    
+    AUTOMATISATION: Décrémente automatiquement le nombre d'événements de la saison
+    et supprime les présences associées des membres
+    """
+    # Récupérer l'événement avant de le supprimer
+    existing = await db.evenements.find_one({"id": evenement_id}, {"_id": 0})
+    
+    if not existing:
+        raise HTTPException(status_code=404, detail="Événement non trouvé")
+    
+    evt_saison = existing.get("saison", 13)
+    evt_type = existing.get("type_sondage", "").lower()
+    
+    # Supprimer l'événement
     result = await db.evenements.delete_one({"id": evenement_id})
     
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Événement non trouvé")
     
-    # Supprimer aussi toutes les réponses associées
+    # Supprimer toutes les réponses associées
+    reponses = await db.reponses_sondages.find({"evenement_id": evenement_id}, {"_id": 0}).to_list(1000)
     await db.reponses_sondages.delete_many({"evenement_id": evenement_id})
+    
+    # ========== AUTOMATISATION : DÉCRÉMENTER LES STATS ==========
+    
+    # 1. Décrémenter le nombre d'événements de cette saison
+    type_field_map = {
+        "apero": "nb_aperos",
+        "apéro": "nb_aperos",
+        "repas": "nb_repas",
+        "anniversaire": "nb_anniversaires"
+    }
+    field_to_update = type_field_map.get(evt_type)
+    
+    if field_to_update:
+        # Récupérer la config actuelle
+        config = await db.saisons_config.find_one({"saison": evt_saison})
+        if config:
+            current_count = config.get(field_to_update, 0)
+            new_count = max(0, current_count - 1)  # Jamais négatif
+            await db.saisons_config.update_one(
+                {"saison": evt_saison},
+                {"$set": {field_to_update: new_count}}
+            )
+    
+    # 2. Décrémenter les présences des membres qui avaient répondu "présent"
+    presence_field_map = {
+        "apero": "presences_aperos",
+        "apéro": "presences_aperos",
+        "repas": "presences_repas",
+        "anniversaire": "presences_anniversaires"
+    }
+    presence_field = presence_field_map.get(evt_type)
+    
+    if presence_field:
+        for reponse in reponses:
+            if reponse.get("present"):
+                membre_id = reponse.get("membre_id")
+                if membre_id:
+                    # Décrémenter la présence du membre
+                    membre_presence = await db.presences_membres.find_one({
+                        "membre_id": membre_id,
+                        "saison": evt_saison
+                    })
+                    if membre_presence:
+                        current_pres = membre_presence.get(presence_field, 0)
+                        new_pres = max(0, current_pres - 1)
+                        await db.presences_membres.update_one(
+                            {"membre_id": membre_id, "saison": evt_saison},
+                            {"$set": {presence_field: new_pres}}
+                        )
+    
+    # ========== FIN AUTOMATISATION ==========
     
     return {"message": "Événement supprimé avec succès"}
 
