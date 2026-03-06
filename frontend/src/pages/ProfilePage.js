@@ -249,8 +249,8 @@ const ProfilePage = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
-                  {memberSeasons.slice(-5).map((season) => (
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {memberSeasons.map((season) => (
                     <div
                       key={season.number}
                       className={`flex items-center justify-between p-2 rounded-lg border ${

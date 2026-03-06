@@ -18,6 +18,11 @@ const DashboardMembre = ({ prochainEvenement, currentMember }) => {
   const [loading, setLoading] = useState(false);
   const [existingReponse, setExistingReponse] = useState(null);
   
+  // Choix de menu pour les repas
+  const [choixEntree, setChoixEntree] = useState(null);
+  const [choixPlat, setChoixPlat] = useState(null);
+  const [choixDessert, setChoixDessert] = useState(null);
+  
   // Messages non lus
   const [messagesNonLus, setMessagesNonLus] = useState([]);
   const [messageOuvert, setMessageOuvert] = useState(null);
@@ -84,6 +89,10 @@ const DashboardMembre = ({ prochainEvenement, currentMember }) => {
           setExistingReponse(response.data);
           setReponse(response.data.present ? 'oui' : 'non');
           setReponseEnvoyee(true);
+          // Charger les choix de menu existants
+          if (response.data.choix_entree) setChoixEntree(response.data.choix_entree);
+          if (response.data.choix_plat) setChoixPlat(response.data.choix_plat);
+          if (response.data.choix_dessert) setChoixDessert(response.data.choix_dessert);
         }
       } catch (error) {
         // Pas de réponse existante, c'est normal
@@ -170,13 +179,31 @@ const DashboardMembre = ({ prochainEvenement, currentMember }) => {
       return;
     }
 
+    // Si c'est un repas et présent, vérifier les choix de menu
+    const isRepas = prochainEvenement.type_sondage === 'repas';
+    if (isRepas && reponse === 'oui') {
+      if (!choixEntree || !choixPlat || !choixDessert) {
+        toast.error('Veuillez sélectionner vos choix de menu');
+        return;
+      }
+    }
+
     setLoading(true);
     try {
-      await axios.post(`${API}/reponses-sondages`, {
+      const payload = {
         evenement_id: prochainEvenement.id,
         membre_id: currentMember.id,
         present: reponse === 'oui'
-      });
+      };
+      
+      // Ajouter les choix de menu si présent à un repas
+      if (isRepas && reponse === 'oui') {
+        payload.choix_entree = choixEntree;
+        payload.choix_plat = choixPlat;
+        payload.choix_dessert = choixDessert;
+      }
+      
+      await axios.post(`${API}/reponses-sondages`, payload);
       
       setReponseEnvoyee(true);
       toast.success('Votre réponse a été enregistrée !');
@@ -466,6 +493,88 @@ const DashboardMembre = ({ prochainEvenement, currentMember }) => {
                     </Button>
                   </div>
                 </div>
+
+                {/* Choix de menu pour les repas */}
+                {prochainEvenement.type_sondage === 'repas' && reponse === 'oui' && prochainEvenement.options_sondage && (
+                  <div className="mb-4 p-4 bg-blue-900/20 border border-blue-500/30 rounded-lg space-y-4">
+                    <h5 className="text-blue-400 font-semibold flex items-center">
+                      <span className="mr-2">🍽️</span>
+                      Vos choix de menu
+                    </h5>
+                    
+                    {/* Entrées */}
+                    {prochainEvenement.options_sondage.entrees && prochainEvenement.options_sondage.entrees.length > 0 && (
+                      <div>
+                        <p className="text-sm text-gray-400 mb-2">Entrée :</p>
+                        <div className="flex flex-wrap gap-2">
+                          {prochainEvenement.options_sondage.entrees.map((entree, idx) => (
+                            <Button
+                              key={idx}
+                              variant="outline"
+                              size="sm"
+                              onClick={() => { setChoixEntree(entree); setReponseEnvoyee(false); }}
+                              className={`transition-all ${
+                                choixEntree === entree
+                                  ? 'bg-amber-600 border-amber-500 text-white'
+                                  : 'border-amber-600/50 text-amber-400 hover:bg-amber-900/30'
+                              }`}
+                            >
+                              {entree}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Plats */}
+                    {prochainEvenement.options_sondage.plats && prochainEvenement.options_sondage.plats.length > 0 && (
+                      <div>
+                        <p className="text-sm text-gray-400 mb-2">Plat :</p>
+                        <div className="flex flex-wrap gap-2">
+                          {prochainEvenement.options_sondage.plats.map((plat, idx) => (
+                            <Button
+                              key={idx}
+                              variant="outline"
+                              size="sm"
+                              onClick={() => { setChoixPlat(plat); setReponseEnvoyee(false); }}
+                              className={`transition-all ${
+                                choixPlat === plat
+                                  ? 'bg-blue-600 border-blue-500 text-white'
+                                  : 'border-blue-600/50 text-blue-400 hover:bg-blue-900/30'
+                              }`}
+                            >
+                              {plat}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Desserts */}
+                    {prochainEvenement.options_sondage.desserts && prochainEvenement.options_sondage.desserts.length > 0 && (
+                      <div>
+                        <p className="text-sm text-gray-400 mb-2">Dessert :</p>
+                        <div className="flex flex-wrap gap-2">
+                          {prochainEvenement.options_sondage.desserts.map((dessert, idx) => (
+                            <Button
+                              key={idx}
+                              variant="outline"
+                              size="sm"
+                              onClick={() => { setChoixDessert(dessert); setReponseEnvoyee(false); }}
+                              className={`transition-all ${
+                                choixDessert === dessert
+                                  ? 'bg-purple-600 border-purple-500 text-white'
+                                  : 'border-purple-600/50 text-purple-400 hover:bg-purple-900/30'
+                              }`}
+                            >
+                              {dessert}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Confirmation visuelle */}
                 {reponseEnvoyee && (
