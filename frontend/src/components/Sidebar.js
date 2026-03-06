@@ -43,7 +43,7 @@ const Sidebar = () => {
     { path: '/cigarotheque', label: 'Cigarthèque', icon: Book, adminOnly: false },
     { path: '/assistant-ia', label: 'Assistant IA', icon: Sparkles, adminOnly: false },
     { path: '/instagram', label: 'Instagram', icon: InstagramIcon, adminOnly: false, external: true },
-    { path: '/profile', label: 'Profil', icon: User, adminOnly: false },
+    { path: '/profile', label: 'Profil', icon: User, adminOnly: false, memberOnly: true },
   ];
 
   return (
@@ -91,6 +91,7 @@ const Sidebar = () => {
           <nav className="flex-1 space-y-2">
             {menuItems.map((item) => {
               if (item.adminOnly && !isAdmin) return null;
+              if (item.memberOnly && isAdmin) return null;
               
               const Icon = item.icon;
               
