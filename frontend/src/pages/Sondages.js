@@ -90,6 +90,11 @@ const Sondages = () => {
     return total > 0 ? ((votes[index] / total) * 100).toFixed(1) : 0;
   };
 
+  const handleDeleteSondage = (sondageId) => {
+    // Supprimer le sondage de la liste
+    setSondages(sondages.filter(s => s.id !== sondageId));
+  };
+
   // Interface ADMIN : Créer et gérer les sondages
   if (isAdmin) {
     return (
@@ -202,6 +207,8 @@ const Sondages = () => {
                     variant="ghost"
                     size="sm"
                     className="text-red-400 hover:text-red-500 hover:bg-red-900/20"
+                    onClick={() => handleDeleteSondage(sondage.id)}
+                    data-testid={`delete-poll-${sondage.id}`}
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>
