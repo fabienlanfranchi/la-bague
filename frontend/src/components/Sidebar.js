@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { Switch } from '@/components/ui/switch';
@@ -21,40 +21,11 @@ import {
   PieChart,
   Save
 } from 'lucide-react';
-import axios from 'axios';
-
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
 
 const Sidebar = () => {
   const { isAdmin, toggleMode, currentMember } = useUser();
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(true);
-  const [notificationCount, setNotificationCount] = useState(0);
-
-  // Charger le nombre de notifications non lues
-  const fetchNotifications = async () => {
-    if (currentMember?.id) {
-      try {
-        const response = await axios.get(`${API}/notifications/${currentMember.id}/count`);
-        setNotificationCount(response.data.count || 0);
-      } catch (error) {
-        console.error('Erreur notifications:', error);
-      }
-    }
-  };
-
-  useEffect(() => {
-    fetchNotifications();
-    // Rafraîchir toutes les 10 secondes (plus fréquent pour réactivité)
-    const interval = setInterval(fetchNotifications, 10000);
-    return () => clearInterval(interval);
-  }, [currentMember]);
-
-  // Rafraîchir quand on change de page (notamment quand on quitte Messages)
-  useEffect(() => {
-    fetchNotifications();
-  }, [location.pathname]);
 
   const isActive = (path) => location.pathname === path;
 
@@ -144,7 +115,7 @@ const Sidebar = () => {
                   key={item.path}
                   to={item.path}
                   className={`
-                    flex items-center space-x-3 px-4 py-3 rounded-lg transition-all relative
+                    flex items-center space-x-3 px-4 py-3 rounded-lg transition-all
                     ${
                       isActive(item.path)
                         ? 'bg-[#D4A024]/20 text-[#D4A024] border-l-4 border-[#D4A024]'
@@ -155,12 +126,6 @@ const Sidebar = () => {
                 >
                   <Icon className="w-5 h-5" />
                   <span className="font-medium">{item.label}</span>
-                  {/* Badge de notification pour Messages */}
-                  {item.path === '/messages' && notificationCount > 0 && (
-                    <span className="absolute right-3 bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center">
-                      {notificationCount > 9 ? '9+' : notificationCount}
-                    </span>
-                  )}
                 </Link>
               );
             })}

@@ -1,88 +1,111 @@
 <analysis>**original_problem_statement:**
-The user wants to continue the development of a cigar club management application called La Bague Impériale. The project began by fixing event data imports, then evolved into building a full CRUD event management system. The focus then shifted to building a messaging/polling system.
+The user wants to build a comprehensive management application for their cigar club, La Bague Impériale. The project started with data import and has since evolved to include full CRUD for events, a dynamic and automated statistics system, member management, and a messaging system.
 
-The most recent and significant pivot was initiated by the user to completely overhaul the member statistics system. The goal is to replace static, imported percentage data with a fully dynamic, automated, and interconnected system. This new system must:
-- Calculate all statistics (presence percentages, star ratings) dynamically from raw presence data.
-- Account for each member's club entry date, ignoring seasons prior to their membership.
-- Allow for specific excluded seasons for members who were temporarily inactive.
-- Automatically update member presence records when they respond Présent to event polls.
-- Provide the admin with total control over all data, including detailed member information and historical statistics.
+The most recent requests focus on refining existing features and adding new pages:
+1.  **Statistics Accuracy:** The user is very attentive to the accuracy of statistics. All calculations (percentages, averages) must be correct and reflect the complex reality of member turnover and historical data.
+2.  **Admin UI/UX:** The user is redesigning core admin functionalities to be more like utility dashboards rather than simple data displays. This includes revamping the messaging system.
+3.  **Member Experience:** The user wants to streamline the member-facing interface, consolidating key information like personal stats, polls, and messages onto the member's dashboard.
+4.  **New Features:** The user plans to add several new sections like Boutique, Jeux, Cigarothèque, etc.
+
+**PRODUCT REQUIREMENTS:**
+- A Messages tab for the admin that serves as a template manager for common communications (e.g., fee reminders, new member announcements), displays the club charter, and provides a link to a WhatsApp group.
+- A Boutique page with links to the club's merchandise shop.
+- A member dashboard that displays personal stats for the current season, pending polls, and unread messages.
+- An event management system that allows admins to view poll respondents, modify event details (including meal options), and delete events, with all actions correctly updating the application's statistics in real-time.
 
 **User's preferred language**: Français
 
 **what currently exists?**
-A full-stack application (React frontend, FastAPI backend, MongoDB).
-- **Admin Section:** Features a Dashboard, Member Management (), Accounting (), and Events ().
-- **Complete Statistics System:** A new, comprehensive system has been built from scratch.
-    - **Backend:** New data models (, ) and numerous API endpoints have been added to  to handle the calculation and storage of all statistics.
-    - **Frontend - Statistics Page ():** A new admin page with three distinct views:
-        1.  **Saisie:** A grid for manually inputting historical presence data for each member, season by season.
-        2.  **Stats Membres:** A sortable table providing a global overview of every member's automatically calculated statistics.
-        3.  **Stats Saisons:** A sortable table to compare season-over-season performance (currently being modified).
-    - **Frontend - Member Profiles:** The  page now features a detailed profile view for each member, showing their global and season-by-season stats, all calculated automatically.
-- **Full Automation (Répercussions):** The statistics system is fully interconnected.
-    - Creating a new event automatically updates the total number of events for that season.
-    - A member responding Présent to a poll automatically updates their presence record.
-    - All percentages and star ratings across the entire application (Member list, Dashboard, Profile pages) are then recalculated and updated in real-time.
-- **Data Backup:** A  page allows the admin to export the entire database to a JSON file and restore it from a backup.
+A full-stack application (React frontend, FastAPI backend, MongoDB) with a sophisticated, automated statistics system at its core.
+- **Admin Section:** Features a Dashboard, Member Management (), Events (), Accounting (), a new Boutique page, and a multi-faceted Statistics page ().
+- **Statistics System:** A dynamic system that calculates all member and season stats in real-time.
+    - The Stats Saisons view provides both a tabular and graphical representation of season-over-season performance, with manual override capabilities for historical data (Seasons 1-12).
+    - All statistics (e.g., global presence percentage) are now calculated accurately, accounting for variable member counts in past seasons.
+- **Member Dashboard:** The member-facing dashboard has been enhanced to be the primary interface, showing personal stats for the current season (without stars), the next event poll, and any unread messages. The dedicated Messages tab for members has been removed.
+- **Event Management:** Admins can create, delete, and modify events. A crucial bug was fixed where deleting an event now correctly decrements the total event count for the season, ensuring stats remain accurate. Admins can also click on poll results to see a modal listing who voted and their specific choices.
+- **Boutique:** A new Boutique page has been created with an external link to the club's merchandise store.
 
 **Last working item**:
-*   **Last item agent was working:** The user identified a flaw in the Stats Saisons view: historical season stats were skewed because they were calculated using only *current* members, making older seasons appear more successful than they were. The user requested to modify this view to allow **manual entry of aggregated percentages and member counts for past seasons (1-12)**, while keeping the current season (13) and future ones fully automated. The agent started implementing this by adding  fields to the  backend model and creating a new endpoint to save this manual data.
-*   **Status:** IN PROGRESS
-*   **Agent Testing Done:** N
-*   **Which testing method agent to use?** both
-*   **User Testing Done:** N
+- **Last item agent was working:** The user requested a complete overhaul of the admin Messages page. Instead of a chat-like interface, it should become a utility page with message templates, the club charter, and a link to WhatsApp. The agent had identified the relevant file () and was preparing to rewrite it.
+- **Status:** IN PROGRESS
+- **Agent Testing Done:** N
+- **Which testing method agent to use?** both
+- **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-*   **Issue 1 (P0):** Stats Saisons view requires manual override for historical data.
-*   **Issue 2 (P2):** Admin notifications are not detailed (superseded by stats work).
-*   **Issue 3 (P2):** Admin cannot see the list of members who voted on a poll (superseded by stats work).
+- **Issue 1 (P0):** Rebuild the admin Messages page.
+- **Issue 2 (P1):** Allow admin to edit meal options in the event modification modal.
+- **Issue 3 (P2):** Implement detailed admin notifications (requires user clarification).
 
 **Issues Detail:**
-*   **Issue 1: Stats Saisons view requires manual override for historical data.**
-    *   **Attempted fixes:** The agent successfully added new fields to the  model and MongoDB collection (e.g., , ). A new backend endpoint  was also created to save this data.
-    *   **Next debug checklist:**
-        1.  Modify the frontend file .
-        2.  In the Stats Saisons view, for any season <= 12, render text input fields for , , , and .
-        3.  The backend should be modified to prioritize displaying these manual values when they exist.
-        4.  Create a Save button for each row (or a global save) that calls the new  endpoint to persist the manually entered data.
-        5.  Ensure that for season 13 and above, the view remains automated and does not show input fields.
-    *   **Why fix this issue and what will be achieved with the fix?** To provide an accurate historical view of season performance, which is critical for the user's analysis.
-    *   **Status:** IN PROGRESS
-    *   **Is recurring issue?** N
-    *   **Should Test frontend/backend/both after fix?** Both.
-    *   **Blocked on other issue:** None.
+- **Issue 1: Rebuild the admin Messages page**
+    - **Attempted fixes:** The agent identified  as the file to modify.
+    - **Next debug checklist:**
+        1.  Edit .
+        2.  Remove the existing chat/message list UI.
+        3.  Implement a new layout with three sections:
+            a.  **Messages pré-enregistrés:** A list of templates (rappel de cotisation, rappel de sondage, etc.). Clicking a template should open the New Message modal and pre-fill its content.
+            b.  **Charte du club:** A section to display the club's charter text.
+            c.  **Lien WhatsApp:** A button that links to a WhatsApp group.
+        4.  Request the charter text and WhatsApp link from the user.
+    - **Why fix this issue and what will be achieved with the fix?** To align the messaging feature with the user's new workflow, focusing on utility and templates rather than a conversational UI.
+    - **Status:** IN PROGRESS
+    - **Is recurring issue?** N
+    - **Should Test frontend/backend/both after fix?** Frontend.
+    - **Blocked on other issue:** None.
+
+- **Issue 2: Allow admin to edit meal options in the event modification modal**
+    - **Attempted fixes:** None. The user requested this (si un plat change par exemple), but the agent was diverted to fix a critical statistics bug before starting.
+    - **Next debug checklist:**
+        1.  Modify .
+        2.  In the , add input fields to edit the meal options stored in .
+        3.  Update the  function to send the modified meal options to the backend.
+        4.  Ensure the  endpoint in  correctly updates the event's  field in the database.
+    - **Why fix this issue and what will be achieved with the fix?** To give the admin full control over event details, allowing them to correct mistakes or make changes to meal polls after creation.
+    - **Status:** NOT STARTED
+    - **Is recurring issue?** N
+    - **Should Test frontend/backend/both after fix?** Both.
+    - **Blocked on other issue:** None.
+
+- **Issue 3: Implement detailed admin notifications**
+    - **Attempted fixes:** The agent asked for clarification.
+    - **Next debug checklist:** Await a more precise definition from the user about what détaillées means (e.g., a history of sent messages, read receipts, etc.).
+    - **Why fix this issue and what will be achieved with the fix?** To provide the admin with more insight into communication outreach.
+    - **Status:** BLOCKED (Awaiting user input)
+    - **Is recurring issue?** N
+    - **Should Test frontend/backend/both after fix?** TBD.
+    - **Blocked on other issue:** None.
 
 **In progress Task List**:
-*   **Task 1 (P3):** Implement Resend Message functionality.
-    *   **Where to resume:** . The button exists, but the logic to pre-fill the New Message modal is missing.
-    *   **Status:** IN PROGRESS (Stale)
+None. The previous Resend Message task is now obsolete due to the redesign of the Messages page.
 
 **Upcoming and Future Tasks**
-
-*   **Upcoming Tasks:**
-    *   **(P1)** Complete detailed admin notifications (panel and backend endpoint).
-    *   **(P1)** Allow admin to see who voted on polls (clickable count -> modal).
-*   **Future Tasks:**
-    *   Build the Jeux (Games) tab.
-    *   Build the Boutique (Shop) tab.
-    *   Build the Cigarothèque (Cigar Library) tab.
-    *   Build the Assistant IA de la Bague (AI Assistant) tab.
-    *   Build the Instagram tab.
+- **Upcoming Tasks:**
+    - (P1) Implement editable meal options (Issue #2).
+    - (P2) Implement detailed admin notifications (Issue #3, blocked).
+- **Future Tasks:**
+    - Build the Jeux (Games) tab.
+    - Build the Cigarothèque (Cigar Library) tab.
+    - Build the Assistant IA de la Bague (AI Assistant) tab.
+    - Build the Instagram tab.
 
 **Completed work in this session**
--   **Statistics System Overhaul:** Built an entire dynamic statistics system from the ground up, including backend models (, ), dozens of new API endpoints, and a new Statistiques admin page with multiple views (, , ).
--   **Full Statistics Automation:**
-    - All percentages and star ratings are now calculated dynamically and updated app-wide.
-    - Calculations intelligently factor in a member's entry date and any excluded seasons.
-    - Event creation and poll responses are now directly linked to the statistics system for seamless real-time updates.
--   **Enhanced Member Management:** The admin now has total control to edit all member fields, including president status and excluded seasons, via an improved form on the  page.
--   **Detailed Member Profiles:** Implemented a new profile view accessible from the  page, showing a member's complete, automated statistical history in a collapsible, easy-to-read format.
--   **Data Backup/Restore:** Created a new  page allowing the admin to export and import the entire application database with one click.
--   **UI/UX Improvements:** Implemented custom percentage rounding, made statistics tables sortable, and fixed various UI display bugs based on user feedback.
+- **Critical Statistics Bug Fixes:**
+    - Corrected the global presence percentage on the Dashboard to use accurate, variable historical member counts for each season, not just current members.
+    - Fixed the current season's average presence percentage to be calculated across all active members, not just newly joined ones.
+- **Event Deletion Integrity:** Fixed a major bug where deleting an event did not decrement the season's event counter, ensuring statistics are no longer skewed after a deletion.
+- **Member Experience Overhaul:**
+    - Removed the Messages tab for members and integrated unread messages and personal season stats directly onto their dashboard.
+    - Removed star ratings from the member dashboard's season stats to reserve them for the global historical rating in the profile.
+- **Event Management Features:**
+    - Implemented a modal for admins to view a list of members who responded to a poll and their specific choices.
+    - Changed the deadline for meal-related polls from 21:30 to midnight of the event day.
+    - Added a user-friendly Modifier modal for events.
+- **Boutique Page Creation:** Built the Boutique page and added the correct external URL provided by the user.
+- **User Decision Reversal:** Re-implemented real-time statistics updates upon a member's poll response, reversing a previous plan to delay updates until event closure, as per the user's final decision.
 
 **Earlier issues found/mentioned but not fixed**
-*   The original issue of importing event data is now obsolete, as the user has opted to manually enter all historical presence data into the new, more robust statistics system.
+The pending issues list covers all known unfixed items.
 
 **Known issue recurrence from previous fork**
 N/A
@@ -91,76 +114,76 @@ N/A
 
 
 **Key Technical Concepts**
-*   **Frontend:** React, Tailwind CSS, shadcn/ui. State management within components using  and .
-*   **Backend:** FastAPI, Motor (async Pymongo), Pydantic. Heavy use of aggregation pipelines in MongoDB for dynamic calculations.
-*   **Architecture:** The  file is now a large monolith containing routes for members, events, messages, and all new statistics logic. It is the primary candidate for refactoring into smaller, dedicated API routers.
+- **Frontend:** React, Tailwind CSS, shadcn/ui, Recharts for graphs.
+- **Backend:** FastAPI, Motor (async Pymongo), Pydantic.
+- **Architecture:** Monolithic backend () and component-based React frontend. The application heavily relies on MongoDB aggregation pipelines for real-time, complex statistical calculations that are triggered by user actions (event creation/deletion, poll responses).
 
 **key DB schema**
-*   **members:** 
-*   **saisons_config:** 
-*   **presences_membres:** 
+- **members:** 
+- **saisons_config:** 
+- **presences_membres:** 
+- **evenements:** 
+- **notifications:** 
 
 **changes in tech stack**
 None.
 
 **All files of reference**
-*   : Contains all new backend logic for statistics calculation and data manipulation.
-*   : New file that houses the entire frontend for the statistics feature (Saisie, Stats Membres, Stats Saisons views).
-*   : Heavily modified to include the new detailed member profile modal and connect the member list to the new automated stats.
-*   : Updated with new routes for  and .
-*   : Updated with new navigation links.
-*   : New file for the data backup feature.
+- 
+- 
+- 
+- 
+- 
+- 
+- 
 
 **Areas that need refactoring**:
-*    is critically oversized. The logic for members, events, messages, and statistics should be broken out into separate files under a new  directory to improve maintainability.
+- ** is critically oversized.** The logic for members, events, messages, and statistics should be broken out into separate files under a new  directory to improve maintainability and prevent conflicts. This is becoming urgent.
 
 **key api endpoints**
-*   
-*   
-*   
-*   
-*   
-*   
-*    **(New, for current task)**
-*   
-*   
-*   
+-  (Modified to correctly update stats)
+-  (Modified to calculate stats accurately)
+-  (Used for the view voters modal)
+-  (Used for the event modification modal)
+-  (Modified to fix event counts on deletion)
 
 **Critical Info for New Agent**
-*   The user has completely pivoted to building out this new, comprehensive statistics system. This is the **highest priority**. All previous tasks (notifications, resend message) are now secondary.
-*   The user is highly engaged and technically astute. They value clear logic and full automation (Répercussions). It is effective to confirm their logic (Vous avez raison) and then build upon it.
-*   The immediate next step is to finish the last user request: allowing manual overrides for historical season stats (S1-S12) in the Stats Saisons view. The backend work for this is already partially done.
+- **Priority #1 is the Messages admin page overhaul.** This is the user's current focus.
+- **Do not try to fix the old member messaging system.** The user has explicitly decided to abandon the separate Messages page for members and the associated read/unread logic in favor of showing messages directly on the dashboard.
+- **Statistics are paramount.** Any change related to events, members, or polls MUST be validated against its impact on the statistics system. The bug with event deletion is a key lesson.
+- **The user abandoned the idea of delaying stat updates.** The current and correct behavior is to update stats in real-time as soon as a member responds to a poll. Do not change this.
 
 **documents and test reports created in this job**
-*    - Updated with the new statistics system features.
+-  - Updated multiple times.
+-  - From a successful testing agent run.
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User (Pending):** The Stats Saisons view is flawed because it only uses current members, skewing historical data. For seasons 1-12, I need to enter the final percentages and member counts manually. Season 13+ should remain automated.
-2.  **Agent:** Acknowledged the issue and began implementation.
-3.  **User:** Inquired if the agent had paused due to system messages about context window limits.
-4.  **Agent:** Reassured the user and continued working.
-5.  **User:** Again asked if the session was ending.
-6.  **Agent:** Reassured again.
-7.  **User:** The view-switcher buttons (Saisie, Stats Membres, Stats Saisons) are unreadable when not selected. **(COMPLETED)**
-8.  **User:** All percentages should be rounded according to a specific custom rule. **(COMPLETED)**
-9.  **User:** Several messages expressing concern about the agent pausing due to context window exhaustion.
-10. **Agent:** Reassured the user while continuing to work through the system pauses.
+1.  **User (Pending):** Rebuild the admin Messages tab to include pre-registered message templates, the club charter, and a link to a WhatsApp discussion. Remove the chat-like notification UI.
+2.  **Agent:** Acknowledged and began planning the rewrite.
+3.  **User:** Corrected the agent's manual adjustment of event counts, confirming the count should be 8.
+4.  **Agent:** Corrected the event count in the database to 8.
+5.  **User:** Discovered a critical bug: deleting an event does not update the statistics, causing incorrect percentages.
+6.  **Agent:** Investigated, confirmed the bug, and fixed the  endpoint to correctly decrement the event count in .
+7.  **User:** Requested the ability to edit event meal options after creation.
+8.  **Agent:** Acknowledged the request.
+9.  **User:** Requested the ability for the admin to modify or delete events.
+10. **Agent:** Implemented a new, more user-friendly modal for editing events and confirmed the delete functionality exists.
 
 **Project Health Check:**
-*   **Broken:** The Stats Saisons view provides misleading historical data, which is the exact problem the agent is currently fixing.
-*   **Mocked:** None.
+- **Broken:** The current admin Messages page is now obsolete and does not meet the user's latest requirements.
+- **Mocked:** None.
 
 **3rd Party Integrations**
-None currently implemented. An Assistant IA is planned for the future.
+- **Planned:** A link to a WhatsApp group will be added to the new Messages page.
 
 **Testing status**
-*   **Testing agent used after significant changes:** NO
-*   **Troubleshoot agent used after agent stuck in loop:** NO
-*   **Test files created:** []
-*   **Known regressions:** None.
+- **Testing agent used after significant changes:** YES, but several features and bug fixes were implemented afterward.
+- **Troubleshoot agent used after agent stuck in loop:** NO
+- **Test files created:** []
+- **Known regressions:** None.
 
 **Credentials to test flow:**
-N/A. The application simulates admin/member views without a formal login system.
+N/A. The application uses a simple toggle to switch between admin and member views.
 
 **What agent forgot to execute**
-The agent was in the middle of implementing the user's last request when the session was forked. The backend models and a new endpoint were created, but the crucial frontend implementation and the backend logic to use the new manual data are still pending.</analysis>
+- The agent did not implement the user's request to make meal options editable in the event modification modal (Issue #2). This was requested before the statistics bug was discovered and was not returned to after the bug was fixed.</analysis>
