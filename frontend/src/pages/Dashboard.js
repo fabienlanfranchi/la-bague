@@ -739,7 +739,25 @@ const Dashboard = () => {
       // Récupérer les réponses directes à l'événement
       try {
         const reponsesRes = await axios.get(`${API}/reponses-sondages/${evenementId}`);
-        const respondantIds = reponsesRes.data.reponses?.map(r => r.membre_id) || [];
+        const reponses = reponsesRes.data.reponses || [];
+        const respondantIds = reponses.map(r => r.membre_id);
+        
+        // Calculer les totaux des choix de menu (seulement les présents)
+        const choixEntrees = {};
+        const choixPlats = {};
+        const choixDesserts = {};
+        
+        reponses.filter(r => r.present).forEach(r => {
+          if (r.choix_entree) {
+            choixEntrees[r.choix_entree] = (choixEntrees[r.choix_entree] || 0) + 1;
+          }
+          if (r.choix_plat) {
+            choixPlats[r.choix_plat] = (choixPlats[r.choix_plat] || 0) + 1;
+          }
+          if (r.choix_dessert) {
+            choixDesserts[r.choix_dessert] = (choixDesserts[r.choix_dessert] || 0) + 1;
+          }
+        });
         
         // Mettre à jour les stats du sondage
         setNextEvent(prev => ({
@@ -747,7 +765,10 @@ const Dashboard = () => {
           sondageResults: {
             ...prev.sondageResults,
             presents: reponsesRes.data.presents || 0,
-            absents: reponsesRes.data.absents || 0
+            absents: reponsesRes.data.absents || 0,
+            choixEntrees,
+            choixPlats,
+            choixDesserts
           }
         }));
         
@@ -1140,6 +1161,67 @@ const Dashboard = () => {
                   <div className="bg-green-900/20 border border-green-600/30 rounded-lg p-4 text-center">
                     <div className="text-green-400 font-semibold">
                       ✅ Tous les membres ont répondu au sondage !
+                    </div>
+                  </div>
+                )}
+
+                {/* Résultats des choix de menu (pour les repas) */}
+                {prochainEvenement.type_sondage === 'repas' && prochainEvenement.options_sondage && nextEvent.sondageResults?.presents > 0 && (
+                  <div className="border-t border-[#D4A024]/20 pt-4">
+                    <h3 className="text-lg font-serif text-white mb-3">
+                      🍽️ Choix des Menus ({nextEvent.sondageResults.presents} présent{nextEvent.sondageResults.presents > 1 ? 's' : ''})
+                    </h3>
+                    <div className="space-y-4">
+                      {/* Entrées */}
+                      {prochainEvenement.options_sondage.entrees && prochainEvenement.options_sondage.entrees.length > 0 && (
+                        <div>
+                          <p className="text-sm text-amber-400 mb-2 font-semibold">Entrées :</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            {prochainEvenement.options_sondage.entrees.map((entree, idx) => (
+                              <div key={idx} className="bg-black/30 rounded p-2 text-center border border-amber-600/30">
+                                <div className="text-xl font-bold text-amber-400">
+                                  {nextEvent.sondageResults?.choixEntrees?.[entree] || 0}
+                                </div>
+                                <div className="text-xs text-gray-400">{entree}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Plats */}
+                      {prochainEvenement.options_sondage.plats && prochainEvenement.options_sondage.plats.length > 0 && (
+                        <div>
+                          <p className="text-sm text-blue-400 mb-2 font-semibold">Plats :</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            {prochainEvenement.options_sondage.plats.map((plat, idx) => (
+                              <div key={idx} className="bg-black/30 rounded p-2 text-center border border-blue-600/30">
+                                <div className="text-xl font-bold text-blue-400">
+                                  {nextEvent.sondageResults?.choixPlats?.[plat] || 0}
+                                </div>
+                                <div className="text-xs text-gray-400">{plat}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Desserts */}
+                      {prochainEvenement.options_sondage.desserts && prochainEvenement.options_sondage.desserts.length > 0 && (
+                        <div>
+                          <p className="text-sm text-purple-400 mb-2 font-semibold">Desserts :</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            {prochainEvenement.options_sondage.desserts.map((dessert, idx) => (
+                              <div key={idx} className="bg-black/30 rounded p-2 text-center border border-purple-600/30">
+                                <div className="text-xl font-bold text-purple-400">
+                                  {nextEvent.sondageResults?.choixDesserts?.[dessert] || 0}
+                                </div>
+                                <div className="text-xs text-gray-400">{dessert}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
