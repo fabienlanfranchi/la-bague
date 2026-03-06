@@ -1132,8 +1132,10 @@ async def get_evenement_stats(evenement_id: str):
     if not evt:
         raise HTTPException(status_code=404, detail="Événement non trouvé")
     
-    # Récupérer toutes les réponses
-    reponses = await db.reponses_sondages.find({"evenement_id": evenement_id}, {"_id": 0}).to_list(1000)
+    # Récupérer toutes les réponses (chercher dans les deux collections)
+    reponses_s = await db.reponses_sondages.find({"evenement_id": evenement_id}, {"_id": 0}).to_list(1000)
+    reponses_e = await db.reponses_evenements.find({"evenement_id": evenement_id}, {"_id": 0}).to_list(1000)
+    reponses = reponses_s + reponses_e
     
     # Récupérer tous les membres
     members = await db.members.find({}, {"_id": 0}).to_list(1000)
@@ -1219,8 +1221,10 @@ async def get_evenement_en_cours():
     if isinstance(evt.get('created_at'), str):
         evt['created_at'] = datetime.fromisoformat(evt['created_at'])
     
-    # Récupérer les stats
-    reponses = await db.reponses_sondages.find({"evenement_id": evt['id']}, {"_id": 0}).to_list(1000)
+    # Récupérer les stats (chercher dans les deux collections)
+    reponses_s = await db.reponses_sondages.find({"evenement_id": evt['id']}, {"_id": 0}).to_list(1000)
+    reponses_e = await db.reponses_evenements.find({"evenement_id": evt['id']}, {"_id": 0}).to_list(1000)
+    reponses = reponses_s + reponses_e
     members = await db.members.find({}, {"_id": 0}).to_list(1000)
     
     presents = [r for r in reponses if r['present']]
@@ -1272,9 +1276,16 @@ async def delete_evenement(evenement_id: str):
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Événement non trouvé")
     
-    # Supprimer toutes les réponses associées
-    reponses = await db.reponses_sondages.find({"evenement_id": evenement_id}, {"_id": 0}).to_list(1000)
+    # Supprimer toutes les réponses associées (chercher dans les deux collections)
+    reponses_sondages = await db.reponses_sondages.find({"evenement_id": evenement_id}, {"_id": 0}).to_list(1000)
+    reponses_evenements = await db.reponses_evenements.find({"evenement_id": evenement_id}, {"_id": 0}).to_list(1000)
+    
+    # Combiner toutes les réponses
+    reponses = reponses_sondages + reponses_evenements
+    
+    # Supprimer des deux collections
     await db.reponses_sondages.delete_many({"evenement_id": evenement_id})
+    await db.reponses_evenements.delete_many({"evenement_id": evenement_id})
     
     # ========== AUTOMATISATION : DÉCRÉMENTER LES STATS ==========
     
