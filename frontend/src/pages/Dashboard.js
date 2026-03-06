@@ -863,17 +863,12 @@ const Dashboard = () => {
   };
 
   const handleExportSMS = () => {
-    const { presents, entreeA, entreeB, platA, platB, platC } = nextEvent.sondageResults;
+    const { presents, absents } = nextEvent.sondageResults || {};
+    const enAttente = nonRepondants.length;
     const message = `📊 Résultats Sondage - ${nextEvent.type} du ${nextEvent.date}\n\n` +
-      `✅ Présents: ${presents}\n` +
-      `❌ Absents: ${nextEvent.sondageResults.absents}\n\n` +
-      `🍽️ ENTRÉES:\n` +
-      `  • Entrée A: ${entreeA}\n` +
-      `  • Entrée B: ${entreeB}\n\n` +
-      `🍖 PLATS:\n` +
-      `  • Plat A: ${platA}\n` +
-      `  • Plat B: ${platB}\n` +
-      `  • Plat C: ${platC}`;
+      `✅ Présents: ${presents || 0}\n` +
+      `❌ Absents: ${absents || 0}\n` +
+      `⏳ En attente: ${enAttente}`;
     
     // Copier dans le presse-papier
     navigator.clipboard.writeText(message);
@@ -1082,18 +1077,30 @@ const Dashboard = () => {
             <CardContent>
               <div className="space-y-6">
                 {/* Statut des réponses */}
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                   <div className="bg-green-900/20 border border-green-600/30 rounded-lg p-4 text-center">
                     <div className="text-3xl font-serif font-bold text-green-400">
-                      {members.length - nonRepondants.length}
+                      {nextEvent.sondageResults?.presents || 0}
                     </div>
-                    <div className="text-sm text-gray-400">Ont répondu</div>
+                    <div className="text-sm text-gray-400">Présents</div>
+                  </div>
+                  <div className="bg-red-900/20 border border-red-600/30 rounded-lg p-4 text-center">
+                    <div className="text-3xl font-serif font-bold text-red-400">
+                      {nextEvent.sondageResults?.absents || 0}
+                    </div>
+                    <div className="text-sm text-gray-400">Absents</div>
                   </div>
                   <div className="bg-yellow-900/20 border border-yellow-600/30 rounded-lg p-4 text-center">
                     <div className="text-3xl font-serif font-bold text-yellow-400">
                       {nonRepondants.length}
                     </div>
-                    <div className="text-sm text-gray-400">Non-répondants</div>
+                    <div className="text-sm text-gray-400">En attente</div>
+                  </div>
+                  <div className="bg-purple-900/20 border border-purple-600/30 rounded-lg p-4 text-center">
+                    <div className="text-3xl font-serif font-bold text-purple-400">
+                      {members.length - nonRepondants.length}
+                    </div>
+                    <div className="text-sm text-gray-400">Ont répondu</div>
                   </div>
                   <div className="bg-blue-900/20 border border-blue-600/30 rounded-lg p-4 text-center">
                     <div className="text-3xl font-serif font-bold text-blue-400">
@@ -1136,39 +1143,6 @@ const Dashboard = () => {
                     </div>
                   </div>
                 )}
-
-                {/* Données mockées pour les choix (à connecter plus tard) */}
-                <div className="border-t border-[#D4A024]/20 pt-4">
-                  <h3 className="text-lg font-serif text-white mb-3">
-                    🍽️ Choix des Plats (exemple)
-                  </h3>
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="bg-black/30 rounded p-2 text-center border border-[#D4A024]/20">
-                        <div className="text-xl font-bold text-[#D4A024]">{nextEvent.sondageResults.entreeA}</div>
-                        <div className="text-xs text-gray-500">Entrée A</div>
-                      </div>
-                      <div className="bg-black/30 rounded p-2 text-center border border-[#D4A024]/20">
-                        <div className="text-xl font-bold text-[#D4A024]">{nextEvent.sondageResults.entreeB}</div>
-                        <div className="text-xs text-gray-500">Entrée B</div>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      <div className="bg-black/30 rounded p-2 text-center border border-[#D4A024]/20">
-                        <div className="text-xl font-bold text-[#D4A024]">{nextEvent.sondageResults.platA}</div>
-                        <div className="text-xs text-gray-500">Plat A</div>
-                      </div>
-                      <div className="bg-black/30 rounded p-2 text-center border border-[#D4A024]/20">
-                        <div className="text-xl font-bold text-[#D4A024]">{nextEvent.sondageResults.platB}</div>
-                        <div className="text-xs text-gray-500">Plat B</div>
-                      </div>
-                      <div className="bg-black/30 rounded p-2 text-center border border-[#D4A024]/20">
-                        <div className="text-xl font-bold text-[#D4A024]">{nextEvent.sondageResults.platC}</div>
-                        <div className="text-xs text-gray-500">Plat C</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
               </div>
             </CardContent>
           </Card>
