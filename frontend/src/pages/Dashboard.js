@@ -941,7 +941,7 @@ const Dashboard = () => {
           {/* Présence moyenne globale */}
           <Card className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm" data-testid="presence-globale">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-serif text-gray-400">
+              <CardTitle className="text-base font-serif text-gray-400">
                 Présence Moyenne Générale
               </CardTitle>
             </CardHeader>
@@ -954,11 +954,11 @@ const Dashboard = () => {
                   <div className="flex gap-4 mt-2">
                     <div>
                       <span className="text-2xl font-bold text-white">{stats.moyPresenceGlobal}</span>
-                      <span className="text-xs text-gray-400 ml-1">prés./évén.</span>
+                      <span className="text-sm text-gray-400 ml-1">prés./évén.</span>
                     </div>
                     <div className="border-l border-gray-600 pl-4">
                       <span className="text-2xl font-bold text-blue-400">{stats.moyRepasGlobal}</span>
-                      <span className="text-xs text-gray-400 ml-1">prés./repas</span>
+                      <span className="text-sm text-gray-400 ml-1">prés./repas</span>
                     </div>
                   </div>
                 </div>
@@ -968,14 +968,14 @@ const Dashboard = () => {
                   ))}
                 </div>
               </div>
-              <p className="text-xs text-gray-500 mt-1">Tous les membres - Toutes saisons</p>
+              <p className="text-sm text-gray-500 mt-2">Tous les membres - Toutes saisons</p>
             </CardContent>
           </Card>
 
           {/* Présence saison en cours */}
           <Card className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm" data-testid="presence-saison">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-serif text-gray-400">
+              <CardTitle className="text-base font-serif text-gray-400">
                 Présence {stats.currentSeason}
               </CardTitle>
             </CardHeader>
@@ -988,11 +988,11 @@ const Dashboard = () => {
                   <div className="flex gap-4 mt-2">
                     <div>
                       <span className="text-2xl font-bold text-white">{stats.moyPresenceSaison}</span>
-                      <span className="text-xs text-gray-400 ml-1">prés./évén.</span>
+                      <span className="text-sm text-gray-400 ml-1">prés./évén.</span>
                     </div>
                     <div className="border-l border-gray-600 pl-4">
                       <span className="text-2xl font-bold text-blue-400">{stats.moyRepasSaison}</span>
-                      <span className="text-xs text-gray-400 ml-1">prés./repas</span>
+                      <span className="text-sm text-gray-400 ml-1">prés./repas</span>
                     </div>
                   </div>
                 </div>
@@ -1002,7 +1002,7 @@ const Dashboard = () => {
                   ))}
                 </div>
               </div>
-              <p className="text-xs text-gray-500 mt-1">Saison en cours</p>
+              <p className="text-sm text-gray-500 mt-2">Saison en cours</p>
             </CardContent>
           </Card>
         </div>
@@ -1013,7 +1013,7 @@ const Dashboard = () => {
             <CardTitle className="text-xl font-serif text-white">
               Répartition par Étoiles
             </CardTitle>
-            <p className="text-sm text-gray-400 mt-1">
+            <p className="text-base text-gray-400 mt-1">
               Calcul automatique : 4⭐ (100-75%) • 3⭐ (75-50%) • 2⭐ (50-25%) • 1⭐ (25-0%)
             </p>
           </CardHeader>
@@ -1034,7 +1034,7 @@ const Dashboard = () => {
                     <div className="text-3xl font-serif font-bold text-white">
                       {stats.membersByStars[stars]}
                     </div>
-                    <div className="text-xs text-gray-500 mt-1">
+                    <div className="text-sm text-gray-500 mt-1">
                       {stars === 4 && '100-75%'}
                       {stars === 3 && '75-50%'}
                       {stars === 2 && '50-25%'}
@@ -1103,31 +1103,31 @@ const Dashboard = () => {
                     <div className="text-3xl font-serif font-bold text-green-400">
                       {nextEvent.sondageResults?.presents || 0}
                     </div>
-                    <div className="text-sm text-gray-400">Présents</div>
+                    <div className="text-base text-gray-400">Présents</div>
                   </div>
                   <div className="bg-red-900/20 border border-red-600/30 rounded-lg p-4 text-center">
                     <div className="text-3xl font-serif font-bold text-red-400">
                       {nextEvent.sondageResults?.absents || 0}
                     </div>
-                    <div className="text-sm text-gray-400">Absents</div>
+                    <div className="text-base text-gray-400">Absents</div>
                   </div>
                   <div className="bg-yellow-900/20 border border-yellow-600/30 rounded-lg p-4 text-center">
                     <div className="text-3xl font-serif font-bold text-yellow-400">
                       {nonRepondants.length}
                     </div>
-                    <div className="text-sm text-gray-400">En attente</div>
+                    <div className="text-base text-gray-400">En attente</div>
                   </div>
                   <div className="bg-purple-900/20 border border-purple-600/30 rounded-lg p-4 text-center">
                     <div className="text-3xl font-serif font-bold text-purple-400">
                       {members.length - nonRepondants.length}
                     </div>
-                    <div className="text-sm text-gray-400">Ont répondu</div>
+                    <div className="text-base text-gray-400">Ont répondu</div>
                   </div>
                   <div className="bg-blue-900/20 border border-blue-600/30 rounded-lg p-4 text-center">
                     <div className="text-3xl font-serif font-bold text-blue-400">
                       {members.length > 0 ? Math.round((members.length - nonRepondants.length) / members.length * 100) : 0}%
                     </div>
-                    <div className="text-sm text-gray-400">Taux de réponse</div>
+                    <div className="text-base text-gray-400">Taux de réponse</div>
                   </div>
                 </div>
 
