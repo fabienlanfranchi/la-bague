@@ -22,11 +22,13 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
+import { useUser } from '../context/UserContext';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const Evenements = () => {
+  const { isAdmin } = useUser();
   const [evenements, setEvenements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -540,14 +542,16 @@ const Evenements = () => {
           <h2 className="text-2xl font-serif font-bold text-white">
             📅 Prochain événement
           </h2>
-          <Button
-            onClick={() => setShowCreateModal(true)}
-            className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif font-bold"
-            data-testid="create-event-btn"
-          >
-            <Plus className="w-5 h-5 mr-2" />
-            Créer un événement
-          </Button>
+          {isAdmin && (
+            <Button
+              onClick={() => setShowCreateModal(true)}
+              className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif font-bold"
+              data-testid="create-event-btn"
+            >
+              <Plus className="w-5 h-5 mr-2" />
+              Créer un événement
+            </Button>
+          )}
         </div>
 
         {prochainEvenement ? (
@@ -621,23 +625,27 @@ const Evenements = () => {
                     <Users className="w-4 h-4 mr-2" />
                     Voir les réponses
                   </Button>
-                  <Button
-                    onClick={() => openEditModal(prochainEvenement)}
-                    variant="outline"
-                    className="border-[#D4A024] text-[#D4A024] hover:bg-[#D4A024]/10"
-                    data-testid="modifier-event-btn"
-                  >
-                    <Edit3 className="w-4 h-4 mr-2" />
-                    Modifier
-                  </Button>
-                  <Button
-                    onClick={(e) => handleDeleteEvent(prochainEvenement.id, e)}
-                    variant="outline"
-                    className="border-red-600 text-red-400 hover:bg-red-900/20"
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Supprimer
-                  </Button>
+                  {isAdmin && (
+                    <>
+                      <Button
+                        onClick={() => openEditModal(prochainEvenement)}
+                        variant="outline"
+                        className="border-[#D4A024] text-[#D4A024] hover:bg-[#D4A024]/10"
+                        data-testid="modifier-event-btn"
+                      >
+                        <Edit3 className="w-4 h-4 mr-2" />
+                        Modifier
+                      </Button>
+                      <Button
+                        onClick={(e) => handleDeleteEvent(prochainEvenement.id, e)}
+                        variant="outline"
+                        className="border-red-600 text-red-400 hover:bg-red-900/20"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Supprimer
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -649,16 +657,24 @@ const Evenements = () => {
               <h3 className="text-2xl font-serif text-gray-400 mb-2">
                 Aucun événement à venir
               </h3>
-              <p className="text-gray-500 mb-6">
-                Créez un nouvel événement pour planifier le prochain repas du club
-              </p>
-              <Button
-                onClick={() => setShowCreateModal(true)}
-                className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif font-bold"
-              >
-                <Plus className="w-5 h-5 mr-2" />
-                Créer le prochain événement
-              </Button>
+              {isAdmin ? (
+                <>
+                  <p className="text-gray-500 mb-6">
+                    Créez un nouvel événement pour planifier le prochain repas du club
+                  </p>
+                  <Button
+                    onClick={() => setShowCreateModal(true)}
+                    className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif font-bold"
+                  >
+                    <Plus className="w-5 h-5 mr-2" />
+                    Créer le prochain événement
+                  </Button>
+                </>
+              ) : (
+                <p className="text-gray-500">
+                  Le président n'a pas encore créé de prochain événement
+                </p>
+              )}
             </CardContent>
           </Card>
         )}
@@ -875,15 +891,17 @@ const Evenements = () => {
                                   <Save className="w-3 h-3" />
                                 </Button>
                               )}
-                              <Button
-                                onClick={(e) => handleDeleteEvent(evt.id, e)}
-                                size="sm"
-                                variant="ghost"
-                                className="h-7 w-7 p-0 text-red-400 hover:text-red-300 hover:bg-red-900/20"
-                                title="Supprimer"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </Button>
+                              {isAdmin && (
+                                <Button
+                                  onClick={(e) => handleDeleteEvent(evt.id, e)}
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 w-7 p-0 text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                                  title="Supprimer"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -952,7 +970,7 @@ const Evenements = () => {
                           </div>
                         </td>
                       </tr>
-                    ) : (
+                    ) : isAdmin ? (
                       <tr 
                         className="border-b border-[#D4A024]/10 hover:bg-[#D4A024]/5 cursor-pointer transition-colors"
                         onClick={() => startAddingToSeason(selectedSeason)}
@@ -962,7 +980,7 @@ const Evenements = () => {
                           Ajouter un événement
                         </td>
                       </tr>
-                    )}
+                    ) : null}
                   </tbody>
                 </table>
               </div>
@@ -1093,15 +1111,17 @@ const Evenements = () => {
                                     >
                                       Annuler
                                     </Button>
-                                    <Button
-                                      onClick={(e) => handleDeleteEvent(evt.id, e)}
-                                      size="sm"
-                                      variant="outline"
-                                      className="border-red-600 text-red-400 hover:bg-red-900/20 ml-auto"
-                                      data-testid={`delete-event-${evt.id}`}
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </Button>
+                                    {isAdmin && (
+                                      <Button
+                                        onClick={(e) => handleDeleteEvent(evt.id, e)}
+                                        size="sm"
+                                        variant="outline"
+                                        className="border-red-600 text-red-400 hover:bg-red-900/20 ml-auto"
+                                        data-testid={`delete-event-${evt.id}`}
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </Button>
+                                    )}
                                   </div>
                                 </div>
                               ) : (
@@ -1221,8 +1241,8 @@ const Evenements = () => {
                                 </Button>
                               </div>
                             </div>
-                          ) : (
-                            /* BOUTON AJOUTER */
+                          ) : isAdmin ? (
+                            /* BOUTON AJOUTER (Admin seulement) */
                             <Button
                               onClick={(e) => startAddingToSeason(saisonNum, e)}
                               variant="outline"
@@ -1232,7 +1252,7 @@ const Evenements = () => {
                               <Plus className="w-4 h-4 mr-2" />
                               Ajouter un événement à la Saison {saisonNum}
                             </Button>
-                          )}
+                          ) : null}
                         </div>
                       )}
                     </div>
