@@ -1042,6 +1042,94 @@ async def delete_transaction(transaction_id: str):
     return {"message": "Transaction supprimée avec succès"}
 
 
+# ============ VIREMENTS ENTRE COMPTES ============
+
+class VirementInput(BaseModel):
+    compte_source: str
+    compte_destination: str
+    montant: float
+    description: Optional[str] = "Virement interne"
+
+@api_router.post("/virements")
+async def effectuer_virement(input: VirementInput):
+    """Effectuer un virement entre deux comptes"""
+    
+    if input.montant <= 0:
+        raise HTTPException(status_code=400, detail="Le montant doit être positif")
+    
+    if input.compte_source == input.compte_destination:
+        raise HTTPException(status_code=400, detail="Les comptes source et destination doivent être différents")
+    
+    # Vérifier que les deux comptes existent
+    compte_source = await db.comptes.find_one({"nom": input.compte_source}, {"_id": 0})
+    compte_dest = await db.comptes.find_one({"nom": input.compte_destination}, {"_id": 0})
+    
+    if not compte_source:
+        raise HTTPException(status_code=404, detail=f"Compte source '{input.compte_source}' non trouvé")
+    if not compte_dest:
+        raise HTTPException(status_code=404, detail=f"Compte destination '{input.compte_destination}' non trouvé")
+    
+    # Vérifier que le compte source a suffisamment de fonds
+    if compte_source['solde'] < input.montant:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Solde insuffisant sur {input.compte_source} ({compte_source['solde']}€ disponible)"
+        )
+    
+    now = datetime.now(timezone.utc).isoformat()
+    
+    # Créer une transaction de sortie (du compte source)
+    trans_sortie = {
+        "id": str(uuid.uuid4()),
+        "date": now,
+        "type": "dépense",
+        "membre_id": None,
+        "objet": "virement",
+        "montant": input.montant,
+        "endroit": input.compte_source,
+        "detail": f"Virement vers {input.compte_destination}: {input.description}",
+        "created_at": now,
+        "updated_at": now
+    }
+    
+    # Créer une transaction d'entrée (sur le compte destination)
+    trans_entree = {
+        "id": str(uuid.uuid4()),
+        "date": now,
+        "type": "recette",
+        "membre_id": None,
+        "objet": "virement",
+        "montant": input.montant,
+        "endroit": input.compte_destination,
+        "detail": f"Virement depuis {input.compte_source}: {input.description}",
+        "created_at": now,
+        "updated_at": now
+    }
+    
+    # Insérer les transactions
+    await db.transactions.insert_one(trans_sortie)
+    await db.transactions.insert_one(trans_entree)
+    
+    # Mettre à jour les soldes des comptes
+    await db.comptes.update_one(
+        {"nom": input.compte_source},
+        {"$inc": {"solde": -input.montant}, "$set": {"updated_at": now}}
+    )
+    await db.comptes.update_one(
+        {"nom": input.compte_destination},
+        {"$inc": {"solde": input.montant}, "$set": {"updated_at": now}}
+    )
+    
+    return {
+        "message": "Virement effectué avec succès",
+        "montant": input.montant,
+        "de": input.compte_source,
+        "vers": input.compte_destination,
+        "nouveau_solde_source": compte_source['solde'] - input.montant,
+        "nouveau_solde_destination": compte_dest['solde'] + input.montant
+    }
+
+
 # ============ ÉVÉNEMENTS - ROUTES ============
 
 @api_router.get("/evenements", response_model=List[Evenement])

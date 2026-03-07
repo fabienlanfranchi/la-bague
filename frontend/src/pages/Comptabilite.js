@@ -9,7 +9,9 @@ import {
   Wallet,
   Plus,
   Calendar,
-  Trash2
+  Trash2,
+  ArrowRightLeft,
+  X
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -29,6 +31,15 @@ const Comptabilite = () => {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Modal de virement
+  const [showVirementModal, setShowVirementModal] = useState(false);
+  const [virementForm, setVirementForm] = useState({
+    compte_source: '',
+    compte_destination: '',
+    montant: '',
+    description: ''
+  });
+
   // Formulaire de nouveau mouvement
   const [newMouvement, setNewMouvement] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -36,16 +47,21 @@ const Comptabilite = () => {
     membre_id: '',
     objet: 'cotisation',
     montant: '',
-    endroit: 'Compte',
+    endroit: '',
     detail: ''
   });
 
-  const objetOptions = ['cotisation', 'dette', 'album', 'tickets', 'habits', 'autres'];
-  const caisseOptions = ['Compte', 'Asso Connect', 'chèque', 'Fabien', 'Jacques', 'Enveloppe bar', 'PayPal'];
+  // Options pour les objets
+  const objetOptions = ['cotisation', 'album', 'don', 'anniversaire', 'autres'];
 
   useEffect(() => {
     loadData();
   }, []);
+
+  // Générer les options de caisse depuis les comptes chargés
+  const getCaisseOptions = () => {
+    return comptes.map(c => c.nom);
+  };
 
   const loadData = async () => {
     try {
@@ -61,6 +77,11 @@ const Comptabilite = () => {
       setComptes(comptesRes.data);
       setTransactions(transactionsRes.data);
       setMembers(membersRes.data);
+      
+      // Initialiser la caisse par défaut avec le premier compte
+      if (comptesRes.data.length > 0 && !newMouvement.endroit) {
+        setNewMouvement(prev => ({ ...prev, endroit: comptesRes.data[0].nom }));
+      }
     } catch (error) {
       console.error('Erreur lors du chargement des données:', error);
       toast.error('Erreur lors du chargement des données');
@@ -76,9 +97,20 @@ const Comptabilite = () => {
         return;
       }
 
-      // Si c'est une dette et pas de détail, demander le format
-      if (newMouvement.objet === 'dette' && !newMouvement.detail) {
-        toast.error('Pour une dette, veuillez renseigner le détail (format: mente/montant/raison)');
+      if (!newMouvement.endroit) {
+        toast.error('Veuillez sélectionner une caisse');
+        return;
+      }
+
+      // Si "autres" est sélectionné et pas de détail, demander
+      if (newMouvement.objet === 'autres' && !newMouvement.detail) {
+        toast.error('Pour "autres", veuillez renseigner le détail');
+        return;
+      }
+
+      // Pour une cotisation, le membre est obligatoire
+      if (newMouvement.objet === 'cotisation' && !newMouvement.membre_id) {
+        toast.error('Pour une cotisation, veuillez sélectionner un membre');
         return;
       }
 
@@ -96,7 +128,7 @@ const Comptabilite = () => {
         membre_id: '',
         objet: 'cotisation',
         montant: '',
-        endroit: 'Compte',
+        endroit: comptes.length > 0 ? comptes[0].nom : '',
         detail: ''
       });
       
@@ -104,6 +136,44 @@ const Comptabilite = () => {
     } catch (error) {
       console.error('Erreur lors de l\'ajout du mouvement:', error);
       toast.error('Erreur lors de l\'ajout du mouvement');
+    }
+  };
+
+  // Fonction de virement entre comptes
+  const handleVirement = async () => {
+    try {
+      if (!virementForm.compte_source || !virementForm.compte_destination) {
+        toast.error('Veuillez sélectionner les comptes source et destination');
+        return;
+      }
+      if (virementForm.compte_source === virementForm.compte_destination) {
+        toast.error('Les comptes source et destination doivent être différents');
+        return;
+      }
+      if (!virementForm.montant || parseFloat(virementForm.montant) <= 0) {
+        toast.error('Veuillez renseigner un montant valide');
+        return;
+      }
+
+      await axios.post(`${API}/virements`, {
+        compte_source: virementForm.compte_source,
+        compte_destination: virementForm.compte_destination,
+        montant: parseFloat(virementForm.montant),
+        description: virementForm.description || 'Virement interne'
+      });
+
+      toast.success('Virement effectué avec succès');
+      setShowVirementModal(false);
+      setVirementForm({
+        compte_source: '',
+        compte_destination: '',
+        montant: '',
+        description: ''
+      });
+      loadData();
+    } catch (error) {
+      console.error('Erreur lors du virement:', error);
+      toast.error(error.response?.data?.detail || 'Erreur lors du virement');
     }
   };
 
@@ -212,10 +282,20 @@ const Comptabilite = () => {
 
       {/* Comptes */}
       <div>
-        <h2 className="text-2xl font-serif font-bold text-white mb-4 flex items-center">
-          <Wallet className="w-6 h-6 mr-2 text-[#D4A024]" />
-          Comptes
-        </h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-2xl font-serif font-bold text-white flex items-center">
+            <Wallet className="w-6 h-6 mr-2 text-[#D4A024]" />
+            Comptes
+          </h2>
+          <Button
+            onClick={() => setShowVirementModal(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-serif"
+            data-testid="virement-btn"
+          >
+            <ArrowRightLeft className="w-4 h-4 mr-2" />
+            Faire un virement
+          </Button>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {comptes.map((compte) => (
             <Card key={compte.id} className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm">
@@ -320,11 +400,11 @@ const Comptabilite = () => {
                     <td className="p-2">
                       <select
                         value={newMouvement.objet}
-                        onChange={(e) => setNewMouvement({ ...newMouvement, objet: e.target.value })}
+                        onChange={(e) => setNewMouvement({ ...newMouvement, objet: e.target.value, detail: e.target.value === 'autres' ? '' : newMouvement.detail })}
                         className="w-full px-2 py-1 bg-black/40 border border-[#D4A024]/30 rounded text-white text-sm"
                       >
                         {objetOptions.map(obj => (
-                          <option key={obj} value={obj}>{obj}</option>
+                          <option key={obj} value={obj}>{obj.charAt(0).toUpperCase() + obj.slice(1)}</option>
                         ))}
                       </select>
                     </td>
@@ -344,7 +424,8 @@ const Comptabilite = () => {
                         onChange={(e) => setNewMouvement({ ...newMouvement, endroit: e.target.value })}
                         className="w-full px-2 py-1 bg-black/40 border border-[#D4A024]/30 rounded text-white text-sm"
                       >
-                        {caisseOptions.map(caisse => (
+                        <option value="">Sélectionner...</option>
+                        {getCaisseOptions().map(caisse => (
                           <option key={caisse} value={caisse}>{caisse}</option>
                         ))}
                       </select>
@@ -354,8 +435,11 @@ const Comptabilite = () => {
                         type="text"
                         value={newMouvement.detail}
                         onChange={(e) => setNewMouvement({ ...newMouvement, detail: e.target.value })}
-                        placeholder={newMouvement.objet === 'dette' ? 'mente/montant/raison' : 'Détail...'}
-                        className="w-full px-2 py-1 bg-black/40 border border-[#D4A024]/30 rounded text-white text-sm"
+                        placeholder={newMouvement.objet === 'autres' ? 'Précisez...' : 'Détail (optionnel)'}
+                        className={`w-full px-2 py-1 bg-black/40 border rounded text-white text-sm ${
+                          newMouvement.objet === 'autres' ? 'border-orange-500/50' : 'border-[#D4A024]/30'
+                        }`}
+                        required={newMouvement.objet === 'autres'}
                       />
                     </td>
                     <td className="p-2">
@@ -427,6 +511,109 @@ const Comptabilite = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Modal de virement */}
+      {showVirementModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+          <Card className="bg-[#1a1a1a] border-2 border-blue-600/50 w-full max-w-md mx-4">
+            <CardHeader className="border-b border-blue-600/30">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xl font-serif text-white flex items-center">
+                  <ArrowRightLeft className="w-5 h-5 mr-2 text-blue-400" />
+                  Virement entre comptes
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowVirementModal(false)}
+                  className="text-gray-400 hover:text-white"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="p-6 space-y-4">
+              {/* Compte source */}
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">De (compte source)</label>
+                <select
+                  value={virementForm.compte_source}
+                  onChange={(e) => setVirementForm({ ...virementForm, compte_source: e.target.value })}
+                  className="w-full px-3 py-2 bg-black/40 border border-blue-600/30 rounded text-white"
+                >
+                  <option value="">Sélectionner un compte...</option>
+                  {comptes.map(c => (
+                    <option key={c.id} value={c.nom}>{c.nom} ({formatMontant(c.solde)})</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Flèche */}
+              <div className="flex justify-center">
+                <ArrowRightLeft className="w-6 h-6 text-blue-400 rotate-90" />
+              </div>
+
+              {/* Compte destination */}
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Vers (compte destination)</label>
+                <select
+                  value={virementForm.compte_destination}
+                  onChange={(e) => setVirementForm({ ...virementForm, compte_destination: e.target.value })}
+                  className="w-full px-3 py-2 bg-black/40 border border-blue-600/30 rounded text-white"
+                >
+                  <option value="">Sélectionner un compte...</option>
+                  {comptes.filter(c => c.nom !== virementForm.compte_source).map(c => (
+                    <option key={c.id} value={c.nom}>{c.nom} ({formatMontant(c.solde)})</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Montant */}
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Montant</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={virementForm.montant}
+                  onChange={(e) => setVirementForm({ ...virementForm, montant: e.target.value })}
+                  placeholder="0.00 €"
+                  className="w-full px-3 py-2 bg-black/40 border border-blue-600/30 rounded text-white text-right text-lg"
+                />
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Description (optionnel)</label>
+                <input
+                  type="text"
+                  value={virementForm.description}
+                  onChange={(e) => setVirementForm({ ...virementForm, description: e.target.value })}
+                  placeholder="Motif du virement..."
+                  className="w-full px-3 py-2 bg-black/40 border border-blue-600/30 rounded text-white"
+                />
+              </div>
+
+              {/* Boutons */}
+              <div className="flex space-x-3 pt-4">
+                <Button
+                  onClick={() => setShowVirementModal(false)}
+                  variant="outline"
+                  className="flex-1 border-gray-600 text-gray-300 hover:bg-gray-800"
+                >
+                  Annuler
+                </Button>
+                <Button
+                  onClick={handleVirement}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-serif"
+                >
+                  <ArrowRightLeft className="w-4 h-4 mr-2" />
+                  Effectuer le virement
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };
