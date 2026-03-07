@@ -857,13 +857,20 @@ async def create_transaction(input: TransactionCreate):
     await db.transactions.insert_one(doc)
     
     # Trouver le compte correspondant à l'endroit
+    # Le mapping permet de normaliser les noms de comptes
     compte_mapping = {
         "Compte": "Compte Bancaire",
+        "Compte Bancaire": "Compte Bancaire",
         "chèque": "Compte Bancaire",
         "Fabien": "Chez Fabien",
+        "Chez Fabien": "Chez Fabien",
         "Jacques": "Chez Jacques",
+        "Chez Jacques": "Chez Jacques",
         "Enveloppe bar": "Dehors",
-        "PayPal": "PayPal"
+        "Bar": "Dehors",
+        "Dehors": "Dehors",
+        "PayPal": "PayPal",
+        "Asso Connect": "Asso Connect"
     }
     
     compte_nom = compte_mapping.get(trans_obj.endroit, trans_obj.endroit)
