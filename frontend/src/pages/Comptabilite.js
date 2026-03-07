@@ -11,7 +11,9 @@ import {
   Calendar,
   Trash2,
   ArrowRightLeft,
-  X
+  X,
+  AlertTriangle,
+  User
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -29,6 +31,7 @@ const Comptabilite = () => {
   const [comptes, setComptes] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [members, setMembers] = useState([]);
+  const [dettes, setDettes] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Modal de virement
@@ -38,6 +41,14 @@ const Comptabilite = () => {
     compte_destination: '',
     montant: '',
     description: ''
+  });
+
+  // Modal de dette "Dehors"
+  const [showDetteModal, setShowDetteModal] = useState(false);
+  const [detteForm, setDetteForm] = useState({
+    membre_id: '',
+    montant: '',
+    cause: ''
   });
 
   // Formulaire de nouveau mouvement
@@ -66,17 +77,19 @@ const Comptabilite = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [summaryRes, comptesRes, transactionsRes, membersRes] = await Promise.all([
+      const [summaryRes, comptesRes, transactionsRes, membersRes, dettesRes] = await Promise.all([
         axios.get(`${API}/transactions/summary`),
         axios.get(`${API}/comptes`),
         axios.get(`${API}/transactions`),
-        axios.get(`${API}/members`)
+        axios.get(`${API}/members`),
+        axios.get(`${API}/dettes`).catch(() => ({ data: [] }))
       ]);
 
       setSummary(summaryRes.data);
       setComptes(comptesRes.data);
       setTransactions(transactionsRes.data);
       setMembers(membersRes.data);
+      setDettes(dettesRes.data || []);
       
       // Initialiser la caisse par défaut avec le premier compte
       if (comptesRes.data.length > 0 && !newMouvement.endroit) {
@@ -174,6 +187,54 @@ const Comptabilite = () => {
     } catch (error) {
       console.error('Erreur lors du virement:', error);
       toast.error(error.response?.data?.detail || 'Erreur lors du virement');
+    }
+  };
+
+  // Fonction pour ajouter une dette "Dehors"
+  const handleAddDette = async () => {
+    try {
+      if (!detteForm.membre_id) {
+        toast.error('Veuillez sélectionner un membre');
+        return;
+      }
+      if (!detteForm.montant || parseFloat(detteForm.montant) <= 0) {
+        toast.error('Veuillez renseigner un montant valide');
+        return;
+      }
+      if (!detteForm.cause.trim()) {
+        toast.error('Veuillez renseigner la cause de la dette');
+        return;
+      }
+
+      await axios.post(`${API}/dettes`, {
+        membre_id: detteForm.membre_id,
+        montant: parseFloat(detteForm.montant),
+        cause: detteForm.cause.trim()
+      });
+
+      toast.success('Dette enregistrée avec succès');
+      setShowDetteModal(false);
+      setDetteForm({ membre_id: '', montant: '', cause: '' });
+      loadData();
+    } catch (error) {
+      console.error('Erreur lors de l\'ajout de la dette:', error);
+      toast.error('Erreur lors de l\'ajout de la dette');
+    }
+  };
+
+  // Fonction pour supprimer une dette (quand elle est payée)
+  const handleDeleteDette = async (detteId) => {
+    if (!window.confirm('Confirmer que cette dette a été réglée ?')) {
+      return;
+    }
+
+    try {
+      await axios.delete(`${API}/dettes/${detteId}`);
+      toast.success('Dette marquée comme réglée');
+      loadData();
+    } catch (error) {
+      console.error('Erreur lors de la suppression de la dette:', error);
+      toast.error('Erreur lors de la suppression');
     }
   };
 
@@ -316,6 +377,81 @@ const Comptabilite = () => {
           ))}
         </div>
       </div>
+
+      {/* Section Dehors - Dettes des membres */}
+      <Card className="bg-black/40 border-2 border-red-600/30 backdrop-blur-sm">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-xl font-serif text-white flex items-center">
+              <AlertTriangle className="w-6 h-6 mr-2 text-red-400" />
+              Dehors - Dettes des membres
+            </CardTitle>
+            <Button
+              onClick={() => setShowDetteModal(true)}
+              className="bg-red-600 hover:bg-red-700 text-white font-serif"
+              data-testid="add-dette-btn"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Ajouter une dette
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {dettes.length === 0 ? (
+            <p className="text-gray-400 text-center py-4">Aucune dette enregistrée</p>
+          ) : (
+            <div className="space-y-3">
+              {dettes.map((dette) => {
+                const membre = members.find(m => m.id === dette.membre_id);
+                return (
+                  <div 
+                    key={dette.id} 
+                    className="flex items-center justify-between bg-red-900/20 border border-red-600/30 rounded-lg p-4"
+                  >
+                    <div className="flex items-center space-x-4">
+                      <User className="w-8 h-8 text-red-400" />
+                      <div>
+                        <p className="text-white font-semibold">
+                          <span className="text-red-400">MEMBRE</span>{' '}
+                          <span className="text-[#D4A024]">{membre?.nom_complet || 'Inconnu'}</span>{' '}
+                          <span className="text-red-400">DOIT</span>{' '}
+                          <span className="text-white text-lg">{formatMontant(dette.montant)}</span>
+                        </p>
+                        <p className="text-gray-400 text-sm">
+                          <span className="text-red-400">CAUSE</span>{' '}
+                          <span className="text-gray-300">{dette.cause}</span>
+                        </p>
+                        <p className="text-gray-500 text-xs mt-1">
+                          Enregistré le {formatDate(dette.created_at)}
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      onClick={() => handleDeleteDette(dette.id)}
+                      variant="outline"
+                      size="sm"
+                      className="border-green-600 text-green-400 hover:bg-green-900/20"
+                      title="Marquer comme réglé"
+                    >
+                      ✓ Réglé
+                    </Button>
+                  </div>
+                );
+              })}
+              
+              {/* Total des dettes */}
+              <div className="border-t border-red-600/30 pt-3 mt-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-400">Total des dettes :</span>
+                  <span className="text-2xl font-bold text-red-400">
+                    {formatMontant(dettes.reduce((sum, d) => sum + d.montant, 0))}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Cotisations en attente */}
       {summary.cotisations_en_attente > 0 && (
@@ -608,6 +744,101 @@ const Comptabilite = () => {
                 >
                   <ArrowRightLeft className="w-4 h-4 mr-2" />
                   Effectuer le virement
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Modal d'ajout de dette */}
+      {showDetteModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+          <Card className="bg-[#1a1a1a] border-2 border-red-600/50 w-full max-w-md mx-4">
+            <CardHeader className="border-b border-red-600/30">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xl font-serif text-white flex items-center">
+                  <AlertTriangle className="w-5 h-5 mr-2 text-red-400" />
+                  Ajouter une dette
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowDetteModal(false)}
+                  className="text-gray-400 hover:text-white"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="p-6 space-y-4">
+              {/* Aperçu du format */}
+              <div className="bg-red-900/20 border border-red-600/30 rounded-lg p-3 text-sm">
+                <p className="text-gray-300">
+                  <span className="text-red-400 font-bold">MEMBRE</span>{' '}
+                  <span className="text-[#D4A024]">{detteForm.membre_id ? members.find(m => m.id === detteForm.membre_id)?.nom_complet || '...' : '...'}</span>{' '}
+                  <span className="text-red-400 font-bold">DOIT</span>{' '}
+                  <span className="text-white">{detteForm.montant || '0'}€</span>{' '}
+                  <span className="text-red-400 font-bold">CAUSE</span>{' '}
+                  <span className="text-gray-300">{detteForm.cause || '...'}</span>
+                </p>
+              </div>
+
+              {/* Sélection du membre */}
+              <div>
+                <label className="block text-sm text-red-400 mb-2 font-bold">MEMBRE</label>
+                <select
+                  value={detteForm.membre_id}
+                  onChange={(e) => setDetteForm({ ...detteForm, membre_id: e.target.value })}
+                  className="w-full px-3 py-2 bg-black/40 border border-red-600/30 rounded text-white"
+                >
+                  <option value="">Sélectionner un membre...</option>
+                  {members.map(m => (
+                    <option key={m.id} value={m.id}>{m.nom_complet}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Montant */}
+              <div>
+                <label className="block text-sm text-red-400 mb-2 font-bold">DOIT (montant en €)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={detteForm.montant}
+                  onChange={(e) => setDetteForm({ ...detteForm, montant: e.target.value })}
+                  placeholder="50"
+                  className="w-full px-3 py-2 bg-black/40 border border-red-600/30 rounded text-white text-right text-lg"
+                />
+              </div>
+
+              {/* Cause */}
+              <div>
+                <label className="block text-sm text-red-400 mb-2 font-bold">CAUSE</label>
+                <input
+                  type="text"
+                  value={detteForm.cause}
+                  onChange={(e) => setDetteForm({ ...detteForm, cause: e.target.value })}
+                  placeholder="tombola, repas, etc..."
+                  className="w-full px-3 py-2 bg-black/40 border border-red-600/30 rounded text-white"
+                />
+              </div>
+
+              {/* Boutons */}
+              <div className="flex space-x-3 pt-4">
+                <Button
+                  onClick={() => setShowDetteModal(false)}
+                  variant="outline"
+                  className="flex-1 border-gray-600 text-gray-300 hover:bg-gray-800"
+                >
+                  Annuler
+                </Button>
+                <Button
+                  onClick={handleAddDette}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white font-serif"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Enregistrer la dette
                 </Button>
               </div>
             </CardContent>

@@ -4,7 +4,7 @@ import { api } from '../services/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Star, Calendar, TrendingUp, User, BarChart3, RefreshCw } from 'lucide-react';
+import { Star, Calendar, TrendingUp, User, BarChart3, RefreshCw, AlertTriangle } from 'lucide-react';
 import MemberCard from '../components/MemberCard';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -15,6 +15,7 @@ const ProfilePage = () => {
   const [activeTab, setActiveTab] = useState('infos'); // 'infos' ou 'presences'
   const [presencesStats, setPresencesStats] = useState(null);
   const [loadingPresences, setLoadingPresences] = useState(false);
+  const [dettes, setDettes] = useState([]);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -32,6 +33,23 @@ const ProfilePage = () => {
 
     loadProfile();
   }, [setCurrentMember]);
+
+  // Charger les dettes du membre
+  useEffect(() => {
+    const loadDettes = async () => {
+      if (currentMember?.id) {
+        try {
+          const response = await fetch(`${API_URL}/api/dettes/membre/${currentMember.id}`);
+          const data = await response.json();
+          setDettes(data || []);
+        } catch (error) {
+          console.error('Erreur chargement dettes:', error);
+          setDettes([]);
+        }
+      }
+    };
+    loadDettes();
+  }, [currentMember]);
 
   // Charger les stats de présences quand on va sur l'onglet
   useEffect(() => {
@@ -288,6 +306,56 @@ const ProfilePage = () => {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Situation Financière - Dettes */}
+            {(currentMember.situation_cotisation > 0 || dettes.length > 0) && (
+              <Card className="bg-black/40 border-2 border-red-600/30 backdrop-blur-sm">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg font-serif text-white flex items-center">
+                    <AlertTriangle className="w-5 h-5 mr-2 text-red-400" />
+                    Situation Financière
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {/* Cotisations dues */}
+                    {currentMember.situation_cotisation > 0 && (
+                      <div className="bg-orange-900/20 border border-orange-600/30 rounded-lg p-3">
+                        <p className="text-white">
+                          <span className="text-orange-400 font-bold">DOIT :</span>{' '}
+                          <span className="text-white">{currentMember.situation_cotisation} cotisation{currentMember.situation_cotisation > 1 ? 's' : ''}</span>{' '}
+                          <span className="text-gray-400">({currentMember.situation_cotisation * 200}€)</span>
+                        </p>
+                      </div>
+                    )}
+                    
+                    {/* Autres dettes */}
+                    {dettes.map((dette) => (
+                      <div key={dette.id} className="bg-red-900/20 border border-red-600/30 rounded-lg p-3">
+                        <p className="text-white">
+                          <span className="text-red-400 font-bold">DOIT :</span>{' '}
+                          <span className="text-white">{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(dette.montant)}</span>{' '}
+                          <span className="text-red-400 font-bold">POUR</span>{' '}
+                          <span className="text-gray-300">{dette.cause}</span>
+                        </p>
+                      </div>
+                    ))}
+                    
+                    {/* Total */}
+                    <div className="pt-2 border-t border-red-600/30">
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-400">Total dû :</span>
+                        <span className="text-xl font-bold text-red-400">
+                          {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(
+                            (currentMember.situation_cotisation * 200) + dettes.reduce((sum, d) => sum + d.montant, 0)
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       ) : (

@@ -622,6 +622,26 @@ class CotisationPayment(BaseModel):
     description: Optional[str] = None
 
 
+# ============ DETTES - MODELS ============
+
+class Dette(BaseModel):
+    """Dette d'un membre (argent dû au club)"""
+    model_config = ConfigDict(extra="ignore")
+    
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    membre_id: str
+    montant: float
+    cause: str  # Ex: "tombola", "repas", etc.
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class DetteCreate(BaseModel):
+    membre_id: str
+    montant: float
+    cause: str
+
+
 # ============ ÉVÉNEMENTS - MODELS ============
 
 class OptionsSondageRepas(BaseModel):
@@ -1135,6 +1155,66 @@ async def effectuer_virement(input: VirementInput):
         "nouveau_solde_source": compte_source['solde'] - input.montant,
         "nouveau_solde_destination": compte_dest['solde'] + input.montant
     }
+
+
+# ============ DETTES - ROUTES ============
+
+@api_router.get("/dettes", response_model=List[Dette])
+async def get_dettes():
+    """Obtenir toutes les dettes"""
+    dettes = await db.dettes.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    
+    for dette in dettes:
+        if isinstance(dette.get('created_at'), str):
+            dette['created_at'] = datetime.fromisoformat(dette['created_at'])
+        if isinstance(dette.get('updated_at'), str):
+            dette['updated_at'] = datetime.fromisoformat(dette['updated_at'])
+    
+    return dettes
+
+
+@api_router.get("/dettes/membre/{membre_id}", response_model=List[Dette])
+async def get_dettes_membre(membre_id: str):
+    """Obtenir les dettes d'un membre spécifique"""
+    dettes = await db.dettes.find({"membre_id": membre_id}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    
+    for dette in dettes:
+        if isinstance(dette.get('created_at'), str):
+            dette['created_at'] = datetime.fromisoformat(dette['created_at'])
+        if isinstance(dette.get('updated_at'), str):
+            dette['updated_at'] = datetime.fromisoformat(dette['updated_at'])
+    
+    return dettes
+
+
+@api_router.post("/dettes", response_model=Dette)
+async def create_dette(input: DetteCreate):
+    """Créer une nouvelle dette pour un membre"""
+    # Vérifier que le membre existe
+    membre = await db.members.find_one({"id": input.membre_id}, {"_id": 0})
+    if not membre:
+        raise HTTPException(status_code=404, detail="Membre non trouvé")
+    
+    dette_obj = Dette(**input.model_dump())
+    
+    doc = dette_obj.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['updated_at'] = doc['updated_at'].isoformat()
+    
+    await db.dettes.insert_one(doc)
+    
+    return dette_obj
+
+
+@api_router.delete("/dettes/{dette_id}")
+async def delete_dette(dette_id: str):
+    """Supprimer une dette (marquée comme réglée)"""
+    result = await db.dettes.delete_one({"id": dette_id})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Dette non trouvée")
+    
+    return {"message": "Dette marquée comme réglée"}
 
 
 # ============ ÉVÉNEMENTS - ROUTES ============
