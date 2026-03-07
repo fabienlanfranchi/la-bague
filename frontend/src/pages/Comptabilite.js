@@ -482,6 +482,126 @@ const Comptabilite = () => {
           </span>
         </h2>
 
+        {/* Formulaire d'ajout - Compatible iOS */}
+        <Card className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm mb-4">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg font-serif text-[#D4A024]">
+              <Plus className="w-5 h-5 inline mr-2" />
+              Nouveau mouvement
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+              {/* Date */}
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Date</label>
+                <input
+                  type="date"
+                  value={newMouvement.date}
+                  onChange={(e) => setNewMouvement({ ...newMouvement, date: e.target.value })}
+                  className="w-full px-3 py-2 bg-white text-black border border-gray-300 rounded text-base"
+                />
+              </div>
+              
+              {/* Type */}
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Type</label>
+                <select
+                  value={newMouvement.type}
+                  onChange={(e) => setNewMouvement({ ...newMouvement, type: e.target.value })}
+                  className="w-full px-3 py-2 bg-white text-black border border-gray-300 rounded text-base"
+                >
+                  <option value="recette">Recette</option>
+                  <option value="dépense">Dépense</option>
+                </select>
+              </div>
+
+              {/* Membre */}
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Membre</label>
+                <select
+                  value={newMouvement.membre_id}
+                  onChange={(e) => setNewMouvement({ ...newMouvement, membre_id: e.target.value })}
+                  className="w-full px-3 py-2 bg-white text-black border border-gray-300 rounded text-base"
+                >
+                  <option value="">-- Sélectionner --</option>
+                  {members.map(m => (
+                    <option key={m.id} value={m.id}>{m.nom_complet}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Objet */}
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Objet</label>
+                <select
+                  value={newMouvement.objet}
+                  onChange={(e) => setNewMouvement({ ...newMouvement, objet: e.target.value, detail: e.target.value === 'autres' ? '' : newMouvement.detail })}
+                  className="w-full px-3 py-2 bg-white text-black border border-gray-300 rounded text-base"
+                >
+                  {objetOptions.map(obj => (
+                    <option key={obj} value={obj}>{obj.charAt(0).toUpperCase() + obj.slice(1)}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Montant */}
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Montant (€)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={newMouvement.montant}
+                  onChange={(e) => setNewMouvement({ ...newMouvement, montant: e.target.value })}
+                  placeholder="0.00"
+                  className="w-full px-3 py-2 bg-white text-black border border-gray-300 rounded text-base text-right"
+                />
+              </div>
+
+              {/* Caisse */}
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Caisse</label>
+                <select
+                  value={newMouvement.endroit}
+                  onChange={(e) => setNewMouvement({ ...newMouvement, endroit: e.target.value })}
+                  className="w-full px-3 py-2 bg-white text-black border border-gray-300 rounded text-base"
+                >
+                  <option value="">-- Sélectionner --</option>
+                  {caisseOptions.map(caisse => (
+                    <option key={caisse} value={caisse}>{caisse}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Détail */}
+              <div className="md:col-span-2">
+                <label className="block text-sm text-gray-400 mb-1">
+                  Détail {newMouvement.objet === 'autres' && <span className="text-orange-400">(obligatoire)</span>}
+                </label>
+                <input
+                  type="text"
+                  value={newMouvement.detail}
+                  onChange={(e) => setNewMouvement({ ...newMouvement, detail: e.target.value })}
+                  placeholder={newMouvement.objet === 'autres' ? 'Précisez...' : 'Optionnel'}
+                  className={`w-full px-3 py-2 bg-white text-black border rounded text-base ${
+                    newMouvement.objet === 'autres' ? 'border-orange-500' : 'border-gray-300'
+                  }`}
+                />
+              </div>
+            </div>
+
+            {/* Bouton Ajouter */}
+            <Button
+              onClick={handleAddMouvement}
+              className="w-full bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif font-bold py-3"
+            >
+              <Plus className="w-5 h-5 mr-2" />
+              Ajouter le mouvement
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Liste des mouvements */}
         <Card className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm">
           <CardContent className="p-0">
             <div className="overflow-x-auto">
@@ -499,95 +619,6 @@ const Comptabilite = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {/* Ligne de formulaire pour ajouter un mouvement */}
-                  <tr className="border-b border-[#D4A024]/20 bg-[#D4A024]/5">
-                    <td className="p-2">
-                      <input
-                        type="date"
-                        value={newMouvement.date}
-                        onChange={(e) => setNewMouvement({ ...newMouvement, date: e.target.value })}
-                        className="w-full px-2 py-1 bg-black/40 border border-[#D4A024]/30 rounded text-white text-sm"
-                      />
-                    </td>
-                    <td className="p-2">
-                      <select
-                        value={newMouvement.type}
-                        onChange={(e) => setNewMouvement({ ...newMouvement, type: e.target.value })}
-                        className="w-full px-2 py-1 bg-black/40 border border-[#D4A024]/30 rounded text-white text-sm"
-                      >
-                        <option value="recette">Recette</option>
-                        <option value="dépense">Dépense</option>
-                      </select>
-                    </td>
-                    <td className="p-2">
-                      <select
-                        value={newMouvement.membre_id}
-                        onChange={(e) => setNewMouvement({ ...newMouvement, membre_id: e.target.value })}
-                        className="w-full px-2 py-1 bg-black/40 border border-[#D4A024]/30 rounded text-white text-sm"
-                      >
-                        <option value="">Sélectionner un membre...</option>
-                        {members.map(m => (
-                          <option key={m.id} value={m.id}>{m.nom_complet}</option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="p-2">
-                      <select
-                        value={newMouvement.objet}
-                        onChange={(e) => setNewMouvement({ ...newMouvement, objet: e.target.value, detail: e.target.value === 'autres' ? '' : newMouvement.detail })}
-                        className="w-full px-2 py-1 bg-black/40 border border-[#D4A024]/30 rounded text-white text-sm"
-                      >
-                        {objetOptions.map(obj => (
-                          <option key={obj} value={obj}>{obj.charAt(0).toUpperCase() + obj.slice(1)}</option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="p-2">
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={newMouvement.montant}
-                        onChange={(e) => setNewMouvement({ ...newMouvement, montant: e.target.value })}
-                        placeholder="€"
-                        className="w-full px-2 py-1 bg-black/40 border border-[#D4A024]/30 rounded text-white text-sm text-right"
-                      />
-                    </td>
-                    <td className="p-2">
-                      <select
-                        value={newMouvement.endroit}
-                        onChange={(e) => setNewMouvement({ ...newMouvement, endroit: e.target.value })}
-                        className="w-full px-2 py-1 bg-black/40 border border-[#D4A024]/30 rounded text-white text-sm"
-                      >
-                        <option value="">Sélectionner une caisse...</option>
-                        {caisseOptions.map(caisse => (
-                          <option key={caisse} value={caisse}>{caisse}</option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="p-2">
-                      <input
-                        type="text"
-                        value={newMouvement.detail}
-                        onChange={(e) => setNewMouvement({ ...newMouvement, detail: e.target.value })}
-                        placeholder={newMouvement.objet === 'autres' ? 'Précisez...' : 'Détail (optionnel)'}
-                        className={`w-full px-2 py-1 bg-black/40 border rounded text-white text-sm ${
-                          newMouvement.objet === 'autres' ? 'border-orange-500/50' : 'border-[#D4A024]/30'
-                        }`}
-                        required={newMouvement.objet === 'autres'}
-                      />
-                    </td>
-                    <td className="p-2">
-                      <Button
-                        onClick={handleAddMouvement}
-                        size="sm"
-                        className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif"
-                      >
-                        <Plus className="w-4 h-4" />
-                      </Button>
-                    </td>
-                  </tr>
-
-                  {/* Transactions existantes */}
                   {transactions.length === 0 ? (
                     <tr>
                       <td colSpan="8" className="p-8 text-center text-gray-400">
