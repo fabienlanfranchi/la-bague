@@ -63,16 +63,14 @@ const Comptabilite = () => {
   });
 
   // Options pour les objets
-  const objetOptions = ['cotisation', 'album', 'don', 'anniversaire', 'autres'];
+  const objetOptions = ['cotisation', 'album', 'tombola', 'anniversaire', 'autres'];
+  
+  // Options fixes pour les caisses
+  const caisseOptions = ['Compte', 'Chez Fabien', 'Chez Jacques', 'PayPal', 'Asso Connect', 'Chèque'];
 
   useEffect(() => {
     loadData();
   }, []);
-
-  // Générer les options de caisse depuis les comptes chargés
-  const getCaisseOptions = () => {
-    return comptes.map(c => c.nom);
-  };
 
   const loadData = async () => {
     try {
@@ -527,7 +525,7 @@ const Comptabilite = () => {
                         onChange={(e) => setNewMouvement({ ...newMouvement, membre_id: e.target.value })}
                         className="w-full px-2 py-1 bg-black/40 border border-[#D4A024]/30 rounded text-white text-sm"
                       >
-                        <option value="">-</option>
+                        <option value="">Sélectionner un membre...</option>
                         {members.map(m => (
                           <option key={m.id} value={m.id}>{m.nom_complet}</option>
                         ))}
@@ -560,8 +558,8 @@ const Comptabilite = () => {
                         onChange={(e) => setNewMouvement({ ...newMouvement, endroit: e.target.value })}
                         className="w-full px-2 py-1 bg-black/40 border border-[#D4A024]/30 rounded text-white text-sm"
                       >
-                        <option value="">Sélectionner...</option>
-                        {getCaisseOptions().map(caisse => (
+                        <option value="">Sélectionner une caisse...</option>
+                        {caisseOptions.map(caisse => (
                           <option key={caisse} value={caisse}>{caisse}</option>
                         ))}
                       </select>
