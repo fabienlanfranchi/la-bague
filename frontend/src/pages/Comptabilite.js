@@ -3,6 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   DollarSign,
   TrendingUp,
   TrendingDown,
@@ -482,7 +489,7 @@ const Comptabilite = () => {
           </span>
         </h2>
 
-        {/* Formulaire d'ajout - Compatible iOS */}
+        {/* Formulaire d'ajout - Compatible iOS avec Shadcn Select */}
         <Card className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm mb-4">
           <CardHeader className="pb-2">
             <CardTitle className="text-lg font-serif text-[#D4A024]">
@@ -499,50 +506,64 @@ const Comptabilite = () => {
                   type="date"
                   value={newMouvement.date}
                   onChange={(e) => setNewMouvement({ ...newMouvement, date: e.target.value })}
-                  className="w-full px-3 py-2 bg-white text-black border border-gray-300 rounded text-base"
+                  className="w-full px-3 py-2 bg-black/60 text-white border border-[#D4A024]/30 rounded text-sm"
                 />
               </div>
               
               {/* Type */}
               <div>
                 <label className="block text-sm text-gray-400 mb-1">Type</label>
-                <select
+                <Select
                   value={newMouvement.type}
-                  onChange={(e) => setNewMouvement({ ...newMouvement, type: e.target.value })}
-                  className="w-full px-3 py-2 bg-white text-black border border-gray-300 rounded text-base"
+                  onValueChange={(value) => setNewMouvement({ ...newMouvement, type: value })}
                 >
-                  <option value="recette">Recette</option>
-                  <option value="dépense">Dépense</option>
-                </select>
+                  <SelectTrigger className="w-full bg-black/60 border-[#D4A024]/30 text-white">
+                    <SelectValue placeholder="Type" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#1a1a1a] border-[#D4A024]/30">
+                    <SelectItem value="recette" className="text-green-400">Recette</SelectItem>
+                    <SelectItem value="dépense" className="text-red-400">Dépense</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Membre */}
               <div>
                 <label className="block text-sm text-gray-400 mb-1">Membre</label>
-                <select
-                  value={newMouvement.membre_id}
-                  onChange={(e) => setNewMouvement({ ...newMouvement, membre_id: e.target.value })}
-                  className="w-full px-3 py-2 bg-white text-black border border-gray-300 rounded text-base"
+                <Select
+                  value={newMouvement.membre_id || "none"}
+                  onValueChange={(value) => setNewMouvement({ ...newMouvement, membre_id: value === "none" ? "" : value })}
                 >
-                  <option value="">-- Sélectionner --</option>
-                  {members.map(m => (
-                    <option key={m.id} value={m.id}>{m.nom_complet}</option>
-                  ))}
-                </select>
+                  <SelectTrigger className="w-full bg-black/60 border-[#D4A024]/30 text-white">
+                    <SelectValue placeholder="Sélectionner..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#1a1a1a] border-[#D4A024]/30 max-h-[300px]">
+                    <SelectItem value="none" className="text-gray-400">-- Aucun --</SelectItem>
+                    {members.map(m => (
+                      <SelectItem key={m.id} value={m.id} className="text-white">{m.nom_complet}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Objet */}
               <div>
                 <label className="block text-sm text-gray-400 mb-1">Objet</label>
-                <select
+                <Select
                   value={newMouvement.objet}
-                  onChange={(e) => setNewMouvement({ ...newMouvement, objet: e.target.value, detail: e.target.value === 'autres' ? '' : newMouvement.detail })}
-                  className="w-full px-3 py-2 bg-white text-black border border-gray-300 rounded text-base"
+                  onValueChange={(value) => setNewMouvement({ ...newMouvement, objet: value, detail: value === 'autres' ? '' : newMouvement.detail })}
                 >
-                  {objetOptions.map(obj => (
-                    <option key={obj} value={obj}>{obj.charAt(0).toUpperCase() + obj.slice(1)}</option>
-                  ))}
-                </select>
+                  <SelectTrigger className="w-full bg-black/60 border-[#D4A024]/30 text-white">
+                    <SelectValue placeholder="Objet" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#1a1a1a] border-[#D4A024]/30">
+                    {objetOptions.map(obj => (
+                      <SelectItem key={obj} value={obj} className="text-white">
+                        {obj.charAt(0).toUpperCase() + obj.slice(1)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Montant */}
@@ -554,23 +575,27 @@ const Comptabilite = () => {
                   value={newMouvement.montant}
                   onChange={(e) => setNewMouvement({ ...newMouvement, montant: e.target.value })}
                   placeholder="0.00"
-                  className="w-full px-3 py-2 bg-white text-black border border-gray-300 rounded text-base text-right"
+                  className="w-full px-3 py-2 bg-black/60 text-white border border-[#D4A024]/30 rounded text-sm text-right"
                 />
               </div>
 
               {/* Caisse */}
               <div>
                 <label className="block text-sm text-gray-400 mb-1">Caisse</label>
-                <select
-                  value={newMouvement.endroit}
-                  onChange={(e) => setNewMouvement({ ...newMouvement, endroit: e.target.value })}
-                  className="w-full px-3 py-2 bg-white text-black border border-gray-300 rounded text-base"
+                <Select
+                  value={newMouvement.endroit || "none"}
+                  onValueChange={(value) => setNewMouvement({ ...newMouvement, endroit: value === "none" ? "" : value })}
                 >
-                  <option value="">-- Sélectionner --</option>
-                  {caisseOptions.map(caisse => (
-                    <option key={caisse} value={caisse}>{caisse}</option>
-                  ))}
-                </select>
+                  <SelectTrigger className="w-full bg-black/60 border-[#D4A024]/30 text-white">
+                    <SelectValue placeholder="Sélectionner..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#1a1a1a] border-[#D4A024]/30">
+                    <SelectItem value="none" className="text-gray-400">-- Sélectionner --</SelectItem>
+                    {caisseOptions.map(caisse => (
+                      <SelectItem key={caisse} value={caisse} className="text-white">{caisse}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Détail */}
@@ -583,8 +608,8 @@ const Comptabilite = () => {
                   value={newMouvement.detail}
                   onChange={(e) => setNewMouvement({ ...newMouvement, detail: e.target.value })}
                   placeholder={newMouvement.objet === 'autres' ? 'Précisez...' : 'Optionnel'}
-                  className={`w-full px-3 py-2 bg-white text-black border rounded text-base ${
-                    newMouvement.objet === 'autres' ? 'border-orange-500' : 'border-gray-300'
+                  className={`w-full px-3 py-2 bg-black/60 text-white border rounded text-sm ${
+                    newMouvement.objet === 'autres' ? 'border-orange-500' : 'border-[#D4A024]/30'
                   }`}
                 />
               </div>
