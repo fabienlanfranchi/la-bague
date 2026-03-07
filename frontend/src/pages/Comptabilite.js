@@ -838,19 +838,23 @@ const Comptabilite = () => {
                 </p>
               </div>
 
-              {/* Sélection du membre */}
+              {/* Sélection du membre avec Shadcn Select */}
               <div>
                 <label className="block text-sm text-red-400 mb-2 font-bold">MEMBRE</label>
-                <select
-                  value={detteForm.membre_id}
-                  onChange={(e) => setDetteForm({ ...detteForm, membre_id: e.target.value })}
-                  className="w-full px-3 py-2 bg-black/40 border border-red-600/30 rounded text-white"
+                <Select
+                  value={detteForm.membre_id || "none"}
+                  onValueChange={(value) => setDetteForm({ ...detteForm, membre_id: value === "none" ? "" : value })}
                 >
-                  <option value="">Sélectionner un membre...</option>
-                  {members.map(m => (
-                    <option key={m.id} value={m.id}>{m.nom_complet}</option>
-                  ))}
-                </select>
+                  <SelectTrigger className="w-full bg-black/60 border-red-600/30 text-white">
+                    <SelectValue placeholder="Sélectionner un membre..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#1a1a1a] border-red-600/30 max-h-[300px]">
+                    <SelectItem value="none" className="text-gray-400">-- Sélectionner --</SelectItem>
+                    {members.map(m => (
+                      <SelectItem key={m.id} value={m.id} className="text-white">{m.nom_complet}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Montant */}
