@@ -110,7 +110,8 @@ const LoginPage = () => {
       const response = await axios.post(`${API_URL}/api/auth/validate-account`, {
         member_id: validationData.memberId,
         email: validationData.email,
-        password: validationData.password
+        password: validationData.password,
+        confirm_password: validationData.confirmPassword
       });
 
       const { member } = response.data;
