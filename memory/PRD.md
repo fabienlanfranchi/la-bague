@@ -5,7 +5,14 @@ Application de gestion complète pour le club de cigares "La Bague Impériale" a
 
 ## What's Been Implemented
 
-### Session Actuelle (Mars 2026)
+### Session 10 Mars 2026
+- **Système de règlement de dettes complet:**
+  - Modal "Régler une dette" avec Shadcn/UI Select pour choix du compte destination
+  - Workflow automatisé: Clic "Réglé" → Sélection compte → Virement Dehors→Compte → Suppression dette
+  - Z-index géré pour affichage modal au-dessus de la modal Détails
+  - Tests automatisés: 100% backend (15/15 tests), 100% frontend
+
+### Session Précédente (Mars 2026)
 - **Comptabilité améliorée:**
   - Dropdowns iOS compatibles avec Shadcn Select
   - Options Objet: Cotisation, Album, Tombola, Anniversaire, Autres
@@ -42,15 +49,17 @@ Application de gestion complète pour le club de cigares "La Bague Impériale" a
 
 ## Prioritized Backlog
 
-### P0 - En cours
-- Assistant IA (attente bases de données cigares)
-- Refonte page Messages admin (attente charte + lien WhatsApp)
+### P0 - COMPLÉTÉ ✅
+- ~~Bouton "Détails" pour chaque caisse~~ ✅
+- ~~Modal de règlement automatisé des dettes~~ ✅
 
-### P1 - À faire
+### P1 - À faire prochainement
+- Refonte page Messages admin (attente charte + lien WhatsApp)
+- Assistant IA Claude (playbook récupéré, prêt à implémenter)
 - Modification options repas dans modal événement
-- Cigarothèque personnelle par membre
 
 ### P2 - Future
+- Cigarothèque personnelle par membre
 - Page Jeux
 - Page Instagram
 - Notifications admin détaillées
