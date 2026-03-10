@@ -277,22 +277,37 @@ const Messages = () => {
           </p>
         </div>
         
-        {/* Lien WhatsApp - Force ouverture externe */}
-        <a 
-          href="https://chat.whatsapp.com/IYYdAQJFPXq9OMsIaAyaUB"
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={(e) => {
-            e.preventDefault();
-            // Force l'ouverture dans le navigateur système
-            window.location.href = "https://chat.whatsapp.com/IYYdAQJFPXq9OMsIaAyaUB";
-          }}
-          className="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-serif rounded-md transition-colors"
-          data-testid="whatsapp-btn"
-        >
-          <ExternalLink className="w-5 h-5 mr-2" />
-          Discussion WhatsApp
-        </a>
+        {/* Liens WhatsApp */}
+        <div className="flex flex-col sm:flex-row gap-2">
+          <a 
+            href="https://chat.whatsapp.com/IYYdAQJFPXq9OMsIaAyaUB"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => {
+              e.preventDefault();
+              window.location.href = "https://chat.whatsapp.com/IYYdAQJFPXq9OMsIaAyaUB";
+            }}
+            className="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-serif rounded-md transition-colors"
+            data-testid="whatsapp-membres-btn"
+          >
+            <ExternalLink className="w-5 h-5 mr-2" />
+            WhatsApp Membres
+          </a>
+          <a 
+            href="https://chat.whatsapp.com/EIveu9mxnGSGOW1Gg78lwp"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => {
+              e.preventDefault();
+              window.location.href = "https://chat.whatsapp.com/EIveu9mxnGSGOW1Gg78lwp";
+            }}
+            className="inline-flex items-center px-4 py-2 bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif font-bold rounded-md transition-colors"
+            data-testid="whatsapp-bureau-btn"
+          >
+            <ExternalLink className="w-5 h-5 mr-2" />
+            WhatsApp Bureau
+          </a>
+        </div>
       </div>
 
       {/* Templates de messages */}
