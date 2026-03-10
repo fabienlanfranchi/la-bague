@@ -258,22 +258,22 @@ async def login(request: Request, login_data: LoginRequest):
 async def validate_account(request: Request, data: ValidateAccountRequest):
     """Valider le compte en ajoutant email et mot de passe"""
     
-    # Vérifier que l'utilisateur est connecté
-    current_member = await get_current_user(request)
+    # Récupérer le membre directement par ID (pas besoin d'être connecté)
+    member = await db.members.find_one({"id": data.member_id}, {"_id": 0})
     
-    if current_member['id'] != data.member_id:
-        raise HTTPException(status_code=403, detail="Non autorisé")
+    if not member:
+        raise HTTPException(status_code=404, detail="Membre non trouvé")
     
     # Vérifier que le compte n'est pas déjà validé
-    if current_member.get('is_validated'):
+    if member.get('is_validated') or member.get('compte_valide'):
         raise HTTPException(status_code=400, detail="Compte déjà validé")
     
     # Vérifier que les mots de passe correspondent
     if data.password != data.confirm_password:
         raise HTTPException(status_code=400, detail="Les mots de passe ne correspondent pas")
     
-    # Vérifier que l'email n'est pas déjà utilisé
-    existing = await db.members.find_one({"email": data.email}, {"_id": 0})
+    # Vérifier que l'email n'est pas déjà utilisé par un autre membre
+    existing = await db.members.find_one({"email": data.email, "id": {"$ne": data.member_id}}, {"_id": 0})
     if existing:
         raise HTTPException(status_code=400, detail="Cet email est déjà utilisé")
     
@@ -287,6 +287,7 @@ async def validate_account(request: Request, data: ValidateAccountRequest):
                 "email": data.email,
                 "password_hash": password_hash,
                 "is_validated": True,
+                "compte_valide": True,
                 "updated_at": datetime.now(timezone.utc).isoformat()
             }
         }
