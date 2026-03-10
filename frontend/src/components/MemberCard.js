@@ -3,8 +3,8 @@ import React from 'react';
 const MemberCard = ({ member }) => {
   if (!member) return null;
 
-  // Générer un numéro de membre basé sur l'ID ou aléatoire
-  const memberNumber = member.id ? parseInt(member.id.slice(0, 8), 16) % 1000 : Math.floor(Math.random() * 999) + 1;
+  // Utiliser le vrai numéro de membre
+  const memberNumber = member.numero_membre || 0;
 
   return (
     <div className="relative w-full max-w-2xl mx-auto" data-testid="member-card">

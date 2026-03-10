@@ -139,7 +139,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 def generate_temporary_password(numero_membre: int) -> str:
-    return f"clubcigare{numero_membre}"
+    return f"labagueimperiale{numero_membre}"
 
 
 # Get current user from session

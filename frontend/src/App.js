@@ -17,6 +17,7 @@ import Boutique from './pages/Boutique';
 import Sondages from './pages/Sondages';
 import Statistiques from './pages/Statistiques';
 import Sauvegarde from './pages/Sauvegarde';
+import LoginPage from './pages/LoginPage';
 
 const Home = () => {
   // Sélectionner une photo aléatoire parmi les 10
@@ -58,19 +59,23 @@ const Home = () => {
             Bienvenue
           </h2>
           <p className="text-gray-200 mb-6 text-center leading-relaxed">
-            Application de gestion du club en cours de développement.
-            Accès libre pendant la période de construction et d'essai.
+            Espace réservé aux membres du club.
+            Connectez-vous avec votre code d'activation.
           </p>
           <Link
+            to="/login"
+            className="block w-full bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-bold py-4 px-6 rounded-lg text-center transition duration-200 shadow-lg text-lg font-serif mb-3"
+            data-testid="login-button"
+          >
+            CONNEXION MEMBRE
+          </Link>
+          <Link
             to="/dashboard"
-            className="block w-full bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-bold py-4 px-6 rounded-lg text-center transition duration-200 shadow-lg text-lg font-serif"
+            className="block w-full bg-transparent hover:bg-[#D4A024]/10 text-[#D4A024] border-2 border-[#D4A024] font-bold py-3 px-6 rounded-lg text-center transition duration-200 text-sm font-serif"
             data-testid="access-app-button"
           >
-            ACCÉDER À L'APPLICATION
+            Mode développement (accès libre)
           </Link>
-          <p className="text-sm text-gray-400 text-center mt-4">
-            Mode Développement - Toutes les fonctionnalités sont accessibles
-          </p>
         </div>
       </div>
     </div>
@@ -114,6 +119,7 @@ function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/login" element={<LoginPage />} />
             <Route
               path="/dashboard"
               element={
