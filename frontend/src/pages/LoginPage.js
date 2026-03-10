@@ -28,11 +28,14 @@ const LoginPage = () => {
   // État pour la connexion normale (email + mot de passe)
   const [loginData, setLoginData] = useState({
     email: '',
-    password: ''
+    password: '',
+    stayLoggedIn: false
   });
 
   // État pour la validation du compte (après activation)
   const [showValidation, setShowValidation] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
   const [validationData, setValidationData] = useState({
     memberId: '',
     email: '',
@@ -132,12 +135,42 @@ const LoginPage = () => {
       setCurrentMember(member);
       setIsAdmin(member.numero_membre === 1);
 
+      // Si "rester connecté", stocker en localStorage
+      if (loginData.stayLoggedIn) {
+        localStorage.setItem('rememberedMember', JSON.stringify({
+          id: member.id,
+          email: loginData.email
+        }));
+      }
+
       toast.success(`Bienvenue ${member.prenom} !`);
       navigate('/dashboard');
     } catch (error) {
       console.error('Erreur connexion:', error);
       const message = error.response?.data?.detail || 'Email ou mot de passe incorrect';
       toast.error(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Mot de passe oublié
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const response = await axios.post(`${API_URL}/api/auth/forgot-password`, {
+        email: forgotPasswordEmail
+      });
+
+      toast.success(response.data.message || 'Si cet email existe, vous recevrez vos informations.');
+      setShowForgotPassword(false);
+      setForgotPasswordEmail('');
+    } catch (error) {
+      // On affiche un message générique pour ne pas révéler si l'email existe
+      toast.info('Si cet email existe dans notre base, vous recevrez un rappel de vos identifiants.');
+      setShowForgotPassword(false);
     } finally {
       setLoading(false);
     }
@@ -233,6 +266,16 @@ const LoginPage = () => {
                       required
                     />
                   </div>
+                </div>
+
+                {/* Conseil mot de passe */}
+                <div className="bg-[#D4A024]/10 border border-[#D4A024]/30 rounded-lg p-3">
+                  <p className="text-sm text-gray-300">
+                    <span className="text-[#D4A024] font-semibold">Conseil :</span> Utilisez votre <span className="text-white font-mono">prénom + numéro de membre</span>
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Exemple : fabien1, jacques3, nini4... (facile à retenir !)
+                  </p>
                 </div>
 
                 <Button
@@ -385,6 +428,26 @@ const LoginPage = () => {
                       </div>
                     </div>
 
+                    {/* Rester connecté */}
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center space-x-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={loginData.stayLoggedIn}
+                          onChange={(e) => setLoginData({...loginData, stayLoggedIn: e.target.checked})}
+                          className="w-4 h-4 accent-[#D4A024] rounded"
+                        />
+                        <span className="text-gray-300 text-sm">Rester connecté</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setShowForgotPassword(true)}
+                        className="text-[#D4A024] text-sm hover:underline"
+                      >
+                        Mot de passe oublié ?
+                      </button>
+                    </div>
+
                     <Button
                       type="submit"
                       disabled={loading}
@@ -408,6 +471,69 @@ const LoginPage = () => {
             Mode développement (accès libre)
           </button>
         </div>
+
+        {/* Modal Mot de passe oublié */}
+        {showForgotPassword && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+            <Card className="bg-[#1a1a1a] border-2 border-[#D4A024]/50 w-full max-w-md">
+              <CardHeader>
+                <CardTitle className="text-xl font-serif text-[#D4A024] flex items-center">
+                  <KeyRound className="w-5 h-5 mr-2" />
+                  Mot de passe oublié
+                </CardTitle>
+                <CardDescription className="text-gray-400">
+                  Entrez votre email pour recevoir vos identifiants
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleForgotPassword} className="space-y-4">
+                  <div>
+                    <Label htmlFor="forgot-email" className="text-white">Email</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                      <Input
+                        id="forgot-email"
+                        type="email"
+                        value={forgotPasswordEmail}
+                        onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                        placeholder="votre@email.com"
+                        className="pl-10 bg-black/50 border-[#D4A024]/30 text-white"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="bg-[#D4A024]/10 border border-[#D4A024]/30 rounded-lg p-3">
+                    <p className="text-sm text-gray-300">
+                      <span className="text-[#D4A024] font-semibold">Rappel :</span> Votre mot de passe par défaut est votre <span className="text-white font-mono">prénom + numéro de membre</span>
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Exemple : fabien1, jacques3, nini4...
+                    </p>
+                  </div>
+
+                  <div className="flex space-x-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setShowForgotPassword(false)}
+                      className="flex-1 border-gray-600 text-gray-300"
+                    >
+                      Annuler
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={loading}
+                      className="flex-1 bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-bold"
+                    >
+                      {loading ? 'Envoi...' : 'Récupérer'}
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
     </div>
   );

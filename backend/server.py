@@ -321,6 +321,31 @@ async def logout(request: Request):
     return {"message": "Déconnexion réussie"}
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+@api_router.post("/auth/forgot-password")
+async def forgot_password(data: ForgotPasswordRequest):
+    """Mot de passe oublié - retourne un rappel"""
+    # Chercher le membre par email
+    member = await db.members.find_one({"email": data.email}, {"_id": 0})
+    
+    if member:
+        # En production, on enverrait un email
+        # Pour l'instant, on retourne juste un message générique
+        prenom = member.get('prenom', member.get('nom_complet', '').split()[0]).lower()
+        numero = member.get('numero_membre', '')
+        
+        return {
+            "message": f"Rappel : votre mot de passe par défaut est {prenom}{numero}",
+            "hint": f"{prenom}{numero}"
+        }
+    
+    # Message générique pour ne pas révéler si l'email existe
+    return {"message": "Si cet email existe, vous recevrez un rappel."}
+
+
 # ============ MEMBERS ROUTES ============
 
 @api_router.post("/members", response_model=Member)
