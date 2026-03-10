@@ -277,11 +277,16 @@ const Messages = () => {
           </p>
         </div>
         
-        {/* Lien WhatsApp */}
+        {/* Lien WhatsApp - Force ouverture externe */}
         <a 
           href="https://chat.whatsapp.com/IYYdAQJFPXq9OMsIaAyaUB"
           target="_blank"
           rel="noopener noreferrer"
+          onClick={(e) => {
+            e.preventDefault();
+            // Force l'ouverture dans le navigateur système
+            window.location.href = "https://chat.whatsapp.com/IYYdAQJFPXq9OMsIaAyaUB";
+          }}
           className="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-serif rounded-md transition-colors"
           data-testid="whatsapp-btn"
         >
