@@ -58,6 +58,15 @@ const Comptabilite = () => {
     cause: ''
   });
 
+  // Modal de détails d'une caisse
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [selectedCaisse, setSelectedCaisse] = useState(null);
+
+  // Modal de règlement de dette
+  const [showReglementModal, setShowReglementModal] = useState(false);
+  const [detteARegler, setDetteARegler] = useState(null);
+  const [compteDestinationReglement, setCompteDestinationReglement] = useState('');
+
   // Formulaire de nouveau mouvement
   const [newMouvement, setNewMouvement] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -227,21 +236,56 @@ const Comptabilite = () => {
     }
   };
 
-  // Fonction pour supprimer une dette (quand elle est payée)
-  const handleDeleteDette = async (detteId) => {
-    if (!window.confirm('Confirmer que cette dette a été réglée ?')) {
+  // Fonction pour ouvrir la modal de règlement de dette
+  const openReglementModal = (dette) => {
+    setDetteARegler(dette);
+    setCompteDestinationReglement('');
+    setShowReglementModal(true);
+  };
+
+  // Fonction pour régler une dette via la modal
+  const handleReglerDette = async () => {
+    if (!detteARegler || !compteDestinationReglement) {
+      toast.error('Veuillez sélectionner un compte de destination');
       return;
     }
 
     try {
-      await axios.delete(`${API}/dettes/${detteId}`);
-      toast.success('Dette marquée comme réglée');
+      // 1. Créer le virement Dehors → Compte destination
+      await axios.post(`${API}/virements`, {
+        compte_source: 'Dehors',
+        compte_destination: compteDestinationReglement,
+        montant: detteARegler.montant,
+        description: `Paiement dette: ${detteARegler.cause} (${members.find(m => m.id === detteARegler.membre_id)?.nom_complet || 'Membre'})`
+      });
+
+      // 2. Supprimer la dette
+      await axios.delete(`${API}/dettes/${detteARegler.id}`);
+      
+      toast.success(`Dette réglée ! Virement de ${formatMontant(detteARegler.montant)} vers ${compteDestinationReglement}`);
+      setShowReglementModal(false);
+      setDetteARegler(null);
+      setCompteDestinationReglement('');
       loadData();
     } catch (error) {
-      console.error('Erreur lors de la suppression de la dette:', error);
-      toast.error('Erreur lors de la suppression');
+      console.error('Erreur lors du règlement de la dette:', error);
+      toast.error(error.response?.data?.detail || 'Erreur lors du règlement');
     }
   };
+
+  // Fonction pour ouvrir les détails d'une caisse
+  const openCaisseDetails = (caisseName) => {
+    setSelectedCaisse(caisseName);
+    setShowDetailsModal(true);
+  };
+
+  // Obtenir les transactions d'une caisse spécifique
+  const getTransactionsForCaisse = (caisseName) => {
+    return transactions.filter(t => t.endroit === caisseName);
+  };
+
+  // Calculer le total des dettes (pour "Dehors")
+  const totalDettes = dettes.reduce((sum, d) => sum + d.montant, 0);
 
   const handleDeleteTransaction = async (transactionId) => {
     if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce mouvement ?')) {
@@ -296,8 +340,8 @@ const Comptabilite = () => {
       </div>
 
       {/* Vue d'ensemble financière */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Solde total */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        {/* Solde total (comptes + dettes) */}
         <Card className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-serif text-gray-400 flex items-center">
@@ -307,9 +351,9 @@ const Comptabilite = () => {
           </CardHeader>
           <CardContent>
             <div className="text-4xl font-serif font-bold text-[#D4A024]">
-              {formatMontant(summary.solde_total)}
+              {formatMontant(summary.solde_total + totalDettes)}
             </div>
-            <p className="text-xs text-gray-500 mt-1">Tous les comptes</p>
+            <p className="text-xs text-gray-500 mt-1">Comptes + Dehors ({formatMontant(totalDettes)})</p>
           </CardContent>
         </Card>
 
@@ -351,7 +395,7 @@ const Comptabilite = () => {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-2xl font-serif font-bold text-white flex items-center">
             <Wallet className="w-6 h-6 mr-2 text-[#D4A024]" />
-            Comptes
+            Comptes & Caisses
           </h2>
           <Button
             onClick={() => setShowVirementModal(true)}
@@ -363,100 +407,76 @@ const Comptabilite = () => {
           </Button>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {comptes.map((compte) => (
-            <Card key={compte.id} className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base font-serif text-white flex items-center justify-between">
-                  <span>{compte.nom}</span>
-                  <Badge className="bg-[#7A2020] text-[#D4A024] border border-[#D4A024]">
-                    {compte.type}
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-serif font-bold text-[#D4A024]">
-                  {formatMontant(compte.solde)}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+          {/* Comptes normaux */}
+          {comptes.map((compte) => {
+            const transCount = getTransactionsForCaisse(compte.nom).length;
+            return (
+              <Card key={compte.id} className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base font-serif text-white flex items-center justify-between">
+                    <span>{compte.nom}</span>
+                    <Badge className="bg-[#7A2020] text-[#D4A024] border border-[#D4A024]">
+                      {compte.type}
+                    </Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-serif font-bold text-[#D4A024]">
+                    {formatMontant(compte.solde)}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openCaisseDetails(compte.nom)}
+                    className="mt-3 w-full border-[#D4A024]/30 text-[#D4A024] hover:bg-[#D4A024]/10"
+                  >
+                    Détails ({transCount} mouvement{transCount > 1 ? 's' : ''})
+                  </Button>
+                </CardContent>
+              </Card>
+            );
+          })}
+          
+          {/* Carte spéciale "Dehors" avec les dettes */}
+          <Card className="bg-black/40 border-2 border-red-600/30 backdrop-blur-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-serif text-white flex items-center justify-between">
+                <span className="flex items-center">
+                  <AlertTriangle className="w-4 h-4 mr-2 text-red-400" />
+                  Dehors (Dettes)
+                </span>
+                <Badge className="bg-red-900 text-red-300 border border-red-600">
+                  {dettes.length} dette{dettes.length > 1 ? 's' : ''}
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-serif font-bold text-red-400">
+                {formatMontant(totalDettes)}
+              </div>
+              <div className="flex space-x-2 mt-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openCaisseDetails('Dehors')}
+                  className="flex-1 border-red-600/30 text-red-400 hover:bg-red-900/20"
+                >
+                  Détails
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => setShowDetteModal(true)}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                  data-testid="add-dette-btn"
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  Ajouter
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
-
-      {/* Section Dehors - Dettes des membres */}
-      <Card className="bg-black/40 border-2 border-red-600/30 backdrop-blur-sm">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-xl font-serif text-white flex items-center">
-              <AlertTriangle className="w-6 h-6 mr-2 text-red-400" />
-              Dehors - Dettes des membres
-            </CardTitle>
-            <Button
-              onClick={() => setShowDetteModal(true)}
-              className="bg-red-600 hover:bg-red-700 text-white font-serif"
-              data-testid="add-dette-btn"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Ajouter une dette
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {dettes.length === 0 ? (
-            <p className="text-gray-400 text-center py-4">Aucune dette enregistrée</p>
-          ) : (
-            <div className="space-y-3">
-              {dettes.map((dette) => {
-                const membre = members.find(m => m.id === dette.membre_id);
-                return (
-                  <div 
-                    key={dette.id} 
-                    className="flex items-center justify-between bg-red-900/20 border border-red-600/30 rounded-lg p-4"
-                  >
-                    <div className="flex items-center space-x-4">
-                      <User className="w-8 h-8 text-red-400" />
-                      <div>
-                        <p className="text-white font-semibold">
-                          <span className="text-red-400">MEMBRE</span>{' '}
-                          <span className="text-[#D4A024]">{membre?.nom_complet || 'Inconnu'}</span>{' '}
-                          <span className="text-red-400">DOIT</span>{' '}
-                          <span className="text-white text-lg">{formatMontant(dette.montant)}</span>
-                        </p>
-                        <p className="text-gray-400 text-sm">
-                          <span className="text-red-400">CAUSE</span>{' '}
-                          <span className="text-gray-300">{dette.cause}</span>
-                        </p>
-                        <p className="text-gray-500 text-xs mt-1">
-                          Enregistré le {formatDate(dette.created_at)}
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      onClick={() => handleDeleteDette(dette.id)}
-                      variant="outline"
-                      size="sm"
-                      className="border-green-600 text-green-400 hover:bg-green-900/20"
-                      title="Marquer comme réglé"
-                    >
-                      ✓ Réglé
-                    </Button>
-                  </div>
-                );
-              })}
-              
-              {/* Total des dettes */}
-              <div className="border-t border-red-600/30 pt-3 mt-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-400">Total des dettes :</span>
-                  <span className="text-2xl font-bold text-red-400">
-                    {formatMontant(dettes.reduce((sum, d) => sum + d.montant, 0))}
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
       {/* Cotisations en attente */}
       {summary.cotisations_en_attente > 0 && (
@@ -897,6 +917,231 @@ const Comptabilite = () => {
                 >
                   <Plus className="w-4 h-4 mr-2" />
                   Enregistrer la dette
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Modal de détails d'une caisse */}
+      {showDetailsModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <Card className={`bg-[#1a1a1a] w-full max-w-2xl mx-4 max-h-[80vh] flex flex-col ${
+            selectedCaisse === 'Dehors' ? 'border-2 border-red-600/50' : 'border-2 border-[#D4A024]/50'
+          }`}>
+            <CardHeader className={`border-b ${selectedCaisse === 'Dehors' ? 'border-red-600/30' : 'border-[#D4A024]/30'}`}>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xl font-serif text-white flex items-center">
+                  {selectedCaisse === 'Dehors' ? (
+                    <AlertTriangle className="w-5 h-5 mr-2 text-red-400" />
+                  ) : (
+                    <Wallet className="w-5 h-5 mr-2 text-[#D4A024]" />
+                  )}
+                  Détails : {selectedCaisse}
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowDetailsModal(false)}
+                  className="text-gray-400 hover:text-white"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="p-4 overflow-y-auto flex-1">
+              {selectedCaisse === 'Dehors' ? (
+                /* Afficher les dettes */
+                <div className="space-y-3">
+                  {dettes.length === 0 ? (
+                    <p className="text-gray-400 text-center py-4">Aucune dette enregistrée</p>
+                  ) : (
+                    <>
+                      {dettes.map((dette) => {
+                        const membre = members.find(m => m.id === dette.membre_id);
+                        return (
+                          <div 
+                            key={dette.id} 
+                            className="bg-red-900/20 border border-red-600/30 rounded-lg p-3"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-white">
+                                  <span className="text-red-400 font-bold">MEMBRE</span>{' '}
+                                  <span className="text-[#D4A024]">{membre?.nom_complet || 'Inconnu'}</span>
+                                </p>
+                                <p className="text-white">
+                                  <span className="text-red-400 font-bold">DOIT</span>{' '}
+                                  <span className="text-lg font-bold">{formatMontant(dette.montant)}</span>
+                                </p>
+                                <p className="text-gray-400 text-sm">
+                                  <span className="text-red-400 font-bold">CAUSE</span>{' '}
+                                  {dette.cause}
+                                </p>
+                              </div>
+                              <Button
+                                onClick={() => openReglementModal(dette)}
+                                variant="outline"
+                                size="sm"
+                                className="border-green-600 text-green-400 hover:bg-green-900/20"
+                                data-testid={`reglement-dette-${dette.id}`}
+                              >
+                                ✓ Réglé
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      <div className="border-t border-red-600/30 pt-3 mt-4">
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-400 font-semibold">Total Dehors :</span>
+                          <span className="text-2xl font-bold text-red-400">
+                            {formatMontant(totalDettes)}
+                          </span>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ) : (
+                /* Afficher les transactions de la caisse */
+                <div className="space-y-2">
+                  {getTransactionsForCaisse(selectedCaisse).length === 0 ? (
+                    <p className="text-gray-400 text-center py-4">Aucun mouvement pour cette caisse</p>
+                  ) : (
+                    <>
+                      {getTransactionsForCaisse(selectedCaisse).map((trans) => {
+                        const membre = members.find(m => m.id === trans.membre_id);
+                        return (
+                          <div 
+                            key={trans.id} 
+                            className={`border rounded-lg p-3 ${
+                              trans.type === 'recette' 
+                                ? 'bg-green-900/20 border-green-600/30' 
+                                : 'bg-red-900/20 border-red-600/30'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-gray-400 text-sm">{formatDate(trans.date)}</span>
+                                  <Badge className={trans.type === 'recette' ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'}>
+                                    {trans.type}
+                                  </Badge>
+                                </div>
+                                <p className="text-white mt-1">
+                                  {membre?.nom_complet && <span className="text-[#D4A024]">{membre.nom_complet} - </span>}
+                                  <span className="capitalize">{trans.objet}</span>
+                                  {trans.detail && <span className="text-gray-400"> ({trans.detail})</span>}
+                                </p>
+                              </div>
+                              <div className={`text-xl font-bold ${trans.type === 'recette' ? 'text-green-400' : 'text-red-400'}`}>
+                                {trans.type === 'recette' ? '+' : '-'}{formatMontant(trans.montant)}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Modal de règlement de dette */}
+      {showReglementModal && detteARegler && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4">
+          <Card className="bg-[#1a1a1a] border-2 border-green-600/50 w-full max-w-md mx-4">
+            <CardHeader className="border-b border-green-600/30">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xl font-serif text-white flex items-center">
+                  <DollarSign className="w-5 h-5 mr-2 text-green-400" />
+                  Régler une dette
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setShowReglementModal(false);
+                    setDetteARegler(null);
+                  }}
+                  className="text-gray-400 hover:text-white"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="p-6 space-y-4">
+              {/* Récapitulatif de la dette */}
+              <div className="bg-red-900/20 border border-red-600/30 rounded-lg p-4">
+                <p className="text-sm text-gray-400 mb-1">Dette à régler :</p>
+                <p className="text-white">
+                  <span className="text-[#D4A024] font-semibold">
+                    {members.find(m => m.id === detteARegler.membre_id)?.nom_complet || 'Inconnu'}
+                  </span>
+                </p>
+                <p className="text-2xl font-bold text-red-400 mt-2">
+                  {formatMontant(detteARegler.montant)}
+                </p>
+                <p className="text-gray-400 text-sm mt-1">Cause : {detteARegler.cause}</p>
+              </div>
+
+              {/* Sélection du compte destination */}
+              <div>
+                <label className="block text-sm text-green-400 mb-2 font-bold">
+                  Vers quel compte ?
+                </label>
+                <Select
+                  value={compteDestinationReglement || "none"}
+                  onValueChange={(value) => setCompteDestinationReglement(value === "none" ? "" : value)}
+                >
+                  <SelectTrigger className="w-full bg-black/60 border-green-600/30 text-white">
+                    <SelectValue placeholder="Sélectionner un compte..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#1a1a1a] border-green-600/30">
+                    <SelectItem value="none" className="text-gray-400">-- Sélectionner --</SelectItem>
+                    {comptes.filter(c => c.nom !== 'Dehors').map(c => (
+                      <SelectItem key={c.id} value={c.nom} className="text-white">
+                        {c.nom} ({formatMontant(c.solde)})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Explication */}
+              <div className="bg-green-900/10 border border-green-600/20 rounded-lg p-3 text-sm text-gray-300">
+                <p className="flex items-center">
+                  <ArrowRightLeft className="w-4 h-4 mr-2 text-green-400" />
+                  Un virement de <span className="text-green-400 font-bold mx-1">{formatMontant(detteARegler.montant)}</span> 
+                  sera effectué depuis "Dehors" vers le compte sélectionné.
+                </p>
+              </div>
+
+              {/* Boutons */}
+              <div className="flex space-x-3 pt-4">
+                <Button
+                  onClick={() => {
+                    setShowReglementModal(false);
+                    setDetteARegler(null);
+                  }}
+                  variant="outline"
+                  className="flex-1 border-gray-600 text-gray-300 hover:bg-gray-800"
+                >
+                  Annuler
+                </Button>
+                <Button
+                  onClick={handleReglerDette}
+                  disabled={!compteDestinationReglement}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white font-serif disabled:opacity-50"
+                  data-testid="confirm-reglement-btn"
+                >
+                  <DollarSign className="w-4 h-4 mr-2" />
+                  Confirmer le règlement
                 </Button>
               </div>
             </CardContent>

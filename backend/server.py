@@ -1087,9 +1087,22 @@ async def effectuer_virement(input: VirementInput):
     if input.compte_source == input.compte_destination:
         raise HTTPException(status_code=400, detail="Les comptes source et destination doivent être différents")
     
-    # Vérifier que les deux comptes existent
-    compte_source = await db.comptes.find_one({"nom": input.compte_source}, {"_id": 0})
-    compte_dest = await db.comptes.find_one({"nom": input.compte_destination}, {"_id": 0})
+    # Vérifier que les deux comptes existent (Dehors est un compte virtuel)
+    compte_source = None
+    compte_dest = None
+    
+    if input.compte_source == 'Dehors':
+        # Dehors est virtuel, on calcule son solde depuis les dettes
+        dettes = await db.dettes.find({}, {"_id": 0}).to_list(1000)
+        total_dettes = sum(d.get('montant', 0) for d in dettes)
+        compte_source = {"nom": "Dehors", "solde": total_dettes}
+    else:
+        compte_source = await db.comptes.find_one({"nom": input.compte_source}, {"_id": 0})
+    
+    if input.compte_destination == 'Dehors':
+        compte_dest = {"nom": "Dehors", "solde": 0}
+    else:
+        compte_dest = await db.comptes.find_one({"nom": input.compte_destination}, {"_id": 0})
     
     if not compte_source:
         raise HTTPException(status_code=404, detail=f"Compte source '{input.compte_source}' non trouvé")
@@ -1137,15 +1150,17 @@ async def effectuer_virement(input: VirementInput):
     await db.transactions.insert_one(trans_sortie)
     await db.transactions.insert_one(trans_entree)
     
-    # Mettre à jour les soldes des comptes
-    await db.comptes.update_one(
-        {"nom": input.compte_source},
-        {"$inc": {"solde": -input.montant}, "$set": {"updated_at": now}}
-    )
-    await db.comptes.update_one(
-        {"nom": input.compte_destination},
-        {"$inc": {"solde": input.montant}, "$set": {"updated_at": now}}
-    )
+    # Mettre à jour les soldes des comptes (sauf Dehors qui est virtuel)
+    if input.compte_source != 'Dehors':
+        await db.comptes.update_one(
+            {"nom": input.compte_source},
+            {"$inc": {"solde": -input.montant}, "$set": {"updated_at": now}}
+        )
+    if input.compte_destination != 'Dehors':
+        await db.comptes.update_one(
+            {"nom": input.compte_destination},
+            {"$inc": {"solde": input.montant}, "$set": {"updated_at": now}}
+        )
     
     return {
         "message": "Virement effectué avec succès",
