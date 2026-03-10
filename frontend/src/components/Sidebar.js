@@ -132,30 +132,32 @@ const Sidebar = () => {
             })}
           </nav>
 
-          {/* Toggle Président/Membre */}
+          {/* Toggle Président/Membre - UNIQUEMENT pour Fabien (Président) */}
           <div className="mt-auto pt-6 border-t border-[#D4A024]/20">
-            <div className="bg-[#7A2020]/30 rounded-lg p-4 mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-gray-400 text-sm">Mode</span>
-                <Switch
-                  checked={isAdmin}
-                  onCheckedChange={toggleMode}
-                  className="data-[state=checked]:bg-[#D4A024]"
-                />
+            {currentMember?.numero_membre === 1 && (
+              <div className="bg-[#7A2020]/30 rounded-lg p-4 mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-gray-400 text-sm">Mode</span>
+                  <Switch
+                    checked={isAdmin}
+                    onCheckedChange={toggleMode}
+                    className="data-[state=checked]:bg-[#D4A024]"
+                  />
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className={!isAdmin ? 'text-[#D4A024]' : 'text-gray-500'}>
+                    Membre
+                  </span>
+                  <span className={isAdmin ? 'text-[#D4A024]' : 'text-gray-500'}>
+                    <Crown className="w-4 h-4 inline mr-1" />
+                    Président
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className={!isAdmin ? 'text-[#D4A024]' : 'text-gray-500'}>
-                  Membre
-                </span>
-                <span className={isAdmin ? 'text-[#D4A024]' : 'text-gray-500'}>
-                  <Crown className="w-4 h-4 inline mr-1" />
-                  Président
-                </span>
-              </div>
-            </div>
+            )}
 
             <Link
-              to="/"
+              to="/login"
               className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-red-900/20 hover:text-red-400 transition-all"
             >
               <LogOut className="w-5 h-5" />

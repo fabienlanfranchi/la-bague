@@ -1,7 +1,7 @@
 import React from 'react';
 import '@/App.css';
 import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
-import { UserProvider } from './context/UserContext';
+import { UserProvider, useUser } from './context/UserContext';
 import { Toaster } from '@/components/ui/sonner';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
@@ -18,6 +18,32 @@ import Sondages from './pages/Sondages';
 import Statistiques from './pages/Statistiques';
 import Sauvegarde from './pages/Sauvegarde';
 import LoginPage from './pages/LoginPage';
+
+// Composant de protection - redirige vers login si pas connecté
+const ProtectedRoute = ({ children }) => {
+  const { currentMember } = useUser();
+  
+  if (!currentMember) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  return children;
+};
+
+// Composant de protection Admin - redirige vers dashboard si pas admin
+const AdminRoute = ({ children }) => {
+  const { currentMember, isAdmin } = useUser();
+  
+  if (!currentMember) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  if (!isAdmin && currentMember.numero_membre !== 1) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  
+  return children;
+};
 
 const Home = () => {
   // Sélectionner une photo aléatoire parmi les 10
@@ -120,110 +146,141 @@ function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<LoginPage />} />
+            
+            {/* Routes protégées - accès membre connecté */}
             <Route
               path="/dashboard"
               element={
-                <AppLayout>
-                  <Dashboard />
-                </AppLayout>
-              }
-            />
-            <Route
-              path="/comptabilite"
-              element={
-                <AppLayout>
-                  <Comptabilite />
-                </AppLayout>
-              }
-            />
-            <Route
-              path="/members"
-              element={
-                <AppLayout>
-                  <MembersPage />
-                </AppLayout>
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Dashboard />
+                  </AppLayout>
+                </ProtectedRoute>
               }
             />
             <Route
               path="/evenements"
               element={
-                <AppLayout>
-                  <Evenements />
-                </AppLayout>
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Evenements />
+                  </AppLayout>
+                </ProtectedRoute>
               }
             />
             <Route
               path="/jeux"
               element={
-                <AppLayout>
-                  <Jeux />
-                </AppLayout>
-              }
-            />
-            <Route
-              path="/messages"
-              element={
-                <AppLayout>
-                  <Messages />
-                </AppLayout>
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Jeux />
+                  </AppLayout>
+                </ProtectedRoute>
               }
             />
             <Route
               path="/boutique"
               element={
-                <AppLayout>
-                  <Boutique />
-                </AppLayout>
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Boutique />
+                  </AppLayout>
+                </ProtectedRoute>
               }
             />
             <Route
               path="/sondages"
               element={
-                <AppLayout>
-                  <Sondages />
-                </AppLayout>
-              }
-            />
-            <Route
-              path="/statistiques"
-              element={
-                <AppLayout>
-                  <Statistiques />
-                </AppLayout>
-              }
-            />
-            <Route
-              path="/sauvegarde"
-              element={
-                <AppLayout>
-                  <Sauvegarde />
-                </AppLayout>
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Sondages />
+                  </AppLayout>
+                </ProtectedRoute>
               }
             />
             <Route
               path="/cigarotheque"
               element={
-                <AppLayout>
-                  <Cigarotheque />
-                </AppLayout>
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Cigarotheque />
+                  </AppLayout>
+                </ProtectedRoute>
               }
             />
             <Route
               path="/assistant-ia"
               element={
-                <AppLayout>
-                  <AssistantIA />
-                </AppLayout>
+                <ProtectedRoute>
+                  <AppLayout>
+                    <AssistantIA />
+                  </AppLayout>
+                </ProtectedRoute>
               }
             />
             <Route
               path="/profile"
               element={
-                <AppLayout>
-                  <ProfilePage />
-                </AppLayout>
+                <ProtectedRoute>
+                  <AppLayout>
+                    <ProfilePage />
+                  </AppLayout>
+                </ProtectedRoute>
               }
             />
+            
+            {/* Routes ADMIN uniquement */}
+            <Route
+              path="/comptabilite"
+              element={
+                <AdminRoute>
+                  <AppLayout>
+                    <Comptabilite />
+                  </AppLayout>
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/members"
+              element={
+                <AdminRoute>
+                  <AppLayout>
+                    <MembersPage />
+                  </AppLayout>
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/messages"
+              element={
+                <AdminRoute>
+                  <AppLayout>
+                    <Messages />
+                  </AppLayout>
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/statistiques"
+              element={
+                <AdminRoute>
+                  <AppLayout>
+                    <Statistiques />
+                  </AppLayout>
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/sauvegarde"
+              element={
+                <AdminRoute>
+                  <AppLayout>
+                    <Sauvegarde />
+                  </AppLayout>
+                </AdminRoute>
+              }
+            />
+            
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>
