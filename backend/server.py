@@ -179,7 +179,12 @@ async def login(request: Request, login_data: LoginRequest):
     
     # Connexion avec email + mot de passe
     if login_data.email and login_data.password:
-        member = await db.members.find_one({"email": login_data.email}, {"_id": 0})
+        # Recherche insensible à la casse
+        email_lower = login_data.email.lower().strip()
+        member = await db.members.find_one(
+            {"email": {"$regex": f"^{email_lower}$", "$options": "i"}}, 
+            {"_id": 0}
+        )
         
         if not member:
             raise HTTPException(status_code=401, detail="Email ou mot de passe incorrect")
