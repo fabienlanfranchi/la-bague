@@ -22,7 +22,8 @@ import {
   Calendar,
   Bell,
   ScrollText,
-  ExternalLink
+  ExternalLink,
+  Copy
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -177,7 +178,24 @@ const Messages = () => {
   const [sendToAll, setSendToAll] = useState(true);
 
   // URL WhatsApp du groupe
-  const WHATSAPP_GROUP_URL = "https://chat.whatsapp.com/votre-lien-groupe"; // À personnaliser
+  const WHATSAPP_GROUP_URL = "https://chat.whatsapp.com/IYYdAQJFPXq9OMsIaAyaUB?mode=gi_t";
+
+  // Fonction pour copier le texte dans le presse-papier
+  const copyToClipboard = async (text, templateName = '') => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(templateName ? `"${templateName}" copié !` : 'Message copié !');
+    } catch (err) {
+      // Fallback pour les navigateurs plus anciens
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      toast.success(templateName ? `"${templateName}" copié !` : 'Message copié !');
+    }
+  };
 
   useEffect(() => {
     loadMembres();
@@ -282,18 +300,36 @@ const Messages = () => {
             return (
               <Card
                 key={template.id}
-                onClick={() => selectTemplate(template)}
-                className={`bg-black/40 border-2 ${template.borderColor} backdrop-blur-sm cursor-pointer hover:border-opacity-100 transition-all hover:scale-[1.02]`}
+                className={`bg-black/40 border-2 ${template.borderColor} backdrop-blur-sm transition-all hover:scale-[1.02]`}
               >
                 <CardContent className="py-6">
-                  <div className="flex items-center space-x-4">
-                    <div className={`p-3 rounded-lg ${template.bgColor}`}>
-                      <Icon className={`w-6 h-6 ${template.color}`} />
+                  <div className="flex items-center justify-between">
+                    <div 
+                      className="flex items-center space-x-4 flex-1 cursor-pointer"
+                      onClick={() => selectTemplate(template)}
+                    >
+                      <div className={`p-3 rounded-lg ${template.bgColor}`}>
+                        <Icon className={`w-6 h-6 ${template.color}`} />
+                      </div>
+                      <div>
+                        <h3 className="text-white font-semibold">{template.titre}</h3>
+                        <p className="text-gray-400 text-sm">Cliquez pour utiliser</p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-white font-semibold">{template.titre}</h3>
-                      <p className="text-gray-400 text-sm">Cliquez pour utiliser</p>
-                    </div>
+                    {template.defaultMessage && (
+                      <Button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          copyToClipboard(template.defaultMessage, template.titre);
+                        }}
+                        variant="ghost"
+                        size="sm"
+                        className="text-[#D4A024] hover:bg-[#D4A024]/20 hover:text-[#D4A024]"
+                        data-testid={`copy-template-${template.id}`}
+                      >
+                        <Copy className="w-5 h-5" />
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -415,6 +451,16 @@ const Messages = () => {
             
             <div className="flex-shrink-0 p-4 border-t border-[#D4A024]/30 flex space-x-3">
               <Button
+                onClick={() => copyToClipboard(messageContent)}
+                disabled={!messageContent.trim()}
+                variant="outline"
+                className="border-[#D4A024] text-[#D4A024] hover:bg-[#D4A024]/10"
+                data-testid="copy-message-btn"
+              >
+                <Copy className="w-5 h-5 mr-2" />
+                Copier
+              </Button>
+              <Button
                 onClick={sendMessage}
                 disabled={sending || !messageContent.trim()}
                 className="flex-1 bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif font-bold"
@@ -429,7 +475,7 @@ const Messages = () => {
               <Button
                 onClick={closeTemplate}
                 variant="outline"
-                className="flex-1 border-[#D4A024] text-[#D4A024] hover:bg-[#D4A024]/10"
+                className="border-gray-600 text-gray-400 hover:bg-gray-800"
               >
                 Annuler
               </Button>
@@ -486,6 +532,15 @@ const Messages = () => {
             </CardContent>
             
             <div className="flex-shrink-0 p-4 border-t border-[#D4A024]/30 flex space-x-3">
+              <Button
+                onClick={() => copyToClipboard(charteContent, 'Charte du Club')}
+                variant="outline"
+                className="border-[#D4A024] text-[#D4A024] hover:bg-[#D4A024]/10"
+                data-testid="copy-charte-btn"
+              >
+                <Copy className="w-5 h-5 mr-2" />
+                Copier
+              </Button>
               {editingCharte && (
                 <Button
                   onClick={() => {
@@ -501,7 +556,7 @@ const Messages = () => {
               <Button
                 onClick={() => setShowCharteModal(false)}
                 variant="outline"
-                className={`${editingCharte ? 'flex-1' : 'w-full'} border-[#D4A024] text-[#D4A024] hover:bg-[#D4A024]/10`}
+                className="flex-1 border-gray-600 text-gray-400 hover:bg-gray-800"
               >
                 Fermer
               </Button>
