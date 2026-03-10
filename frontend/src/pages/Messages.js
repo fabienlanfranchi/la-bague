@@ -178,7 +178,7 @@ const Messages = () => {
   const [sendToAll, setSendToAll] = useState(true);
 
   // URL WhatsApp du groupe
-  const WHATSAPP_GROUP_URL = "https://chat.whatsapp.com/IYYdAQJFPXq9OMsIaAyaUB?mode=gi_t";
+  const WHATSAPP_GROUP_URL = "https://chat.whatsapp.com/IYYdAQJFPXq9OMsIaAyaUB";
 
   // Fonction pour copier le texte dans le presse-papier
   const copyToClipboard = async (text, templateName = '') => {
@@ -278,13 +278,16 @@ const Messages = () => {
         </div>
         
         {/* Lien WhatsApp */}
-        <Button
-          onClick={() => window.open(WHATSAPP_GROUP_URL, '_blank')}
-          className="bg-green-600 hover:bg-green-700 text-white font-serif"
+        <a 
+          href="https://chat.whatsapp.com/IYYdAQJFPXq9OMsIaAyaUB"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-serif rounded-md transition-colors"
+          data-testid="whatsapp-btn"
         >
           <ExternalLink className="w-5 h-5 mr-2" />
           Discussion WhatsApp
-        </Button>
+        </a>
       </div>
 
       {/* Templates de messages */}
