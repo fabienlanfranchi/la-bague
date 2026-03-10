@@ -2124,6 +2124,151 @@ async def get_sondage_stats(message_id: str):
     }
 
 
+
+# ============ SONDAGES GÉNÉRIQUES - MODELS & ROUTES ============
+
+class SondageGenerique(BaseModel):
+    """Sondage générique (non lié à un événement)"""
+    model_config = ConfigDict(extra="ignore")
+    
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    question: str
+    options: List[str]
+    status: str = "active"  # "active" ou "terminé"
+    created_by: Optional[str] = None  # ID du créateur (président)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class SondageGeneriqueCreate(BaseModel):
+    question: str
+    options: List[str]
+
+
+class VoteSondage(BaseModel):
+    """Vote d'un membre sur un sondage"""
+    model_config = ConfigDict(extra="ignore")
+    
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    sondage_id: str
+    membre_id: str
+    option_index: int
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+@api_router.get("/sondages-generiques")
+async def get_sondages_generiques():
+    """Liste tous les sondages génériques avec leurs votes"""
+    sondages = await db.sondages_generiques.find({}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    
+    # Pour chaque sondage, calculer les votes
+    for sondage in sondages:
+        votes = await db.votes_sondages.find({"sondage_id": sondage["id"]}, {"_id": 0}).to_list(1000)
+        
+        # Compter les votes par option
+        vote_counts = [0] * len(sondage.get("options", []))
+        for vote in votes:
+            idx = vote.get("option_index", 0)
+            if 0 <= idx < len(vote_counts):
+                vote_counts[idx] += 1
+        
+        sondage["votes"] = vote_counts
+        sondage["total_votes"] = sum(vote_counts)
+        
+        # Convertir datetime
+        if isinstance(sondage.get('created_at'), str):
+            sondage['created_at'] = datetime.fromisoformat(sondage['created_at'])
+    
+    return sondages
+
+
+@api_router.post("/sondages-generiques")
+async def create_sondage_generique(input: SondageGeneriqueCreate):
+    """Créer un nouveau sondage générique"""
+    if len(input.options) < 2:
+        raise HTTPException(status_code=400, detail="Au moins 2 options sont requises")
+    
+    sondage = SondageGenerique(**input.model_dump())
+    
+    doc = sondage.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    
+    await db.sondages_generiques.insert_one(doc)
+    
+    # Récupérer le sondage sans _id
+    created = await db.sondages_generiques.find_one({"id": sondage.id}, {"_id": 0})
+    created["votes"] = [0] * len(input.options)
+    created["total_votes"] = 0
+    
+    return {"message": "Sondage créé avec succès", "sondage": created}
+
+
+@api_router.delete("/sondages-generiques/{sondage_id}")
+async def delete_sondage_generique(sondage_id: str):
+    """Supprimer un sondage générique et ses votes"""
+    result = await db.sondages_generiques.delete_one({"id": sondage_id})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Sondage non trouvé")
+    
+    # Supprimer aussi les votes associés
+    await db.votes_sondages.delete_many({"sondage_id": sondage_id})
+    
+    return {"message": "Sondage supprimé avec succès"}
+
+
+@api_router.post("/sondages-generiques/{sondage_id}/vote")
+async def voter_sondage_generique(sondage_id: str, membre_id: str, option_index: int):
+    """Voter sur un sondage générique"""
+    # Vérifier que le sondage existe
+    sondage = await db.sondages_generiques.find_one({"id": sondage_id}, {"_id": 0})
+    if not sondage:
+        raise HTTPException(status_code=404, detail="Sondage non trouvé")
+    
+    # Vérifier que l'option existe
+    if option_index < 0 or option_index >= len(sondage.get("options", [])):
+        raise HTTPException(status_code=400, detail="Option invalide")
+    
+    # Vérifier si le membre a déjà voté
+    existing_vote = await db.votes_sondages.find_one({
+        "sondage_id": sondage_id,
+        "membre_id": membre_id
+    })
+    
+    now = datetime.now(timezone.utc).isoformat()
+    
+    if existing_vote:
+        # Mettre à jour le vote
+        await db.votes_sondages.update_one(
+            {"id": existing_vote["id"]},
+            {"$set": {"option_index": option_index, "updated_at": now}}
+        )
+        return {"message": "Vote mis à jour"}
+    else:
+        # Nouveau vote
+        vote = VoteSondage(
+            sondage_id=sondage_id,
+            membre_id=membre_id,
+            option_index=option_index
+        )
+        doc = vote.model_dump()
+        doc['created_at'] = doc['created_at'].isoformat()
+        await db.votes_sondages.insert_one(doc)
+        return {"message": "Vote enregistré"}
+
+
+@api_router.get("/sondages-generiques/{sondage_id}/mon-vote/{membre_id}")
+async def get_mon_vote_sondage(sondage_id: str, membre_id: str):
+    """Récupérer le vote d'un membre sur un sondage"""
+    vote = await db.votes_sondages.find_one({
+        "sondage_id": sondage_id,
+        "membre_id": membre_id
+    }, {"_id": 0})
+    
+    if vote:
+        return {"hasVoted": True, "option_index": vote.get("option_index")}
+    return {"hasVoted": False, "option_index": None}
+
+
 # ============ STATISTIQUES & PRÉSENCES - MODELS ============
 
 class SaisonConfig(BaseModel):
