@@ -72,7 +72,18 @@ const LoginPage = () => {
       }
     } catch (error) {
       console.error('Erreur activation:', error);
-      const message = error.response?.data?.detail || 'Erreur lors de l\'activation';
+      let message = 'Erreur lors de l\'activation';
+      if (error.response?.data?.detail) {
+        const detail = error.response.data.detail;
+        // Si c'est un objet (erreur Pydantic), extraire le message
+        if (typeof detail === 'string') {
+          message = detail;
+        } else if (Array.isArray(detail)) {
+          message = detail.map(e => e.msg || e).join(', ');
+        } else if (detail.msg) {
+          message = detail.msg;
+        }
+      }
       toast.error(message);
     } finally {
       setLoading(false);
@@ -112,7 +123,17 @@ const LoginPage = () => {
       navigate('/dashboard');
     } catch (error) {
       console.error('Erreur validation:', error);
-      const message = error.response?.data?.detail || 'Erreur lors de la validation';
+      let message = 'Erreur lors de la validation';
+      if (error.response?.data?.detail) {
+        const detail = error.response.data.detail;
+        if (typeof detail === 'string') {
+          message = detail;
+        } else if (Array.isArray(detail)) {
+          message = detail.map(e => e.msg || e).join(', ');
+        } else if (detail.msg) {
+          message = detail.msg;
+        }
+      }
       toast.error(message);
     } finally {
       setLoading(false);
@@ -147,7 +168,17 @@ const LoginPage = () => {
       navigate('/dashboard');
     } catch (error) {
       console.error('Erreur connexion:', error);
-      const message = error.response?.data?.detail || 'Email ou mot de passe incorrect';
+      let message = 'Email ou mot de passe incorrect';
+      if (error.response?.data?.detail) {
+        const detail = error.response.data.detail;
+        if (typeof detail === 'string') {
+          message = detail;
+        } else if (Array.isArray(detail)) {
+          message = detail.map(e => e.msg || e).join(', ');
+        } else if (detail.msg) {
+          message = detail.msg;
+        }
+      }
       toast.error(message);
     } finally {
       setLoading(false);
