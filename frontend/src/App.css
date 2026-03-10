@@ -176,3 +176,75 @@ input, textarea, select {
   background: linear-gradient(135deg, rgba(10, 10, 10, 0.95) 0%, rgba(122, 32, 32, 0.8) 100%);
   backdrop-filter: blur(8px);
 }
+
+/* ============ TAILLES DE TEXTE AUGMENTÉES ============ */
+
+/* Cartes statistiques - chiffres plus grands */
+.stat-number {
+  font-size: 2.5rem !important;
+  font-weight: 700 !important;
+}
+
+/* Tableaux - texte plus lisible */
+table {
+  font-size: 1rem !important;
+}
+
+table th {
+  font-size: 1rem !important;
+  font-weight: 600 !important;
+}
+
+table td {
+  font-size: 1rem !important;
+}
+
+/* Badges */
+.badge-large {
+  font-size: 0.95rem !important;
+  padding: 0.5rem 1rem !important;
+}
+
+/* Cards content */
+.card-text-lg {
+  font-size: 1.1rem !important;
+}
+
+/* Prix et montants */
+.amount-large {
+  font-size: 1.5rem !important;
+  font-weight: 700 !important;
+}
+
+/* Labels de formulaire */
+label {
+  font-size: 1rem !important;
+}
+
+/* Global minimum font size */
+body {
+  font-size: 16px !important;
+}
+
+p, span, div {
+  min-height: auto;
+}
+
+/* Ensure readable text on mobile */
+@media (max-width: 768px) {
+  body {
+    font-size: 16px !important;
+  }
+  
+  h1 {
+    font-size: 1.75rem !important;
+  }
+  
+  h2 {
+    font-size: 1.5rem !important;
+  }
+  
+  h3 {
+    font-size: 1.25rem !important;
+  }
+}

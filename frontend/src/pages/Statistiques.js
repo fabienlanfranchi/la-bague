@@ -538,19 +538,19 @@ export default function Statistiques() {
                       <th className="px-4 py-3 text-left text-sm font-semibold text-stone-700 min-w-[200px]">Membre</th>
                       <th className="px-4 py-3 text-center text-sm font-semibold text-stone-700" style={{ minWidth: '120px' }}>
                         Apéros
-                        <div className="text-xs font-normal text-stone-500">/ {config.nb_aperos || 0}</div>
+                        <div className="text-sm font-normal text-stone-500">/ {config.nb_aperos || 0}</div>
                       </th>
                       <th className="px-4 py-3 text-center text-sm font-semibold text-stone-700" style={{ minWidth: '120px' }}>
                         Repas
-                        <div className="text-xs font-normal text-stone-500">/ {config.nb_repas || 0}</div>
+                        <div className="text-sm font-normal text-stone-500">/ {config.nb_repas || 0}</div>
                       </th>
                       <th className="px-4 py-3 text-center text-sm font-semibold text-stone-700" style={{ minWidth: '120px' }}>
                         Anniversaires
-                        <div className="text-xs font-normal text-stone-500">/ {config.nb_anniversaires || 0}</div>
+                        <div className="text-sm font-normal text-stone-500">/ {config.nb_anniversaires || 0}</div>
                       </th>
                       <th className="px-4 py-3 text-center text-sm font-semibold text-amber-700 bg-amber-50" style={{ minWidth: '100px' }}>
                         % Saison
-                        <div className="text-xs font-normal text-amber-600">(calculé)</div>
+                        <div className="text-sm font-normal text-amber-600">(calculé)</div>
                       </th>
                     </tr>
                   </thead>
@@ -727,7 +727,7 @@ export default function Statistiques() {
                       <td className="px-4 py-2">
                         <span className="font-medium text-stone-800">{stat.nom_complet}</span>
                         {stat.saisons_exclues?.length > 0 && (
-                          <span className="ml-2 text-xs text-gray-400" title={`En sommeil: S${stat.saisons_exclues.join(', S')}`}>💤</span>
+                          <span className="ml-2 text-base text-gray-400" title={`En sommeil: S${stat.saisons_exclues.join(', S')}`}>💤</span>
                         )}
                       </td>
                       <td className="px-4 py-2 text-center text-sm">
@@ -918,20 +918,20 @@ export default function Statistiques() {
                     >
                       <span className="flex items-center">Saison <SortIcon column="saison" /></span>
                     </th>
-                    <th className="px-2 py-3 text-center text-xs font-semibold text-stone-500">
+                    <th className="px-2 py-3 text-center text-sm font-semibold text-stone-500">
                       Nb Membres
                     </th>
-                    <th className="px-2 py-3 text-center text-xs font-semibold text-amber-600" colSpan="2">
+                    <th className="px-2 py-3 text-center text-sm font-semibold text-amber-600" colSpan="2">
                       Apéros
-                      <div className="text-xs font-normal">(Prés. / Moy.)</div>
+                      <div className="text-sm font-normal">(Prés. / Moy.)</div>
                     </th>
-                    <th className="px-2 py-3 text-center text-xs font-semibold text-blue-600" colSpan="2">
+                    <th className="px-2 py-3 text-center text-sm font-semibold text-blue-600" colSpan="2">
                       Repas
-                      <div className="text-xs font-normal">(Prés. / Moy.)</div>
+                      <div className="text-sm font-normal">(Prés. / Moy.)</div>
                     </th>
-                    <th className="px-2 py-3 text-center text-xs font-semibold text-purple-600" colSpan="2">
+                    <th className="px-2 py-3 text-center text-sm font-semibold text-purple-600" colSpan="2">
                       Anniversaires
-                      <div className="text-xs font-normal">(Prés. / Moy.)</div>
+                      <div className="text-sm font-normal">(Prés. / Moy.)</div>
                     </th>
                     <th 
                       className="px-3 py-3 text-center text-sm font-semibold text-amber-700 bg-amber-50 cursor-pointer hover:bg-amber-100"
@@ -939,7 +939,7 @@ export default function Statistiques() {
                     >
                       <span className="flex items-center justify-center">Moy. Globale <SortIcon column="moy_global" /></span>
                     </th>
-                    <th className="px-2 py-3 text-center text-xs font-semibold text-stone-500">
+                    <th className="px-2 py-3 text-center text-sm font-semibold text-stone-500">
                       Action
                     </th>
                   </tr>
@@ -963,7 +963,7 @@ export default function Statistiques() {
                             )}
                             <span className="font-medium text-stone-800">S{stat.saison}</span>
                           </div>
-                          <span className="text-xs text-stone-400">{stat.annee_debut}-{stat.annee_fin}</span>
+                          <span className="text-sm text-stone-400">{stat.annee_debut}-{stat.annee_fin}</span>
                         </td>
                         
                         {/* Nombre de membres */}
@@ -995,9 +995,9 @@ export default function Statistiques() {
                               disabled={stat.nb_aperos === 0}
                             />
                           ) : (
-                            <span className="text-xs text-stone-500">{stat.presences_membres_aperos || 0}</span>
+                            <span className="text-sm text-stone-500">{stat.presences_membres_aperos || 0}</span>
                           )}
-                          <div className="text-xs text-stone-400">/ {stat.nb_aperos} év.</div>
+                          <div className="text-sm text-stone-400">/ {stat.nb_aperos} év.</div>
                         </td>
                         {/* Apéros - Moyenne */}
                         <td className="px-1 py-2 text-center bg-amber-50/30">
@@ -1019,9 +1019,9 @@ export default function Statistiques() {
                               disabled={stat.nb_repas === 0}
                             />
                           ) : (
-                            <span className="text-xs text-stone-500">{stat.presences_membres_repas || 0}</span>
+                            <span className="text-sm text-stone-500">{stat.presences_membres_repas || 0}</span>
                           )}
-                          <div className="text-xs text-stone-400">/ {stat.nb_repas} év.</div>
+                          <div className="text-sm text-stone-400">/ {stat.nb_repas} év.</div>
                         </td>
                         {/* Repas - Moyenne */}
                         <td className="px-1 py-2 text-center bg-blue-50/30">
@@ -1043,9 +1043,9 @@ export default function Statistiques() {
                               disabled={stat.nb_anniversaires === 0}
                             />
                           ) : (
-                            <span className="text-xs text-stone-500">{stat.presences_membres_anniversaires || 0}</span>
+                            <span className="text-sm text-stone-500">{stat.presences_membres_anniversaires || 0}</span>
                           )}
-                          <div className="text-xs text-stone-400">/ {stat.nb_anniversaires} év.</div>
+                          <div className="text-sm text-stone-400">/ {stat.nb_anniversaires} év.</div>
                         </td>
                         {/* Anniversaires - Moyenne */}
                         <td className="px-1 py-2 text-center bg-purple-50/30">
@@ -1076,7 +1076,7 @@ export default function Statistiques() {
                               size="sm"
                               onClick={() => handleSaveSaisonManuel(stat.saison)}
                               disabled={!hasChanges || savingSaisons}
-                              className={`h-7 px-2 text-xs ${hasChanges ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'bg-stone-200 text-stone-400'}`}
+                              className={`h-7 px-2 text-sm ${hasChanges ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'bg-stone-200 text-stone-400'}`}
                             >
                               {savingSaisons ? (
                                 <RefreshCw className="h-3 w-3 animate-spin" />

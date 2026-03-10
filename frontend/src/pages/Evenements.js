@@ -821,12 +821,12 @@ const Evenements = () => {
                 <table className="w-full" data-testid="events-table">
                   <thead className="bg-black/40">
                     <tr className="border-b border-[#D4A024]/30">
-                      <th className="px-3 py-3 text-left text-xs font-semibold text-[#D4A024] w-10">#</th>
-                      <th className="px-3 py-3 text-left text-xs font-semibold text-[#D4A024] min-w-[200px]">Lieu</th>
-                      <th className="px-3 py-3 text-left text-xs font-semibold text-[#D4A024] w-36">Date</th>
-                      <th className="px-3 py-3 text-left text-xs font-semibold text-[#D4A024] w-32">Type</th>
-                      <th className="px-3 py-3 text-center text-xs font-semibold text-[#D4A024] w-24">Présences</th>
-                      <th className="px-3 py-3 text-center text-xs font-semibold text-[#D4A024] w-20">Actions</th>
+                      <th className="px-3 py-3 text-left text-sm font-semibold text-[#D4A024] w-10">#</th>
+                      <th className="px-3 py-3 text-left text-sm font-semibold text-[#D4A024] min-w-[200px]">Lieu</th>
+                      <th className="px-3 py-3 text-left text-sm font-semibold text-[#D4A024] w-36">Date</th>
+                      <th className="px-3 py-3 text-left text-sm font-semibold text-[#D4A024] w-32">Type</th>
+                      <th className="px-3 py-3 text-center text-sm font-semibold text-[#D4A024] w-24">Présences</th>
+                      <th className="px-3 py-3 text-center text-sm font-semibold text-[#D4A024] w-20">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1045,7 +1045,7 @@ const Evenements = () => {
                                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                                     {/* Lieu */}
                                     <div>
-                                      <label className="block text-xs text-gray-400 mb-1">Lieu</label>
+                                      <label className="block text-base text-gray-400 mb-1">Lieu</label>
                                       <input
                                         type="text"
                                         value={editForm.lieu}
@@ -1056,7 +1056,7 @@ const Evenements = () => {
                                     </div>
                                     {/* Date */}
                                     <div>
-                                      <label className="block text-xs text-gray-400 mb-1">Date (jj/mm/aa)</label>
+                                      <label className="block text-base text-gray-400 mb-1">Date (jj/mm/aa)</label>
                                       <input
                                         type="date"
                                         value={editForm.date}
@@ -1067,7 +1067,7 @@ const Evenements = () => {
                                     </div>
                                     {/* Type */}
                                     <div>
-                                      <label className="block text-xs text-gray-400 mb-1">Type</label>
+                                      <label className="block text-base text-gray-400 mb-1">Type</label>
                                       <select
                                         value={editForm.type_sondage}
                                         onChange={(e) => setEditForm({...editForm, type_sondage: e.target.value})}
@@ -1081,7 +1081,7 @@ const Evenements = () => {
                                     </div>
                                     {/* Nombre de présences */}
                                     <div>
-                                      <label className="block text-xs text-gray-400 mb-1">Présences</label>
+                                      <label className="block text-base text-gray-400 mb-1">Présences</label>
                                       <input
                                         type="number"
                                         min="0"
@@ -1172,7 +1172,7 @@ const Evenements = () => {
                               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                                 {/* Lieu */}
                                 <div>
-                                  <label className="block text-xs text-gray-400 mb-1">Lieu *</label>
+                                  <label className="block text-base text-gray-400 mb-1">Lieu *</label>
                                   <input
                                     type="text"
                                     value={newEventForm.lieu}
@@ -1184,7 +1184,7 @@ const Evenements = () => {
                                 </div>
                                 {/* Date */}
                                 <div>
-                                  <label className="block text-xs text-gray-400 mb-1">Date *</label>
+                                  <label className="block text-base text-gray-400 mb-1">Date *</label>
                                   <input
                                     type="date"
                                     value={newEventForm.date}
@@ -1195,7 +1195,7 @@ const Evenements = () => {
                                 </div>
                                 {/* Type */}
                                 <div>
-                                  <label className="block text-xs text-gray-400 mb-1">Type</label>
+                                  <label className="block text-base text-gray-400 mb-1">Type</label>
                                   <select
                                     value={newEventForm.type_sondage}
                                     onChange={(e) => setNewEventForm({...newEventForm, type_sondage: e.target.value})}
@@ -1209,7 +1209,7 @@ const Evenements = () => {
                                 </div>
                                 {/* Nombre */}
                                 <div>
-                                  <label className="block text-xs text-gray-400 mb-1">Présences</label>
+                                  <label className="block text-base text-gray-400 mb-1">Présences</label>
                                   <input
                                     type="number"
                                     min="0"
@@ -1377,7 +1377,7 @@ const Evenements = () => {
               {/* Type de sondage info */}
               <div className="bg-black/20 p-4 rounded border border-[#D4A024]/20 space-y-3">
                 <div>
-                  <p className="text-sm text-gray-400">
+                  <p className="text-base text-gray-400">
                     💡 Type de sondage : 
                     {newEvent.objet_type === 'repas' ? (
                       <span className="text-[#D4A024] ml-2">Complet (Présence + Choix des plats)</span>
@@ -1390,7 +1390,7 @@ const Evenements = () => {
                 {/* Information sur la date limite du sondage */}
                 <div className="pt-3 border-t border-[#D4A024]/10">
                   <p className="text-sm font-semibold text-[#D4A024] mb-2">⏰ Date limite du sondage :</p>
-                  <div className="space-y-1 text-xs text-gray-400">
+                  <div className="space-y-1 text-base text-gray-400">
                     {newEvent.objet_type === 'repas' && (
                       <p className="flex items-center">
                         <span className="w-2 h-2 bg-gray-500 rounded-full mr-2"></span>
@@ -1601,7 +1601,7 @@ const Evenements = () => {
                             <span className="text-white">{r.nom_complet}</span>
                             {/* Afficher les choix du repas si c'est un sondage repas */}
                             {r.choix_entree || r.choix_plat || r.choix_dessert ? (
-                              <div className="flex space-x-2 text-xs">
+                              <div className="flex space-x-2 text-sm">
                                 {r.choix_entree && <Badge className="bg-amber-600/50">{r.choix_entree}</Badge>}
                                 {r.choix_plat && <Badge className="bg-blue-600/50">{r.choix_plat}</Badge>}
                                 {r.choix_dessert && <Badge className="bg-purple-600/50">{r.choix_dessert}</Badge>}

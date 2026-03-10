@@ -344,8 +344,8 @@ const Comptabilite = () => {
         {/* Solde total (comptes + dettes) */}
         <Card className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-serif text-gray-400 flex items-center">
-              <Wallet className="w-4 h-4 mr-2" />
+            <CardTitle className="text-base font-serif text-gray-400 flex items-center">
+              <Wallet className="w-5 h-5 mr-2" />
               Solde Total
             </CardTitle>
           </CardHeader>
@@ -353,15 +353,15 @@ const Comptabilite = () => {
             <div className="text-4xl font-serif font-bold text-[#D4A024]">
               {formatMontant(summary.solde_total + totalDettes)}
             </div>
-            <p className="text-xs text-gray-500 mt-1">Comptes + Dehors ({formatMontant(totalDettes)})</p>
+            <p className="text-sm text-gray-500 mt-1">Comptes + Dehors ({formatMontant(totalDettes)})</p>
           </CardContent>
         </Card>
 
         {/* Total recettes */}
         <Card className="bg-black/40 border-2 border-green-600/30 backdrop-blur-sm">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-serif text-gray-400 flex items-center">
-              <TrendingUp className="w-4 h-4 mr-2 text-green-400" />
+            <CardTitle className="text-base font-serif text-gray-400 flex items-center">
+              <TrendingUp className="w-5 h-5 mr-2 text-green-400" />
               Total Recettes
             </CardTitle>
           </CardHeader>
@@ -369,15 +369,15 @@ const Comptabilite = () => {
             <div className="text-4xl font-serif font-bold text-green-400">
               {formatMontant(summary.total_recettes)}
             </div>
-            <p className="text-xs text-gray-500 mt-1">Toutes périodes</p>
+            <p className="text-sm text-gray-500 mt-1">Toutes périodes</p>
           </CardContent>
         </Card>
 
         {/* Total dépenses */}
         <Card className="bg-black/40 border-2 border-red-600/30 backdrop-blur-sm">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-serif text-gray-400 flex items-center">
-              <TrendingDown className="w-4 h-4 mr-2 text-red-400" />
+            <CardTitle className="text-base font-serif text-gray-400 flex items-center">
+              <TrendingDown className="w-5 h-5 mr-2 text-red-400" />
               Total Dépenses
             </CardTitle>
           </CardHeader>
@@ -385,7 +385,7 @@ const Comptabilite = () => {
             <div className="text-4xl font-serif font-bold text-red-400">
               {formatMontant(summary.total_depenses)}
             </div>
-            <p className="text-xs text-gray-500 mt-1">Toutes périodes</p>
+            <p className="text-sm text-gray-500 mt-1">Toutes périodes</p>
           </CardContent>
         </Card>
       </div>
@@ -413,22 +413,22 @@ const Comptabilite = () => {
             return (
               <Card key={compte.id} className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base font-serif text-white flex items-center justify-between">
+                  <CardTitle className="text-lg font-serif text-white flex items-center justify-between">
                     <span>{compte.nom}</span>
-                    <Badge className="bg-[#7A2020] text-[#D4A024] border border-[#D4A024]">
+                    <Badge className="bg-[#7A2020] text-[#D4A024] border border-[#D4A024] text-sm px-3 py-1">
                       {compte.type}
                     </Badge>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-serif font-bold text-[#D4A024]">
+                  <div className="text-3xl font-serif font-bold text-[#D4A024]">
                     {formatMontant(compte.solde)}
                   </div>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => openCaisseDetails(compte.nom)}
-                    className="mt-3 w-full border-[#D4A024]/30 text-[#D4A024] hover:bg-[#D4A024]/10"
+                    className="mt-3 w-full border-[#D4A024]/30 text-[#D4A024] hover:bg-[#D4A024]/10 text-base"
                   >
                     Détails ({transCount} mouvement{transCount > 1 ? 's' : ''})
                   </Button>
@@ -440,18 +440,18 @@ const Comptabilite = () => {
           {/* Carte spéciale "Dehors" avec les dettes */}
           <Card className="bg-black/40 border-2 border-red-600/30 backdrop-blur-sm">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base font-serif text-white flex items-center justify-between">
+              <CardTitle className="text-lg font-serif text-white flex items-center justify-between">
                 <span className="flex items-center">
-                  <AlertTriangle className="w-4 h-4 mr-2 text-red-400" />
+                  <AlertTriangle className="w-5 h-5 mr-2 text-red-400" />
                   Dehors (Dettes)
                 </span>
-                <Badge className="bg-red-900 text-red-300 border border-red-600">
+                <Badge className="bg-red-900 text-red-300 border border-red-600 text-sm px-3 py-1">
                   {dettes.length} dette{dettes.length > 1 ? 's' : ''}
                 </Badge>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-serif font-bold text-red-400">
+              <div className="text-3xl font-serif font-bold text-red-400">
                 {formatMontant(totalDettes)}
               </div>
               <div className="flex space-x-2 mt-3">
@@ -504,7 +504,7 @@ const Comptabilite = () => {
             <Calendar className="w-6 h-6 mr-2 text-[#D4A024]" />
             Mouvements
           </span>
-          <span className="text-sm text-gray-400 font-normal">
+          <span className="text-base text-gray-400 font-normal">
             {transactions.length} mouvement(s)
           </span>
         </h2>
@@ -512,7 +512,7 @@ const Comptabilite = () => {
         {/* Formulaire d'ajout - Compatible iOS avec Shadcn Select */}
         <Card className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm mb-4">
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg font-serif text-[#D4A024]">
+            <CardTitle className="text-xl font-serif text-[#D4A024]">
               <Plus className="w-5 h-5 inline mr-2" />
               Nouveau mouvement
             </CardTitle>
@@ -521,46 +521,46 @@ const Comptabilite = () => {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
               {/* Date */}
               <div>
-                <label className="block text-sm text-gray-400 mb-1">Date</label>
+                <label className="block text-base text-gray-400 mb-2">Date</label>
                 <input
                   type="date"
                   value={newMouvement.date}
                   onChange={(e) => setNewMouvement({ ...newMouvement, date: e.target.value })}
-                  className="w-full px-3 py-2 bg-black/60 text-white border border-[#D4A024]/30 rounded text-sm"
+                  className="w-full px-3 py-3 bg-black/60 text-white border border-[#D4A024]/30 rounded text-base"
                 />
               </div>
               
               {/* Type */}
               <div>
-                <label className="block text-sm text-gray-400 mb-1">Type</label>
+                <label className="block text-base text-gray-400 mb-2">Type</label>
                 <Select
                   value={newMouvement.type}
                   onValueChange={(value) => setNewMouvement({ ...newMouvement, type: value })}
                 >
-                  <SelectTrigger className="w-full bg-black/60 border-[#D4A024]/30 text-white">
+                  <SelectTrigger className="w-full bg-black/60 border-[#D4A024]/30 text-white h-12 text-base">
                     <SelectValue placeholder="Type" />
                   </SelectTrigger>
                   <SelectContent className="bg-[#1a1a1a] border-[#D4A024]/30">
-                    <SelectItem value="recette" className="text-green-400">Recette</SelectItem>
-                    <SelectItem value="dépense" className="text-red-400">Dépense</SelectItem>
+                    <SelectItem value="recette" className="text-green-400 text-base py-3">Recette</SelectItem>
+                    <SelectItem value="dépense" className="text-red-400 text-base py-3">Dépense</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               {/* Membre */}
               <div>
-                <label className="block text-sm text-gray-400 mb-1">Membre</label>
+                <label className="block text-base text-gray-400 mb-2">Membre</label>
                 <Select
                   value={newMouvement.membre_id || "none"}
                   onValueChange={(value) => setNewMouvement({ ...newMouvement, membre_id: value === "none" ? "" : value })}
                 >
-                  <SelectTrigger className="w-full bg-black/60 border-[#D4A024]/30 text-white">
+                  <SelectTrigger className="w-full bg-black/60 border-[#D4A024]/30 text-white h-12 text-base">
                     <SelectValue placeholder="Sélectionner..." />
                   </SelectTrigger>
                   <SelectContent className="bg-[#1a1a1a] border-[#D4A024]/30 max-h-[300px]">
-                    <SelectItem value="none" className="text-gray-400">-- Aucun --</SelectItem>
+                    <SelectItem value="none" className="text-gray-400 text-base py-3">-- Aucun --</SelectItem>
                     {members.map(m => (
-                      <SelectItem key={m.id} value={m.id} className="text-white">{m.nom_complet}</SelectItem>
+                      <SelectItem key={m.id} value={m.id} className="text-white text-base py-2">{m.nom_complet}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -568,17 +568,17 @@ const Comptabilite = () => {
 
               {/* Objet */}
               <div>
-                <label className="block text-sm text-gray-400 mb-1">Objet</label>
+                <label className="block text-base text-gray-400 mb-2">Objet</label>
                 <Select
                   value={newMouvement.objet}
                   onValueChange={(value) => setNewMouvement({ ...newMouvement, objet: value, detail: value === 'autres' ? '' : newMouvement.detail })}
                 >
-                  <SelectTrigger className="w-full bg-black/60 border-[#D4A024]/30 text-white">
+                  <SelectTrigger className="w-full bg-black/60 border-[#D4A024]/30 text-white h-12 text-base">
                     <SelectValue placeholder="Objet" />
                   </SelectTrigger>
                   <SelectContent className="bg-[#1a1a1a] border-[#D4A024]/30">
                     {objetOptions.map(obj => (
-                      <SelectItem key={obj} value={obj} className="text-white">
+                      <SelectItem key={obj} value={obj} className="text-white text-base py-3">
                         {obj.charAt(0).toUpperCase() + obj.slice(1)}
                       </SelectItem>
                     ))}
@@ -588,14 +588,14 @@ const Comptabilite = () => {
 
               {/* Montant */}
               <div>
-                <label className="block text-sm text-gray-400 mb-1">Montant (€)</label>
+                <label className="block text-base text-gray-400 mb-2">Montant (€)</label>
                 <input
                   type="number"
                   step="0.01"
                   value={newMouvement.montant}
                   onChange={(e) => setNewMouvement({ ...newMouvement, montant: e.target.value })}
                   placeholder="0.00"
-                  className="w-full px-3 py-2 bg-black/60 text-white border border-[#D4A024]/30 rounded text-sm text-right"
+                  className="w-full px-3 py-3 bg-black/60 text-white border border-[#D4A024]/30 rounded text-base text-right"
                 />
               </div>
 
@@ -653,53 +653,53 @@ const Comptabilite = () => {
               <table className="w-full">
                 <thead className="border-b-2 border-[#D4A024]/30 bg-black/30">
                   <tr className="text-left">
-                    <th className="p-3 text-sm font-serif text-[#D4A024]">Date</th>
-                    <th className="p-3 text-sm font-serif text-[#D4A024]">Type</th>
-                    <th className="p-3 text-sm font-serif text-[#D4A024]">Membre</th>
-                    <th className="p-3 text-sm font-serif text-[#D4A024]">Objet</th>
-                    <th className="p-3 text-sm font-serif text-[#D4A024] text-right">Montant</th>
-                    <th className="p-3 text-sm font-serif text-[#D4A024]">Caisse</th>
-                    <th className="p-3 text-sm font-serif text-[#D4A024]">Détail</th>
-                    <th className="p-3 text-sm font-serif text-[#D4A024]">Actions</th>
+                    <th className="p-3 text-base font-serif text-[#D4A024]">Date</th>
+                    <th className="p-3 text-base font-serif text-[#D4A024]">Type</th>
+                    <th className="p-3 text-base font-serif text-[#D4A024]">Membre</th>
+                    <th className="p-3 text-base font-serif text-[#D4A024]">Objet</th>
+                    <th className="p-3 text-base font-serif text-[#D4A024] text-right">Montant</th>
+                    <th className="p-3 text-base font-serif text-[#D4A024]">Caisse</th>
+                    <th className="p-3 text-base font-serif text-[#D4A024]">Détail</th>
+                    <th className="p-3 text-base font-serif text-[#D4A024]">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {transactions.length === 0 ? (
                     <tr>
-                      <td colSpan="8" className="p-8 text-center text-gray-400">
+                      <td colSpan="8" className="p-8 text-center text-gray-400 text-lg">
                         Aucun mouvement enregistré
                       </td>
                     </tr>
                   ) : (
                     transactions.map((trans) => (
                       <tr key={trans.id} className="border-b border-[#D4A024]/10 hover:bg-[#D4A024]/5">
-                        <td className="p-3 text-sm text-gray-300">
+                        <td className="p-3 text-base text-gray-300">
                           {formatDate(trans.date)}
                         </td>
                         <td className="p-3">
-                          <Badge className={
+                          <Badge className={`text-sm px-3 py-1 ${
                             trans.type === 'recette'
                               ? 'bg-green-900/30 text-green-400 border border-green-600/30'
                               : 'bg-red-900/30 text-red-400 border border-red-600/30'
-                          }>
+                          }`}>
                             {trans.type}
                           </Badge>
                         </td>
-                        <td className="p-3 text-sm text-white">
+                        <td className="p-3 text-base text-white">
                           {getMemberName(trans.membre_id)}
                         </td>
-                        <td className="p-3 text-sm text-white">
+                        <td className="p-3 text-base text-white">
                           {trans.objet}
                         </td>
-                        <td className={`p-3 text-sm font-semibold text-right ${
+                        <td className={`p-3 text-lg font-semibold text-right ${
                           trans.type === 'recette' ? 'text-green-400' : 'text-red-400'
                         }`}>
                           {trans.type === 'recette' ? '+' : '-'}{formatMontant(trans.montant)}
                         </td>
-                        <td className="p-3 text-sm text-gray-300">
+                        <td className="p-3 text-base text-gray-300">
                           {trans.endroit}
                         </td>
-                        <td className="p-3 text-sm text-gray-300">
+                        <td className="p-3 text-base text-gray-300">
                           {trans.detail || '-'}
                         </td>
                         <td className="p-3">

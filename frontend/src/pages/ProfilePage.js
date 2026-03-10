@@ -183,14 +183,14 @@ const ProfilePage = () => {
                 <div className="flex items-start space-x-3">
                   <Calendar className="w-5 h-5 text-[#D4A024] mt-1" />
                   <div>
-                    <p className="text-sm text-gray-400">Année d'entrée</p>
+                    <p className="text-base text-gray-400">Année d'entrée</p>
                     <p className="font-semibold text-lg text-white">{currentMember.annee_entree}</p>
                   </div>
                 </div>
                 <div className="flex items-start space-x-3">
                   <Calendar className="w-5 h-5 text-[#D4A024] mt-1" />
                   <div>
-                    <p className="text-sm text-gray-400">Saison d'entrée</p>
+                    <p className="text-base text-gray-400">Saison d'entrée</p>
                     <p className="font-semibold text-lg text-white">{currentMember.saison_entree}</p>
                   </div>
                 </div>
@@ -199,7 +199,7 @@ const ProfilePage = () => {
               {currentMember.autres_infos && (
                 <div className="flex items-start space-x-3 p-4 bg-[#D4A024]/10 rounded-lg border-l-4 border-[#D4A024]">
                   <div>
-                    <p className="text-sm text-gray-400 mb-1">Autres informations</p>
+                    <p className="text-base text-gray-400 mb-1">Autres informations</p>
                     <p className="text-gray-200">{currentMember.autres_infos}</p>
                   </div>
                 </div>
@@ -230,7 +230,7 @@ const ProfilePage = () => {
                     />
                   ))}
                 </div>
-                <p className="text-sm text-gray-400">
+                <p className="text-base text-gray-400">
                   {currentMember.etoiles} étoile{currentMember.etoiles > 1 ? 's' : ''}
                 </p>
               </CardContent>
@@ -252,7 +252,7 @@ const ProfilePage = () => {
                     {getGlobalPercentage()}%
                   </span>
                 </div>
-                <p className="text-xs text-gray-500 mt-2">Cliquez pour voir le détail</p>
+                <p className="text-base text-gray-500 mt-2">Cliquez pour voir le détail</p>
               </CardContent>
             </Card>
 
@@ -380,8 +380,8 @@ const ProfilePage = () => {
                       <div className="text-3xl font-bold text-[#D4A024]">
                         {presencesStats.totaux?.pct_global || 0}%
                       </div>
-                      <div className="text-sm text-gray-400 mt-1">Total</div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-base text-gray-400 mt-1">Total</div>
+                      <div className="text-base text-gray-500">
                         {presencesStats.totaux?.presences_total || 0}/{presencesStats.totaux?.events_total || 0}
                       </div>
                     </div>
@@ -389,8 +389,8 @@ const ProfilePage = () => {
                       <div className="text-2xl font-bold text-amber-400">
                         {presencesStats.totaux?.pct_aperos || 0}%
                       </div>
-                      <div className="text-sm text-gray-400 mt-1">Apéros</div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-base text-gray-400 mt-1">Apéros</div>
+                      <div className="text-base text-gray-500">
                         {presencesStats.totaux?.presences_aperos || 0}/{presencesStats.totaux?.total_aperos || 0}
                       </div>
                     </div>
@@ -398,8 +398,8 @@ const ProfilePage = () => {
                       <div className="text-2xl font-bold text-blue-400">
                         {presencesStats.totaux?.pct_repas || 0}%
                       </div>
-                      <div className="text-sm text-gray-400 mt-1">Repas</div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-base text-gray-400 mt-1">Repas</div>
+                      <div className="text-base text-gray-500">
                         {presencesStats.totaux?.presences_repas || 0}/{presencesStats.totaux?.total_repas || 0}
                       </div>
                     </div>
@@ -407,8 +407,8 @@ const ProfilePage = () => {
                       <div className="text-2xl font-bold text-purple-400">
                         {presencesStats.totaux?.pct_anniversaires || 0}%
                       </div>
-                      <div className="text-sm text-gray-400 mt-1">Anniversaires</div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-base text-gray-400 mt-1">Anniversaires</div>
+                      <div className="text-base text-gray-500">
                         {presencesStats.totaux?.presences_anniversaires || 0}/{presencesStats.totaux?.total_anniversaires || 0}
                       </div>
                     </div>
@@ -445,15 +445,15 @@ const ProfilePage = () => {
                               <td className="px-4 py-3 text-white font-medium">Saison {saison.saison}</td>
                               <td className="px-4 py-3 text-center">
                                 <span className="text-amber-400">{saison.presences_aperos}/{saison.nb_aperos}</span>
-                                <span className="text-gray-500 text-xs ml-1">({saison.pct_aperos}%)</span>
+                                <span className="text-gray-500 text-sm ml-1">({saison.pct_aperos}%)</span>
                               </td>
                               <td className="px-4 py-3 text-center">
                                 <span className="text-blue-400">{saison.presences_repas}/{saison.nb_repas}</span>
-                                <span className="text-gray-500 text-xs ml-1">({saison.pct_repas}%)</span>
+                                <span className="text-gray-500 text-sm ml-1">({saison.pct_repas}%)</span>
                               </td>
                               <td className="px-4 py-3 text-center">
                                 <span className="text-purple-400">{saison.presences_anniversaires}/{saison.nb_anniversaires}</span>
-                                <span className="text-gray-500 text-xs ml-1">({saison.pct_anniversaires}%)</span>
+                                <span className="text-gray-500 text-sm ml-1">({saison.pct_anniversaires}%)</span>
                               </td>
                               <td className="px-4 py-3 text-center">
                                 <span className={`font-bold text-lg ${

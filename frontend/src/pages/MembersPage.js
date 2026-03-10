@@ -218,7 +218,7 @@ const MembersPage = () => {
     };
     const badge = badges[status] || badges[0];
     return (
-      <span className={`px-2 py-1 rounded text-xs font-semibold ${badge.color}`}>
+      <span className={`px-2 py-1 rounded text-sm font-semibold ${badge.color}`}>
         {badge.label}
       </span>
     );
@@ -378,7 +378,7 @@ const MembersPage = () => {
                       <div>
                         <Label htmlFor="pourcentage_presences" className="flex items-center gap-1">
                           % Présences
-                          <span className="text-xs text-gray-400">(ancien)</span>
+                          <span className="text-base text-gray-400">(ancien)</span>
                         </Label>
                         <Input
                           id="pourcentage_presences"
@@ -473,7 +473,7 @@ const MembersPage = () => {
                       <Label className="text-gray-700 font-medium mb-2 block">
                         Saisons exclues (membre en sommeil)
                       </Label>
-                      <p className="text-xs text-gray-500 mb-2">
+                      <p className="text-base text-gray-500 mb-2">
                         Cochez les saisons où ce membre était en pause/sommeil (ne seront pas comptées dans ses stats)
                       </p>
                       <div className="flex flex-wrap gap-2">
@@ -571,11 +571,11 @@ const MembersPage = () => {
                       <TableCell className="font-medium text-white">
                         {member.nom_complet}
                         {member.is_president && (
-                          <span className="ml-2 text-xs bg-amber-600 text-white px-1.5 py-0.5 rounded">PRÉS.</span>
+                          <span className="ml-2 text-sm bg-amber-600 text-white px-1.5 py-0.5 rounded">PRÉS.</span>
                         )}
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm text-gray-400">
+                        <span className="text-base text-gray-400">
                           {member.fonction}
                         </span>
                       </TableCell>
@@ -698,7 +698,7 @@ const MembersPage = () => {
                         <div className="text-[#D4A024] font-bold text-2xl">
                           {memberStats?.totaux?.presences_total || 0}/{memberStats?.totaux?.events_total || 0}
                         </div>
-                        <div className="text-xs text-gray-400">Présences / Événements</div>
+                        <div className="text-base text-gray-400">Présences / Événements</div>
                       </div>
                     </div>
                     
@@ -775,26 +775,26 @@ const MembersPage = () => {
                               <div className="text-amber-400 font-bold">
                                 {saisonStats.presences_aperos || 0}/{saisonStats.nb_aperos || 0}
                               </div>
-                              <div className="text-xs text-gray-400">Apéros</div>
+                              <div className="text-base text-gray-400">Apéros</div>
                             </div>
                             <div className="bg-black/30 rounded-lg p-3">
                               <div className="text-blue-400 font-bold">
                                 {saisonStats.presences_repas || 0}/{saisonStats.nb_repas || 0}
                               </div>
-                              <div className="text-xs text-gray-400">Repas</div>
+                              <div className="text-base text-gray-400">Repas</div>
                             </div>
                             <div className="bg-black/30 rounded-lg p-3">
                               <div className="text-purple-400 font-bold">
                                 {saisonStats.presences_anniversaires || 0}/{saisonStats.nb_anniversaires || 0}
                               </div>
-                              <div className="text-xs text-gray-400">Anniversaires</div>
+                              <div className="text-base text-gray-400">Anniversaires</div>
                             </div>
                             <div className="bg-green-900/30 rounded-lg p-3 border border-green-600/50">
                               <div className="text-green-400 font-bold">
                                 {(saisonStats.presences_aperos || 0) + (saisonStats.presences_repas || 0) + (saisonStats.presences_anniversaires || 0)}/
                                 {(saisonStats.nb_aperos || 0) + (saisonStats.nb_repas || 0) + (saisonStats.nb_anniversaires || 0)}
                               </div>
-                              <div className="text-xs text-gray-400">Saison</div>
+                              <div className="text-base text-gray-400">Saison</div>
                             </div>
                           </div>
                         </>
