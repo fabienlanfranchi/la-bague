@@ -16,7 +16,7 @@ export const useUser = () => {
 
 export const UserProvider = ({ children }) => {
   // Mode : 'admin' (Président) ou 'member' (Membre)
-  const [mode, setMode] = useState('member'); // Par défaut membre, pas admin
+  const [mode, setMode] = useState('admin');
   
   // Données du membre actuellement connecté
   const [currentMember, setCurrentMember] = useState(null);
@@ -28,7 +28,11 @@ export const UserProvider = ({ children }) => {
       try {
         const response = await axios.get(`${API}/members`);
         setMembers(response.data);
-        // Ne plus charger Fabien par défaut - l'utilisateur doit se connecter
+        // Charger Fabien par défaut
+        const fabien = response.data.find(m => m.nom_complet?.includes('Fabien Lanfranchi'));
+        if (fabien) {
+          setCurrentMember(fabien);
+        }
       } catch (error) {
         console.error('Erreur chargement membres:', error);
       }

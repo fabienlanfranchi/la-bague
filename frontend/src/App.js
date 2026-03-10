@@ -19,29 +19,12 @@ import Statistiques from './pages/Statistiques';
 import Sauvegarde from './pages/Sauvegarde';
 import LoginPage from './pages/LoginPage';
 
-// Composant de protection - redirige vers login si pas connecté
+// Accès libre pour l'instant - pas de protection
 const ProtectedRoute = ({ children }) => {
-  const { currentMember } = useUser();
-  
-  if (!currentMember) {
-    return <Navigate to="/login" replace />;
-  }
-  
   return children;
 };
 
-// Composant de protection Admin - redirige vers dashboard si pas admin
 const AdminRoute = ({ children }) => {
-  const { currentMember, isAdmin } = useUser();
-  
-  if (!currentMember) {
-    return <Navigate to="/login" replace />;
-  }
-  
-  if (!isAdmin && currentMember.numero_membre !== 1) {
-    return <Navigate to="/dashboard" replace />;
-  }
-  
   return children;
 };
 
