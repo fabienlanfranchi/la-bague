@@ -113,3 +113,21 @@ code {
         border-bottom-color: inherit;
     }
 }
+
+
+/* Animation glow pour le bouton Apéro du Club */
+@keyframes apero-glow {
+    0% {
+        box-shadow: 0 0 5px rgba(122, 32, 32, 0.5);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(122, 32, 32, 0.8), 0 0 30px rgba(122, 32, 32, 0.4);
+    }
+    100% {
+        box-shadow: 0 0 5px rgba(122, 32, 32, 0.5);
+    }
+}
+
+.apero-active {
+    animation: apero-glow 0.6s ease-in-out;
+}

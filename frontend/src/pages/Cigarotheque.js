@@ -994,15 +994,15 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
                               >
                                 <Edit3 className="w-4 h-4" />
                               </Button>
-                              {/* Bouton toggle Apéro du Club - Grisé si pas dedans, Rouge si dedans */}
+                              {/* Bouton toggle Apéro du Club - Grisé si pas dedans, Rouge avec glow si dedans */}
                               <Button 
                                 size="sm"
                                 variant="outline"
                                 onClick={() => toggleAperoClub(cigare)}
-                                className={isInAperoClub(cigare.id) 
-                                  ? "bg-[#7A2020] border-[#7A2020] text-white hover:bg-[#8A3030]" 
+                                className={`transition-all duration-300 ${isInAperoClub(cigare.id) 
+                                  ? "bg-[#7A2020] border-[#7A2020] text-white hover:bg-[#8A3030] apero-active" 
                                   : "border-gray-500 text-gray-400 hover:border-[#7A2020] hover:text-[#7A2020]"
-                                }
+                                }`}
                                 title={isInAperoClub(cigare.id) ? "Retirer de l'Apéro du Club" : "Ajouter à l'Apéro du Club"}
                                 data-testid={`toggle-apero-btn-${cigare.id}`}
                               >
