@@ -5,6 +5,20 @@ Application de gestion complète pour le club de cigares "La Bague Impériale" a
 
 ## What's Been Implemented
 
+### Session 11 Mars 2026 - Mise à jour 2
+
+**Normalisation des marques (TERMINÉ) :**
+- Les marques "LIGNE XXX" sont maintenant correctement affichées :
+  - "LIGNE BEHIKE" → **COHIBA** (marque) + "Ligne Behike" (sous-ligne)
+  - "LIGNE CHURCHILL" → **ROMEO Y JULIETA** + "Ligne Churchill"
+  - "LIGNE EDMUNDO" → **MONTECRISTO** + "Ligne Edmundo"
+- Le filtre "Marque" affiche les vraies marques (pas les LIGNE)
+
+**Badge Apéro du Club (TERMINÉ) :**
+- Les cigares présents dans l'Apéro du Club affichent un **badge verre de rouge** en haut à gauche de leur carte
+- Le bouton "Apéro" devient désactivé (grisé + coche) quand le cigare est déjà dans l'Apéro
+- Dans la modal de détail, un badge "Apéro du Club" s'affiche si le cigare y est présent
+
 ### Session 11 Mars 2026
 
 **Cigarthèque - Refonte complète selon les rôles :**
@@ -14,6 +28,7 @@ Application de gestion complète pour le club de cigares "La Bague Impériale" a
   - Bouton "Modifier" (crayon bleu) → Modal d'édition avec tous les champs + **bouton Supprimer**
   - Bouton "Apéro" (verre bordeaux) → Ajoute le cigare à l'Apéro du Club
   - Bouton "Copier" → Format prêt à coller dans un événement Apéro
+  - **Badge "verre de rouge"** sur les cigares déjà dans l'Apéro
 - **Apéro du Club** : Gestion complète (ajouter/supprimer) des cigares fumés lors des événements
 
 #### Vue Membre - 3 onglets :
@@ -72,8 +87,15 @@ Application de gestion complète pour le club de cigares "La Bague Impériale" a
 - [x] Structure des onglets selon le rôle (admin vs membre)
 - [x] Importateur de cigares vers Ma Cigarthèque
 - [x] Système de notation et commentaires personnels
+- [x] **Normalisation des marques** - LIGNE XXX → Vraie marque + sous-ligne
+- [x] **Badge Apéro du Club** - Verre de rouge sur les cigares dans l'Apéro
 
 ### P1 - À faire
+- [ ] Nouvelles fonctionnalités "Ma Cigarthèque" :
+  - Tri/Filtres avancés (terroir, marque, module) - déjà partiellement fait
+  - Changer "Fiche Vierge" → "Importer" avec modal de recherche - fait
+  - Notation guidée : Note (sur 5), Puissance (sur 5), Évolution/Linéaire, Note libre - fait
+- [ ] Fonctionnalité "Copier" depuis Apéro du Club vers messages événements
 - [ ] Assistant IA Claude (playbook disponible)
 - [ ] Refonte page Messages admin
 

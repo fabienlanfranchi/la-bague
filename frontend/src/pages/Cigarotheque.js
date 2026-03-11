@@ -143,6 +143,16 @@ const Cigarotheque = () => {
     return maCollectionCigareIds.has(cigareId);
   };
 
+  // Set des IDs de cigares dans l'Apéro du Club (pour le badge verre de rouge)
+  const aperoClubCigareIds = useMemo(() => {
+    return new Set(aperoClub.map(c => c.cigare_id).filter(Boolean));
+  }, [aperoClub]);
+
+  // Fonction pour vérifier si un cigare est dans l'Apéro du Club
+  const isInAperoClub = (cigareId) => {
+    return aperoClubCigareIds.has(cigareId);
+  };
+
   // Charger les filtres au démarrage
   useEffect(() => {
     loadFiltres();
@@ -878,7 +888,7 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
                 {filteredCigares.map((cigare) => (
                   <Card 
                     key={cigare.id} 
-                    className={`bg-black/40 border-2 transition-all cursor-pointer overflow-hidden ${
+                    className={`bg-black/40 border-2 transition-all cursor-pointer overflow-hidden relative ${
                       !isAdmin && isInMaCollection(cigare.id) 
                         ? 'border-green-500/50 hover:border-green-400' 
                         : 'border-[#D4A024]/30 hover:border-[#D4A024]'
@@ -886,6 +896,15 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
                     onClick={() => { setSelectedCigare(cigare); setShowDetail(true); }}
                     data-testid={`cigare-card-${cigare.id}`}
                   >
+                    {/* Badge Apéro du Club (verre de rouge) en haut à gauche */}
+                    {isInAperoClub(cigare.id) && (
+                      <div className="absolute top-2 left-2 z-10">
+                        <div className="bg-[#7A2020] rounded-full p-1.5 shadow-lg" title="Dans l'Apéro du Club">
+                          <Wine className="w-4 h-4 text-white" />
+                        </div>
+                      </div>
+                    )}
+                    
                     <CardContent className="p-4">
                       {/* Badge "Dans Ma Cigarthèque" (membres seulement) */}
                       {!isAdmin && isInMaCollection(cigare.id) && (
@@ -953,14 +972,29 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
                               >
                                 <Edit3 className="w-4 h-4" />
                               </Button>
-                              <Button 
-                                size="sm"
-                                onClick={() => addToAperoClub(cigare)}
-                                className="bg-[#7A2020] hover:bg-[#8A3030] text-white"
-                                data-testid={`add-apero-btn-${cigare.id}`}
-                              >
-                                <Wine className="w-4 h-4" />
-                              </Button>
+                              {isInAperoClub(cigare.id) ? (
+                                <Button 
+                                  size="sm"
+                                  variant="outline"
+                                  disabled
+                                  className="border-[#7A2020]/50 text-[#7A2020]/50"
+                                  title="Déjà dans l'Apéro du Club"
+                                  data-testid={`apero-done-btn-${cigare.id}`}
+                                >
+                                  <Wine className="w-4 h-4" />
+                                  <Check className="w-3 h-3 ml-1" />
+                                </Button>
+                              ) : (
+                                <Button 
+                                  size="sm"
+                                  onClick={() => addToAperoClub(cigare)}
+                                  className="bg-[#7A2020] hover:bg-[#8A3030] text-white"
+                                  title="Ajouter à l'Apéro du Club"
+                                  data-testid={`add-apero-btn-${cigare.id}`}
+                                >
+                                  <Wine className="w-4 h-4" />
+                                </Button>
+                              )}
                             </>
                           ) : (
                             <Button 
@@ -1288,10 +1322,22 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
           {selectedCigare && (
             <>
               <DialogHeader>
-                <DialogTitle className="text-2xl font-serif text-white">
-                  {selectedCigare.marque || 'Sans marque'} {selectedCigare.gamme || ''}
-                </DialogTitle>
-                <p className="text-[#D4A024] text-lg">{selectedCigare.vitole_nom || selectedCigare.vitole_type || ''}</p>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <DialogTitle className="text-2xl font-serif text-white">
+                      {selectedCigare.marque_display || selectedCigare.marque || 'Sans marque'}
+                    </DialogTitle>
+                    <p className="text-[#D4A024] text-lg">{selectedCigare.gamme_display || selectedCigare.gamme || ''}</p>
+                    <p className="text-gray-400">{selectedCigare.vitole_nom || selectedCigare.vitole_type || ''}</p>
+                  </div>
+                  {/* Badge Apéro du Club */}
+                  {isInAperoClub(selectedCigare.id) && (
+                    <Badge className="bg-[#7A2020] text-white shrink-0">
+                      <Wine className="w-4 h-4 mr-1" />
+                      Apéro du Club
+                    </Badge>
+                  )}
+                </div>
               </DialogHeader>
 
               <div className="space-y-6 py-4">
@@ -1413,10 +1459,18 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
                         <Edit3 className="w-4 h-4 mr-2" />
                         Modifier
                       </Button>
-                      <Button onClick={() => { addToAperoClub(selectedCigare); setShowDetail(false); }} variant="outline" className="border-[#7A2020] text-[#7A2020]">
-                        <Wine className="w-4 h-4 mr-2" />
-                        Apéro du Club
-                      </Button>
+                      {isInAperoClub(selectedCigare.id) ? (
+                        <Button variant="outline" disabled className="border-[#7A2020]/50 text-[#7A2020]/50">
+                          <Wine className="w-4 h-4 mr-2" />
+                          <Check className="w-4 h-4 mr-1" />
+                          Dans l'Apéro
+                        </Button>
+                      ) : (
+                        <Button onClick={() => { addToAperoClub(selectedCigare); setShowDetail(false); }} variant="outline" className="border-[#7A2020] text-[#7A2020] hover:bg-[#7A2020] hover:text-white">
+                          <Wine className="w-4 h-4 mr-2" />
+                          Apéro du Club
+                        </Button>
+                      )}
                     </>
                   ) : (
                     <Button onClick={() => { addToMaCigarotheque(selectedCigare); setShowDetail(false); }} variant="outline" className="border-[#D4A024] text-[#D4A024]">
