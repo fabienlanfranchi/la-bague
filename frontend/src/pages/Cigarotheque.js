@@ -609,23 +609,6 @@ ${cigare.commentaire ? `Mon commentaire: ${cigare.commentaire}` : ''}`.trim();
                     onClick={() => { setSelectedCigare(cigare); setShowDetail(true); }}
                     data-testid={`cigare-card-${cigare.id}`}
                   >
-                    {/* Photo du cigare */}
-                    {cigare.photo && (
-                      <div className="relative h-40 bg-black/60 overflow-hidden">
-                        <img 
-                          src={getPhotoUrl(cigare.photo)} 
-                          alt={`${cigare.marque || ''} ${cigare.gamme || ''}`}
-                          className="w-full h-full object-cover opacity-90 hover:opacity-100 transition-opacity"
-                          onError={(e) => { e.target.style.display = 'none'; }}
-                        />
-                        {cigare.note_bagues && (
-                          <Badge className="absolute top-2 right-2 bg-[#D4A024] text-[#7A2020] text-lg px-3 py-1">
-                            <Star className="w-4 h-4 mr-1 inline" />
-                            {cigare.note_bagues}
-                          </Badge>
-                        )}
-                      </div>
-                    )}
                     <CardContent className="p-4">
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex-1 min-w-0">
@@ -635,7 +618,7 @@ ${cigare.commentaire ? `Mon commentaire: ${cigare.commentaire}` : ''}`.trim();
                           <p className="text-[#D4A024] truncate">{cigare.gamme || ''}</p>
                           <p className="text-gray-400 text-sm truncate">{cigare.vitole_nom || cigare.vitole_type || ''}</p>
                         </div>
-                        {!cigare.photo && cigare.note_bagues && (
+                        {cigare.note_bagues && (
                           <Badge className="bg-[#D4A024] text-[#7A2020] text-lg px-3 py-1 ml-2 shrink-0">
                             <Star className="w-4 h-4 mr-1 inline" />
                             {cigare.note_bagues}
