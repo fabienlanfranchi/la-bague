@@ -14,10 +14,13 @@ Application de gestion complète pour le club de cigares "La Bague Impériale" a
   - "LIGNE EDMUNDO" → **MONTECRISTO** + "Ligne Edmundo"
 - Le filtre "Marque" affiche les vraies marques (pas les LIGNE)
 
-**Badge Apéro du Club (TERMINÉ) :**
-- Les cigares présents dans l'Apéro du Club affichent un **badge verre de rouge** en haut à gauche de leur carte
-- Le bouton "Apéro" devient désactivé (grisé + coche) quand le cigare est déjà dans l'Apéro
-- Dans la modal de détail, un badge "Apéro du Club" s'affiche si le cigare y est présent
+**Bouton Toggle Apéro du Club (TERMINÉ) :**
+- Un seul bouton en bas à droite des cartes de cigares (icône verre de vin)
+- **Grisé** = le cigare n'est PAS dans l'Apéro du Club
+- **Rouge** = le cigare EST dans l'Apéro du Club  
+- Clic sur le bouton = toggle avec **confirmation** ("Ajouter X à l'Apéro du Club ?" ou "Retirer X de l'Apéro du Club ?")
+- Le même comportement est présent dans la modal de détail
+- Les marques normalisées sont utilisées lors de l'ajout à l'Apéro
 
 ### Session 11 Mars 2026
 
