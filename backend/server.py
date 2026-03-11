@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Query
 from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -14,6 +14,8 @@ import uuid
 from datetime import datetime, timezone
 from passlib.context import CryptContext
 import secrets
+import pymysql
+from contextlib import contextmanager
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -41,6 +43,25 @@ def custom_round(value):
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
+
+# MySQL connection for cigars database
+MYSQL_CONFIG = {
+    'host': 'gb60402-001.eu.clouddb.ovh.net',
+    'port': 35741,
+    'user': 'cigare20',
+    'password': 'Barthe20167',
+    'database': 'CIGARE',
+    'charset': 'utf8mb4'
+}
+
+@contextmanager
+def get_mysql_connection():
+    """Get MySQL connection for cigars database"""
+    connection = pymysql.connect(**MYSQL_CONFIG)
+    try:
+        yield connection
+    finally:
+        connection.close()
 
 # Create the main app without a prefix
 app = FastAPI()
@@ -3255,6 +3276,244 @@ async def admin_update_member(member_id: str, input: MemberFullUpdate):
     updated = await db.members.find_one({"id": member_id}, {"_id": 0})
     
     return updated
+
+
+
+# ============ CATALOGUE CIGARES (MySQL OVH) ============
+
+@api_router.get("/cigares")
+async def get_cigares(
+    search: Optional[str] = Query(None, description="Recherche par marque ou gamme"),
+    pays: Optional[str] = Query(None, description="Filtrer par pays de fabrication"),
+    puissance: Optional[str] = Query(None, description="Filtrer par puissance (A/B/C)"),
+    note_min: Optional[float] = Query(None, description="Note minimum"),
+    note_max: Optional[float] = Query(None, description="Note maximum"),
+    prix_min: Optional[float] = Query(None, description="Prix minimum"),
+    prix_max: Optional[float] = Query(None, description="Prix maximum"),
+    limit: int = Query(50, le=200, description="Nombre de résultats"),
+    offset: int = Query(0, description="Offset pour pagination")
+):
+    """Récupérer les cigares avec filtres"""
+    try:
+        with get_mysql_connection() as conn:
+            cursor = conn.cursor(pymysql.cursors.DictCursor)
+            
+            # Construction de la requête
+            query = "SELECT * FROM cigares WHERE 1=1"
+            params = []
+            
+            if search:
+                query += " AND (marque LIKE %s OR gamme LIKE %s OR vitole_nom LIKE %s)"
+                search_term = f"%{search}%"
+                params.extend([search_term, search_term, search_term])
+            
+            if pays:
+                query += " AND pays_fabrication = %s"
+                params.append(pays)
+            
+            if puissance:
+                query += " AND puissance = %s"
+                params.append(puissance)
+            
+            if note_min is not None:
+                query += " AND note_bagues >= %s"
+                params.append(note_min)
+            
+            if note_max is not None:
+                query += " AND note_bagues <= %s"
+                params.append(note_max)
+            
+            if prix_min is not None:
+                query += " AND prix >= %s"
+                params.append(prix_min)
+            
+            if prix_max is not None:
+                query += " AND prix <= %s"
+                params.append(prix_max)
+            
+            # Compter le total
+            count_query = query.replace("SELECT *", "SELECT COUNT(*)")
+            cursor.execute(count_query, params)
+            total = cursor.fetchone()['COUNT(*)']
+            
+            # Ajouter pagination et tri
+            query += " ORDER BY marque, gamme LIMIT %s OFFSET %s"
+            params.extend([limit, offset])
+            
+            cursor.execute(query, params)
+            cigares = cursor.fetchall()
+            
+            return {
+                "cigares": cigares,
+                "total": total,
+                "limit": limit,
+                "offset": offset
+            }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur base cigares: {str(e)}")
+
+
+@api_router.get("/cigares/{cigare_id}")
+async def get_cigare_detail(cigare_id: int):
+    """Récupérer le détail d'un cigare"""
+    try:
+        with get_mysql_connection() as conn:
+            cursor = conn.cursor(pymysql.cursors.DictCursor)
+            cursor.execute("SELECT * FROM cigares WHERE id = %s", (cigare_id,))
+            cigare = cursor.fetchone()
+            
+            if not cigare:
+                raise HTTPException(status_code=404, detail="Cigare non trouvé")
+            
+            return cigare
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
+
+
+@api_router.get("/cigares-filtres")
+async def get_cigares_filtres():
+    """Récupérer les options de filtres disponibles"""
+    try:
+        with get_mysql_connection() as conn:
+            cursor = conn.cursor(pymysql.cursors.DictCursor)
+            
+            # Pays de fabrication
+            cursor.execute("SELECT DISTINCT pays_fabrication FROM cigares WHERE pays_fabrication IS NOT NULL ORDER BY pays_fabrication")
+            pays = [row['pays_fabrication'] for row in cursor.fetchall()]
+            
+            # Puissances
+            cursor.execute("SELECT DISTINCT puissance FROM cigares WHERE puissance IS NOT NULL ORDER BY puissance")
+            puissances = [row['puissance'] for row in cursor.fetchall()]
+            
+            # Marques
+            cursor.execute("SELECT DISTINCT marque FROM cigares WHERE marque IS NOT NULL ORDER BY marque")
+            marques = [row['marque'] for row in cursor.fetchall()]
+            
+            # Stats prix et notes
+            cursor.execute("SELECT MIN(prix) as prix_min, MAX(prix) as prix_max, MIN(note_bagues) as note_min, MAX(note_bagues) as note_max FROM cigares")
+            stats = cursor.fetchone()
+            
+            return {
+                "pays": pays,
+                "puissances": puissances,
+                "marques": marques,
+                "prix_min": stats['prix_min'],
+                "prix_max": stats['prix_max'],
+                "note_min": stats['note_min'],
+                "note_max": stats['note_max']
+            }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
+
+
+# ============ MA CIGARTHÈQUE (Personnel par membre) ============
+
+class CigarePersonnel(BaseModel):
+    """Cigare dans la collection personnelle d'un membre"""
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    membre_id: str
+    cigare_id: Optional[int] = None  # ID du cigare dans le catalogue (si importé)
+    marque: str
+    gamme: Optional[str] = None
+    vitole: Optional[str] = None
+    note_personnelle: Optional[float] = None  # Note du membre (1-5)
+    commentaire: Optional[str] = None
+    date_degustation: Optional[str] = None
+    occasion: Optional[str] = None  # "apero_club", "personnel", etc.
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+
+@api_router.get("/ma-cigarotheque/{membre_id}")
+async def get_ma_cigarotheque(membre_id: str):
+    """Récupérer la cigarthèque personnelle d'un membre"""
+    cigares = await db.cigares_personnels.find(
+        {"membre_id": membre_id},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(500)
+    return cigares
+
+
+@api_router.post("/ma-cigarotheque")
+async def add_cigare_personnel(cigare: CigarePersonnel):
+    """Ajouter un cigare à sa collection personnelle"""
+    doc = cigare.model_dump()
+    await db.cigares_personnels.insert_one(doc)
+    return {"message": "Cigare ajouté à votre collection", "cigare": {k: v for k, v in doc.items() if k != '_id'}}
+
+
+@api_router.put("/ma-cigarotheque/{cigare_id}")
+async def update_cigare_personnel(cigare_id: str, note: Optional[float] = None, commentaire: Optional[str] = None):
+    """Mettre à jour un cigare de sa collection"""
+    update_data = {"updated_at": datetime.now(timezone.utc).isoformat()}
+    if note is not None:
+        update_data["note_personnelle"] = note
+    if commentaire is not None:
+        update_data["commentaire"] = commentaire
+    
+    result = await db.cigares_personnels.update_one(
+        {"id": cigare_id},
+        {"$set": update_data}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Cigare non trouvé")
+    
+    return {"message": "Cigare mis à jour"}
+
+
+@api_router.delete("/ma-cigarotheque/{cigare_id}")
+async def delete_cigare_personnel(cigare_id: str):
+    """Supprimer un cigare de sa collection"""
+    result = await db.cigares_personnels.delete_one({"id": cigare_id})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Cigare non trouvé")
+    
+    return {"message": "Cigare supprimé de votre collection"}
+
+
+# ============ APÉRO DU CLUB (Cigares fumés aux événements) ============
+
+class AperoClubCigare(BaseModel):
+    """Cigare fumé lors d'un apéro du club"""
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    cigare_id: Optional[int] = None  # ID du cigare catalogue
+    marque: str
+    gamme: Optional[str] = None
+    vitole: Optional[str] = None
+    evenement_id: Optional[str] = None
+    date_apero: str
+    description: Optional[str] = None
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+
+@api_router.get("/apero-club")
+async def get_apero_club_cigares():
+    """Récupérer tous les cigares fumés aux apéros du club"""
+    cigares = await db.apero_club_cigares.find({}, {"_id": 0}).sort("date_apero", -1).to_list(200)
+    return cigares
+
+
+@api_router.post("/apero-club")
+async def add_apero_club_cigare(cigare: AperoClubCigare):
+    """Ajouter un cigare à l'apéro du club"""
+    doc = cigare.model_dump()
+    await db.apero_club_cigares.insert_one(doc)
+    return {"message": "Cigare ajouté à l'apéro du club", "cigare": {k: v for k, v in doc.items() if k != '_id'}}
+
+
+@api_router.delete("/apero-club/{cigare_id}")
+async def delete_apero_club_cigare(cigare_id: str):
+    """Supprimer un cigare de l'apéro du club"""
+    result = await db.apero_club_cigares.delete_one({"id": cigare_id})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Cigare non trouvé")
+    
+    return {"message": "Cigare supprimé"}
+
 
 
 # ============ EXPORT / IMPORT - SAUVEGARDE DES DONNÉES ============
