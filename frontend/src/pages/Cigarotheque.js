@@ -153,11 +153,6 @@ const Cigarotheque = () => {
     }
   }, [currentMember?.id]);
 
-  // Charger les cigares quand les filtres changent
-  useEffect(() => {
-    loadCigares();
-  }, [page, search, marqueFilter, paysFilter, puissanceFilter, vitoleFilter, prixMin, prixMax]);
-
   const loadFiltres = async (paysSelected = '') => {
     try {
       const params = new URLSearchParams();
@@ -204,22 +199,82 @@ const Cigarotheque = () => {
     }
   };
 
-  // Filtrer les cigares selon le filtre "dans/pas dans ma collection"
+  // Charger les détails des cigares de Ma Collection depuis le catalogue
+  const loadCigaresDeMaCollection = async () => {
+    if (maCigarotheque.length === 0) {
+      setCigares([]);
+      setTotal(0);
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      // Récupérer les IDs des cigares de la collection
+      const cigareIds = maCigarotheque.map(c => c.cigare_id).filter(Boolean);
+      
+      // Charger les détails de chaque cigare depuis le catalogue
+      const detailsPromises = cigareIds.map(id => 
+        axios.get(`${API}/cigares/${id}`).catch(() => null)
+      );
+      const results = await Promise.all(detailsPromises);
+      
+      // Filtrer les résultats valides
+      let cigareDetails = results
+        .filter(r => r && r.data)
+        .map(r => r.data);
+      
+      // Appliquer les filtres supplémentaires si présents
+      if (paysFilter && paysFilter !== 'all') {
+        cigareDetails = cigareDetails.filter(c => {
+          const paysNorm = c.pays_fabrication ? c.pays_fabrication.toLowerCase() : '';
+          const filterNorm = paysFilter.toLowerCase();
+          return paysNorm.includes(filterNorm) || 
+                 (paysFilter === 'Cuba' && paysNorm.includes('cuba')) ||
+                 (paysFilter === 'Nicaragua' && paysNorm.includes('nicaragua')) ||
+                 (paysFilter === 'République dominicaine' && (paysNorm.includes('dominicain') || paysNorm.includes('rép')));
+        });
+      }
+      
+      if (marqueFilter && marqueFilter !== 'all') {
+        cigareDetails = cigareDetails.filter(c => c.marque === marqueFilter);
+      }
+      
+      if (puissanceFilter && puissanceFilter !== 'all') {
+        cigareDetails = cigareDetails.filter(c => c.puissance === puissanceFilter);
+      }
+      
+      setCigares(cigareDetails);
+      setTotal(cigareDetails.length);
+    } catch (error) {
+      console.error('Erreur chargement détails cigares:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Effet pour charger les cigares selon le mode (normal ou "Dans Ma Collection")
+  useEffect(() => {
+    if (collectionFilter === 'dans') {
+      loadCigaresDeMaCollection();
+    } else {
+      loadCigares();
+    }
+  }, [page, search, marqueFilter, paysFilter, puissanceFilter, vitoleFilter, prixMin, prixMax, collectionFilter, maCigarotheque]);
+
+  // Filtrer les cigares selon le filtre "pas dans ma collection" uniquement
   const filteredCigares = useMemo(() => {
-    if (!collectionFilter || collectionFilter === 'all' || isAdmin) {
+    // Si filtre "dans", on a déjà chargé directement les cigares de la collection
+    if (collectionFilter === 'dans') {
       return cigares;
     }
     
-    if (collectionFilter === 'dans') {
-      return cigares.filter(c => isInMaCollection(c.id));
-    }
-    
+    // Filtre "pas_dans" - filtrer côté client
     if (collectionFilter === 'pas_dans') {
       return cigares.filter(c => !isInMaCollection(c.id));
     }
     
     return cigares;
-  }, [cigares, collectionFilter, isAdmin, maCollectionCigareIds]);
+  }, [cigares, collectionFilter, maCollectionCigareIds]);
 
   const loadMaCigarotheque = useCallback(async () => {
     if (!currentMember?.id) return;
@@ -755,8 +810,8 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
                     </SelectContent>
                   </Select>
 
-                  {/* Filtre Ma Collection (membres seulement) */}
-                  {!isAdmin && (
+                  {/* Filtre Ma Collection (pour tous les utilisateurs avec une collection) */}
+                  {maCigarotheque.length > 0 && (
                     <Select value={collectionFilter} onValueChange={setCollectionFilter}>
                       <SelectTrigger className="bg-black/60 border-[#D4A024]/30 text-white h-12" data-testid="filter-collection">
                         <User className="w-4 h-4 mr-2 text-[#D4A024]" />
@@ -766,7 +821,7 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
                         <SelectItem value="all" className="text-gray-400">Tous les cigares</SelectItem>
                         <SelectItem value="dans" className="text-green-400">
                           <span className="flex items-center gap-2">
-                            <Check className="w-4 h-4" /> Dans Ma Cigarthèque
+                            <Check className="w-4 h-4" /> Dans Ma Cigarthèque ({maCigarotheque.length})
                           </span>
                         </SelectItem>
                         <SelectItem value="pas_dans" className="text-orange-400">
