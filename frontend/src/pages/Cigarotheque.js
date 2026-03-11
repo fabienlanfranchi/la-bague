@@ -44,7 +44,8 @@ import {
   Filter,
   SortAsc,
   Check,
-  CircleOff
+  CircleOff,
+  Scale
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -130,6 +131,11 @@ const Cigarotheque = () => {
     note_libre: ''
   });
   const [noteCigare, setNoteCigare] = useState(null);
+
+  // Comparateur de cigares
+  const [showComparator, setShowComparator] = useState(false);
+  const [comparatorCigars, setComparatorCigars] = useState([]); // Max 2 cigares
+  const [comparatorMode, setComparatorMode] = useState(false); // Mode sélection pour comparateur
 
   const LIMIT = 20;
 
@@ -559,6 +565,47 @@ const Cigarotheque = () => {
     }
   };
 
+  // ===== COMPARATEUR DE CIGARES =====
+  
+  const addToComparator = (cigare) => {
+    if (comparatorCigars.length >= 2) {
+      toast.error('Maximum 2 cigares dans le comparateur');
+      return;
+    }
+    if (comparatorCigars.find(c => c.id === cigare.id)) {
+      toast.error('Ce cigare est déjà dans le comparateur');
+      return;
+    }
+    setComparatorCigars([...comparatorCigars, cigare]);
+    toast.success(`${cigare.marque_display || cigare.marque} ajouté au comparateur`);
+    
+    // Si on a 2 cigares, afficher le comparateur automatiquement
+    if (comparatorCigars.length === 1) {
+      setShowComparator(true);
+      setComparatorMode(false);
+    }
+  };
+
+  const removeFromComparator = (cigareId) => {
+    setComparatorCigars(comparatorCigars.filter(c => c.id !== cigareId));
+  };
+
+  const clearComparator = () => {
+    setComparatorCigars([]);
+    setShowComparator(false);
+    setComparatorMode(false);
+  };
+
+  const isInComparator = (cigareId) => {
+    return comparatorCigars.some(c => c.id === cigareId);
+  };
+
+  const openComparatorMode = () => {
+    setComparatorMode(true);
+    setActiveTab('catalogue');
+    toast.info('Sélectionnez 2 cigares à comparer');
+  };
+
   // ===== FONCTION COPIER FICHE (Format pour événement Apéro) =====
   
   const copyFicheCigare = (cigare) => {
@@ -758,6 +805,66 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
         </p>
       </div>
 
+      {/* Barre du Comparateur */}
+      <div className="flex flex-wrap items-center gap-3">
+        <Button
+          onClick={comparatorMode ? () => setComparatorMode(false) : openComparatorMode}
+          variant={comparatorMode ? "default" : "outline"}
+          className={comparatorMode 
+            ? "bg-purple-600 hover:bg-purple-700 text-white" 
+            : "border-purple-500/50 text-purple-400 hover:bg-purple-500/10"
+          }
+          data-testid="comparator-btn"
+        >
+          <Scale className="w-4 h-4 mr-2" />
+          {comparatorMode ? "Mode Comparateur actif" : "Comparateur de cigares"}
+        </Button>
+
+        {/* Afficher les cigares sélectionnés pour comparaison */}
+        {comparatorCigars.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap">
+            {comparatorCigars.map((cigare, idx) => (
+              <Badge 
+                key={cigare.id} 
+                className="bg-purple-600/80 text-white px-3 py-1 flex items-center gap-2"
+              >
+                <span className="font-semibold">{idx + 1}.</span>
+                {cigare.marque_display || cigare.marque}
+                <button 
+                  onClick={() => removeFromComparator(cigare.id)}
+                  className="ml-1 hover:text-red-300"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            ))}
+            {comparatorCigars.length === 2 && (
+              <Button
+                size="sm"
+                onClick={() => setShowComparator(true)}
+                className="bg-purple-600 hover:bg-purple-700 text-white"
+              >
+                Voir comparaison
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={clearComparator}
+              className="text-gray-400 hover:text-red-400"
+            >
+              Effacer
+            </Button>
+          </div>
+        )}
+
+        {comparatorMode && comparatorCigars.length < 2 && (
+          <span className="text-purple-300 text-sm">
+            Cliquez sur un cigare pour l'ajouter ({comparatorCigars.length}/2)
+          </span>
+        )}
+      </div>
+
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-2' : 'grid-cols-3'} bg-black/40`}>
           {getTabs().map(tab => (
@@ -920,14 +1027,33 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
                   <Card 
                     key={cigare.id} 
                     className={`bg-black/40 border-2 transition-all cursor-pointer overflow-hidden relative ${
-                      !isAdmin && isInMaCollection(cigare.id) 
-                        ? 'border-green-500/50 hover:border-green-400' 
-                        : 'border-[#D4A024]/30 hover:border-[#D4A024]'
+                      isInComparator(cigare.id)
+                        ? 'border-purple-500 hover:border-purple-400 ring-2 ring-purple-500/50'
+                        : !isAdmin && isInMaCollection(cigare.id) 
+                          ? 'border-green-500/50 hover:border-green-400' 
+                          : 'border-[#D4A024]/30 hover:border-[#D4A024]'
                     }`}
-                    onClick={() => { setSelectedCigare(cigare); setShowDetail(true); }}
+                    onClick={() => { 
+                      if (comparatorMode) {
+                        addToComparator(cigare);
+                      } else {
+                        setSelectedCigare(cigare); 
+                        setShowDetail(true); 
+                      }
+                    }}
                     data-testid={`cigare-card-${cigare.id}`}
                   >
                     <CardContent className="p-4">
+                      {/* Badge Comparateur */}
+                      {isInComparator(cigare.id) && (
+                        <div className="absolute top-2 right-2 z-10">
+                          <Badge className="bg-purple-600 text-white text-xs">
+                            <Scale className="w-3 h-3 mr-1" />
+                            Comparateur
+                          </Badge>
+                        </div>
+                      )}
+                      
                       {/* Badge "Dans Ma Cigarthèque" (membres seulement) */}
                       {!isAdmin && isInMaCollection(cigare.id) && (
                         <div className="mb-2">
@@ -1787,6 +1913,155 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
           <DialogFooter>
             <Button variant="outline" onClick={() => { setShowSearchModal(false); setSearchModalQuery(''); setSearchModalResults([]); }} className="border-gray-600 text-gray-400">
               Fermer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ==================== MODAL COMPARATEUR ==================== */}
+      <Dialog open={showComparator} onOpenChange={setShowComparator}>
+        <DialogContent className="max-w-5xl bg-[#1a1a1a] border-[#D4A024]/50 max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-serif text-white flex items-center gap-2">
+              <Scale className="w-6 h-6 text-purple-400" />
+              Comparateur de Cigares
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="py-4">
+            {comparatorCigars.length < 2 ? (
+              <div className="text-center py-12">
+                <Scale className="w-16 h-16 text-purple-400/50 mx-auto mb-4" />
+                <p className="text-gray-400 text-lg mb-4">
+                  Sélectionnez {2 - comparatorCigars.length} cigare(s) pour comparer
+                </p>
+                <Button
+                  onClick={() => { setShowComparator(false); openComparatorMode(); }}
+                  className="bg-purple-600 hover:bg-purple-700 text-white"
+                >
+                  Choisir dans le catalogue
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {comparatorCigars.map((cigare, idx) => (
+                  <Card key={cigare.id} className={`bg-black/60 border-2 ${idx === 0 ? 'border-blue-500/50' : 'border-orange-500/50'}`}>
+                    <CardHeader className="pb-2">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <Badge className={idx === 0 ? 'bg-blue-600' : 'bg-orange-600'}>
+                            Cigare {idx + 1}
+                          </Badge>
+                          <CardTitle className="text-xl font-serif text-white mt-2">
+                            {cigare.marque_display || cigare.marque || 'Sans marque'}
+                          </CardTitle>
+                          <p className="text-[#D4A024]">{cigare.gamme_display || cigare.gamme || ''}</p>
+                          <p className="text-gray-400 text-sm">{cigare.vitole_nom || cigare.vitole_type || ''}</p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => removeFromComparator(cigare.id)}
+                          className="text-gray-400 hover:text-red-400"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {/* Photo */}
+                      {cigare.photo && (
+                        <div className="relative rounded-lg overflow-hidden bg-black/40 h-48">
+                          <img 
+                            src={getPhotoUrl(cigare.photo)} 
+                            alt={`${cigare.marque || ''}`}
+                            className="w-full h-full object-contain"
+                            onError={(e) => { e.target.parentElement.style.display = 'none'; }}
+                          />
+                        </div>
+                      )}
+
+                      {/* Infos principales */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-black/40 rounded-lg p-3 text-center">
+                          <Star className="w-5 h-5 text-[#D4A024] mx-auto mb-1" />
+                          <p className="text-2xl font-bold text-[#D4A024]">{cigare.note_bagues || '-'}</p>
+                          <p className="text-gray-400 text-xs">Note</p>
+                        </div>
+                        <div className="bg-black/40 rounded-lg p-3 text-center">
+                          <Euro className="w-5 h-5 text-green-400 mx-auto mb-1" />
+                          <p className="text-2xl font-bold text-green-400">{cigare.prix || '-'}€</p>
+                          <p className="text-gray-400 text-xs">Prix</p>
+                        </div>
+                        <div className="bg-black/40 rounded-lg p-3 text-center">
+                          <Flame className="w-5 h-5 text-orange-400 mx-auto mb-1" />
+                          <p className="text-lg font-bold text-white">{getPuissanceLabel(cigare.puissance)}</p>
+                          <p className="text-gray-400 text-xs">Puissance</p>
+                        </div>
+                        <div className="bg-black/40 rounded-lg p-3 text-center">
+                          <MapPin className="w-5 h-5 text-blue-400 mx-auto mb-1" />
+                          <p className="text-lg font-bold text-white">{cigare.pays_fabrication || '-'}</p>
+                          <p className="text-gray-400 text-xs">Origine</p>
+                        </div>
+                      </div>
+
+                      {/* Dimensions */}
+                      <div className="bg-black/40 rounded-lg p-3">
+                        <p className="text-[#D4A024] text-sm font-semibold mb-2">Dimensions</p>
+                        <div className="grid grid-cols-3 gap-2 text-center">
+                          <div>
+                            <p className="text-lg font-bold text-white">{cigare.longueur_mm || '-'}</p>
+                            <p className="text-gray-400 text-xs">mm</p>
+                          </div>
+                          <div>
+                            <p className="text-lg font-bold text-white">{cigare.cepo || '-'}</p>
+                            <p className="text-gray-400 text-xs">cepo</p>
+                          </div>
+                          <div>
+                            <p className="text-lg font-bold text-white">{cigare.diametre_mm || '-'}</p>
+                            <p className="text-gray-400 text-xs">Ø mm</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Composition */}
+                      <div className="bg-black/40 rounded-lg p-3">
+                        <p className="text-[#D4A024] text-sm font-semibold mb-2">Composition</p>
+                        <div className="space-y-1 text-sm">
+                          <p className="text-gray-300"><span className="text-gray-500">Cape:</span> {cigare.cape || '-'}</p>
+                          <p className="text-gray-300"><span className="text-gray-500">Sous-cape:</span> {cigare.sous_cape || '-'}</p>
+                          <p className="text-gray-300"><span className="text-gray-500">Tripe:</span> {cigare.tripe || '-'}</p>
+                        </div>
+                      </div>
+
+                      {/* Conclusion */}
+                      {cigare.conclusion && (
+                        <div className="bg-black/40 rounded-lg p-3">
+                          <p className="text-[#D4A024] text-sm font-semibold mb-1">Conclusion</p>
+                          <p className="text-gray-300 text-sm">{cigare.conclusion}</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => { setShowComparator(false); openComparatorMode(); }}
+              className="border-purple-500/50 text-purple-400"
+            >
+              Changer les cigares
+            </Button>
+            <Button
+              variant="outline"
+              onClick={clearComparator}
+              className="border-gray-600 text-gray-400"
+            >
+              Effacer et fermer
             </Button>
           </DialogFooter>
         </DialogContent>

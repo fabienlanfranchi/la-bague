@@ -22,6 +22,18 @@ Application de gestion complète pour le club de cigares "La Bague Impériale" a
 - Le même comportement est présent dans la modal de détail
 - Les marques normalisées sont utilisées lors de l'ajout à l'Apéro
 
+**Comparateur de Cigares (TERMINÉ) :**
+- Bouton "Comparateur de cigares" en haut de la page (icône balance)
+- Mode sélection : cliquez sur 2 cigares pour les comparer
+- Les cigares sélectionnés s'affichent avec un badge violet "Comparateur"
+- Vue comparaison côte à côte avec :
+  - Photos des deux cigares
+  - Note, Prix, Puissance, Origine
+  - Dimensions (mm, cepo, diamètre)
+  - Composition (Cape, Sous-cape, Tripe)
+  - Conclusion
+- Possibilité de changer les cigares ou d'effacer la comparaison
+
 ### Session 11 Mars 2026
 
 **Cigarthèque - Refonte complète selon les rôles :**
