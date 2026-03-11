@@ -3393,7 +3393,7 @@ async def get_cigares_filtres():
         with get_mysql_connection() as conn:
             cursor = conn.cursor(pymysql.cursors.DictCursor)
             
-            # Pays de fabrication
+            # Pays
             cursor.execute("SELECT DISTINCT pays_fabrication FROM cigares WHERE pays_fabrication IS NOT NULL ORDER BY pays_fabrication")
             pays = [row['pays_fabrication'] for row in cursor.fetchall()]
             
@@ -3424,6 +3424,57 @@ async def get_cigares_filtres():
                 "note_max": stats['note_max']
             }
     except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur filtres: {str(e)}")
+
+
+class CigareUpdate(BaseModel):
+    """Mise à jour d'un cigare"""
+    marque: Optional[str] = None
+    gamme: Optional[str] = None
+    vitole_nom: Optional[str] = None
+    vitole_type: Optional[str] = None
+    pays_fabrication: Optional[str] = None
+    puissance: Optional[str] = None
+    prix: Optional[float] = None
+    note_bagues: Optional[float] = None
+    cape: Optional[str] = None
+    sous_cape: Optional[str] = None
+    tripe: Optional[str] = None
+    conclusion: Optional[str] = None
+
+
+@api_router.put("/cigares/{cigare_id}")
+async def update_cigare(cigare_id: int, data: CigareUpdate):
+    """Modifier un cigare (admin only)"""
+    try:
+        with get_mysql_connection() as conn:
+            cursor = conn.cursor()
+            
+            # Construire la requête de mise à jour
+            updates = []
+            params = []
+            
+            for field, value in data.model_dump().items():
+                if value is not None:
+                    updates.append(f"{field} = %s")
+                    params.append(value)
+            
+            if not updates:
+                raise HTTPException(status_code=400, detail="Aucun champ à mettre à jour")
+            
+            params.append(cigare_id)
+            query = f"UPDATE cigares SET {', '.join(updates)} WHERE id = %s"
+            
+            cursor.execute(query, params)
+            conn.commit()
+            
+            if cursor.rowcount == 0:
+                raise HTTPException(status_code=404, detail="Cigare non trouvé")
+            
+            return {"message": "Cigare mis à jour avec succès"}
+    except HTTPException:
+        raise
+    except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
 
 
@@ -3437,6 +3488,9 @@ class CigarePersonnel(BaseModel):
     marque: str
     gamme: Optional[str] = None
     vitole: Optional[str] = None
+    pays: Optional[str] = None  # Pays de fabrication
+    puissance: Optional[str] = None  # A, B, C
+    prix: Optional[float] = None
     note_personnelle: Optional[float] = None  # Note du membre (1-5)
     commentaire: Optional[str] = None
     date_degustation: Optional[str] = None
@@ -3502,6 +3556,9 @@ class AperoClubCigare(BaseModel):
     marque: str
     gamme: Optional[str] = None
     vitole: Optional[str] = None
+    pays: Optional[str] = None  # Pays de fabrication
+    puissance: Optional[str] = None  # A, B, C
+    prix: Optional[float] = None
     evenement_id: Optional[str] = None
     date_apero: str
     description: Optional[str] = None
