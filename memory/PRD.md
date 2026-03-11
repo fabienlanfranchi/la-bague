@@ -5,7 +5,31 @@ Application de gestion complète pour le club de cigares "La Bague Impériale" a
 
 ## What's Been Implemented
 
-### Session 10 Mars 2026 (Suite)
+### Session 11 Mars 2026
+
+**Cigarthèque - Refonte complète selon les rôles :**
+
+#### Vue Admin (Président) - 2 onglets :
+- **Catalogue** : 657 cigares avec recherche et filtres (Marque, Pays, Puissance, Module, Prix)
+  - Bouton "Modifier" (crayon bleu) → Modal d'édition avec tous les champs
+  - Bouton "Apéro" (verre bordeaux) → Ajoute le cigare à l'Apéro du Club
+- **Apéro du Club** : Gestion complète (ajouter/supprimer) des cigares fumés lors des événements
+
+#### Vue Membre - 3 onglets :
+- **Catalogue** : Consultation + bouton "+" pour importer vers Ma Cigarthèque
+- **Apéro du Club** : Consultation + bouton "Copier vers Ma Cigarthèque"
+- **Ma Cigarthèque** : Collection personnelle avec :
+  - Bouton "Importer" → Modal de recherche dans Catalogue ou Apéro du Club
+  - Bouton "Fiche vierge" → Créer une fiche à compléter
+  - Notation (étoiles /5) et commentaires personnels
+
+**APIs implémentées :**
+- `PUT /api/cigares/{id}` - Modifier un cigare MySQL (admin)
+- `GET/POST/DELETE /api/ma-cigarotheque` - Collection personnelle membre
+- `PUT /api/ma-cigarotheque/{id}?note=X&commentaire=Y` - Noter un cigare
+- `GET/POST/DELETE /api/apero-club` - Cigares de l'Apéro du Club
+
+### Session 10 Mars 2026 (Précédente)
 
 **Système de connexion membre:**
 - Page de login avec activation par code `labagueimperialeXX`
@@ -16,17 +40,12 @@ Application de gestion complète pour le club de cigares "La Bague Impériale" a
 **Catalogue Cigares (MySQL OVH):**
 - Connexion à la base OVH (gb60402-001.eu.clouddb.ovh.net:35741)
 - 657 cigares avec recherche et filtres
-- Filtres: Marque, Pays, Puissance, Module (vitole), Prix
 - Fiches détaillées avec notes de dégustation
-- "Ma Cigarthèque" (collection personnelle par membre)
-- "Apéro du Club" (admin - cigares fumés aux événements)
-- Boutons: Copier fiche, Ajouter à collection, Supprimer
 
 **Améliorations UI:**
 - Tailles de texte augmentées (lisibilité)
 - Boutons "Copier" sur les messages
 - 2 liens WhatsApp (Membres + Bureau)
-- Page Jeux avec lien GameLab
 
 **Comptabilité:**
 - Données nettoyées (899€ Compte, 632€ PayPal)
@@ -34,30 +53,25 @@ Application de gestion complète pour le club de cigares "La Bague Impériale" a
 
 **Sondages:**
 - Système complet avec persistance MongoDB
-- Création, vote, suppression
-
-### Session Précédente
-- Système de dettes "Dehors" avec règlement automatisé
-- Boutons "Détails" sur les comptes
-- Permissions admin pour événements
-- Corrections statistiques et profil
 
 ## Prioritized Backlog
 
-### P0 - En cours
-- [ ] Fonction "Modifier" cigare (admin) - code backend ajouté, frontend à finir
-- [ ] Afficher les photos des cigares (besoin URL du serveur PHP)
-- [ ] Corriger encodage caractères spéciaux
+### P0 - Terminé ✅
+- [x] Fonction "Modifier" cigare (admin) - Modal complet avec tous les champs
+- [x] Structure des onglets selon le rôle (admin vs membre)
+- [x] Importateur de cigares vers Ma Cigarthèque
+- [x] Système de notation et commentaires personnels
 
 ### P1 - À faire
+- [ ] Afficher les photos des cigares (besoin URL du serveur PHP de l'utilisateur)
 - [ ] Assistant IA Claude (playbook disponible)
 - [ ] Refonte page Messages admin
-- [ ] Sécuriser les routes (protection login quand prêt)
 
 ### P2 - Future
 - [ ] Notifications admin détaillées
 - [ ] Page Instagram
 - [ ] Envoi email (mot de passe oublié)
+- [ ] Réactiver l'authentification (quand demandé)
 
 ## Technical Details
 
@@ -71,30 +85,29 @@ Application de gestion complète pour le club de cigares "La Bague Impériale" a
 
 ### Comptes Admin
 - Fabien Lanfranchi (n°1): fabienlanfranchi@yahoo.fr / fabienlanfranchi01
+- ID: d6b30499-2c9b-43e4-9402-7234da4c9855
 
 ### Codes d'activation membres
 Format: labagueimperialeXX (XX = numéro membre)
 
 ## Key API Endpoints
-- GET/POST /api/cigares - Catalogue avec filtres
-- GET /api/cigares-filtres - Options de filtres
-- PUT /api/cigares/{id} - Modifier un cigare (admin)
-- GET/POST/DELETE /api/ma-cigarotheque/{membre_id}
-- GET/POST/DELETE /api/apero-club
-- POST /api/auth/login - Connexion
-- POST /api/auth/validate-account - Activer compte
+- `GET /api/cigares` - Catalogue avec filtres et pagination
+- `GET /api/cigares-filtres` - Options de filtres
+- `PUT /api/cigares/{id}` - Modifier un cigare (admin)
+- `GET/POST/DELETE /api/ma-cigarotheque/{membre_id}` - Collection personnelle
+- `PUT /api/ma-cigarotheque/{cigare_id}` - Noter un cigare
+- `GET/POST/DELETE /api/apero-club` - Cigares apéro club
+- `POST /api/auth/login` - Connexion
+- `POST /api/auth/validate-account` - Activer compte
 
 ## Files Modified This Session
-- /app/backend/server.py - Endpoints cigares MySQL
-- /app/frontend/src/pages/Cigarotheque.js - Catalogue complet
-- /app/frontend/src/pages/LoginPage.js - Système connexion
-- /app/frontend/src/pages/Comptabilite.js - Tailles texte
-- /app/frontend/src/pages/Messages.js - Boutons copier + WhatsApp
-- /app/frontend/src/pages/Jeux.js - Lien GameLab
-- /app/frontend/src/pages/Sondages.js - Système complet
-- /app/frontend/src/context/UserContext.js
-- /app/frontend/src/App.js - Routes
+- `/app/frontend/src/pages/Cigarotheque.js` - Refonte complète avec onglets selon rôle
+- `/app/backend/server.py` - Modèles CigarePersonnel et AperoClubCigare enrichis
+
+## Tests Passés
+- `/app/test_reports/iteration_3.json` - 100% réussite (17/17 tests backend, 100% frontend)
 
 ## Questions en attente
 1. URL du serveur PHP pour les photos de cigares ?
 2. Intégration email (SendGrid/Resend/Gmail) ?
+3. Quand réactiver l'authentification ?
