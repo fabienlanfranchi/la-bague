@@ -56,6 +56,7 @@ const Cigarotheque = () => {
   
   // Filtres actifs
   const [search, setSearch] = useState('');
+  const [marqueFilter, setMarqueFilter] = useState('');
   const [paysFilter, setPaysFilter] = useState('');
   const [puissanceFilter, setPuissanceFilter] = useState('');
   const [vitoleFilter, setVitoleFilter] = useState('');
@@ -84,7 +85,7 @@ const Cigarotheque = () => {
   // Charger les cigares quand les filtres changent
   useEffect(() => {
     loadCigares();
-  }, [page, search, paysFilter, puissanceFilter, vitoleFilter, prixMin, prixMax]);
+  }, [page, search, marqueFilter, paysFilter, puissanceFilter, vitoleFilter, prixMin, prixMax]);
 
   const loadFiltres = async () => {
     try {
@@ -102,6 +103,7 @@ const Cigarotheque = () => {
       params.append('limit', LIMIT);
       params.append('offset', page * LIMIT);
       if (search) params.append('search', search);
+      if (marqueFilter && marqueFilter !== 'all') params.append('marque', marqueFilter);
       if (paysFilter && paysFilter !== 'all') params.append('pays', paysFilter);
       if (puissanceFilter && puissanceFilter !== 'all') params.append('puissance', puissanceFilter);
       if (vitoleFilter && vitoleFilter !== 'all') params.append('vitole', vitoleFilter);
@@ -146,6 +148,7 @@ const Cigarotheque = () => {
 
   const resetFiltres = () => {
     setSearch('');
+    setMarqueFilter('');
     setPaysFilter('');
     setPuissanceFilter('');
     setVitoleFilter('');
@@ -305,7 +308,20 @@ ${cigare.conclusion ? `\n💬 ${cigare.conclusion}` : ''}`;
                 </div>
 
                 {/* Filtres */}
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
+                  <Select value={marqueFilter} onValueChange={setMarqueFilter}>
+                    <SelectTrigger className="bg-black/60 border-[#D4A024]/30 text-white h-12">
+                      <SelectValue placeholder="Marque" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#1a1a1a] border-[#D4A024]/30 max-h-[300px]">
+                      <SelectItem value="all" className="text-gray-400">Toutes marques</SelectItem>
+                      <SelectItem value="__NULL__" className="text-gray-400">Sans marque</SelectItem>
+                      {filtres?.marques?.map(m => (
+                        <SelectItem key={m} value={m} className="text-white">{m}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
                   <Select value={paysFilter} onValueChange={setPaysFilter}>
                     <SelectTrigger className="bg-black/60 border-[#D4A024]/30 text-white h-12">
                       <MapPin className="w-4 h-4 mr-2 text-[#D4A024]" />
@@ -331,7 +347,9 @@ ${cigare.conclusion ? `\n💬 ${cigare.conclusion}` : ''}`;
                       <SelectItem value="C" className="text-green-400">Légère (C)</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
 
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <Select value={vitoleFilter} onValueChange={setVitoleFilter}>
                     <SelectTrigger className="bg-black/60 border-[#D4A024]/30 text-white h-12">
                       <Box className="w-4 h-4 mr-2 text-[#D4A024]" />
@@ -360,11 +378,11 @@ ${cigare.conclusion ? `\n💬 ${cigare.conclusion}` : ''}`;
                     placeholder="Prix max €"
                     className="bg-black/60 border-[#D4A024]/30 text-white h-12"
                   />
-                </div>
 
-                <Button type="button" variant="ghost" onClick={resetFiltres} className="text-gray-400 hover:text-white">
-                  Réinitialiser les filtres
-                </Button>
+                  <Button type="button" variant="outline" onClick={resetFiltres} className="text-gray-400 hover:text-white border-gray-600 h-12">
+                    Réinitialiser
+                  </Button>
+                </div>
               </form>
             </CardContent>
           </Card>

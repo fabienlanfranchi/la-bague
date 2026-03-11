@@ -3285,6 +3285,7 @@ async def admin_update_member(member_id: str, input: MemberFullUpdate):
 @api_router.get("/cigares")
 async def get_cigares(
     search: Optional[str] = Query(None, description="Recherche par marque ou gamme"),
+    marque: Optional[str] = Query(None, description="Filtrer par marque"),
     pays: Optional[str] = Query(None, description="Filtrer par pays de fabrication"),
     puissance: Optional[str] = Query(None, description="Filtrer par puissance (A/B/C)"),
     vitole: Optional[str] = Query(None, description="Filtrer par type de vitole/module"),
@@ -3308,6 +3309,13 @@ async def get_cigares(
                 query += " AND (marque LIKE %s OR gamme LIKE %s OR vitole_nom LIKE %s)"
                 search_term = f"%{search}%"
                 params.extend([search_term, search_term, search_term])
+            
+            if marque:
+                if marque == "__NULL__":
+                    query += " AND (marque IS NULL OR marque = '')"
+                else:
+                    query += " AND marque = %s"
+                    params.append(marque)
             
             if pays:
                 query += " AND pays_fabrication = %s"
