@@ -11,7 +11,7 @@ Application de gestion complète pour le club de cigares "La Bague Impériale" a
 
 #### Vue Admin (Président) - 2 onglets :
 - **Catalogue** : 657 cigares avec recherche et filtres (Marque, Pays, Puissance, Module, Prix)
-  - Bouton "Modifier" (crayon bleu) → Modal d'édition avec tous les champs
+  - Bouton "Modifier" (crayon bleu) → Modal d'édition avec tous les champs + **bouton Supprimer**
   - Bouton "Apéro" (verre bordeaux) → Ajoute le cigare à l'Apéro du Club
 - **Apéro du Club** : Gestion complète (ajouter/supprimer) des cigares fumés lors des événements
 
@@ -25,6 +25,7 @@ Application de gestion complète pour le club de cigares "La Bague Impériale" a
 
 **APIs implémentées :**
 - `PUT /api/cigares/{id}` - Modifier un cigare MySQL (admin)
+- `DELETE /api/cigares/{id}` - Supprimer un cigare du catalogue MySQL (admin)
 - `GET/POST/DELETE /api/ma-cigarotheque` - Collection personnelle membre
 - `PUT /api/ma-cigarotheque/{id}?note=X&commentaire=Y` - Noter un cigare
 - `GET/POST/DELETE /api/apero-club` - Cigares de l'Apéro du Club

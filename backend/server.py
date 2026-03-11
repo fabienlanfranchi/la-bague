@@ -3478,6 +3478,30 @@ async def update_cigare(cigare_id: int, data: CigareUpdate):
         raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
 
 
+@api_router.delete("/cigares/{cigare_id}")
+async def delete_cigare(cigare_id: int):
+    """Supprimer un cigare du catalogue (admin only)"""
+    try:
+        with get_mysql_connection() as conn:
+            cursor = conn.cursor()
+            
+            # Vérifier que le cigare existe
+            cursor.execute("SELECT id FROM cigares WHERE id = %s", (cigare_id,))
+            if not cursor.fetchone():
+                raise HTTPException(status_code=404, detail="Cigare non trouvé")
+            
+            # Supprimer le cigare
+            cursor.execute("DELETE FROM cigares WHERE id = %s", (cigare_id,))
+            conn.commit()
+            
+            return {"message": "Cigare supprimé du catalogue avec succès"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
+
+
+
 # ============ MA CIGARTHÈQUE (Personnel par membre) ============
 
 class CigarePersonnel(BaseModel):

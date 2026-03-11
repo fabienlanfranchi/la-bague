@@ -330,6 +330,25 @@ ${cigare.commentaire ? `Mon commentaire: ${cigare.commentaire}` : ''}`.trim();
     }
   };
 
+  const handleDeleteCigare = async () => {
+    if (!window.confirm('Êtes-vous sûr de vouloir SUPPRIMER définitivement ce cigare du catalogue ?\n\nCette action est irréversible.')) {
+      return;
+    }
+    
+    setEditLoading(true);
+    try {
+      await axios.delete(`${API}/cigares/${editData.id}`);
+      toast.success('Cigare supprimé du catalogue');
+      setShowEditModal(false);
+      loadCigares();
+    } catch (error) {
+      toast.error('Erreur lors de la suppression');
+      console.error(error);
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
   // ===== MODAL NOTATION (MA CIGARTHÈQUE) =====
   
   const openNoteModal = (cigare) => {
@@ -1116,15 +1135,27 @@ ${cigare.commentaire ? `Mon commentaire: ${cigare.commentaire}` : ''}`.trim();
             </div>
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowEditModal(false)} className="border-gray-600 text-gray-400">
-              <X className="w-4 h-4 mr-2" />
-              Annuler
+          <DialogFooter className="flex justify-between sm:justify-between">
+            <Button 
+              variant="outline" 
+              onClick={handleDeleteCigare} 
+              disabled={editLoading}
+              className="border-red-600 text-red-400 hover:bg-red-900/20 hover:text-red-300"
+              data-testid="delete-cigare-btn"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Supprimer
             </Button>
-            <Button onClick={handleSaveEdit} disabled={editLoading} className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020]" data-testid="save-edit-btn">
-              <Save className="w-4 h-4 mr-2" />
-              {editLoading ? 'Enregistrement...' : 'Enregistrer'}
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setShowEditModal(false)} className="border-gray-600 text-gray-400">
+                <X className="w-4 h-4 mr-2" />
+                Annuler
+              </Button>
+              <Button onClick={handleSaveEdit} disabled={editLoading} className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020]" data-testid="save-edit-btn">
+                <Save className="w-4 h-4 mr-2" />
+                {editLoading ? 'Enregistrement...' : 'Enregistrer'}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
