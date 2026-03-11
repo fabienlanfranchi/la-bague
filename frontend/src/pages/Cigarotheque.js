@@ -83,6 +83,20 @@ const Cigarotheque = () => {
   const [maCollectionModule, setMaCollectionModule] = useState('');
   const [maCollectionTri, setMaCollectionTri] = useState('pays'); // pays, marque, module
   
+  // Handlers pour les filtres en cascade
+  const handleMaCollectionPaysChange = (value) => {
+    setMaCollectionPays(value);
+    // Réinitialiser marque et module quand on change le pays
+    setMaCollectionMarque('');
+    setMaCollectionModule('');
+  };
+  
+  const handleMaCollectionMarqueChange = (value) => {
+    setMaCollectionMarque(value);
+    // Réinitialiser le module quand on change la marque
+    setMaCollectionModule('');
+  };
+  
   // Modal détail
   const [selectedCigare, setSelectedCigare] = useState(null);
   const [showDetail, setShowDetail] = useState(false);
@@ -265,13 +279,30 @@ const Cigarotheque = () => {
     return filtered;
   }, [maCigarotheque, maCollectionSearch, maCollectionPays, maCollectionMarque, maCollectionModule, maCollectionTri]);
 
-  // Extraire les options de filtres de Ma Cigarthèque
+  // Extraire les options de filtres de Ma Cigarthèque (en cascade)
   const maCollectionFilterOptions = useMemo(() => {
+    // Tous les pays disponibles
     const pays = [...new Set(maCigarotheque.map(c => c.pays).filter(Boolean))].sort();
-    const marques = [...new Set(maCigarotheque.map(c => c.marque).filter(Boolean))].sort();
-    const modules = [...new Set(maCigarotheque.map(c => c.vitole).filter(Boolean))].sort();
+    
+    // Marques filtrées par le pays sélectionné
+    let cigaresPourMarques = maCigarotheque;
+    if (maCollectionPays && maCollectionPays !== 'all') {
+      cigaresPourMarques = maCigarotheque.filter(c => c.pays === maCollectionPays);
+    }
+    const marques = [...new Set(cigaresPourMarques.map(c => c.marque).filter(Boolean))].sort();
+    
+    // Modules filtrés par pays ET marque sélectionnés
+    let cigaresPourModules = maCigarotheque;
+    if (maCollectionPays && maCollectionPays !== 'all') {
+      cigaresPourModules = cigaresPourModules.filter(c => c.pays === maCollectionPays);
+    }
+    if (maCollectionMarque && maCollectionMarque !== 'all') {
+      cigaresPourModules = cigaresPourModules.filter(c => c.marque === maCollectionMarque);
+    }
+    const modules = [...new Set(cigaresPourModules.map(c => c.vitole).filter(Boolean))].sort();
+    
     return { pays, marques, modules };
-  }, [maCigarotheque]);
+  }, [maCigarotheque, maCollectionPays, maCollectionMarque]);
 
   // ===== RECHERCHE DANS LE CATALOGUE (Modal) =====
   
@@ -964,7 +995,7 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
                     </Select>
                     
                     {/* Filtre Pays */}
-                    <Select value={maCollectionPays} onValueChange={setMaCollectionPays}>
+                    <Select value={maCollectionPays} onValueChange={handleMaCollectionPaysChange}>
                       <SelectTrigger className="bg-black/60 border-[#D4A024]/30 text-white">
                         <MapPin className="w-4 h-4 mr-2 text-[#D4A024]" />
                         <SelectValue placeholder="Terroir" />
@@ -978,7 +1009,7 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
                     </Select>
                     
                     {/* Filtre Marque */}
-                    <Select value={maCollectionMarque} onValueChange={setMaCollectionMarque}>
+                    <Select value={maCollectionMarque} onValueChange={handleMaCollectionMarqueChange}>
                       <SelectTrigger className="bg-black/60 border-[#D4A024]/30 text-white">
                         <SelectValue placeholder="Marque" />
                       </SelectTrigger>
