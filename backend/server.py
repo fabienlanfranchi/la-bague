@@ -1,5 +1,5 @@
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Query
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
@@ -16,6 +16,7 @@ from passlib.context import CryptContext
 import secrets
 import pymysql
 from contextlib import contextmanager
+import httpx
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -3318,8 +3319,22 @@ async def get_cigares(
                     params.append(marque)
             
             if pays:
-                query += " AND pays_fabrication = %s"
-                params.append(pays)
+                # Recherche par pays normalisé (inclut les variantes)
+                if pays == "République dominicaine":
+                    query += " AND (pays_fabrication LIKE '%dominicain%' OR pays_fabrication LIKE '%Rép%dom%')"
+                elif pays == "Nicaragua":
+                    query += " AND pays_fabrication LIKE '%Nicaragua%'"
+                elif pays == "Honduras":
+                    query += " AND pays_fabrication LIKE '%Honduras%'"
+                elif pays == "Cuba":
+                    query += " AND pays_fabrication LIKE '%Cuba%'"
+                elif pays == "Costa Rica":
+                    query += " AND pays_fabrication LIKE '%Costa%Rica%'"
+                elif pays == "Mexique":
+                    query += " AND (pays_fabrication LIKE '%Mexique%' OR pays_fabrication LIKE '%Mexico%')"
+                else:
+                    query += " AND pays_fabrication = %s"
+                    params.append(pays)
             
             if puissance:
                 query += " AND puissance = %s"
@@ -3386,6 +3401,84 @@ async def get_cigare_detail(cigare_id: int):
         raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
 
 
+# Fonction pour normaliser les noms de pays
+def normalize_pays(pays_raw):
+    """Normalise les noms de pays pour regrouper les variantes"""
+    if not pays_raw:
+        return None
+    
+    pays_lower = pays_raw.lower().strip()
+    
+    # République dominicaine et variantes
+    if 'dominicain' in pays_lower or 'rép' in pays_lower and 'dom' in pays_lower:
+        return 'République dominicaine'
+    
+    # Nicaragua et variantes
+    if 'nicaragua' in pays_lower:
+        return 'Nicaragua'
+    
+    # Honduras et variantes
+    if 'honduras' in pays_lower:
+        return 'Honduras'
+    
+    # Cuba
+    if 'cuba' in pays_lower:
+        return 'Cuba'
+    
+    # Costa Rica
+    if 'costa' in pays_lower:
+        return 'Costa Rica'
+    
+    # Mexique
+    if 'mexique' in pays_lower or 'mexico' in pays_lower:
+        return 'Mexique'
+    
+    # Équateur
+    if 'équateur' in pays_lower or 'equateur' in pays_lower or 'ecuador' in pays_lower:
+        return 'Équateur'
+    
+    # Brésil
+    if 'brésil' in pays_lower or 'bresil' in pays_lower or 'brazil' in pays_lower:
+        return 'Brésil'
+    
+    return pays_raw
+
+
+# URL de base pour les photos de cigares
+PHOTOS_BASE_URL = "http://51.68.122.192/cigares/photos_cigares/"
+
+
+@api_router.get("/cigare-photo/{photo_name:path}")
+async def get_cigare_photo(photo_name: str):
+    """Proxy pour servir les photos de cigares depuis le serveur externe"""
+    try:
+        # Nettoyer le nom du fichier
+        clean_name = photo_name.replace('./photos_cigares/', '').replace('photos_cigares/', '')
+        photo_url = f"{PHOTOS_BASE_URL}{clean_name}"
+        
+        async with httpx.AsyncClient(verify=False, timeout=10.0) as client:
+            response = await client.get(photo_url)
+            
+            if response.status_code != 200:
+                raise HTTPException(status_code=404, detail="Photo non trouvée")
+            
+            # Déterminer le type de contenu
+            content_type = response.headers.get('content-type', 'image/jpeg')
+            
+            return StreamingResponse(
+                iter([response.content]),
+                media_type=content_type,
+                headers={
+                    "Cache-Control": "public, max-age=86400",  # Cache 24h
+                    "Access-Control-Allow-Origin": "*"
+                }
+            )
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=502, detail=f"Erreur de connexion au serveur de photos: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
+
+
 @api_router.get("/cigares-filtres")
 async def get_cigares_filtres():
     """Récupérer les options de filtres disponibles"""
@@ -3393,9 +3486,11 @@ async def get_cigares_filtres():
         with get_mysql_connection() as conn:
             cursor = conn.cursor(pymysql.cursors.DictCursor)
             
-            # Pays
-            cursor.execute("SELECT DISTINCT pays_fabrication FROM cigares WHERE pays_fabrication IS NOT NULL ORDER BY pays_fabrication")
-            pays = [row['pays_fabrication'] for row in cursor.fetchall()]
+            # Pays - récupérer tous et normaliser
+            cursor.execute("SELECT DISTINCT pays_fabrication FROM cigares WHERE pays_fabrication IS NOT NULL")
+            pays_raw = [row['pays_fabrication'] for row in cursor.fetchall()]
+            # Normaliser et dédupliquer
+            pays_normalized = sorted(list(set([normalize_pays(p) for p in pays_raw if normalize_pays(p)])))
             
             # Puissances
             cursor.execute("SELECT DISTINCT puissance FROM cigares WHERE puissance IS NOT NULL ORDER BY puissance")
@@ -3414,7 +3509,7 @@ async def get_cigares_filtres():
             stats = cursor.fetchone()
             
             return {
-                "pays": pays,
+                "pays": pays_normalized,
                 "puissances": puissances,
                 "marques": marques,
                 "vitoles": vitoles,

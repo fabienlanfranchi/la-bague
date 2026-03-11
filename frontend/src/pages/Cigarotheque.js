@@ -46,14 +46,12 @@ import axios from 'axios';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
-// URL de base pour les photos de cigares
-const PHOTOS_BASE_URL = 'https://51.68.122.192/cigares/photos_cigares/';
-
-// Fonction pour obtenir l'URL complète d'une photo
+// Fonction pour obtenir l'URL de la photo via le proxy backend
 const getPhotoUrl = (photoPath) => {
   if (!photoPath) return null;
-  // Remplacer le chemin relatif par l'URL absolue
-  return photoPath.replace('./photos_cigares/', PHOTOS_BASE_URL);
+  // Utiliser le proxy backend pour éviter les problèmes CORS/mixed content
+  const photoName = photoPath.replace('./photos_cigares/', '').replace('photos_cigares/', '');
+  return `${API}/cigare-photo/${encodeURIComponent(photoName)}`;
 };
 
 const Cigarotheque = () => {
