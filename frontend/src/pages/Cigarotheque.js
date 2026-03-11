@@ -33,7 +33,10 @@ import {
   Copy,
   ExternalLink,
   Wine,
-  User
+  User,
+  Trash2,
+  Edit3,
+  Box
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -55,6 +58,7 @@ const Cigarotheque = () => {
   const [search, setSearch] = useState('');
   const [paysFilter, setPaysFilter] = useState('');
   const [puissanceFilter, setPuissanceFilter] = useState('');
+  const [vitoleFilter, setVitoleFilter] = useState('');
   const [prixMin, setPrixMin] = useState('');
   const [prixMax, setPrixMax] = useState('');
   
@@ -80,7 +84,7 @@ const Cigarotheque = () => {
   // Charger les cigares quand les filtres changent
   useEffect(() => {
     loadCigares();
-  }, [page, search, paysFilter, puissanceFilter, prixMin, prixMax]);
+  }, [page, search, paysFilter, puissanceFilter, vitoleFilter, prixMin, prixMax]);
 
   const loadFiltres = async () => {
     try {
@@ -98,8 +102,9 @@ const Cigarotheque = () => {
       params.append('limit', LIMIT);
       params.append('offset', page * LIMIT);
       if (search) params.append('search', search);
-      if (paysFilter) params.append('pays', paysFilter);
-      if (puissanceFilter) params.append('puissance', puissanceFilter);
+      if (paysFilter && paysFilter !== 'all') params.append('pays', paysFilter);
+      if (puissanceFilter && puissanceFilter !== 'all') params.append('puissance', puissanceFilter);
+      if (vitoleFilter && vitoleFilter !== 'all') params.append('vitole', vitoleFilter);
       if (prixMin) params.append('prix_min', prixMin);
       if (prixMax) params.append('prix_max', prixMax);
 
@@ -143,6 +148,7 @@ const Cigarotheque = () => {
     setSearch('');
     setPaysFilter('');
     setPuissanceFilter('');
+    setVitoleFilter('');
     setPrixMin('');
     setPrixMax('');
     setPage(0);
@@ -200,6 +206,28 @@ const Cigarotheque = () => {
       loadAperoClub();
     } catch (error) {
       toast.error('Erreur lors de l\'ajout');
+    }
+  };
+
+  const deleteFromMaCigarotheque = async (cigareId) => {
+    if (!window.confirm('Supprimer ce cigare de votre collection ?')) return;
+    try {
+      await axios.delete(`${API}/ma-cigarotheque/${cigareId}`);
+      toast.success('Cigare supprimé de votre collection');
+      loadMaCigarotheque();
+    } catch (error) {
+      toast.error('Erreur lors de la suppression');
+    }
+  };
+
+  const deleteFromAperoClub = async (cigareId) => {
+    if (!window.confirm('Supprimer ce cigare de l\'Apéro du Club ?')) return;
+    try {
+      await axios.delete(`${API}/apero-club/${cigareId}`);
+      toast.success('Cigare supprimé');
+      loadAperoClub();
+    } catch (error) {
+      toast.error('Erreur lors de la suppression');
     }
   };
 
@@ -277,13 +305,13 @@ ${cigare.conclusion ? `\n💬 ${cigare.conclusion}` : ''}`;
                 </div>
 
                 {/* Filtres */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                   <Select value={paysFilter} onValueChange={setPaysFilter}>
                     <SelectTrigger className="bg-black/60 border-[#D4A024]/30 text-white h-12">
                       <MapPin className="w-4 h-4 mr-2 text-[#D4A024]" />
                       <SelectValue placeholder="Pays" />
                     </SelectTrigger>
-                    <SelectContent className="bg-[#1a1a1a] border-[#D4A024]/30">
+                    <SelectContent className="bg-[#1a1a1a] border-[#D4A024]/30 max-h-[300px]">
                       <SelectItem value="all" className="text-gray-400">Tous les pays</SelectItem>
                       {filtres?.pays?.map(p => (
                         <SelectItem key={p} value={p} className="text-white">{p}</SelectItem>
@@ -301,6 +329,19 @@ ${cigare.conclusion ? `\n💬 ${cigare.conclusion}` : ''}`;
                       <SelectItem value="A" className="text-red-400">Forte (A)</SelectItem>
                       <SelectItem value="B" className="text-orange-400">Moyenne (B)</SelectItem>
                       <SelectItem value="C" className="text-green-400">Légère (C)</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={vitoleFilter} onValueChange={setVitoleFilter}>
+                    <SelectTrigger className="bg-black/60 border-[#D4A024]/30 text-white h-12">
+                      <Box className="w-4 h-4 mr-2 text-[#D4A024]" />
+                      <SelectValue placeholder="Module" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#1a1a1a] border-[#D4A024]/30 max-h-[300px]">
+                      <SelectItem value="all" className="text-gray-400">Tous modules</SelectItem>
+                      {filtres?.vitoles?.map(v => (
+                        <SelectItem key={v} value={v} className="text-white">{v}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
 
@@ -460,14 +501,24 @@ ${cigare.conclusion ? `\n💬 ${cigare.conclusion}` : ''}`;
                           </div>
                         )}
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => copyFicheCigare(cigare)}
-                        className="text-[#D4A024]"
-                      >
-                        <Copy className="w-5 h-5" />
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => copyFicheCigare(cigare)}
+                          className="text-[#D4A024]"
+                        >
+                          <Copy className="w-5 h-5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deleteFromMaCigarotheque(cigare.id)}
+                          className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -503,14 +554,24 @@ ${cigare.conclusion ? `\n💬 ${cigare.conclusion}` : ''}`;
                           <p className="text-gray-400">{cigare.vitole || ''}</p>
                           <p className="text-[#D4A024] text-sm mt-1">{cigare.date_apero}</p>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => copyFicheCigare(cigare)}
-                          className="text-[#D4A024]"
-                        >
-                          <Copy className="w-5 h-5" />
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => copyFicheCigare(cigare)}
+                            className="text-[#D4A024]"
+                          >
+                            <Copy className="w-5 h-5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => deleteFromAperoClub(cigare.id)}
+                            className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>

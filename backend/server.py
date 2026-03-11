@@ -51,7 +51,8 @@ MYSQL_CONFIG = {
     'user': 'cigare20',
     'password': 'Barthe20167',
     'database': 'CIGARE',
-    'charset': 'utf8mb4'
+    'charset': 'utf8mb4',
+    'use_unicode': True
 }
 
 @contextmanager
@@ -3286,6 +3287,7 @@ async def get_cigares(
     search: Optional[str] = Query(None, description="Recherche par marque ou gamme"),
     pays: Optional[str] = Query(None, description="Filtrer par pays de fabrication"),
     puissance: Optional[str] = Query(None, description="Filtrer par puissance (A/B/C)"),
+    vitole: Optional[str] = Query(None, description="Filtrer par type de vitole/module"),
     note_min: Optional[float] = Query(None, description="Note minimum"),
     note_max: Optional[float] = Query(None, description="Note maximum"),
     prix_min: Optional[float] = Query(None, description="Prix minimum"),
@@ -3314,6 +3316,10 @@ async def get_cigares(
             if puissance:
                 query += " AND puissance = %s"
                 params.append(puissance)
+            
+            if vitole:
+                query += " AND (vitole_type = %s OR vitole_nom LIKE %s)"
+                params.extend([vitole, f"%{vitole}%"])
             
             if note_min is not None:
                 query += " AND note_bagues >= %s"
@@ -3391,6 +3397,10 @@ async def get_cigares_filtres():
             cursor.execute("SELECT DISTINCT marque FROM cigares WHERE marque IS NOT NULL ORDER BY marque")
             marques = [row['marque'] for row in cursor.fetchall()]
             
+            # Vitoles (modules)
+            cursor.execute("SELECT DISTINCT vitole_type FROM cigares WHERE vitole_type IS NOT NULL ORDER BY vitole_type")
+            vitoles = [row['vitole_type'] for row in cursor.fetchall()]
+            
             # Stats prix et notes
             cursor.execute("SELECT MIN(prix) as prix_min, MAX(prix) as prix_max, MIN(note_bagues) as note_min, MAX(note_bagues) as note_max FROM cigares")
             stats = cursor.fetchone()
@@ -3399,6 +3409,7 @@ async def get_cigares_filtres():
                 "pays": pays,
                 "puissances": puissances,
                 "marques": marques,
+                "vitoles": vitoles,
                 "prix_min": stats['prix_min'],
                 "prix_max": stats['prix_max'],
                 "note_min": stats['note_min'],
