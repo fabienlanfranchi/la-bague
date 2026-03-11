@@ -3321,17 +3321,23 @@ async def get_cigares(
             if pays:
                 # Recherche par pays normalisé (inclut les variantes)
                 if pays == "République dominicaine":
-                    query += " AND (pays_fabrication LIKE '%dominicain%' OR pays_fabrication LIKE '%Rép%dom%')"
+                    query += " AND (pays_fabrication LIKE %s OR pays_fabrication LIKE %s)"
+                    params.extend(['%dominicain%', '%Rép%dom%'])
                 elif pays == "Nicaragua":
-                    query += " AND pays_fabrication LIKE '%Nicaragua%'"
+                    query += " AND pays_fabrication LIKE %s"
+                    params.append('%Nicaragua%')
                 elif pays == "Honduras":
-                    query += " AND pays_fabrication LIKE '%Honduras%'"
+                    query += " AND pays_fabrication LIKE %s"
+                    params.append('%Honduras%')
                 elif pays == "Cuba":
-                    query += " AND pays_fabrication LIKE '%Cuba%'"
+                    query += " AND pays_fabrication LIKE %s"
+                    params.append('%Cuba%')
                 elif pays == "Costa Rica":
-                    query += " AND pays_fabrication LIKE '%Costa%Rica%'"
+                    query += " AND pays_fabrication LIKE %s"
+                    params.append('%Costa%Rica%')
                 elif pays == "Mexique":
-                    query += " AND (pays_fabrication LIKE '%Mexique%' OR pays_fabrication LIKE '%Mexico%')"
+                    query += " AND (pays_fabrication LIKE %s OR pays_fabrication LIKE %s)"
+                    params.extend(['%Mexique%', '%Mexico%'])
                 else:
                     query += " AND pays_fabrication = %s"
                     params.append(pays)
