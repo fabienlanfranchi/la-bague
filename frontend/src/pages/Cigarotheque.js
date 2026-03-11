@@ -42,7 +42,9 @@ import {
   Save,
   X,
   Filter,
-  SortAsc
+  SortAsc,
+  Check,
+  CircleOff
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -75,6 +77,7 @@ const Cigarotheque = () => {
   const [vitoleFilter, setVitoleFilter] = useState('');
   const [prixMin, setPrixMin] = useState('');
   const [prixMax, setPrixMax] = useState('');
+  const [collectionFilter, setCollectionFilter] = useState(''); // '', 'dans', 'pas_dans'
   
   // Filtres Ma Cigarthèque
   const [maCollectionSearch, setMaCollectionSearch] = useState('');
@@ -130,10 +133,21 @@ const Cigarotheque = () => {
 
   const LIMIT = 20;
 
+  // Set des IDs de cigares dans Ma Cigarthèque (pour le badge et le filtre)
+  const maCollectionCigareIds = useMemo(() => {
+    return new Set(maCigarotheque.map(c => c.cigare_id).filter(Boolean));
+  }, [maCigarotheque]);
+
+  // Fonction pour vérifier si un cigare est dans Ma Cigarthèque
+  const isInMaCollection = (cigareId) => {
+    return maCollectionCigareIds.has(cigareId);
+  };
+
   // Charger les filtres au démarrage
   useEffect(() => {
     loadFiltres();
     loadAperoClub();
+    // Charger Ma Cigarthèque pour tous les membres (pour le badge dans le catalogue)
     if (!isAdmin && currentMember?.id) {
       loadMaCigarotheque();
     }
@@ -178,6 +192,23 @@ const Cigarotheque = () => {
     }
   };
 
+  // Filtrer les cigares selon le filtre "dans/pas dans ma collection"
+  const filteredCigares = useMemo(() => {
+    if (!collectionFilter || collectionFilter === 'all' || isAdmin) {
+      return cigares;
+    }
+    
+    if (collectionFilter === 'dans') {
+      return cigares.filter(c => isInMaCollection(c.id));
+    }
+    
+    if (collectionFilter === 'pas_dans') {
+      return cigares.filter(c => !isInMaCollection(c.id));
+    }
+    
+    return cigares;
+  }, [cigares, collectionFilter, isAdmin, maCollectionCigareIds]);
+
   const loadMaCigarotheque = useCallback(async () => {
     if (!currentMember?.id) return;
     try {
@@ -211,6 +242,7 @@ const Cigarotheque = () => {
     setVitoleFilter('');
     setPrixMin('');
     setPrixMax('');
+    setCollectionFilter('');
     setPage(0);
   };
 
@@ -710,6 +742,29 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
                     </SelectContent>
                   </Select>
 
+                  {/* Filtre Ma Collection (membres seulement) */}
+                  {!isAdmin && (
+                    <Select value={collectionFilter} onValueChange={setCollectionFilter}>
+                      <SelectTrigger className="bg-black/60 border-[#D4A024]/30 text-white h-12" data-testid="filter-collection">
+                        <User className="w-4 h-4 mr-2 text-[#D4A024]" />
+                        <SelectValue placeholder="Ma Collection" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#1a1a1a] border-[#D4A024]/30">
+                        <SelectItem value="all" className="text-gray-400">Tous les cigares</SelectItem>
+                        <SelectItem value="dans" className="text-green-400">
+                          <span className="flex items-center gap-2">
+                            <Check className="w-4 h-4" /> Dans Ma Cigarthèque
+                          </span>
+                        </SelectItem>
+                        <SelectItem value="pas_dans" className="text-orange-400">
+                          <span className="flex items-center gap-2">
+                            <CircleOff className="w-4 h-4" /> Pas encore fumé
+                          </span>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+
                   <Input
                     type="number"
                     value={prixMin}
@@ -744,15 +799,36 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
             </div>
           ) : (
             <>
+              {/* Compteur de résultats filtrés */}
+              {!isAdmin && collectionFilter && collectionFilter !== 'all' && (
+                <p className="text-gray-400 text-sm">
+                  {filteredCigares.length} cigare(s) {collectionFilter === 'dans' ? 'dans votre collection' : 'pas encore fumé(s)'}
+                </p>
+              )}
+              
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {cigares.map((cigare) => (
+                {filteredCigares.map((cigare) => (
                   <Card 
                     key={cigare.id} 
-                    className="bg-black/40 border-2 border-[#D4A024]/30 hover:border-[#D4A024] transition-all cursor-pointer overflow-hidden"
+                    className={`bg-black/40 border-2 transition-all cursor-pointer overflow-hidden ${
+                      !isAdmin && isInMaCollection(cigare.id) 
+                        ? 'border-green-500/50 hover:border-green-400' 
+                        : 'border-[#D4A024]/30 hover:border-[#D4A024]'
+                    }`}
                     onClick={() => { setSelectedCigare(cigare); setShowDetail(true); }}
                     data-testid={`cigare-card-${cigare.id}`}
                   >
                     <CardContent className="p-4">
+                      {/* Badge "Dans Ma Cigarthèque" */}
+                      {!isAdmin && isInMaCollection(cigare.id) && (
+                        <div className="mb-2">
+                          <Badge className="bg-green-600/80 text-white text-xs">
+                            <Check className="w-3 h-3 mr-1" />
+                            Dans Ma Cigarthèque
+                          </Badge>
+                        </div>
+                      )}
+                      
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex-1 min-w-0">
                           <h3 className="text-lg font-serif font-bold text-white truncate">
