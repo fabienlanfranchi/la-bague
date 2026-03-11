@@ -147,24 +147,36 @@ const Cigarotheque = () => {
   useEffect(() => {
     loadFiltres();
     loadAperoClub();
-    // Charger Ma Cigarthèque pour tous les membres (pour le badge dans le catalogue)
-    if (!isAdmin && currentMember?.id) {
+    // Charger Ma Cigarthèque pour TOUS les utilisateurs (pour le badge dans le catalogue)
+    if (currentMember?.id) {
       loadMaCigarotheque();
     }
-  }, [isAdmin, currentMember?.id]);
+  }, [currentMember?.id]);
 
   // Charger les cigares quand les filtres changent
   useEffect(() => {
     loadCigares();
   }, [page, search, marqueFilter, paysFilter, puissanceFilter, vitoleFilter, prixMin, prixMax]);
 
-  const loadFiltres = async () => {
+  const loadFiltres = async (paysSelected = '') => {
     try {
-      const response = await axios.get(`${API}/cigares-filtres`);
+      const params = new URLSearchParams();
+      if (paysSelected && paysSelected !== 'all') {
+        params.append('pays', paysSelected);
+      }
+      const response = await axios.get(`${API}/cigares-filtres?${params}`);
       setFiltres(response.data);
     } catch (error) {
       console.error('Erreur chargement filtres:', error);
     }
+  };
+
+  // Handler pour le changement de pays (cascade sur les marques)
+  const handlePaysFilterChange = (value) => {
+    setPaysFilter(value);
+    setMarqueFilter(''); // Réinitialiser la marque quand le pays change
+    loadFiltres(value); // Recharger les marques filtrées par pays
+    setPage(0);
   };
 
   const loadCigares = async () => {
@@ -244,6 +256,7 @@ const Cigarotheque = () => {
     setPrixMax('');
     setCollectionFilter('');
     setPage(0);
+    loadFiltres(''); // Recharger tous les filtres sans restriction
   };
 
   const getPuissanceLabel = (p) => {
@@ -701,7 +714,7 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
                     </SelectContent>
                   </Select>
 
-                  <Select value={paysFilter} onValueChange={setPaysFilter}>
+                  <Select value={paysFilter} onValueChange={handlePaysFilterChange}>
                     <SelectTrigger className="bg-black/60 border-[#D4A024]/30 text-white h-12" data-testid="filter-pays">
                       <MapPin className="w-4 h-4 mr-2 text-[#D4A024]" />
                       <SelectValue placeholder="Pays" />
@@ -758,7 +771,7 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
                         </SelectItem>
                         <SelectItem value="pas_dans" className="text-orange-400">
                           <span className="flex items-center gap-2">
-                            <CircleOff className="w-4 h-4" /> Pas encore fumé
+                            <CircleOff className="w-4 h-4" /> Pas encore noté
                           </span>
                         </SelectItem>
                       </SelectContent>
@@ -802,7 +815,7 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
               {/* Compteur de résultats filtrés */}
               {!isAdmin && collectionFilter && collectionFilter !== 'all' && (
                 <p className="text-gray-400 text-sm">
-                  {filteredCigares.length} cigare(s) {collectionFilter === 'dans' ? 'dans votre collection' : 'pas encore fumé(s)'}
+                  {filteredCigares.length} cigare(s) {collectionFilter === 'dans' ? 'dans votre collection' : 'pas encore noté(s)'}
                 </p>
               )}
               
@@ -811,7 +824,7 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
                   <Card 
                     key={cigare.id} 
                     className={`bg-black/40 border-2 transition-all cursor-pointer overflow-hidden ${
-                      !isAdmin && isInMaCollection(cigare.id) 
+                      isInMaCollection(cigare.id) 
                         ? 'border-green-500/50 hover:border-green-400' 
                         : 'border-[#D4A024]/30 hover:border-[#D4A024]'
                     }`}
@@ -820,7 +833,7 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
                   >
                     <CardContent className="p-4">
                       {/* Badge "Dans Ma Cigarthèque" */}
-                      {!isAdmin && isInMaCollection(cigare.id) && (
+                      {isInMaCollection(cigare.id) && (
                         <div className="mb-2">
                           <Badge className="bg-green-600/80 text-white text-xs">
                             <Check className="w-3 h-3 mr-1" />

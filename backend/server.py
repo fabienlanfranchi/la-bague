@@ -3486,8 +3486,8 @@ async def get_cigare_photo(photo_name: str):
 
 
 @api_router.get("/cigares-filtres")
-async def get_cigares_filtres():
-    """Récupérer les options de filtres disponibles"""
+async def get_cigares_filtres(pays: Optional[str] = None):
+    """Récupérer les options de filtres disponibles (marques filtrées par pays si spécifié)"""
     try:
         with get_mysql_connection() as conn:
             cursor = conn.cursor(pymysql.cursors.DictCursor)
@@ -3502,8 +3502,34 @@ async def get_cigares_filtres():
             cursor.execute("SELECT DISTINCT puissance FROM cigares WHERE puissance IS NOT NULL ORDER BY puissance")
             puissances = [row['puissance'] for row in cursor.fetchall()]
             
-            # Marques
-            cursor.execute("SELECT DISTINCT marque FROM cigares WHERE marque IS NOT NULL ORDER BY marque")
+            # Marques - filtrées par pays si spécifié
+            if pays and pays != 'all':
+                # Construire la condition de filtrage par pays
+                if pays == "République dominicaine":
+                    pays_condition = "(pays_fabrication LIKE %s OR pays_fabrication LIKE %s)"
+                    pays_params = ['%dominicain%', '%Rép%dom%']
+                elif pays == "Nicaragua":
+                    pays_condition = "pays_fabrication LIKE %s"
+                    pays_params = ['%Nicaragua%']
+                elif pays == "Honduras":
+                    pays_condition = "pays_fabrication LIKE %s"
+                    pays_params = ['%Honduras%']
+                elif pays == "Cuba":
+                    pays_condition = "pays_fabrication LIKE %s"
+                    pays_params = ['%Cuba%']
+                elif pays == "Costa Rica":
+                    pays_condition = "pays_fabrication LIKE %s"
+                    pays_params = ['%Costa%Rica%']
+                elif pays == "Mexique":
+                    pays_condition = "(pays_fabrication LIKE %s OR pays_fabrication LIKE %s)"
+                    pays_params = ['%Mexique%', '%Mexico%']
+                else:
+                    pays_condition = "pays_fabrication = %s"
+                    pays_params = [pays]
+                
+                cursor.execute(f"SELECT DISTINCT marque FROM cigares WHERE marque IS NOT NULL AND {pays_condition} ORDER BY marque", pays_params)
+            else:
+                cursor.execute("SELECT DISTINCT marque FROM cigares WHERE marque IS NOT NULL ORDER BY marque")
             marques = [row['marque'] for row in cursor.fetchall()]
             
             # Vitoles (modules)
