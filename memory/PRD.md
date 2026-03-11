@@ -13,15 +13,23 @@ Application de gestion complète pour le club de cigares "La Bague Impériale" a
 - **Catalogue** : 657 cigares avec recherche et filtres (Marque, Pays, Puissance, Module, Prix)
   - Bouton "Modifier" (crayon bleu) → Modal d'édition avec tous les champs + **bouton Supprimer**
   - Bouton "Apéro" (verre bordeaux) → Ajoute le cigare à l'Apéro du Club
+  - Bouton "Copier" → Format prêt à coller dans un événement Apéro
 - **Apéro du Club** : Gestion complète (ajouter/supprimer) des cigares fumés lors des événements
 
 #### Vue Membre - 3 onglets :
 - **Catalogue** : Consultation + bouton "+" pour importer vers Ma Cigarthèque
 - **Apéro du Club** : Consultation + bouton "Copier vers Ma Cigarthèque"
 - **Ma Cigarthèque** : Collection personnelle avec :
-  - Bouton "Importer" → Modal de recherche dans Catalogue ou Apéro du Club
-  - Bouton "Fiche vierge" → Créer une fiche à compléter
-  - Notation (étoiles /5) et commentaires personnels
+  - **Filtres** : Recherche, Terroir (pays), Marque, Module
+  - **Tri** : Par Terroir, Par Marque, Par Module (avec groupement visuel)
+  - **Bouton "Ajouter un cigare"** → Recherche dans le catalogue (remplace "Fiche vierge")
+  - **Notation guidée** :
+    - Note globale (sur 5)
+    - Puissance ressentie (sur 5)
+    - Caractère : Évolutif ou Linéaire
+    - Notes libres
+
+**Note importante** : Certaines conclusions de cigares sont tronquées dans la base MySQL source (ex: "Résolument puiss" au lieu de "Résolument puissant"). Ce problème vient de la base originale.
 
 **APIs implémentées :**
 - `PUT /api/cigares/{id}` - Modifier un cigare MySQL (admin)

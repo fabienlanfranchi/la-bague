@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useUser } from '../context/UserContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { 
   Search, 
   Star, 
@@ -39,7 +40,9 @@ import {
   Box,
   Download,
   Save,
-  X
+  X,
+  Filter,
+  SortAsc
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -49,7 +52,6 @@ const API = process.env.REACT_APP_BACKEND_URL + '/api';
 // Fonction pour obtenir l'URL de la photo via le proxy backend
 const getPhotoUrl = (photoPath) => {
   if (!photoPath) return null;
-  // Utiliser le proxy backend pour éviter les problèmes CORS/mixed content
   const photoName = photoPath.replace('./photos_cigares/', '').replace('photos_cigares/', '');
   return `${API}/cigare-photo/${encodeURIComponent(photoName)}`;
 };
@@ -65,7 +67,7 @@ const Cigarotheque = () => {
   const [page, setPage] = useState(0);
   const [filtres, setFiltres] = useState(null);
   
-  // Filtres actifs
+  // Filtres actifs - Catalogue
   const [search, setSearch] = useState('');
   const [marqueFilter, setMarqueFilter] = useState('');
   const [paysFilter, setPaysFilter] = useState('');
@@ -73,6 +75,13 @@ const Cigarotheque = () => {
   const [vitoleFilter, setVitoleFilter] = useState('');
   const [prixMin, setPrixMin] = useState('');
   const [prixMax, setPrixMax] = useState('');
+  
+  // Filtres Ma Cigarthèque
+  const [maCollectionSearch, setMaCollectionSearch] = useState('');
+  const [maCollectionPays, setMaCollectionPays] = useState('');
+  const [maCollectionMarque, setMaCollectionMarque] = useState('');
+  const [maCollectionModule, setMaCollectionModule] = useState('');
+  const [maCollectionTri, setMaCollectionTri] = useState('pays'); // pays, marque, module
   
   // Modal détail
   const [selectedCigare, setSelectedCigare] = useState(null);
@@ -83,12 +92,11 @@ const Cigarotheque = () => {
   const [editData, setEditData] = useState({});
   const [editLoading, setEditLoading] = useState(false);
   
-  // Modal importateur (membre)
-  const [showImportModal, setShowImportModal] = useState(false);
-  const [importSource, setImportSource] = useState('catalogue'); // 'catalogue' ou 'apero'
-  const [importSearch, setImportSearch] = useState('');
-  const [importResults, setImportResults] = useState([]);
-  const [importLoading, setImportLoading] = useState(false);
+  // Modal recherche cigare (pour ajouter à Ma Cigarthèque)
+  const [showSearchModal, setShowSearchModal] = useState(false);
+  const [searchModalQuery, setSearchModalQuery] = useState('');
+  const [searchModalResults, setSearchModalResults] = useState([]);
+  const [searchModalLoading, setSearchModalLoading] = useState(false);
   
   // Ma Cigarthèque
   const [maCigarotheque, setMaCigarotheque] = useState([]);
@@ -96,9 +104,14 @@ const Cigarotheque = () => {
   // Apéro du Club
   const [aperoClub, setAperoClub] = useState([]);
   
-  // Modal notation (Ma Cigarthèque)
+  // Modal notation guidée (Ma Cigarthèque)
   const [showNoteModal, setShowNoteModal] = useState(false);
-  const [noteData, setNoteData] = useState({});
+  const [noteData, setNoteData] = useState({
+    note_globale: '',
+    note_puissance: '',
+    evolution: 'lineaire', // 'evolution' ou 'lineaire'
+    note_libre: ''
+  });
   const [noteCigare, setNoteCigare] = useState(null);
 
   const LIMIT = 20;
@@ -205,6 +218,106 @@ const Cigarotheque = () => {
     }
   };
 
+  // ===== FILTRAGE ET TRI MA CIGARTHÈQUE =====
+  
+  const filteredMaCigarotheque = useMemo(() => {
+    let filtered = [...maCigarotheque];
+    
+    // Filtrer par recherche
+    if (maCollectionSearch) {
+      const searchLower = maCollectionSearch.toLowerCase();
+      filtered = filtered.filter(c => 
+        (c.marque || '').toLowerCase().includes(searchLower) ||
+        (c.gamme || '').toLowerCase().includes(searchLower) ||
+        (c.vitole || '').toLowerCase().includes(searchLower)
+      );
+    }
+    
+    // Filtrer par pays
+    if (maCollectionPays && maCollectionPays !== 'all') {
+      filtered = filtered.filter(c => c.pays === maCollectionPays);
+    }
+    
+    // Filtrer par marque
+    if (maCollectionMarque && maCollectionMarque !== 'all') {
+      filtered = filtered.filter(c => c.marque === maCollectionMarque);
+    }
+    
+    // Filtrer par module
+    if (maCollectionModule && maCollectionModule !== 'all') {
+      filtered = filtered.filter(c => c.vitole === maCollectionModule);
+    }
+    
+    // Trier
+    filtered.sort((a, b) => {
+      switch(maCollectionTri) {
+        case 'pays':
+          return (a.pays || '').localeCompare(b.pays || '');
+        case 'marque':
+          return (a.marque || '').localeCompare(b.marque || '');
+        case 'module':
+          return (a.vitole || '').localeCompare(b.vitole || '');
+        default:
+          return 0;
+      }
+    });
+    
+    return filtered;
+  }, [maCigarotheque, maCollectionSearch, maCollectionPays, maCollectionMarque, maCollectionModule, maCollectionTri]);
+
+  // Extraire les options de filtres de Ma Cigarthèque
+  const maCollectionFilterOptions = useMemo(() => {
+    const pays = [...new Set(maCigarotheque.map(c => c.pays).filter(Boolean))].sort();
+    const marques = [...new Set(maCigarotheque.map(c => c.marque).filter(Boolean))].sort();
+    const modules = [...new Set(maCigarotheque.map(c => c.vitole).filter(Boolean))].sort();
+    return { pays, marques, modules };
+  }, [maCigarotheque]);
+
+  // ===== RECHERCHE DANS LE CATALOGUE (Modal) =====
+  
+  const searchInCatalogue = async () => {
+    if (!searchModalQuery.trim()) return;
+    setSearchModalLoading(true);
+    try {
+      const params = new URLSearchParams();
+      params.append('limit', 20);
+      params.append('search', searchModalQuery);
+      const response = await axios.get(`${API}/cigares?${params}`);
+      setSearchModalResults(response.data.cigares);
+    } catch (error) {
+      toast.error('Erreur lors de la recherche');
+    } finally {
+      setSearchModalLoading(false);
+    }
+  };
+
+  const addToMaCigarothequeFromSearch = async (cigare) => {
+    if (!currentMember?.id) {
+      toast.error('Vous devez être connecté');
+      return;
+    }
+
+    try {
+      await axios.post(`${API}/ma-cigarotheque`, {
+        membre_id: currentMember.id,
+        cigare_id: cigare.id,
+        marque: cigare.marque || 'Inconnu',
+        gamme: cigare.gamme || '',
+        vitole: cigare.vitole_nom || cigare.vitole_type || '',
+        pays: cigare.pays_fabrication || '',
+        puissance: cigare.puissance || '',
+        prix: cigare.prix || null
+      });
+      toast.success('Cigare ajouté à votre Cigarthèque !');
+      loadMaCigarotheque();
+      setShowSearchModal(false);
+      setSearchModalQuery('');
+      setSearchModalResults([]);
+    } catch (error) {
+      toast.error('Erreur lors de l\'ajout');
+    }
+  };
+
   // ===== FONCTIONS POUR MA CIGARTHÈQUE =====
   
   const addToMaCigarotheque = async (cigare, fromApero = false) => {
@@ -274,27 +387,26 @@ const Cigarotheque = () => {
     }
   };
 
-  // ===== FONCTION COPIER FICHE =====
+  // ===== FONCTION COPIER FICHE (Format pour événement Apéro) =====
   
   const copyFicheCigare = (cigare) => {
-    const fiche = `${cigare.marque || ''} ${cigare.gamme || ''} ${cigare.vitole_nom || cigare.vitole || ''}
+    const fiche = `🚬 ${cigare.marque || 'Cigare'} ${cigare.gamme || ''} ${cigare.vitole_nom || cigare.vitole || ''}
 
-Origine: ${cigare.pays_fabrication || cigare.pays || '-'}
-Puissance: ${getPuissanceLabel(cigare.puissance)}
-Note: ${cigare.note_bagues || cigare.note_personnelle || '-'}/5
-Prix: ${cigare.prix || '-'}€
+📍 Origine: ${cigare.pays_fabrication || cigare.pays || '-'}
+💪 Puissance: ${getPuissanceLabel(cigare.puissance)}
+⭐ Note: ${cigare.note_bagues || cigare.note_globale || '-'}/5
+💰 Prix: ${cigare.prix || '-'}€
 
-Format: ${cigare.longueur_mm || '-'}mm x ${cigare.cepo || '-'}
+📏 Format: ${cigare.longueur_mm || '-'}mm x ${cigare.cepo || '-'}
 
-Cape: ${cigare.cape || '-'}
-Sous-cape: ${cigare.sous_cape || '-'}
-Tripe: ${cigare.tripe || '-'}
+🍂 Cape: ${cigare.cape || '-'}
+🍂 Sous-cape: ${cigare.sous_cape || '-'}
+🍂 Tripe: ${cigare.tripe || '-'}
 
-${cigare.conclusion ? `Conclusion: ${cigare.conclusion}` : ''}
-${cigare.commentaire ? `Mon commentaire: ${cigare.commentaire}` : ''}`.trim();
+${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
 
     navigator.clipboard.writeText(fiche);
-    toast.success('Fiche copiée !');
+    toast.success('Fiche copiée ! Prête à coller dans un événement Apéro');
   };
 
   // ===== MODAL ÉDITION ADMIN =====
@@ -357,23 +469,60 @@ ${cigare.commentaire ? `Mon commentaire: ${cigare.commentaire}` : ''}`.trim();
     }
   };
 
-  // ===== MODAL NOTATION (MA CIGARTHÈQUE) =====
+  // ===== MODAL NOTATION GUIDÉE (MA CIGARTHÈQUE) =====
   
   const openNoteModal = (cigare) => {
     setNoteCigare(cigare);
+    // Parser les notes existantes si elles existent
+    const existingNote = cigare.note_personnelle || '';
+    const existingComment = cigare.commentaire || '';
+    
+    // Essayer de parser le commentaire structuré
+    let notePuissance = '';
+    let evolution = 'lineaire';
+    let noteLibre = existingComment;
+    
+    if (existingComment.includes('Puissance:')) {
+      const match = existingComment.match(/Puissance:\s*(\d+(?:\.\d+)?)/);
+      if (match) notePuissance = match[1];
+    }
+    if (existingComment.includes('Évolution')) {
+      evolution = 'evolution';
+    }
+    if (existingComment.includes('Linéaire')) {
+      evolution = 'lineaire';
+    }
+    // Extraire la note libre
+    const noteLibreMatch = existingComment.match(/Notes?:\s*(.+)/i);
+    if (noteLibreMatch) noteLibre = noteLibreMatch[1];
+    
     setNoteData({
-      note_personnelle: cigare.note_personnelle || '',
-      commentaire: cigare.commentaire || ''
+      note_globale: existingNote ? String(existingNote) : '',
+      note_puissance: notePuissance,
+      evolution: evolution,
+      note_libre: noteLibre.replace(/Puissance:.*?(\d+(?:\.\d+)?\/5)?/g, '').replace(/Évolution|Linéaire/g, '').trim()
     });
     setShowNoteModal(true);
   };
 
   const handleSaveNote = async () => {
     try {
+      // Construire le commentaire structuré
+      const commentParts = [];
+      if (noteData.note_puissance) {
+        commentParts.push(`Puissance: ${noteData.note_puissance}/5`);
+      }
+      commentParts.push(noteData.evolution === 'evolution' ? 'Évolution' : 'Linéaire');
+      if (noteData.note_libre) {
+        commentParts.push(`Notes: ${noteData.note_libre}`);
+      }
+      
+      const commentaire = commentParts.join(' | ');
+      
       await axios.put(`${API}/ma-cigarotheque/${noteCigare.id}`, null, {
         params: {
-          note: noteData.note_personnelle ? parseFloat(noteData.note_personnelle) : null,
-          commentaire: noteData.commentaire || null
+          note: noteData.note_globale ? parseFloat(noteData.note_globale) : null,
+          commentaire: commentaire || null
         }
       });
       toast.success('Notes enregistrées !');
@@ -381,67 +530,6 @@ ${cigare.commentaire ? `Mon commentaire: ${cigare.commentaire}` : ''}`.trim();
       loadMaCigarotheque();
     } catch (error) {
       toast.error('Erreur lors de l\'enregistrement');
-    }
-  };
-
-  // ===== MODAL IMPORTATEUR =====
-  
-  const searchImport = async () => {
-    if (!importSearch.trim()) return;
-    setImportLoading(true);
-    
-    try {
-      if (importSource === 'catalogue') {
-        const params = new URLSearchParams();
-        params.append('limit', 20);
-        params.append('search', importSearch);
-        const response = await axios.get(`${API}/cigares?${params}`);
-        setImportResults(response.data.cigares);
-      } else {
-        // Filtrer localement dans aperoClub
-        const filtered = aperoClub.filter(c => 
-          (c.marque || '').toLowerCase().includes(importSearch.toLowerCase()) ||
-          (c.gamme || '').toLowerCase().includes(importSearch.toLowerCase())
-        );
-        setImportResults(filtered);
-      }
-    } catch (error) {
-      toast.error('Erreur lors de la recherche');
-    } finally {
-      setImportLoading(false);
-    }
-  };
-
-  const handleImport = async (cigare) => {
-    await addToMaCigarotheque(cigare, importSource === 'apero');
-    setShowImportModal(false);
-    setImportSearch('');
-    setImportResults([]);
-  };
-
-  // ===== CRÉER FICHE VIERGE =====
-  
-  const createBlankFiche = async () => {
-    if (!currentMember?.id) {
-      toast.error('Vous devez être connecté');
-      return;
-    }
-    
-    try {
-      await axios.post(`${API}/ma-cigarotheque`, {
-        membre_id: currentMember.id,
-        cigare_id: null,
-        marque: 'À compléter',
-        gamme: '',
-        vitole: '',
-        pays: '',
-        puissance: '',
-        prix: null
-      });
-      toast.success('Fiche vierge créée !');
-      loadMaCigarotheque();
-    } catch (error) {
-      toast.error('Erreur lors de la création');
     }
   };
 
@@ -462,6 +550,30 @@ ${cigare.commentaire ? `Mon commentaire: ${cigare.commentaire}` : ''}`.trim();
       ];
     }
   };
+
+  // Grouper les cigares de Ma Cigarthèque par la clé de tri
+  const groupedMaCigarotheque = useMemo(() => {
+    const groups = {};
+    filteredMaCigarotheque.forEach(cigare => {
+      let key;
+      switch(maCollectionTri) {
+        case 'pays':
+          key = cigare.pays || 'Non défini';
+          break;
+        case 'marque':
+          key = cigare.marque || 'Sans marque';
+          break;
+        case 'module':
+          key = cigare.vitole || 'Non défini';
+          break;
+        default:
+          key = 'Tous';
+      }
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(cigare);
+    });
+    return groups;
+  }, [filteredMaCigarotheque, maCollectionTri]);
 
   return (
     <div className="space-y-6">
@@ -758,6 +870,7 @@ ${cigare.commentaire ? `Mon commentaire: ${cigare.commentaire}` : ''}`.trim();
                           size="sm"
                           onClick={() => copyFicheCigare(cigare)}
                           className="text-[#D4A024]"
+                          title="Copier la fiche (pour événement Apéro)"
                           data-testid={`copy-apero-btn-${cigare.id}`}
                         >
                           <Copy className="w-5 h-5" />
@@ -807,87 +920,182 @@ ${cigare.commentaire ? `Mon commentaire: ${cigare.commentaire}` : ''}`.trim();
                     </CardTitle>
                     <p className="text-gray-400">{maCigarotheque.length} cigare(s) dans votre collection</p>
                   </div>
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => setShowImportModal(true)}
-                      className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020]"
-                      data-testid="import-cigare-btn"
-                    >
-                      <Download className="w-4 h-4 mr-2" />
-                      Importer
-                    </Button>
-                    <Button
-                      onClick={createBlankFiche}
-                      variant="outline"
-                      className="border-[#D4A024] text-[#D4A024]"
-                      data-testid="create-blank-btn"
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Fiche vierge
-                    </Button>
-                  </div>
+                  <Button
+                    onClick={() => setShowSearchModal(true)}
+                    className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020]"
+                    data-testid="add-cigare-btn"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Ajouter un cigare
+                  </Button>
                 </div>
               </CardHeader>
-              <CardContent>
-                {maCigarotheque.length === 0 ? (
+              <CardContent className="space-y-4">
+                {/* Filtres et Tri pour Ma Cigarthèque */}
+                <div className="bg-black/30 rounded-lg p-4 space-y-4">
+                  <div className="flex items-center gap-2 text-[#D4A024] mb-2">
+                    <Filter className="w-5 h-5" />
+                    <span className="font-semibold">Filtres et Tri</span>
+                  </div>
+                  
+                  {/* Recherche */}
+                  <div className="relative">
+                    <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                    <Input
+                      value={maCollectionSearch}
+                      onChange={(e) => setMaCollectionSearch(e.target.value)}
+                      placeholder="Rechercher..."
+                      className="pl-10 bg-black/60 border-[#D4A024]/30 text-white"
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {/* Tri par */}
+                    <Select value={maCollectionTri} onValueChange={setMaCollectionTri}>
+                      <SelectTrigger className="bg-black/60 border-[#D4A024]/30 text-white">
+                        <SortAsc className="w-4 h-4 mr-2 text-[#D4A024]" />
+                        <SelectValue placeholder="Trier par" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#1a1a1a] border-[#D4A024]/30">
+                        <SelectItem value="pays" className="text-white">Par Terroir</SelectItem>
+                        <SelectItem value="marque" className="text-white">Par Marque</SelectItem>
+                        <SelectItem value="module" className="text-white">Par Module</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    
+                    {/* Filtre Pays */}
+                    <Select value={maCollectionPays} onValueChange={setMaCollectionPays}>
+                      <SelectTrigger className="bg-black/60 border-[#D4A024]/30 text-white">
+                        <MapPin className="w-4 h-4 mr-2 text-[#D4A024]" />
+                        <SelectValue placeholder="Terroir" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#1a1a1a] border-[#D4A024]/30">
+                        <SelectItem value="all" className="text-gray-400">Tous</SelectItem>
+                        {maCollectionFilterOptions.pays.map(p => (
+                          <SelectItem key={p} value={p} className="text-white">{p}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    
+                    {/* Filtre Marque */}
+                    <Select value={maCollectionMarque} onValueChange={setMaCollectionMarque}>
+                      <SelectTrigger className="bg-black/60 border-[#D4A024]/30 text-white">
+                        <SelectValue placeholder="Marque" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#1a1a1a] border-[#D4A024]/30 max-h-[200px]">
+                        <SelectItem value="all" className="text-gray-400">Toutes</SelectItem>
+                        {maCollectionFilterOptions.marques.map(m => (
+                          <SelectItem key={m} value={m} className="text-white">{m}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    
+                    {/* Filtre Module */}
+                    <Select value={maCollectionModule} onValueChange={setMaCollectionModule}>
+                      <SelectTrigger className="bg-black/60 border-[#D4A024]/30 text-white">
+                        <Box className="w-4 h-4 mr-2 text-[#D4A024]" />
+                        <SelectValue placeholder="Module" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#1a1a1a] border-[#D4A024]/30 max-h-[200px]">
+                        <SelectItem value="all" className="text-gray-400">Tous</SelectItem>
+                        {maCollectionFilterOptions.modules.map(m => (
+                          <SelectItem key={m} value={m} className="text-white">{m}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Liste groupée */}
+                {filteredMaCigarotheque.length === 0 ? (
                   <div className="text-center py-8">
                     <BookOpen className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-                    <p className="text-gray-400">Votre collection est vide</p>
+                    <p className="text-gray-400">
+                      {maCigarotheque.length === 0 
+                        ? 'Votre collection est vide' 
+                        : 'Aucun cigare ne correspond aux filtres'}
+                    </p>
                     <p className="text-gray-500 text-sm mt-2">
-                      Importez des cigares depuis le catalogue ou créez une fiche vierge
+                      Cliquez sur "Ajouter un cigare" pour rechercher dans le catalogue
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-3">
-                    {maCigarotheque.map((cigare) => (
-                      <div key={cigare.id} className="flex items-center justify-between p-4 bg-black/40 rounded-lg border border-[#D4A024]/20" data-testid={`collection-item-${cigare.id}`}>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="text-white font-semibold text-lg">{cigare.marque} {cigare.gamme || ''}</h4>
-                          <p className="text-gray-400">{cigare.vitole || ''}</p>
-                          {cigare.note_personnelle && (
-                            <div className="flex items-center mt-2">
-                              <Star className="w-4 h-4 text-[#D4A024] mr-1" />
-                              <span className="text-[#D4A024] font-bold">{cigare.note_personnelle}/5</span>
-                              {cigare.commentaire && (
-                                <span className="text-gray-400 text-sm ml-3 truncate max-w-[200px]">"{cigare.commentaire}"</span>
-                              )}
+                  <div className="space-y-6">
+                    {Object.entries(groupedMaCigarotheque).map(([groupName, groupCigares]) => (
+                      <div key={groupName}>
+                        <h3 className="text-[#D4A024] font-serif font-bold text-xl mb-3 border-b border-[#D4A024]/30 pb-2">
+                          {groupName} ({groupCigares.length})
+                        </h3>
+                        <div className="space-y-3">
+                          {groupCigares.map((cigare) => (
+                            <div key={cigare.id} className="flex items-center justify-between p-4 bg-black/40 rounded-lg border border-[#D4A024]/20" data-testid={`collection-item-${cigare.id}`}>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="text-white font-semibold text-lg">{cigare.marque} {cigare.gamme || ''}</h4>
+                                <p className="text-gray-400">{cigare.vitole || ''}</p>
+                                {cigare.note_personnelle && (
+                                  <div className="flex items-center mt-2 flex-wrap gap-2">
+                                    <Badge className="bg-[#D4A024] text-[#7A2020]">
+                                      <Star className="w-3 h-3 mr-1" />
+                                      {cigare.note_personnelle}/5
+                                    </Badge>
+                                    {cigare.commentaire && cigare.commentaire.includes('Puissance:') && (
+                                      <Badge variant="outline" className="border-orange-500/50 text-orange-400">
+                                        <Flame className="w-3 h-3 mr-1" />
+                                        {cigare.commentaire.match(/Puissance:\s*(\d+(?:\.\d+)?)/)?.[1]}/5
+                                      </Badge>
+                                    )}
+                                    {cigare.commentaire && cigare.commentaire.includes('Évolution') && (
+                                      <Badge variant="outline" className="border-blue-500/50 text-blue-400">Évolution</Badge>
+                                    )}
+                                    {cigare.commentaire && cigare.commentaire.includes('Linéaire') && (
+                                      <Badge variant="outline" className="border-green-500/50 text-green-400">Linéaire</Badge>
+                                    )}
+                                  </div>
+                                )}
+                                {cigare.commentaire && cigare.commentaire.includes('Notes:') && (
+                                  <p className="text-gray-400 text-sm mt-1 italic">
+                                    "{cigare.commentaire.match(/Notes:\s*(.+)/)?.[1] || ''}"
+                                  </p>
+                                )}
+                                {!cigare.note_personnelle && (
+                                  <Badge variant="outline" className="mt-2 border-gray-600 text-gray-500">
+                                    Non noté
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="flex gap-2 ml-4">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => openNoteModal(cigare)}
+                                  className="text-[#D4A024]"
+                                  title="Noter ce cigare"
+                                  data-testid={`note-btn-${cigare.id}`}
+                                >
+                                  <Edit3 className="w-5 h-5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => copyFicheCigare(cigare)}
+                                  className="text-[#D4A024]"
+                                  title="Copier la fiche"
+                                  data-testid={`copy-collection-btn-${cigare.id}`}
+                                >
+                                  <Copy className="w-5 h-5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => deleteFromMaCigarotheque(cigare.id)}
+                                  className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                                  data-testid={`delete-collection-btn-${cigare.id}`}
+                                >
+                                  <Trash2 className="w-5 h-5" />
+                                </Button>
+                              </div>
                             </div>
-                          )}
-                          {!cigare.note_personnelle && (
-                            <Badge variant="outline" className="mt-2 border-gray-600 text-gray-500">
-                              Non noté
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="flex gap-2 ml-4">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openNoteModal(cigare)}
-                            className="text-[#D4A024]"
-                            title="Noter ce cigare"
-                            data-testid={`note-btn-${cigare.id}`}
-                          >
-                            <Edit3 className="w-5 h-5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => copyFicheCigare(cigare)}
-                            className="text-[#D4A024]"
-                            data-testid={`copy-collection-btn-${cigare.id}`}
-                          >
-                            <Copy className="w-5 h-5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => deleteFromMaCigarotheque(cigare.id)}
-                            className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
-                            data-testid={`delete-collection-btn-${cigare.id}`}
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </Button>
+                          ))}
                         </div>
                       </div>
                     ))}
@@ -1180,7 +1388,7 @@ ${cigare.commentaire ? `Mon commentaire: ${cigare.commentaire}` : ''}`.trim();
         </DialogContent>
       </Dialog>
 
-      {/* ==================== MODAL NOTATION (MA CIGARTHÈQUE) ==================== */}
+      {/* ==================== MODAL NOTATION GUIDÉE (MA CIGARTHÈQUE) ==================== */}
       <Dialog open={showNoteModal} onOpenChange={setShowNoteModal}>
         <DialogContent className="max-w-md bg-[#1a1a1a] border-[#D4A024]/50">
           <DialogHeader>
@@ -1193,30 +1401,73 @@ ${cigare.commentaire ? `Mon commentaire: ${cigare.commentaire}` : ''}`.trim();
             )}
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
+          <div className="space-y-5 py-4">
+            {/* Note globale */}
             <div>
-              <Label className="text-gray-300">Ma note (sur 5)</Label>
+              <Label className="text-gray-300 flex items-center gap-2">
+                <Star className="w-4 h-4 text-[#D4A024]" />
+                Note globale (sur 5)
+              </Label>
               <Input
                 type="number"
                 step="0.5"
                 min="0"
                 max="5"
-                value={noteData.note_personnelle || ''}
-                onChange={(e) => setNoteData({...noteData, note_personnelle: e.target.value})}
+                value={noteData.note_globale || ''}
+                onChange={(e) => setNoteData({...noteData, note_globale: e.target.value})}
                 className="bg-black/60 border-[#D4A024]/30 text-white mt-1 text-lg h-12"
                 placeholder="Ex: 4.5"
-                data-testid="note-input"
+                data-testid="note-globale-input"
               />
             </div>
 
+            {/* Puissance ressentie */}
             <div>
-              <Label className="text-gray-300">Mon commentaire</Label>
+              <Label className="text-gray-300 flex items-center gap-2">
+                <Flame className="w-4 h-4 text-orange-400" />
+                Puissance ressentie (sur 5)
+              </Label>
+              <Input
+                type="number"
+                step="0.5"
+                min="0"
+                max="5"
+                value={noteData.note_puissance || ''}
+                onChange={(e) => setNoteData({...noteData, note_puissance: e.target.value})}
+                className="bg-black/60 border-[#D4A024]/30 text-white mt-1 text-lg h-12"
+                placeholder="Ex: 3"
+                data-testid="note-puissance-input"
+              />
+            </div>
+
+            {/* Évolution ou Linéaire */}
+            <div>
+              <Label className="text-gray-300 mb-2 block">Caractère du cigare</Label>
+              <RadioGroup 
+                value={noteData.evolution} 
+                onValueChange={(v) => setNoteData({...noteData, evolution: v})}
+                className="flex gap-4"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="evolution" id="evolution" className="border-[#D4A024] text-[#D4A024]" />
+                  <Label htmlFor="evolution" className="text-white cursor-pointer">Évolutif</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="lineaire" id="lineaire" className="border-[#D4A024] text-[#D4A024]" />
+                  <Label htmlFor="lineaire" className="text-white cursor-pointer">Linéaire</Label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            {/* Note libre */}
+            <div>
+              <Label className="text-gray-300">Notes libres</Label>
               <Textarea
-                value={noteData.commentaire || ''}
-                onChange={(e) => setNoteData({...noteData, commentaire: e.target.value})}
+                value={noteData.note_libre || ''}
+                onChange={(e) => setNoteData({...noteData, note_libre: e.target.value})}
                 className="bg-black/60 border-[#D4A024]/30 text-white mt-1 min-h-[100px]"
-                placeholder="Arômes, tirage, construction, ressenti général..."
-                data-testid="comment-input"
+                placeholder="Arômes perçus, accords, impressions générales..."
+                data-testid="note-libre-input"
               />
             </div>
           </div>
@@ -1233,81 +1484,75 @@ ${cigare.commentaire ? `Mon commentaire: ${cigare.commentaire}` : ''}`.trim();
         </DialogContent>
       </Dialog>
 
-      {/* ==================== MODAL IMPORTATEUR ==================== */}
-      <Dialog open={showImportModal} onOpenChange={setShowImportModal}>
+      {/* ==================== MODAL RECHERCHE CIGARE (Ajouter à Ma Cigarthèque) ==================== */}
+      <Dialog open={showSearchModal} onOpenChange={setShowSearchModal}>
         <DialogContent className="max-w-2xl bg-[#1a1a1a] border-[#D4A024]/50 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl font-serif text-white flex items-center">
-              <Download className="w-5 h-5 mr-2 text-[#D4A024]" />
-              Importer un cigare
+              <Search className="w-5 h-5 mr-2 text-[#D4A024]" />
+              Rechercher un cigare
             </DialogTitle>
+            <p className="text-gray-400">Trouvez un cigare dans le catalogue pour l'ajouter à votre collection</p>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            {/* Sélection de la source */}
-            <div className="flex gap-4">
-              <Button
-                variant={importSource === 'catalogue' ? 'default' : 'outline'}
-                onClick={() => { setImportSource('catalogue'); setImportResults([]); }}
-                className={importSource === 'catalogue' ? 'bg-[#D4A024] text-[#7A2020]' : 'border-[#D4A024]/50 text-[#D4A024]'}
-              >
-                <BookOpen className="w-4 h-4 mr-2" />
-                Catalogue
-              </Button>
-              <Button
-                variant={importSource === 'apero' ? 'default' : 'outline'}
-                onClick={() => { setImportSource('apero'); setImportResults([]); }}
-                className={importSource === 'apero' ? 'bg-[#D4A024] text-[#7A2020]' : 'border-[#D4A024]/50 text-[#D4A024]'}
-              >
-                <Wine className="w-4 h-4 mr-2" />
-                Apéro du Club
-              </Button>
-            </div>
-
             {/* Recherche */}
             <div className="flex gap-2">
               <Input
-                value={importSearch}
-                onChange={(e) => setImportSearch(e.target.value)}
-                placeholder="Rechercher par marque, gamme..."
+                value={searchModalQuery}
+                onChange={(e) => setSearchModalQuery(e.target.value)}
+                placeholder="Tapez un nom de marque ou de cigare..."
                 className="bg-black/60 border-[#D4A024]/30 text-white"
-                onKeyDown={(e) => e.key === 'Enter' && searchImport()}
-                data-testid="import-search"
+                onKeyDown={(e) => e.key === 'Enter' && searchInCatalogue()}
+                data-testid="search-modal-input"
+                autoFocus
               />
-              <Button onClick={searchImport} disabled={importLoading} className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020]">
+              <Button onClick={searchInCatalogue} disabled={searchModalLoading} className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020]">
                 <Search className="w-4 h-4" />
               </Button>
             </div>
 
             {/* Résultats */}
-            {importLoading ? (
+            {searchModalLoading ? (
               <div className="text-center py-8">
                 <div className="animate-spin w-6 h-6 border-2 border-[#D4A024] border-t-transparent rounded-full mx-auto"></div>
               </div>
-            ) : importResults.length > 0 ? (
-              <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                {importResults.map((cigare, index) => (
+            ) : searchModalResults.length > 0 ? (
+              <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                {searchModalResults.map((cigare) => (
                   <div 
-                    key={cigare.id || index}
-                    className="flex items-center justify-between p-3 bg-black/40 rounded-lg border border-[#D4A024]/20 hover:border-[#D4A024] cursor-pointer"
-                    onClick={() => handleImport(cigare)}
-                    data-testid={`import-result-${index}`}
+                    key={cigare.id}
+                    className="flex items-center justify-between p-3 bg-black/40 rounded-lg border border-[#D4A024]/20 hover:border-[#D4A024] cursor-pointer transition-all"
+                    onClick={() => addToMaCigarothequeFromSearch(cigare)}
+                    data-testid={`search-result-${cigare.id}`}
                   >
-                    <div>
+                    <div className="flex-1 min-w-0">
                       <p className="text-white font-medium">{cigare.marque || 'Sans marque'} {cigare.gamme || ''}</p>
-                      <p className="text-gray-400 text-sm">{cigare.vitole_nom || cigare.vitole || ''}</p>
+                      <p className="text-gray-400 text-sm">{cigare.vitole_nom || ''}</p>
+                      <div className="flex gap-2 mt-1">
+                        {cigare.pays_fabrication && (
+                          <Badge variant="outline" className="border-[#D4A024]/30 text-gray-400 text-xs">
+                            {cigare.pays_fabrication}
+                          </Badge>
+                        )}
+                        {cigare.prix && (
+                          <Badge variant="outline" className="border-green-500/30 text-green-400 text-xs">
+                            {cigare.prix}€
+                          </Badge>
+                        )}
+                      </div>
                     </div>
-                    <Plus className="w-5 h-5 text-[#D4A024]" />
+                    <Plus className="w-6 h-6 text-[#D4A024] shrink-0 ml-4" />
                   </div>
                 ))}
               </div>
-            ) : importSearch && (
-              <p className="text-gray-400 text-center py-4">Aucun résultat trouvé</p>
+            ) : searchModalQuery && (
+              <p className="text-gray-400 text-center py-4">Aucun résultat. Essayez un autre terme.</p>
             )}
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowImportModal(false)} className="border-gray-600 text-gray-400">
+            <Button variant="outline" onClick={() => { setShowSearchModal(false); setSearchModalQuery(''); setSearchModalResults([]); }} className="border-gray-600 text-gray-400">
               Fermer
             </Button>
           </DialogFooter>
