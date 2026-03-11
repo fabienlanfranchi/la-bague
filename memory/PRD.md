@@ -59,12 +59,13 @@ Application de gestion complète pour le club de cigares "La Bague Impériale" a
 
 ### P0 - Terminé ✅
 - [x] Fonction "Modifier" cigare (admin) - Modal complet avec tous les champs
+- [x] Fonction "Supprimer" cigare (admin) - Bouton dans le modal d'édition
+- [x] **Affichage des photos** - Photos sur les cartes et dans le modal de détail
 - [x] Structure des onglets selon le rôle (admin vs membre)
 - [x] Importateur de cigares vers Ma Cigarthèque
 - [x] Système de notation et commentaires personnels
 
 ### P1 - À faire
-- [ ] Afficher les photos des cigares (besoin URL du serveur PHP de l'utilisateur)
 - [ ] Assistant IA Claude (playbook disponible)
 - [ ] Refonte page Messages admin
 
@@ -82,7 +83,8 @@ Application de gestion complète pour le club de cigares "La Bague Impériale" a
 - User: cigare20
 - Database: CIGARE
 - Table: cigares (657 entrées)
-- Colonne photo: ./photos_cigares/... (653 cigares avec photo)
+- Colonne photo: `./photos_cigares/...` → URL complète: `https://51.68.122.192/cigares/photos_cigares/...`
+- ~650 cigares ont une photo (préfixes: `cig1004_` pour Cigaroscope, `hav1005_` pour Havanoscope)
 
 ### Comptes Admin
 - Fabien Lanfranchi (n°1): fabienlanfranchi@yahoo.fr / fabienlanfranchi01
