@@ -147,11 +147,11 @@ const Cigarotheque = () => {
   useEffect(() => {
     loadFiltres();
     loadAperoClub();
-    // Charger Ma Cigarthèque pour TOUS les utilisateurs (pour le badge dans le catalogue)
-    if (currentMember?.id) {
+    // Charger Ma Cigarthèque uniquement pour les membres (pas l'admin)
+    if (!isAdmin && currentMember?.id) {
       loadMaCigarotheque();
     }
-  }, [currentMember?.id]);
+  }, [isAdmin, currentMember?.id]);
 
   const loadFiltres = async (paysSelected = '') => {
     try {
@@ -810,8 +810,8 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
                     </SelectContent>
                   </Select>
 
-                  {/* Filtre Ma Collection (pour tous les utilisateurs avec une collection) */}
-                  {maCigarotheque.length > 0 && (
+                  {/* Filtre Ma Collection (membres seulement, pas l'admin) */}
+                  {!isAdmin && maCigarotheque.length > 0 && (
                     <Select value={collectionFilter} onValueChange={setCollectionFilter}>
                       <SelectTrigger className="bg-black/60 border-[#D4A024]/30 text-white h-12" data-testid="filter-collection">
                         <User className="w-4 h-4 mr-2 text-[#D4A024]" />
@@ -879,7 +879,7 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
                   <Card 
                     key={cigare.id} 
                     className={`bg-black/40 border-2 transition-all cursor-pointer overflow-hidden ${
-                      isInMaCollection(cigare.id) 
+                      !isAdmin && isInMaCollection(cigare.id) 
                         ? 'border-green-500/50 hover:border-green-400' 
                         : 'border-[#D4A024]/30 hover:border-[#D4A024]'
                     }`}
@@ -887,8 +887,8 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
                     data-testid={`cigare-card-${cigare.id}`}
                   >
                     <CardContent className="p-4">
-                      {/* Badge "Dans Ma Cigarthèque" */}
-                      {isInMaCollection(cigare.id) && (
+                      {/* Badge "Dans Ma Cigarthèque" (membres seulement) */}
+                      {!isAdmin && isInMaCollection(cigare.id) && (
                         <div className="mb-2">
                           <Badge className="bg-green-600/80 text-white text-xs">
                             <Check className="w-3 h-3 mr-1" />
