@@ -3315,8 +3315,26 @@ async def get_cigares(
                 if marque == "__NULL__":
                     query += " AND (marque IS NULL OR marque = '')"
                 else:
-                    query += " AND marque = %s"
-                    params.append(marque)
+                    # Recherche par marque normalisée (inclut les LIGNE et variantes)
+                    # Trouver toutes les marques originales qui correspondent à cette marque normalisée
+                    marques_originales = [marque]  # La marque elle-même
+                    
+                    # Ajouter les variantes LIGNE correspondantes
+                    for ligne, vraie_marque in LIGNE_TO_MARQUE.items():
+                        if vraie_marque.upper() == marque.upper():
+                            marques_originales.append(ligne)
+                    
+                    # Ajouter COHIBA BEHIKE si on cherche COHIBA
+                    if marque.upper() == 'COHIBA':
+                        marques_originales.append('COHIBA BEHIKE')
+                    
+                    if len(marques_originales) == 1:
+                        query += " AND marque = %s"
+                        params.append(marque)
+                    else:
+                        placeholders = ', '.join(['%s'] * len(marques_originales))
+                        query += f" AND marque IN ({placeholders})"
+                        params.extend(marques_originales)
             
             if pays:
                 # Recherche par pays normalisé (inclut les variantes)
@@ -3378,6 +3396,12 @@ async def get_cigares(
             cursor.execute(query, params)
             cigares = cursor.fetchall()
             
+            # Ajouter les noms d'affichage normalisés pour chaque cigare
+            for cigare in cigares:
+                marque_display, gamme_display = get_marque_display(cigare.get('marque'), cigare.get('gamme'))
+                cigare['marque_display'] = marque_display
+                cigare['gamme_display'] = gamme_display
+            
             return {
                 "cigares": cigares,
                 "total": total,
@@ -3399,6 +3423,11 @@ async def get_cigare_detail(cigare_id: int):
             
             if not cigare:
                 raise HTTPException(status_code=404, detail="Cigare non trouvé")
+            
+            # Ajouter les noms d'affichage normalisés
+            marque_display, gamme_display = get_marque_display(cigare.get('marque'), cigare.get('gamme'))
+            cigare['marque_display'] = marque_display
+            cigare['gamme_display'] = gamme_display
             
             return cigare
     except HTTPException:
@@ -3438,6 +3467,111 @@ def normalize_pays(pays_raw):
     # Mexique
     if 'mexique' in pays_lower or 'mexico' in pays_lower:
         return 'Mexique'
+
+
+# Mapping des lignes vers leurs vraies marques
+LIGNE_TO_MARQUE = {
+    'LIGNE CHURCHILL': 'ROMEO Y JULIETA',
+    'LIGNE LINEA DE ORO': 'ROMEO Y JULIETA',
+    'LIGNE BEHIKE': 'COHIBA',
+    'LIGNE EDMUNDO': 'MONTECRISTO',
+    'LIGNE OPEN': 'MONTECRISTO',
+    'LIGNE EPICURE': 'HOYO DE MONTERREY',
+    'LIGNE LE HOYO': 'HOYO DE MONTERREY',
+    'LIGNE LINEA MAESTRA': 'PARTAGÁS',
+    'LIGNE MADURO': 'PARTAGÁS',
+    'LIGNE SERIE': 'PARTAGÁS',
+    'LIGNE MAGNUM': 'H. UPMANN',
+    'COHIBA BEHIKE': 'COHIBA',
+}
+
+# Normalisation des marques (variantes d'orthographe)
+# Les clés doivent être en MAJUSCULES avec apostrophe droite (')
+MARQUE_NORMALIZATION = {
+    'H.UPMANN': 'H. UPMANN',
+    'HOYO DE': 'HOYO DE MONTERREY',
+    'LA FLOR': 'LA FLOR DE CANO',
+    'LA GLORIA': 'LA GLORIA CUBANA',
+    'POR': 'POR LARRAÑAGA',
+    'QUAI': "QUAI D'ORSAY",
+    "QUAI D'ORSAY": "QUAI D'ORSAY",  # apostrophe droite
+    'RAFAEL': 'RAFAEL GONZÁLEZ',
+    'RAMÓN': 'RAMÓN ALLONES',
+    'SAN': 'SAN CRISTÓBAL',
+    'SANCHO': 'SANCHO PANZA',
+    'VEGAS': 'VEGAS ROBAINA',
+    'JOSÉ': 'JOSÉ L. PIEDRA',
+    'JUAN': 'JUAN LÓPEZ',
+    'EL REY': 'EL REY DEL MUNDO',
+    'DEUX BOLÍVAR': 'BOLÍVAR',
+}
+
+
+def normalize_marque(marque_raw, gamme=None):
+    """Normalise les noms de marques pour regrouper les lignes sous leur vraie marque"""
+    if not marque_raw:
+        return None
+    
+    # Normaliser les apostrophes (typographique → droite)
+    # U+2019 = ' (RIGHT SINGLE QUOTATION MARK)
+    # U+2018 = ' (LEFT SINGLE QUOTATION MARK)
+    marque_clean = marque_raw.replace('\u2019', "'").replace('\u2018', "'")
+    marque_upper = marque_clean.upper().strip()
+    
+    # Vérifier si c'est une LIGNE ou une variante connue
+    if marque_upper in LIGNE_TO_MARQUE:
+        return LIGNE_TO_MARQUE[marque_upper]
+    
+    # Vérifier les variantes d'orthographe
+    if marque_upper in MARQUE_NORMALIZATION:
+        return MARQUE_NORMALIZATION[marque_upper]
+    
+    # Normalisation des marques avec espace manquant ou en trop
+    for variant, normalized in MARQUE_NORMALIZATION.items():
+        if marque_upper == variant.upper():
+            return normalized
+    
+    # Si la marque commence par LIGNE et qu'on a une gamme, utiliser la gamme comme marque
+    if marque_upper.startswith('LIGNE ') and gamme:
+        # La gamme contient souvent la vraie marque
+        gamme_clean = gamme.upper().strip()
+        if 'HOYO DE MONTERREY' in gamme_clean:
+            return 'HOYO DE MONTERREY'
+        if 'PARTAGÁS' in gamme_clean or 'PARTAGAS' in gamme_clean:
+            return 'PARTAGÁS'
+        if 'MONTECRISTO' in gamme_clean:
+            return 'MONTECRISTO'
+        if 'COHIBA' in gamme_clean:
+            return 'COHIBA'
+        if 'ROMEO' in gamme_clean or 'JULIETA' in gamme_clean:
+            return 'ROMEO Y JULIETA'
+        if 'H. UPMANN' in gamme_clean or 'UPMANN' in gamme_clean:
+            return 'H. UPMANN'
+    
+    # Retourner la version nettoyée (apostrophes normalisées)
+    return marque_clean
+
+
+def get_marque_display(marque_raw, gamme=None):
+    """Retourne le nom d'affichage de la marque (ex: ROMEO Y JULIETA - Ligne Churchill)"""
+    if not marque_raw:
+        return None, None
+    
+    marque_upper = marque_raw.upper().strip()
+    
+    # Si c'est une LIGNE, retourner la vraie marque + le nom de la ligne
+    if marque_upper in LIGNE_TO_MARQUE:
+        vraie_marque = LIGNE_TO_MARQUE[marque_upper]
+        ligne_name = marque_raw.replace('LIGNE ', '').replace('Ligne ', '').title()
+        return vraie_marque, f"Ligne {ligne_name}"
+    
+    if marque_upper.startswith('LIGNE '):
+        vraie_marque = normalize_marque(marque_raw, gamme)
+        if vraie_marque and vraie_marque != marque_raw:
+            ligne_name = marque_raw.replace('LIGNE ', '').replace('Ligne ', '').title()
+            return vraie_marque, f"Ligne {ligne_name}"
+    
+    return marque_raw, gamme
     
     # Équateur
     if 'équateur' in pays_lower or 'equateur' in pays_lower or 'ecuador' in pays_lower:
@@ -3502,7 +3636,7 @@ async def get_cigares_filtres(pays: Optional[str] = None):
             cursor.execute("SELECT DISTINCT puissance FROM cigares WHERE puissance IS NOT NULL ORDER BY puissance")
             puissances = [row['puissance'] for row in cursor.fetchall()]
             
-            # Marques - filtrées par pays si spécifié
+            # Marques - filtrées par pays si spécifié, puis normalisées
             if pays and pays != 'all':
                 # Construire la condition de filtrage par pays
                 if pays == "République dominicaine":
@@ -3527,10 +3661,18 @@ async def get_cigares_filtres(pays: Optional[str] = None):
                     pays_condition = "pays_fabrication = %s"
                     pays_params = [pays]
                 
-                cursor.execute(f"SELECT DISTINCT marque FROM cigares WHERE marque IS NOT NULL AND {pays_condition} ORDER BY marque", pays_params)
+                cursor.execute(f"SELECT DISTINCT marque, gamme FROM cigares WHERE marque IS NOT NULL AND {pays_condition}", pays_params)
             else:
-                cursor.execute("SELECT DISTINCT marque FROM cigares WHERE marque IS NOT NULL ORDER BY marque")
-            marques = [row['marque'] for row in cursor.fetchall()]
+                cursor.execute("SELECT DISTINCT marque, gamme FROM cigares WHERE marque IS NOT NULL")
+            
+            # Normaliser les marques
+            marques_raw = cursor.fetchall()
+            marques_normalized = set()
+            for row in marques_raw:
+                normalized = normalize_marque(row['marque'], row.get('gamme'))
+                if normalized:
+                    marques_normalized.add(normalized)
+            marques = sorted(list(marques_normalized))
             
             # Vitoles (modules)
             cursor.execute("SELECT DISTINCT vitole_type FROM cigares WHERE vitole_type IS NOT NULL ORDER BY vitole_type")

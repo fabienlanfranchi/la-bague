@@ -900,9 +900,9 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex-1 min-w-0">
                           <h3 className="text-lg font-serif font-bold text-white truncate">
-                            {cigare.marque || 'Sans marque'}
+                            {cigare.marque_display || cigare.marque || 'Sans marque'}
                           </h3>
-                          <p className="text-[#D4A024] truncate">{cigare.gamme || ''}</p>
+                          <p className="text-[#D4A024] truncate">{cigare.gamme_display || cigare.gamme || ''}</p>
                           <p className="text-gray-400 text-sm truncate">{cigare.vitole_nom || cigare.vitole_type || ''}</p>
                         </div>
                         {cigare.note_bagues && (
