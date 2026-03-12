@@ -34,6 +34,25 @@ Application de gestion complète pour le club de cigares "La Bague Impériale" a
   - Conclusion
 - Possibilité de changer les cigares ou d'effacer la comparaison
 
+**Assistant IA Claude (TERMINÉ) :**
+- Interface de chat complète dans l'onglet "Assistant IA"
+- Basé sur Claude Sonnet 4.5 via emergentintegrations
+- Connaissances intégrées :
+  - Guide du Cigare complet (10 parties)
+  - Données du club (membres, événements, statistiques)
+  - Ma Cigarthèque de chaque membre (préférences)
+  - Catalogue de 657 cigares
+- Fonctionnalités :
+  - Recommandations personnalisées basées sur les goûts
+  - Questions sur les autres membres ("le cigare préféré de X")
+  - Expertise technique sur les cigares
+  - Connaissance du club et des événements
+- Interface :
+  - Questions suggérées au démarrage
+  - Historique de conversation sauvegardé
+  - Indicateur de frappe animé
+  - Bouton de réinitialisation
+
 ### Session 11 Mars 2026
 
 **Cigarthèque - Refonte complète selon les rôles :**

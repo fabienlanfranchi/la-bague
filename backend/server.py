@@ -4074,3 +4074,241 @@ async def init_sondage_templates():
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
+
+
+# ==================== ASSISTANT IA ====================
+
+from emergentintegrations.llm.chat import LlmChat, UserMessage
+from cigar_knowledge import get_cigar_knowledge
+
+# Stockage des sessions de chat en mémoire (pour les conversations actives)
+chat_sessions = {}
+
+class ChatMessageRequest(BaseModel):
+    message: str
+    user_id: str  # ID du membre qui parle
+
+class ChatMessageResponse(BaseModel):
+    response: str
+    session_id: str
+
+async def build_assistant_context(user_id: str) -> str:
+    """Construit le contexte complet pour l'assistant IA"""
+    
+    context_parts = []
+    
+    # 1. Informations sur le club
+    club_info = """
+Tu es l'assistant IA personnel du club de cigares "La Bague Impériale", présidé par Fabien Lanfranchi.
+Tu connais parfaitement le club, ses membres, les événements, les statistiques et tout ce qui concerne les cigares.
+Tu dois être chaleureux, professionnel et utiliser un langage élégant digne d'un club de cigares.
+Tu tutoies les membres car c'est un club convivial.
+"""
+    context_parts.append(club_info)
+    
+    # 2. Identifier le membre qui parle
+    user_data = await db.users.find_one({"id": user_id})
+    if user_data:
+        membre_info = f"""
+Le membre qui te parle est : {user_data.get('prenom', '')} {user_data.get('nom', '')}
+- Numéro de membre : {user_data.get('numero_membre', 'N/A')}
+- Email : {user_data.get('email', 'N/A')}
+- Rôle : {user_data.get('role', 'membre')}
+- Date d'adhésion : {user_data.get('date_adhesion', 'N/A')}
+- Statut : {user_data.get('statut', 'actif')}
+
+Tu t'adresses à lui/elle directement par son prénom.
+"""
+        context_parts.append(membre_info)
+    
+    # 3. La collection personnelle du membre (Ma Cigarthèque)
+    ma_collection = await db.ma_cigarotheque.find({"user_id": user_id}).to_list(100)
+    if ma_collection:
+        collection_text = f"\n--- MA CIGARTHÈQUE DE {user_data.get('prenom', 'ce membre').upper()} ({len(ma_collection)} cigares) ---\n"
+        for c in ma_collection:
+            note = c.get('note_globale', '')
+            puissance = c.get('note_puissance', '')
+            collection_text += f"- {c.get('marque', '')} {c.get('gamme', '')} : Note {note}/5, Puissance ressentie {puissance}/5, {c.get('evolution', '')}\n"
+            if c.get('note_libre'):
+                collection_text += f"  Notes personnelles : {c.get('note_libre')}\n"
+        context_parts.append(collection_text)
+    
+    # 4. Tous les membres du club (pour répondre aux questions sur les autres)
+    all_members = await db.users.find({}).to_list(100)
+    if all_members:
+        members_text = f"\n--- LES {len(all_members)} MEMBRES DU CLUB ---\n"
+        for m in all_members:
+            members_text += f"- {m.get('prenom', '')} {m.get('nom', '')} (#{m.get('numero_membre', '?')}), {m.get('role', 'membre')}, adhésion: {m.get('date_adhesion', 'N/A')}\n"
+        context_parts.append(members_text)
+    
+    # 5. Collections de tous les membres (pour les recommandations croisées)
+    all_collections = await db.ma_cigarotheque.find({}).to_list(500)
+    if all_collections:
+        # Grouper par user_id
+        collections_by_user = {}
+        for c in all_collections:
+            uid = c.get('user_id')
+            if uid not in collections_by_user:
+                collections_by_user[uid] = []
+            collections_by_user[uid].append(c)
+        
+        collections_text = "\n--- CIGARES PRÉFÉRÉS DES MEMBRES ---\n"
+        for uid, cigars in collections_by_user.items():
+            member = await db.users.find_one({"id": uid})
+            if member:
+                name = f"{member.get('prenom', '')} {member.get('nom', '')}"
+                # Trouver les cigares les mieux notés
+                top_cigars = sorted(cigars, key=lambda x: float(x.get('note_globale', 0) or 0), reverse=True)[:3]
+                if top_cigars:
+                    collections_text += f"- {name} aime particulièrement : "
+                    collections_text += ", ".join([f"{c.get('marque', '')} {c.get('gamme', '')} ({c.get('note_globale', '?')}/5)" for c in top_cigars])
+                    collections_text += "\n"
+        context_parts.append(collections_text)
+    
+    # 6. L'Apéro du Club
+    apero_cigars = await db.apero_club_cigares.find({}).to_list(50)
+    if apero_cigars:
+        apero_text = f"\n--- APÉRO DU CLUB ({len(apero_cigars)} cigares) ---\n"
+        for c in apero_cigars:
+            apero_text += f"- {c.get('marque', '')} {c.get('gamme', '')} (ajouté le {c.get('date_apero', 'N/A')})\n"
+        context_parts.append(apero_text)
+    
+    # 7. Événements récents
+    events = await db.events.find({}).sort("date", -1).to_list(20)
+    if events:
+        events_text = "\n--- ÉVÉNEMENTS DU CLUB ---\n"
+        for e in events:
+            events_text += f"- {e.get('titre', e.get('nom', 'Événement'))} ({e.get('type', '')}) - {e.get('date', 'N/A')} - {e.get('lieu', '')}\n"
+        context_parts.append(events_text)
+    
+    # 8. Statistiques du club
+    stats_text = "\n--- STATISTIQUES DU CLUB ---\n"
+    total_members = await db.users.count_documents({})
+    total_events = await db.events.count_documents({})
+    stats_text += f"- Nombre de membres : {total_members}\n"
+    stats_text += f"- Nombre d'événements : {total_events}\n"
+    context_parts.append(stats_text)
+    
+    # 9. Le catalogue de cigares (résumé)
+    try:
+        with get_mysql_connection() as conn:
+            cursor = conn.cursor(pymysql.cursors.DictCursor)
+            cursor.execute("SELECT COUNT(*) as total FROM cigares")
+            total_cigars = cursor.fetchone()['total']
+            cursor.execute("SELECT DISTINCT pays_fabrication FROM cigares WHERE pays_fabrication IS NOT NULL")
+            pays = [r['pays_fabrication'] for r in cursor.fetchall()]
+            cursor.execute("SELECT DISTINCT marque FROM cigares WHERE marque IS NOT NULL LIMIT 30")
+            marques = [r['marque'] for r in cursor.fetchall()]
+            
+            catalog_text = f"\n--- CATALOGUE DE CIGARES ({total_cigars} cigares) ---\n"
+            catalog_text += f"Pays représentés : {', '.join(pays[:10])}\n"
+            catalog_text += f"Marques principales : {', '.join(marques[:15])}...\n"
+            context_parts.append(catalog_text)
+    except Exception as e:
+        logger.error(f"Erreur accès catalogue: {e}")
+    
+    # 10. Guide du cigare (base de connaissances)
+    cigar_guide = get_cigar_knowledge()
+    context_parts.append(f"\n--- GUIDE DU CIGARE (ta base de connaissances) ---\n{cigar_guide}")
+    
+    return "\n".join(context_parts)
+
+
+@app.post("/api/assistant/chat", response_model=ChatMessageResponse)
+async def chat_with_assistant(request: ChatMessageRequest):
+    """Envoie un message à l'assistant IA et reçoit une réponse"""
+    try:
+        user_id = request.user_id
+        session_id = f"chat_{user_id}"
+        
+        # Récupérer ou créer la session de chat
+        if session_id not in chat_sessions:
+            # Construire le contexte complet
+            context = await build_assistant_context(user_id)
+            
+            system_message = f"""Tu es l'assistant IA du club de cigares "La Bague Impériale".
+
+{context}
+
+INSTRUCTIONS IMPORTANTES :
+1. Tu connais parfaitement tous les membres du club et leurs préférences
+2. Tu peux recommander des cigares basés sur les goûts de chaque membre
+3. Tu utilises le Guide du Cigare pour répondre aux questions techniques
+4. Tu es chaleureux et tutoies les membres
+5. Tu peux comparer les goûts entre membres si on te le demande
+6. Quand on te demande une recommandation, base-toi sur les cigares bien notés par le membre
+7. Tu peux suggérer des cigares du catalogue que le membre n'a pas encore fumés
+8. Réponds toujours en français
+9. Sois concis mais informatif
+"""
+            
+            # Créer une nouvelle instance de chat
+            api_key = os.environ.get('EMERGENT_LLM_KEY')
+            chat = LlmChat(
+                api_key=api_key,
+                session_id=session_id,
+                system_message=system_message
+            ).with_model("anthropic", "claude-sonnet-4-5-20250929")
+            
+            chat_sessions[session_id] = chat
+        
+        chat = chat_sessions[session_id]
+        
+        # Envoyer le message
+        user_message = UserMessage(text=request.message)
+        response = await chat.send_message(user_message)
+        
+        return ChatMessageResponse(
+            response=response,
+            session_id=session_id
+        )
+        
+    except Exception as e:
+        logger.error(f"Erreur assistant IA: {e}")
+        raise HTTPException(status_code=500, detail=f"Erreur de l'assistant: {str(e)}")
+
+
+@app.post("/api/assistant/reset")
+async def reset_chat_session(user_id: str):
+    """Réinitialise la session de chat d'un utilisateur"""
+    session_id = f"chat_{user_id}"
+    if session_id in chat_sessions:
+        del chat_sessions[session_id]
+    return {"message": "Session réinitialisée", "session_id": session_id}
+
+
+@app.get("/api/assistant/history/{user_id}")
+async def get_chat_history(user_id: str):
+    """Récupère l'historique de chat d'un utilisateur depuis MongoDB"""
+    try:
+        history = await db.chat_history.find(
+            {"user_id": user_id}
+        ).sort("timestamp", 1).to_list(100)
+        
+        # Convertir pour JSON
+        for h in history:
+            h['_id'] = str(h['_id'])
+        
+        return history
+    except Exception as e:
+        logger.error(f"Erreur récupération historique: {e}")
+        return []
+
+
+@app.post("/api/assistant/save-message")
+async def save_chat_message(user_id: str, role: str, content: str):
+    """Sauvegarde un message dans l'historique MongoDB"""
+    try:
+        message = {
+            "id": str(uuid.uuid4()),
+            "user_id": user_id,
+            "role": role,  # "user" ou "assistant"
+            "content": content,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        await db.chat_history.insert_one(message)
+        return {"success": True}
+    except Exception as e:
+        logger.error(f"Erreur sauvegarde message: {e}")
+        return {"success": False}
+
