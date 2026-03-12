@@ -309,7 +309,7 @@ const DashboardMembre = ({ prochainEvenement, currentMember }) => {
         <Card className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm">
           <CardHeader>
             <CardTitle className="text-xl font-serif text-white flex items-center">
-              <TrendingUp className="w-5 h-5 mr-2 text-[#D4A024]" />
+              <TrendingUp className="w-6 h-6 mr-2 text-[#D4A024]" />
               Vos statistiques - Saison 13
             </CardTitle>
           </CardHeader>
@@ -317,35 +317,35 @@ const DashboardMembre = ({ prochainEvenement, currentMember }) => {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {/* % Global Saison */}
               <div className="bg-black/30 rounded-lg p-4 text-center border border-[#D4A024]/20">
-                <p className="text-gray-400 text-sm mb-1">Présence saison</p>
+                <p className="text-gray-400 text-base mb-1">Présence saison</p>
                 <p className="text-3xl font-bold text-[#D4A024]">{statsPerso.pct_global}%</p>
               </div>
               
               {/* Apéros */}
               <div className="bg-black/30 rounded-lg p-4 text-center border border-amber-500/20">
-                <p className="text-gray-400 text-sm mb-1">Apéros</p>
+                <p className="text-gray-400 text-base mb-1">Apéros</p>
                 <p className="text-2xl font-bold text-amber-400">
                   {statsPerso.presences_aperos}/{statsPerso.config?.nb_aperos || 0}
                 </p>
-                <p className="text-amber-400/70 text-sm">{statsPerso.pct_aperos}%</p>
+                <p className="text-amber-400/70 text-base">{statsPerso.pct_aperos}%</p>
               </div>
               
               {/* Repas */}
               <div className="bg-black/30 rounded-lg p-4 text-center border border-blue-500/20">
-                <p className="text-gray-400 text-sm mb-1">Repas</p>
+                <p className="text-gray-400 text-base mb-1">Repas</p>
                 <p className="text-2xl font-bold text-blue-400">
                   {statsPerso.presences_repas}/{statsPerso.config?.nb_repas || 0}
                 </p>
-                <p className="text-blue-400/70 text-sm">{statsPerso.pct_repas}%</p>
+                <p className="text-blue-400/70 text-base">{statsPerso.pct_repas}%</p>
               </div>
               
               {/* Anniversaires */}
               <div className="bg-black/30 rounded-lg p-4 text-center border border-purple-500/20">
-                <p className="text-gray-400 text-sm mb-1">Anniversaires</p>
+                <p className="text-gray-400 text-base mb-1">Anniversaires</p>
                 <p className="text-2xl font-bold text-purple-400">
                   {statsPerso.presences_anniversaires}/{statsPerso.config?.nb_anniversaires || 0}
                 </p>
-                <p className="text-purple-400/70 text-sm">{statsPerso.pct_anniversaires}%</p>
+                <p className="text-purple-400/70 text-base">{statsPerso.pct_anniversaires}%</p>
               </div>
             </div>
           </CardContent>
@@ -941,7 +941,7 @@ const Dashboard = () => {
           {/* Présence moyenne globale */}
           <Card className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm" data-testid="presence-globale">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base font-serif text-gray-400">
+              <CardTitle className="text-lg font-serif text-gray-400">
                 Présence Moyenne Générale
               </CardTitle>
             </CardHeader>
@@ -954,28 +954,28 @@ const Dashboard = () => {
                   <div className="flex gap-4 mt-2">
                     <div>
                       <span className="text-2xl font-bold text-white">{stats.moyPresenceGlobal}</span>
-                      <span className="text-sm text-gray-400 ml-1">prés./évén.</span>
+                      <span className="text-base text-gray-400 ml-1">prés./évén.</span>
                     </div>
                     <div className="border-l border-gray-600 pl-4">
                       <span className="text-2xl font-bold text-blue-400">{stats.moyRepasGlobal}</span>
-                      <span className="text-sm text-gray-400 ml-1">prés./repas</span>
+                      <span className="text-base text-gray-400 ml-1">prés./repas</span>
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center space-x-0.5">
                   {[...Array(getStarsFromPercentage(parseFloat(stats.avgPresenceGlobal)))].map((_, i) => (
-                    <Star key={i} className="w-6 h-6 text-[#D4A024] fill-[#D4A024]" />
+                    <Star key={i} className="w-7 h-7 text-[#D4A024] fill-[#D4A024]" />
                   ))}
                 </div>
               </div>
-              <p className="text-sm text-gray-500 mt-2">Tous les membres - Toutes saisons</p>
+              <p className="text-base text-gray-500 mt-3">Tous les membres - Toutes saisons</p>
             </CardContent>
           </Card>
 
           {/* Présence saison en cours */}
           <Card className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm" data-testid="presence-saison">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base font-serif text-gray-400">
+              <CardTitle className="text-lg font-serif text-gray-400">
                 Présence {stats.currentSeason}
               </CardTitle>
             </CardHeader>
@@ -988,21 +988,21 @@ const Dashboard = () => {
                   <div className="flex gap-4 mt-2">
                     <div>
                       <span className="text-2xl font-bold text-white">{stats.moyPresenceSaison}</span>
-                      <span className="text-sm text-gray-400 ml-1">prés./évén.</span>
+                      <span className="text-base text-gray-400 ml-1">prés./évén.</span>
                     </div>
                     <div className="border-l border-gray-600 pl-4">
                       <span className="text-2xl font-bold text-blue-400">{stats.moyRepasSaison}</span>
-                      <span className="text-sm text-gray-400 ml-1">prés./repas</span>
+                      <span className="text-base text-gray-400 ml-1">prés./repas</span>
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center space-x-0.5">
                   {[...Array(getStarsFromPercentage(parseFloat(stats.avgPresenceSeason)))].map((_, i) => (
-                    <Star key={i} className="w-6 h-6 text-[#D4A024] fill-[#D4A024]" />
+                    <Star key={i} className="w-7 h-7 text-[#D4A024] fill-[#D4A024]" />
                   ))}
                 </div>
               </div>
-              <p className="text-sm text-gray-500 mt-2">Saison en cours</p>
+              <p className="text-base text-gray-500 mt-3">Saison en cours</p>
             </CardContent>
           </Card>
         </div>
@@ -1027,14 +1027,14 @@ const Dashboard = () => {
                 >
                   <div className="flex items-center justify-center space-x-1 mb-2">
                     {[...Array(stars)].map((_, i) => (
-                      <Star key={i} className="w-5 h-5 text-[#D4A024] fill-[#D4A024]" />
+                      <Star key={i} className="w-6 h-6 text-[#D4A024] fill-[#D4A024]" />
                     ))}
                   </div>
                   <div className="text-center">
                     <div className="text-3xl font-serif font-bold text-white">
                       {stats.membersByStars[stars]}
                     </div>
-                    <div className="text-sm text-gray-500 mt-1">
+                    <div className="text-base text-gray-400 mt-1">
                       {stars === 4 && '100-75%'}
                       {stars === 3 && '75-50%'}
                       {stars === 2 && '50-25%'}
@@ -1064,8 +1064,8 @@ const Dashboard = () => {
                     {prochainEvenement.objet} - {new Date(prochainEvenement.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}
                   </CardTitle>
                   <div className="flex items-center space-x-2">
-                    <Badge className="bg-green-600">Sondage en cours</Badge>
-                    <span className="text-gray-400 text-sm">📍 {prochainEvenement.lieu}</span>
+                    <Badge className="bg-green-600 text-base px-3 py-1">Sondage en cours</Badge>
+                    <span className="text-gray-300 text-base">📍 {prochainEvenement.lieu}</span>
                   </div>
                 </div>
                 <div className="flex space-x-2">
@@ -1134,23 +1134,23 @@ const Dashboard = () => {
                 {/* Liste des non-répondants */}
                 {nonRepondants.length > 0 && (
                   <div className="bg-black/30 rounded-lg p-4 border border-yellow-600/30">
-                    <h4 className="text-yellow-400 font-semibold mb-3 flex items-center">
-                      <Bell className="w-4 h-4 mr-2" />
+                    <h4 className="text-yellow-400 font-semibold mb-3 flex items-center text-lg">
+                      <Bell className="w-5 h-5 mr-2" />
                       Membres n'ayant pas répondu ({nonRepondants.length})
                     </h4>
                     <div className="flex flex-wrap gap-2">
                       {nonRepondants.slice(0, 10).map((m) => (
-                        <Badge key={m.id} className="bg-yellow-900/50 text-yellow-300 border border-yellow-600/30">
+                        <Badge key={m.id} className="bg-yellow-900/50 text-yellow-300 border border-yellow-600/30 text-sm px-3 py-1">
                           {m.nom_complet}
                         </Badge>
                       ))}
                       {nonRepondants.length > 10 && (
-                        <Badge className="bg-gray-800 text-gray-400">
+                        <Badge className="bg-gray-800 text-gray-400 text-sm px-3 py-1">
                           +{nonRepondants.length - 10} autres
                         </Badge>
                       )}
                     </div>
-                    <p className="text-xs text-gray-500 mt-3">
+                    <p className="text-sm text-gray-400 mt-3">
                       💡 Cliquez sur "Relancer" pour envoyer un rappel uniquement à ces membres
                     </p>
                   </div>
@@ -1258,8 +1258,8 @@ const Dashboard = () => {
                 {stats.totalSaisonsDues}
               </div>
               <div className="flex-1">
-                <p className="text-white font-medium">Saisons de cotisation à recevoir</p>
-                <p className="text-sm text-gray-400 mt-1">
+                <p className="text-white font-medium text-lg">Saisons de cotisation à recevoir</p>
+                <p className="text-base text-gray-400 mt-1">
                   {stats.cotisationsEnAttente} membre(s) avec cotisation en retard • 200€/an
                 </p>
               </div>
@@ -1269,13 +1269,13 @@ const Dashboard = () => {
               <div className="mt-4 pt-4 border-t border-[#D4A024]/20">
                 <Button
                   variant="outline"
-                  className="border-[#D4A024] text-[#D4A024] hover:bg-[#D4A024]/10"
+                  className="border-[#D4A024] text-[#D4A024] hover:bg-[#D4A024]/10 text-base"
                   onClick={() => {
                     // Rediriger vers la page Membres
                     window.location.href = '/members';
                   }}
                 >
-                  <MessageSquare className="w-4 h-4 mr-2" />
+                  <MessageSquare className="w-5 h-5 mr-2" />
                   Voir les membres concernés
                 </Button>
               </div>
