@@ -186,24 +186,24 @@ const AssistantIA = () => {
       {/* Zone de chat */}
       <Card className="flex-1 bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm flex flex-col overflow-hidden">
         {/* Header du chat */}
-        <div className="flex items-center justify-between p-4 border-b border-[#D4A024]/20">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#D4A024] to-[#7A2020] flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-white" />
+        <div className="flex items-center justify-between p-5 border-b border-[#D4A024]/20">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#D4A024] to-[#7A2020] flex items-center justify-center">
+              <Sparkles className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h3 className="text-white font-semibold">Assistant La Bague Impériale</h3>
-              <p className="text-gray-400 text-sm">Expert cigares & club</p>
+              <h3 className="text-white font-semibold text-lg">Assistant La Bague Impériale</h3>
+              <p className="text-gray-400">Expert cigares & club</p>
             </div>
           </div>
           <Button
             variant="ghost"
-            size="sm"
+            size="default"
             onClick={resetConversation}
             className="text-gray-400 hover:text-white"
             title="Nouvelle conversation"
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className="w-5 h-5" />
           </Button>
         </div>
 
@@ -215,25 +215,25 @@ const AssistantIA = () => {
               className={`flex items-start gap-3 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}
             >
               {/* Avatar */}
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
                 message.role === 'user' 
                   ? 'bg-[#7A2020]' 
                   : 'bg-gradient-to-br from-[#D4A024] to-[#7A2020]'
               }`}>
                 {message.role === 'user' ? (
-                  <User className="w-4 h-4 text-white" />
+                  <User className="w-5 h-5 text-white" />
                 ) : (
-                  <Bot className="w-4 h-4 text-white" />
+                  <Bot className="w-5 h-5 text-white" />
                 )}
               </div>
 
               {/* Bulle de message */}
-              <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+              <div className={`max-w-[85%] rounded-2xl px-5 py-4 ${
                 message.role === 'user'
                   ? 'bg-[#7A2020] text-white rounded-tr-sm'
                   : 'bg-black/60 border border-[#D4A024]/30 text-gray-200 rounded-tl-sm'
               }`}>
-                <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                <p className="text-base leading-relaxed whitespace-pre-wrap">
                   {formatMessageContent(message.content)}
                 </p>
               </div>
@@ -243,14 +243,14 @@ const AssistantIA = () => {
           {/* Indicateur de frappe */}
           {isTyping && (
             <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#D4A024] to-[#7A2020] flex items-center justify-center">
-                <Bot className="w-4 h-4 text-white" />
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#D4A024] to-[#7A2020] flex items-center justify-center">
+                <Bot className="w-5 h-5 text-white" />
               </div>
-              <div className="bg-black/60 border border-[#D4A024]/30 rounded-2xl rounded-tl-sm px-4 py-3">
-                <div className="flex gap-1">
-                  <span className="w-2 h-2 bg-[#D4A024] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                  <span className="w-2 h-2 bg-[#D4A024] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                  <span className="w-2 h-2 bg-[#D4A024] rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+              <div className="bg-black/60 border border-[#D4A024]/30 rounded-2xl rounded-tl-sm px-5 py-4">
+                <div className="flex gap-2">
+                  <span className="w-3 h-3 bg-[#D4A024] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                  <span className="w-3 h-3 bg-[#D4A024] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                  <span className="w-3 h-3 bg-[#D4A024] rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
                 </div>
               </div>
             </div>
@@ -261,19 +261,19 @@ const AssistantIA = () => {
 
         {/* Questions suggérées (si peu de messages) */}
         {messages.length <= 2 && (
-          <div className="px-4 pb-2">
-            <p className="text-gray-400 text-xs mb-2">Questions suggérées :</p>
+          <div className="px-4 pb-3">
+            <p className="text-gray-400 text-sm mb-3">Questions suggérées :</p>
             <div className="flex flex-wrap gap-2">
               {suggestedQuestions.map((q, i) => (
                 <Button
                   key={i}
                   variant="outline"
-                  size="sm"
+                  size="default"
                   onClick={() => handleSuggestedQuestion(q.text)}
-                  className="border-[#D4A024]/30 text-gray-300 hover:bg-[#D4A024]/10 text-xs"
+                  className="border-[#D4A024]/30 text-gray-300 hover:bg-[#D4A024]/10 text-sm"
                   disabled={isLoading}
                 >
-                  <q.icon className={`w-3 h-3 mr-1 ${q.color}`} />
+                  <q.icon className={`w-4 h-4 mr-2 ${q.color}`} />
                   {q.text}
                 </Button>
               ))}
@@ -283,27 +283,27 @@ const AssistantIA = () => {
 
         {/* Zone de saisie */}
         <div className="p-4 border-t border-[#D4A024]/20">
-          <div className="flex gap-2">
+          <div className="flex gap-3">
             <Input
               ref={inputRef}
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder="Pose-moi une question sur les cigares ou le club..."
-              className="flex-1 bg-black/60 border-[#D4A024]/30 text-white placeholder:text-gray-500"
+              className="flex-1 bg-black/60 border-[#D4A024]/30 text-white placeholder:text-gray-500 text-base h-12"
               disabled={isLoading}
               data-testid="chat-input"
             />
             <Button
               onClick={() => sendMessage()}
               disabled={isLoading || !inputMessage.trim()}
-              className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] px-4"
+              className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] px-6 h-12"
               data-testid="send-btn"
             >
               {isLoading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <Loader2 className="w-6 h-6 animate-spin" />
               ) : (
-                <Send className="w-5 h-5" />
+                <Send className="w-6 h-6" />
               )}
             </Button>
           </div>
