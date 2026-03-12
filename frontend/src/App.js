@@ -166,9 +166,10 @@ const AppLayout = ({ children }) => {
       <div className="fixed inset-0 bg-black/85 backdrop-blur-md" />
       
       {/* Layout avec sidebar */}
-      <div className="relative z-10 flex">
+      <div className="relative z-10 flex min-h-screen">
         <Sidebar />
-        <main className="flex-1 lg:ml-64 p-6 md:p-8">
+        {/* Zone de contenu principal - marge fixe à gauche pour la sidebar */}
+        <main className="flex-1 ml-0 lg:ml-64 p-6 md:p-8 min-h-screen overflow-x-hidden">
           <div className="max-w-7xl mx-auto">
             {children}
           </div>

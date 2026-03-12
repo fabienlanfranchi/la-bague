@@ -55,16 +55,19 @@ const Sidebar = () => {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="lg:hidden fixed top-4 left-4 z-50 bg-[#7A2020] text-[#D4A024] p-2 rounded-lg"
+        data-testid="sidebar-toggle"
       >
         <Menu className="w-6 h-6" />
       </button>
 
-      {/* Sidebar */}
-      <div
+      {/* Sidebar - position fixe, ne cause pas de reflow */}
+      <aside
         className={`
-          fixed left-0 top-0 h-full bg-black border-r border-[#D4A024]/20
-          transition-all duration-300 z-40 overflow-y-auto
-          ${isOpen ? 'w-64' : 'w-0 lg:w-64'}
+          fixed left-0 top-0 h-screen bg-black border-r border-[#D4A024]/20
+          z-40 overflow-y-auto overflow-x-hidden
+          transition-transform duration-300 ease-in-out
+          w-64
+          ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}
       >
         <div className="flex flex-col h-full p-6">
@@ -169,9 +172,9 @@ const Sidebar = () => {
             </Link>
           </div>
         </div>
-      </div>
+      </aside>
 
-      {/* Overlay pour mobile */}
+      {/* Overlay pour mobile - ferme la sidebar au clic */}
       {isOpen && (
         <div
           className="lg:hidden fixed inset-0 bg-black/50 z-30"
