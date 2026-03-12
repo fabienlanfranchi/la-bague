@@ -130,39 +130,55 @@ Le Bureau de La Bague Impériale`
   }
 ];
 
-// Charte du club
-const CHARTE_CLUB = `CHARTE DE LA BAGUE IMPÉRIALE
+// Charte du club - Version officielle
+const CHARTE_CLUB = `IL ÉTAIT UNE FOIS LA BAGUE IMPÉRIALE
+Charte du Club
 
-Article 1 - Objet du Club
-La Bague Impériale est un club de cigares fondé en 2013, réunissant des passionnés autour de la dégustation de cigares de qualité dans une ambiance conviviale et fraternelle.
+« Douze ans que nous partageons nos cigares avec le ciel, à nous les cigares, à lui la fumée »
 
-Article 2 - Adhésion
-L'adhésion au club est soumise à parrainage par un membre actif et validation par le bureau. Tout nouveau membre s'engage à respecter la présente charte.
+LA BAGUE IMPÉRIALE...
 
-Article 3 - Cotisation
-La cotisation annuelle est fixée par le bureau et doit être réglée en début de saison. Tout retard de paiement pourra entraîner une suspension des droits du membre.
+L'idée de créer notre club de cigare est née à l'A Conca D'Oru.
+Au départ, la volonté de réunir notre petit groupe d'une façon régulière et symbolique autour d'un repas, pour partager notre passion naissante pour les puros, nous a donné envie d'élargir notre cercle et de partager ces moments avec d'autres personnes ayant le même état d'esprit. La Bague Impériale voyait le jour.
 
-Article 4 - Événements
-Le club organise régulièrement des apéros, repas et événements spéciaux. Les membres sont tenus de répondre aux sondages dans les délais impartis et de prévenir en cas d'empêchement.
+Cela nous permet depuis quelques années de nous réunir deux fois par mois pour passer un moment convivial, entre amis ou connaissances, partageant la même passion ou le même attrait pour le cigare.
 
-Article 5 - Comportement
-Les membres s'engagent à :
-- Respecter les autres membres et le personnel des établissements
-- Maintenir une attitude courtoise et conviviale
-- Participer activement à la vie du club
-- Ne pas divulguer d'informations personnelles sur les autres membres
+DÉSIRER ÊTRE « BAGUÉ »...
 
-Article 6 - Confidentialité
-Les échanges et informations partagées au sein du club restent confidentiels. Aucun membre ne doit communiquer à l'extérieur sur les activités internes du club sans autorisation.
+Aimer partager de bons moments avec des amis, aimer se faire plaisir lors de bons restos, aimer refaire le monde autour d'un bon cognac sont des choses normales et compréhensibles... Mais il ne s'agit pas que de ça...
 
-Article 7 - Sanctions
-Tout manquement grave à la présente charte pourra entraîner un avertissement, une suspension temporaire ou une exclusion définitive, sur décision du bureau.
+Être ami de plusieurs membres, être un bon vivant, être une personne agréable et intéressante est quelque chose de non négligeable... Mais ce n'est pas ce qui importe le plus...
 
-Article 8 - Modification
-La présente charte peut être modifiée sur proposition du bureau et après consultation des membres.
+Ce sont principalement les passionnés de cigares, ceux désireux de les apprécier et les curieux de les découvrir, qui pourront être bagués...
 
-Fait à [Ville], le [Date]
-Le Bureau de La Bague Impériale`;
+ÊTRE « BAGUÉ »...
+
+Les « passionnés » ont l'occasion de partager leurs cigares lors de bons moments, échangeant leur passion avec des connaissances, des copains, des amis... des « bagués »...
+
+Les « désireux » ont l'occasion d'apprécier leurs puros dans les meilleures conditions, après un repas, avec un bon digestif, avec de bonnes personnes...
+
+Les « curieux » ont les moyens, lors des apéros, de découvrir les robustos, les coronas, les pirámides, de faire connaissance avec les cigares, leurs marques, leurs terroirs, leurs histoires...
+
+« Ceux qui aiment partager, se faire plaisir, refaire le monde » apprécieront les restos, les apéros, les ateliers, les quiz, les cigares... Et finalement, s'il ne s'agissait que de ça...?
+
+« Les amis, les bons vivants, les personnes agréables et intéressantes » adoreront les sorties en bateau, les tombolas, les anniversaires, les moments de fraternité... Au final, c'est peut-être ce qui importe le plus...
+
+EN CONTREPARTIE...
+
+Les membres du bureau accomplissent un travail remarquable, font preuve d'un incroyable dévouement au Club depuis la création de La Bague, ce qui demande un investissement conséquent afin de pouvoir proposer, à chaque fois, des évènements originaux, et qui, nous l'espérons, plaisent à tout le monde.
+
+Au-delà de la cotisation annuelle, au-delà de la passion du cigare qui nous caractérise tous, nous demandons à chaque membre un minimum d'implication, et cela passe aussi par l'assiduité aux évènements.
+
+Bien entendu, nous sommes conscients que chacun puisse avoir un empêchement, et il n'est pas question ici d'imposer une présence obligatoire. La participation aux évènements du Club est, et doit rester, un plaisir.
+
+Néanmoins, les raisons invoquées ne relèvent pas toujours d'impératifs insurmontables, et sont parfois difficiles à comprendre pour ceux qui donnent de leur temps pour organiser chaque événement et faire en sorte que chacun y prenne du plaisir.
+
+De même, nous encourageons chaque membre à nous faire part de ses critiques ou de ce qui ne lui convient pas au sein du Club.
+
+Pour résumer, le succès du Club dépend aussi, et surtout, de l'implication de ses membres.
+
+« La Bague Impériale ? N'y voyez pas un club d'amis, mais plutôt un club d'amis qui aiment le cigare. »
+— Winston Churchill (discours à l'A Conca D'Oru, nov. 2016)`;
 
 const Messages = () => {
   const { isAdmin } = useUser();

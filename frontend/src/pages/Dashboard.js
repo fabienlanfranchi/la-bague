@@ -4,12 +4,116 @@ import { api } from '../services/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Users, TrendingUp, Star, Calendar, DollarSign, MessageSquare, Download, X, Bell, RefreshCw, Check, CheckCircle } from 'lucide-react';
+import { Users, TrendingUp, Star, Calendar, DollarSign, MessageSquare, Download, X, Bell, RefreshCw, Check, CheckCircle, ScrollText, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
+
+// ============ CHARTE DU CLUB ============
+const CHARTE_CLUB = {
+  titre: "Il était une fois La Bague Impériale",
+  sousTitre: "Charte du Club",
+  citation: "« Douze ans que nous partageons nos cigares avec le ciel, à nous les cigares, à lui la fumée »",
+  sections: [
+    {
+      titre: "La Bague Impériale...",
+      contenu: `L'idée de créer notre club de cigare est née à l'A Conca D'Oru.
+Au départ, la volonté de réunir notre petit groupe d'une façon régulière et symbolique autour d'un repas, pour partager notre passion naissante pour les puros, nous a donné envie d'élargir notre cercle et de partager ces moments avec d'autres personnes ayant le même état d'esprit. La Bague Impériale voyait le jour.
+
+Cela nous permet depuis quelques années de nous réunir deux fois par mois pour passer un moment convivial, entre amis ou connaissances, partageant la même passion ou le même attrait pour le cigare.`
+    },
+    {
+      titre: "Désirer être « bagué »...",
+      contenu: `Aimer partager de bons moments avec des amis, aimer se faire plaisir lors de bons restos, aimer refaire le monde autour d'un bon cognac sont des choses normales et compréhensibles... Mais il ne s'agit pas que de ça...
+
+Être ami de plusieurs membres, être un bon vivant, être une personne agréable et intéressante est quelque chose de non négligeable... Mais ce n'est pas ce qui importe le plus...
+
+Ce sont principalement les passionnés de cigares, ceux désireux de les apprécier et les curieux de les découvrir, qui pourront être bagués...`
+    },
+    {
+      titre: "Être « bagué »...",
+      contenu: `Les « passionnés » ont l'occasion de partager leurs cigares lors de bons moments, échangeant leur passion avec des connaissances, des copains, des amis... des « bagués »...
+
+Les « désireux » ont l'occasion d'apprécier leurs puros dans les meilleures conditions, après un repas, avec un bon digestif, avec de bonnes personnes...
+
+Les « curieux » ont les moyens, lors des apéros, de découvrir les robustos, les coronas, les pirámides, de faire connaissance avec les cigares, leurs marques, leurs terroirs, leurs histoires...
+
+« Ceux qui aiment partager, se faire plaisir, refaire le monde » apprécieront les restos, les apéros, les ateliers, les quiz, les cigares... Et finalement, s'il ne s'agissait que de ça...?
+
+« Les amis, les bons vivants, les personnes agréables et intéressantes » adoreront les sorties en bateau, les tombolas, les anniversaires, les moments de fraternité... Au final, c'est peut-être ce qui importe le plus...`
+    },
+    {
+      titre: "En contrepartie...",
+      contenu: `Les membres du bureau accomplissent un travail remarquable, font preuve d'un incroyable dévouement au Club depuis la création de La Bague, ce qui demande un investissement conséquent afin de pouvoir proposer, à chaque fois, des évènements originaux, et qui, nous l'espérons, plaisent à tout le monde.
+
+Au-delà de la cotisation annuelle, au-delà de la passion du cigare qui nous caractérise tous, nous demandons à chaque membre un minimum d'implication, et cela passe aussi par l'assiduité aux évènements.
+
+Bien entendu, nous sommes conscients que chacun puisse avoir un empêchement, et il n'est pas question ici d'imposer une présence obligatoire. La participation aux évènements du Club est, et doit rester, un plaisir.
+
+Néanmoins, les raisons invoquées ne relèvent pas toujours d'impératifs insurmontables, et sont parfois difficiles à comprendre pour ceux qui donnent de leur temps pour organiser chaque événement et faire en sorte que chacun y prenne du plaisir.
+
+De même, nous encourageons chaque membre à nous faire part de ses critiques ou de ce qui ne lui convient pas au sein du Club.
+
+Pour résumer, le succès du Club dépend aussi, et surtout, de l'implication de ses membres.`
+    }
+  ],
+  citationFinale: "« La Bague Impériale ? N'y voyez pas un club d'amis, mais plutôt un club d'amis qui aiment le cigare. »",
+  auteur: "— Winston Churchill (discours à l'A Conca D'Oru, nov. 2016)"
+};
+
+// Composant Charte du Club
+const CharteClub = ({ defaultExpanded = false }) => {
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+  
+  return (
+    <Card className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm">
+      <CardHeader 
+        className="cursor-pointer hover:bg-[#D4A024]/5 transition-colors"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-xl font-serif text-[#D4A024] flex items-center">
+            <ScrollText className="w-6 h-6 mr-3" />
+            {CHARTE_CLUB.titre}
+          </CardTitle>
+          <Button variant="ghost" size="sm" className="text-[#D4A024]">
+            {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+          </Button>
+        </div>
+        <p className="text-gray-400 italic text-base mt-1">{CHARTE_CLUB.citation}</p>
+      </CardHeader>
+      
+      {isExpanded && (
+        <CardContent className="pt-0">
+          <div className="space-y-6">
+            {CHARTE_CLUB.sections.map((section, idx) => (
+              <div key={idx} className="border-l-2 border-[#D4A024]/30 pl-4">
+                <h3 className="text-lg font-serif font-semibold text-[#D4A024] mb-2">
+                  {section.titre}
+                </h3>
+                <div className="text-gray-300 leading-relaxed whitespace-pre-line text-base">
+                  {section.contenu}
+                </div>
+              </div>
+            ))}
+            
+            {/* Citation finale */}
+            <div className="mt-8 pt-6 border-t border-[#D4A024]/20 text-center">
+              <p className="text-[#D4A024] italic text-lg font-serif">
+                {CHARTE_CLUB.citationFinale}
+              </p>
+              <p className="text-gray-400 mt-2 text-base">
+                {CHARTE_CLUB.auteur}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      )}
+    </Card>
+  );
+};
 
 // ============ COMPOSANT DASHBOARD MEMBRE ============
 const DashboardMembre = ({ prochainEvenement, currentMember }) => {
@@ -634,20 +738,8 @@ const DashboardMembre = ({ prochainEvenement, currentMember }) => {
         </Card>
       )}
 
-      {/* À propos du club */}
-      <Card className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm">
-        <CardHeader>
-          <CardTitle className="text-2xl font-serif text-white">
-            🎩 À propos du Club
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-gray-300 leading-relaxed">
-            Bienvenue dans votre espace membre de La Bague Impériale, club d'amateurs de cigares de prestige.
-            Consultez votre profil, participez aux sondages, et restez informé des prochains événements.
-          </p>
-        </CardContent>
-      </Card>
+      {/* Charte du Club */}
+      <CharteClub defaultExpanded={false} />
     </div>
   );
 };
@@ -1282,6 +1374,15 @@ const Dashboard = () => {
             )}
           </CardContent>
         </Card>
+      </div>
+
+      {/* ========== SECTION 4 : CHARTE DU CLUB ========== */}
+      <div>
+        <h2 className="text-2xl font-serif font-bold text-white mb-4 flex items-center">
+          <ScrollText className="w-6 h-6 mr-2 text-[#D4A024]" />
+          Charte du Club
+        </h2>
+        <CharteClub defaultExpanded={false} />
       </div>
 
       {/* Modal: Liste des membres par étoiles */}
