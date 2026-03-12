@@ -312,64 +312,147 @@ Pour bien fumer : bonne coupe, bonne flamme, bonne conservation. Le reste = conf
 - La température de l'alcool compte : whisky légèrement frais, rhum à température
 - Un cigare dure 45min à 2h : prévoir plusieurs verres
 
-## Partie 12 - Carte du Bar Conca (Whisky & Rhumerie)
+## Partie 12 - Carte du Bar A Conca & Système d'Accords Winston
 
-En tant que "Conca Specialist", Winston connaît la carte du bar partenaire pour conseiller les meilleurs accords.
+### Méthode de conseil Winston (3 étages)
+1. **Produit disponible au club** - Stock réel de la carte A Conca
+2. **Profil gustatif réel** - Caractéristiques de chaque bouteille
+3. **Compatibilité avec un style de cigare** - Croisement des profils
 
-### Sélection Whisky
-**Single Malts Écossais :**
-- Glenfiddich 12, 15, 18 ans
-- Macallan 12, 18 ans
-- Lagavulin 16 ans (tourbé)
-- Laphroaig 10 ans (tourbé intense)
-- Glenlivet 12, 18 ans
-- Talisker 10 ans (maritime)
+Winston doit :
+- Identifier le style dominant de l'alcool demandé
+- Le croiser avec une famille de cigares compatible
+- Tenir compte du moment de consommation, de la force recherchée, du module
+- Retourner un conseil court, logique et justifiable
 
-**Bourbons :**
-- Woodford Reserve
-- Maker's Mark
-- Buffalo Trace
-- Wild Turkey 101
+### Principe d'accord fondamental
+- **Alcool sec, vif, fumé, nerveux** : Écrase un cigare léger. Appelle un cigare structuré, terreux, épicé ou crémeux.
+- **Alcool doux, rond, pâtissier, vanillé** : Peut étouffer un cigare trop sec. S'accorde avec cigares ronds, boisés, cacao, café, noix.
+- **Profils délicats ou floraux** : Demandent un cigare précis, jamais brutal, force légère à moyenne.
+- **Profils très tourbés, fumés, iodés, très boisés** : Demandent une fumée ample, construction large, force moyenne à forte.
 
-**Whisky Japonais :**
-- Hibiki Harmony
-- Yamazaki 12 ans
-- Nikka From The Barrel
+### Les 5 familles de cigares (C1 à C5)
 
-**Irish Whiskey :**
-- Jameson Black Barrel
-- Redbreast 12 ans
+| Code | Style | Profil | Modules naturels |
+|------|-------|--------|------------------|
+| **C1** | Léger et élégant | Cèdre, fleurs, crème, pain grillé, bois clair ; force légère à moyenne | Petit corona, corona, lancero, panetela |
+| **C2** | Moyen équilibré | Bois, fruits secs, noisette, café léger, épices douces ; force moyenne | Corona gorda, robusto fin, toro modéré |
+| **C3** | Rond gourmand | Cacao, café, noix, crème, bois doux, finale enveloppante ; force moyenne | Robusto, toro, short churchill |
+| **C4** | Épicé-terreux charpenté | Poivre, cuir, terre, café noir, boisé appuyé ; force moyenne à forte | Robusto large, toro, belicoso |
+| **C5** | Puissant profond | Terre, cacao amer, cuir, réglisse, fumée dense ; force forte | Toro large, churchill, double corona |
 
-### Sélection Rhum
-**Rhums Agricoles :**
-- Clément VSOP, XO
-- JM VO, XO
-- HSE VSOP
-- Trois Rivières VSOP
+### Cartographie des Whiskies A Conca
 
-**Rhums de Mélasse :**
-- Diplomatico Reserva Exclusiva
-- Zacapa 23 ans
-- Ron Botran 18 ans
-- El Dorado 12, 15, 21 ans
-- Appleton Estate 12 ans
+**W1 - Tourbé / fumé / marin** → C4, C5 (éviter C1)
+- Talisker 10 ans, Smokehead, Ardbeg An Oa, Caol Ila 12 ans
+- Connemara Distillers Edition, P&M Red Oak
+- *Il faut du répondant : cuir, terre, fumée ample*
 
-**Rhums Premium :**
-- Dictador 20 ans
-- Santa Teresa 1796
-- Plantation XO
+**W2 - Riche sherry / fruits noirs / boisé noble** → C3, C4
+- Macallan Double Cask 12 ans, Aberlour Double Cask 12 ans, Dalmore 12 ans
+- *Chercher le pont fruits secs - cacao - bois noble - épices douces*
 
-### Cognacs & Armagnacs
-- Hennessy VS, VSOP, XO
-- Rémy Martin VSOP, XO
-- Courvoisier VSOP
-- Baron de Sigognac (Armagnac)
+**W3 - Gourmand bourbon / vanillé / pâtissier** → C2, C3 (éviter C5 austère)
+- Maker's Mark, Buffalo Trace, Jack Daniel's No 7
+- The Duke Kentucky Straight, Glenmorangie Quinta Ruban, P&M Single Corn
+- *Privilégier cigares ronds, noisette, vanille, cacao léger, bois doux*
 
-### Recommandations Winston
-Pour un Cohiba Robusto → Diplomatico Reserva ou Macallan 12
-Pour un Padrón 1964 → Lagavulin 16 ou El Dorado 15
-Pour un Davidoff → Whisky japonais ou Cognac VSOP
-Pour un Montecristo No.2 → Clément XO ou Glenlivet 18
+**W4 - Délicat / frais / élégant** → C1, C2 (éviter C4, C5)
+- Glenlivet 13 ans First Fill, Tullibardine Burgundy, Jameson 12 ans
+- Teeling Single Grain, Chivas 12 ans, Enso Pot Still
+- *Accord net, précis, sans brutalité ni surcharge*
+
+**W5 - Ample et singulier** → C2, C3 ou C4 selon le client
+- Kujira Ryukyu Inari, Redbreast 12 ans Pot Still, P&M 7 ans, P&M Signature
+- *Conseil plus nuancé selon la richesse et la profondeur*
+
+**W6 - Corse identitaire (à privilégier au siège)** → Variable
+- P&M Single Corn, P&M 7 ans, P&M Red Oak, P&M Signature
+- *Faire remonter en priorité ces références signature*
+
+### Cartographie des Rhums A Conca
+
+**R1 - Ron latino rond, doux, gourmand** → C3, parfois C4 (éviter C1 trop fin)
+- Don Papa 7 ans, Diplomatico Reserva Exclusiva 12 ans, Botran Reserva 15 ans
+- Millonario XO 20 ans, Centenario 20 ans, Matusalem Gran Reserva 15 ans
+- Zacapa 23 ans, Opthimus 15 ans, Canero Reserva Especial 12 ans
+- *Le rhum veut du volume, de la rondeur, finale gourmande*
+
+**R2 - Rhum traditionnel boisé équilibré** → C2, C3, C4 (très polyvalent)
+- Plantation XO, Flor de Cana 14 ans, Angostura 1919
+- Black Tot Finest Caribbean, Havana 7 ans, Havana Selección de Maestros
+- *Meilleurs accords de club, laissent de la place au cigare*
+
+**R3 - Agricoles et profils secs** → C2 ou C4 (éviter C3 trop sucré)
+- Boukman Botanical, Clément Select Barrel, Bielle Ambré Premium
+- *Le cigare doit apporter colonne vertébrale et tenue*
+
+**R4 - Aromatiques singuliers / esters** → C3 ou C4
+- Savanna 5 ans, Boukman Botanical, Black Tot
+- *Cigare de caractère capable d'absorber l'originalité du verre*
+
+**R5 - Frais / légers / vifs** → C1, C2 (éviter C4, C5)
+- Chamarel VS, Havana Especial, Havana 3 ans Blanco
+- *Accord d'apéritif ou début de soirée, cigare propre, pas trop large*
+
+**R6 - Réunion et relief aromatique marqué** → C3 ou C4
+- Savanna 5 ans, Rivière du Mât Extra Old XO
+- *Assez de personnalité pour un cigare sérieux*
+
+### Table des compatibilités rapide
+
+| Famille alcool | Cigares prioritaires | À éviter | Logique |
+|----------------|---------------------|----------|---------|
+| W1 Tourbé/fumé | C4, C5 | C1 | Besoin de répondant |
+| W2 Sherry riche | C3, C4 | C1 floral | Pont fruits secs-cacao |
+| W3 Bourbon gourmand | C2, C3 | C5 austère | Rondeur et douceur |
+| W4 Délicat/élégant | C1, C2 | C4, C5 | Accord net et précis |
+| R1 Ron doux | C3, C4 | C1 fin | Volume et rondeur |
+| R2 Traditionnel | C2, C3, C4 | aucun | Zone souple |
+| R3 Agricole/sec | C2, C4 | C3 sucré | Colonne vertébrale |
+| R5 Léger/vif | C1, C2 | C4, C5 | Finesse et fraîcheur |
+
+### Exemples de formulations Winston
+
+- **Talisker 10 ans** → Cigare C4 ou C5, robuste, terreux, épicé, largeur suffisante pour le côté marin et fumé
+- **Macallan Double Cask 12 ans** → Cigare C3, rond et boisé, cacao léger, fruits secs, fumée crémeuse
+- **Glenlivet 13 ans First Fill** → Cigare C1 ou C2, précis, élégant, boisé clair, sans excès de poivre
+- **Plantation XO** → Cigare C3, souple, gourmand, noisette et café doux, robusto ou toro modéré
+- **Clément Select Barrel** → Cigare C2 ou C4, boisé net et épices fines ou profil nerveux pour l'agricole
+- **Zacapa 23 ans** → Cigare C3, ou C4 gras et profond pour amateur confirmé ; éviter cigare trop maigre
+- **Havana 3 ans Blanco** → Petit module ou cigare léger, vif, propre ; pas pour un gros cigare de fin de repas
+- **P&M Red Oak** → Cigare C4 ou C5 ; registre tannique, profond, fumé, accord de conversation ou fin de soirée
+
+### Ce que Winston doit éviter
+- Associer mécaniquement tous les rhums doux à tous les cigares puissants (accords lourds et sirupeux)
+- Servir un tourbé ou rhum très aromatique avec un cigare fin, floral et léger
+- Raisonner uniquement par pays ; les profils gustatifs comptent d'abord
+- Retourner trop de choix ; 3 suggestions hiérarchisées valent mieux qu'une liste
+- Oublier le contexte : stock disponible, heure de service, durée souhaitée, niveau du membre
+
+### Règles de décision Winston
+
+**Si le client part de l'alcool :**
+1. Classer la bouteille dans sa famille (W1-W6 ou R1-R6)
+2. Proposer un style de cigare compatible (C1-C5)
+3. Suggérer des modules et références du catalogue
+
+**Si le client part du cigare :**
+1. Lire force, largeur, texture de fumée, profil aromatique
+2. Identifier le style C1 à C5
+3. Sortir les familles d'alcool adaptées de la carte
+
+**Hiérarchisation par moment :**
+- Apéritif → accords légers (W4, R5 avec C1-C2)
+- Milieu de soirée → accords équilibrés (W2-W3, R2 avec C2-C3)
+- Après repas → accords plus riches (W2, R1-R2 avec C3-C4)
+- Fin de soirée longue → accords puissants (W1, R1-R4 avec C4-C5)
+
+**Logique de prudence :**
+Mieux vaut un accord légèrement en dessous de la puissance de l'alcool qu'un accord totalement écrasé.
+
+**Au siège du club :**
+Faire remonter en priorité les références P&M (corses) et signatures lorsque cohérentes.
 """
 
 def get_cigar_knowledge():
