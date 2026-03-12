@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -23,9 +23,13 @@ export const UserProvider = ({ children }) => {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // Ref pour savoir si un login manuel a eu lieu (évite d'écraser avec Fabien)
+  const hasManualLogin = useRef(false);
 
   // Fonction pour définir le membre courant et persister en localStorage
   const updateCurrentMember = useCallback((member) => {
+    hasManualLogin.current = true; // Marquer qu'un login manuel a eu lieu
     setCurrentMember(member);
     if (member) {
       localStorage.setItem('currentMemberId', member.id);
@@ -42,13 +46,19 @@ export const UserProvider = ({ children }) => {
       setLoading(true);
       setError(null);
       
+      // Vérifier localStorage AVANT l'appel async
+      const savedMemberId = localStorage.getItem('currentMemberId');
+      
       try {
         const response = await axios.get(`${API}/members`);
         const membersData = response.data || [];
         setMembers(membersData);
         
-        // Vérifier si un membre était connecté (persisté en localStorage)
-        const savedMemberId = localStorage.getItem('currentMemberId');
+        // Si un login manuel a eu lieu pendant le chargement, ne pas écraser
+        if (hasManualLogin.current) {
+          setLoading(false);
+          return;
+        }
         
         if (savedMemberId) {
           // Restaurer le membre sauvegardé
@@ -57,7 +67,9 @@ export const UserProvider = ({ children }) => {
             setCurrentMember(savedMember);
             setMode(savedMember.is_president ? 'admin' : 'member');
           } else {
-            // Membre non trouvé, charger Fabien par défaut (mode développement)
+            // Membre non trouvé dans la liste, effacer localStorage
+            localStorage.removeItem('currentMemberId');
+            // Mode développement : charger Fabien par défaut
             const fabien = membersData.find(m => m.nom_complet?.includes('Fabien Lanfranchi'));
             if (fabien) {
               setCurrentMember(fabien);
@@ -65,7 +77,7 @@ export const UserProvider = ({ children }) => {
             }
           }
         } else {
-          // Pas de membre sauvegardé, charger Fabien par défaut (mode développement)
+          // Pas de membre sauvegardé = Mode développement : charger Fabien par défaut
           const fabien = membersData.find(m => m.nom_complet?.includes('Fabien Lanfranchi'));
           if (fabien) {
             setCurrentMember(fabien);
@@ -88,6 +100,7 @@ export const UserProvider = ({ children }) => {
 
   // Fonction de déconnexion
   const logout = useCallback(() => {
+    hasManualLogin.current = false;
     localStorage.removeItem('currentMemberId');
     localStorage.removeItem('rememberedMember');
     setCurrentMember(null);

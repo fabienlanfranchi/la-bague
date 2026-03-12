@@ -26,6 +26,9 @@ const Sidebar = () => {
   const { isAdmin, toggleMode, currentMember, logout } = useUser();
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(true);
+  
+  // Le toggle mode n'est disponible que pour le Président
+  const canToggleMode = currentMember?.is_president === true;
 
   const isActive = (path) => location.pathname === path;
 
@@ -132,27 +135,29 @@ const Sidebar = () => {
             })}
           </nav>
 
-          {/* Toggle Président/Membre */}
+          {/* Toggle Président/Membre - UNIQUEMENT pour le Président */}
           <div className="mt-auto pt-6 border-t border-[#D4A024]/20">
-            <div className="bg-[#7A2020]/30 rounded-lg p-4 mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-gray-400 text-sm">Mode</span>
-                <Switch
-                  checked={isAdmin}
-                  onCheckedChange={toggleMode}
-                  className="data-[state=checked]:bg-[#D4A024]"
-                />
+            {canToggleMode && (
+              <div className="bg-[#7A2020]/30 rounded-lg p-4 mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-gray-400 text-sm">Mode</span>
+                  <Switch
+                    checked={isAdmin}
+                    onCheckedChange={toggleMode}
+                    className="data-[state=checked]:bg-[#D4A024]"
+                  />
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className={!isAdmin ? 'text-[#D4A024]' : 'text-gray-500'}>
+                    Membre
+                  </span>
+                  <span className={isAdmin ? 'text-[#D4A024]' : 'text-gray-500'}>
+                    <Crown className="w-4 h-4 inline mr-1" />
+                    Président
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className={!isAdmin ? 'text-[#D4A024]' : 'text-gray-500'}>
-                  Membre
-                </span>
-                <span className={isAdmin ? 'text-[#D4A024]' : 'text-gray-500'}>
-                  <Crown className="w-4 h-4 inline mr-1" />
-                  Président
-                </span>
-              </div>
-            </div>
+            )}
 
             <Link
               to="/"
