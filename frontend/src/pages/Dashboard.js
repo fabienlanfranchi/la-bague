@@ -976,16 +976,48 @@ const Dashboard = () => {
   };
 
   const handleExportSMS = () => {
-    const { presents, absents } = nextEvent.sondageResults || {};
+    const { presents, absents, choixEntrees, choixPlats, choixDesserts } = nextEvent.sondageResults || {};
     const enAttente = nonRepondants.length;
-    const message = `📊 Résultats Sondage - ${nextEvent.type} du ${nextEvent.date}\n\n` +
-      `✅ Présents: ${presents || 0}\n` +
-      `❌ Absents: ${absents || 0}\n` +
-      `⏳ En attente: ${enAttente}`;
+    
+    let message = `📊 Résultats Sondage - ${prochainEvenement?.objet || nextEvent.type} du ${prochainEvenement ? new Date(prochainEvenement.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long' }) : nextEvent.date}\n\n`;
+    message += `👥 PARTICIPANTS\n`;
+    message += `✅ Présents: ${presents || 0}\n`;
+    message += `❌ Absents: ${absents || 0}\n`;
+    message += `⏳ En attente: ${enAttente}\n`;
+    
+    // Ajouter les détails du menu si c'est un repas et qu'il y a des choix
+    const hasMenuChoices = (choixEntrees && Object.keys(choixEntrees).length > 0) ||
+                          (choixPlats && Object.keys(choixPlats).length > 0) ||
+                          (choixDesserts && Object.keys(choixDesserts).length > 0);
+    
+    if (hasMenuChoices) {
+      message += `\n🍽️ DÉTAIL DES MENUS\n`;
+      
+      if (choixEntrees && Object.keys(choixEntrees).length > 0) {
+        message += `\n📌 Entrées:\n`;
+        Object.entries(choixEntrees).forEach(([entree, count]) => {
+          message += `   • ${entree}: ${count}\n`;
+        });
+      }
+      
+      if (choixPlats && Object.keys(choixPlats).length > 0) {
+        message += `\n📌 Plats:\n`;
+        Object.entries(choixPlats).forEach(([plat, count]) => {
+          message += `   • ${plat}: ${count}\n`;
+        });
+      }
+      
+      if (choixDesserts && Object.keys(choixDesserts).length > 0) {
+        message += `\n📌 Desserts:\n`;
+        Object.entries(choixDesserts).forEach(([dessert, count]) => {
+          message += `   • ${dessert}: ${count}\n`;
+        });
+      }
+    }
     
     // Copier dans le presse-papier
     navigator.clipboard.writeText(message);
-    toast.success('Résultats copiés ! Vous pouvez les coller dans votre SMS.');
+    toast.success('Résultats copiés avec détail des menus ! Vous pouvez les coller dans votre SMS.');
   };
 
   const handleShowMembersByStars = (stars) => {
