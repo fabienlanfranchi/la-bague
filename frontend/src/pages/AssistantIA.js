@@ -228,12 +228,12 @@ const AssistantIA = () => {
               </div>
 
               {/* Bulle de message */}
-              <div className={`max-w-[85%] rounded-2xl px-5 py-4 ${
+              <div className={`max-w-[85%] rounded-2xl px-6 py-5 ${
                 message.role === 'user'
                   ? 'bg-[#7A2020] text-white rounded-tr-sm'
                   : 'bg-black/60 border border-[#D4A024]/30 text-gray-200 rounded-tl-sm'
               }`}>
-                <p className="text-base leading-relaxed whitespace-pre-wrap">
+                <p className="text-lg leading-relaxed whitespace-pre-wrap">
                   {formatMessageContent(message.content)}
                 </p>
               </div>
