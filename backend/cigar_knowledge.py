@@ -269,6 +269,107 @@ La plupart des problèmes viennent de : stockage, coupe, allumage, construction
 
 ### Règle simple
 Pour bien fumer : bonne coupe, bonne flamme, bonne conservation. Le reste = confort et goût personnel.
+
+## Partie 11 - Accords Cigare & Alcool / Conseils d'Association
+
+### Principes généraux d'accord
+- **Équilibre** : Un cigare léger avec un alcool léger, un cigare puissant avec un alcool plus charpenté
+- **Complémentarité** : Chercher des saveurs qui se complètent (boisé avec boisé, épicé avec épicé)
+- **Contraste** : Parfois un contraste fonctionne (cigare puissant avec rhum doux)
+
+### Accords avec le Rhum
+- **Rhum blanc agricole** : Cigares légers, cubains classiques (Hoyo de Monterrey, H. Upmann légers)
+- **Rhum ambré/vieux** : Cigares moyens, Dominican (Arturo Fuente, Davidoff)
+- **Rhum XO/hors d'âge** : Cigares puissants (Padrón, Bolívar, Liga Privada)
+- **Rhum épicé** : Cigares nicaraguayens (My Father, Oliva)
+
+### Accords avec le Whisky
+- **Whisky tourbé (Islay)** : Cigares puissants, maduro, nicaraguayens
+- **Single Malt doux (Speyside)** : Cigares moyens, équilibrés, cubains
+- **Bourbon** : Cigares dominicains, notes vanillées et caramel
+- **Whisky japonais** : Cigares fins, élégants, connecticut shade
+
+### Accords avec le Cognac
+- **VS/VSOP** : Cigares légers à moyens
+- **XO** : Cigares plus complexes et puissants
+- Le cognac se marie bien avec les cigares cubains traditionnels
+
+### Accords avec d'autres spiritueux
+- **Armagnac** : Cigares aux notes fruitées et épicées
+- **Porto** : Cigares maduro, notes chocolatées
+- **Calvados** : Cigares légers, notes fruitées
+
+### Moment de la journée
+- **Matin/Brunch** : Petits modules légers (Panetela, Petit Corona), café plutôt qu'alcool
+- **Après-midi** : Corona, Robusto moyens, whisky léger ou rhum ambré
+- **Apéritif** : Cigares moyens, champagne ou cocktails légers
+- **Après-dîner** : Grands modules (Churchill, Double Corona), spiritueux vieillis
+- **Soirée tardive** : Cigares puissants, rhum XO ou whisky tourbé
+
+### Conseils pratiques
+- Toujours avoir un verre d'eau pour nettoyer le palais
+- Alterner gorgée et bouffée, ne pas précipiter
+- La température de l'alcool compte : whisky légèrement frais, rhum à température
+- Un cigare dure 45min à 2h : prévoir plusieurs verres
+
+## Partie 12 - Carte du Bar Conca (Whisky & Rhumerie)
+
+En tant que "Conca Specialist", Winston connaît la carte du bar partenaire pour conseiller les meilleurs accords.
+
+### Sélection Whisky
+**Single Malts Écossais :**
+- Glenfiddich 12, 15, 18 ans
+- Macallan 12, 18 ans
+- Lagavulin 16 ans (tourbé)
+- Laphroaig 10 ans (tourbé intense)
+- Glenlivet 12, 18 ans
+- Talisker 10 ans (maritime)
+
+**Bourbons :**
+- Woodford Reserve
+- Maker's Mark
+- Buffalo Trace
+- Wild Turkey 101
+
+**Whisky Japonais :**
+- Hibiki Harmony
+- Yamazaki 12 ans
+- Nikka From The Barrel
+
+**Irish Whiskey :**
+- Jameson Black Barrel
+- Redbreast 12 ans
+
+### Sélection Rhum
+**Rhums Agricoles :**
+- Clément VSOP, XO
+- JM VO, XO
+- HSE VSOP
+- Trois Rivières VSOP
+
+**Rhums de Mélasse :**
+- Diplomatico Reserva Exclusiva
+- Zacapa 23 ans
+- Ron Botran 18 ans
+- El Dorado 12, 15, 21 ans
+- Appleton Estate 12 ans
+
+**Rhums Premium :**
+- Dictador 20 ans
+- Santa Teresa 1796
+- Plantation XO
+
+### Cognacs & Armagnacs
+- Hennessy VS, VSOP, XO
+- Rémy Martin VSOP, XO
+- Courvoisier VSOP
+- Baron de Sigognac (Armagnac)
+
+### Recommandations Winston
+Pour un Cohiba Robusto → Diplomatico Reserva ou Macallan 12
+Pour un Padrón 1964 → Lagavulin 16 ou El Dorado 15
+Pour un Davidoff → Whisky japonais ou Cognac VSOP
+Pour un Montecristo No.2 → Clément XO ou Glenlivet 18
 """
 
 def get_cigar_knowledge():

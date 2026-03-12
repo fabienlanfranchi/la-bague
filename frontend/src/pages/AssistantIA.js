@@ -36,10 +36,10 @@ const AssistantIA = () => {
   // Capacités de Winston
   const winstonCapabilities = [
     { icon: BookOpen, text: "Guide du Cigare", description: "Expert en terroirs, formats, marques et dégustation" },
-    { icon: Heart, text: "Recommandations personnalisées", description: "Basées sur vos goûts et ceux des membres" },
-    { icon: Calendar, text: "Rappel d'événements", description: "Apéros, dîners et anniversaires du club" },
-    { icon: GlassWater, text: "Accords cigare & alcool", description: "Rhum, whisky, cognac et plus" },
-    { icon: Award, text: "Certifié Bague Specialist", description: "Connaissance approfondie des 35 membres" },
+    { icon: Heart, text: "Recommandations personnalisées", description: "Basées sur vos goûts, ceux de chaque membre" },
+    { icon: GlassWater, text: "Conseil & Association", description: "Avec quoi irait mon cigare ? Quel accord ? Quel moment ?" },
+    { icon: Award, text: "Certifié Bague Specialist", description: "Connaissance approfondie des 35 membres et du Club" },
+    { icon: Award, text: "Certifié Conca Specialist", description: "Connaissance de la Carte Bar à Whisky & Rhumerie" },
   ];
 
   // Scroll automatique vers le bas
@@ -70,7 +70,7 @@ const AssistantIA = () => {
         const prenom = currentMember?.prenom || currentMember?.nom_complet?.split(' ')[0] || 'cher membre';
         setMessages([{
           role: 'assistant',
-          content: `Bonjour ${prenom} ! Je suis Winston, votre concierge personnel et assistant IA de La Bague Impériale.\n\nCertifié "Bague Specialist", je connais parfaitement les 35 membres du club, leurs goûts, les événements et tout ce qui touche au monde du cigare.\n\nVoici ce que je peux faire pour vous :\n\n📚 Guide du Cigare - Tout savoir sur les terroirs, formats, marques\n💝 Recommandations personnalisées - Basées sur vos goûts et ceux des membres\n📅 Rappel d'événements - Apéros, dîners, anniversaires du club\n🥃 Accords cigare & alcool - Rhum, whisky, cognac...\n👥 Expertise membres - "Quel cigare non cubain Jacques aime-t-il ?"\n\nComment puis-je vous être utile ?`,
+          content: `Bonjour ${prenom} ! Je suis Winston, votre concierge personnel de La Bague Impériale.\n\nDouble certifié "Bague Specialist" et "Conca Specialist", je connais parfaitement les 35 membres du club et la carte du Bar à Whisky & Rhumerie.\n\nVoici ce que je peux faire pour vous :\n\n📚 Guide du Cigare - Tout savoir sur les terroirs, formats, marques\n💝 Recommandations personnalisées - Basées sur vos goûts et ceux de chaque membre\n🥃 Conseil & Association - Quel whisky ou rhum avec votre cigare ? Quel moment de la journée ?\n👥 Expertise membres - "Quel cigare non cubain Jacques aime-t-il ?"\n\nComment puis-je vous être utile ?`,
           timestamp: new Date().toISOString()
         }]);
       }
