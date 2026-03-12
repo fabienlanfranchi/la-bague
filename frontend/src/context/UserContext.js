@@ -31,6 +31,7 @@ export const UserProvider = ({ children }) => {
   const updateCurrentMember = useCallback((member) => {
     hasManualLogin.current = true; // Marquer qu'un login manuel a eu lieu
     setCurrentMember(member);
+    setLoading(false); // S'assurer que loading est false après login
     if (member) {
       localStorage.setItem('currentMemberId', member.id);
       // Définir automatiquement le mode selon le membre
@@ -43,6 +44,12 @@ export const UserProvider = ({ children }) => {
   // Charger les membres au démarrage
   useEffect(() => {
     const loadMembers = async () => {
+      // Si un login manuel a déjà eu lieu, ne pas recharger
+      if (hasManualLogin.current) {
+        setLoading(false);
+        return;
+      }
+      
       setLoading(true);
       setError(null);
       
@@ -50,7 +57,8 @@ export const UserProvider = ({ children }) => {
       const savedMemberId = localStorage.getItem('currentMemberId');
       
       try {
-        const response = await axios.get(`${API}/members`);
+        // Ajouter un timeout de 10 secondes
+        const response = await axios.get(`${API}/members`, { timeout: 10000 });
         const membersData = response.data || [];
         setMembers(membersData);
         
@@ -84,13 +92,14 @@ export const UserProvider = ({ children }) => {
             setMode('admin');
           }
         }
+        setLoading(false);
       } catch (err) {
         console.error('Erreur chargement membres:', err);
         setError('Impossible de se connecter au serveur. Veuillez réessayer.');
-      } finally {
         setLoading(false);
       }
     };
+    
     loadMembers();
   }, []);
 
