@@ -124,11 +124,35 @@ const Cigarotheque = () => {
   
   // Modal notation guidée (Ma Cigarthèque)
   const [showNoteModal, setShowNoteModal] = useState(false);
+  const [noteType, setNoteType] = useState('basique'); // 'basique' ou 'poussee'
   const [noteData, setNoteData] = useState({
+    // Fiche Basique
     note_globale: '',
     note_puissance: '',
-    evolution: 'lineaire', // 'evolution' ou 'lineaire'
-    note_libre: ''
+    evolution: 'lineaire',
+    note_libre: '',
+    // Fiche Poussée - Avant allumage
+    cape: '',
+    construction: '',
+    odeur_cru: '',
+    tirage_froid: '',
+    // Premier tiers
+    tirage_premier: '',
+    combustion_premier: '',
+    notes_premier: '',
+    corps_premier: '',
+    // Deuxième tiers
+    evolution_deuxieme: '',
+    fumee_deuxieme: '',
+    notes_deuxieme: '',
+    retrohale: '',
+    // Dernier tiers
+    montee_puissance: '',
+    equilibre: '',
+    finale: '',
+    // Bilan
+    points_forts: '',
+    defauts: ''
   });
   const [noteCigare, setNoteCigare] = useState(null);
 
@@ -719,24 +743,88 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
       note_globale: existingNote ? String(existingNote) : '',
       note_puissance: notePuissance,
       evolution: evolution,
-      note_libre: noteLibre.replace(/Puissance:.*?(\d+(?:\.\d+)?\/5)?/g, '').replace(/Évolution|Linéaire/g, '').trim()
+      note_libre: noteLibre.replace(/Puissance:.*?(\d+(?:\.\d+)?\/5)?/g, '').replace(/Évolution|Linéaire/g, '').trim(),
+      // Réinitialiser les champs de la fiche poussée
+      cape: '',
+      construction: '',
+      odeur_cru: '',
+      tirage_froid: '',
+      tirage_premier: '',
+      combustion_premier: '',
+      notes_premier: '',
+      corps_premier: '',
+      evolution_deuxieme: '',
+      fumee_deuxieme: '',
+      notes_deuxieme: '',
+      retrohale: '',
+      montee_puissance: '',
+      equilibre: '',
+      finale: '',
+      points_forts: '',
+      defauts: ''
     });
+    setNoteType('basique');
     setShowNoteModal(true);
   };
 
   const handleSaveNote = async () => {
     try {
-      // Construire le commentaire structuré
-      const commentParts = [];
-      if (noteData.note_puissance) {
-        commentParts.push(`Puissance: ${noteData.note_puissance}/5`);
-      }
-      commentParts.push(noteData.evolution === 'evolution' ? 'Évolution' : 'Linéaire');
-      if (noteData.note_libre) {
-        commentParts.push(`Notes: ${noteData.note_libre}`);
-      }
+      // Construire le commentaire structuré selon le type de fiche
+      let commentaire = '';
       
-      const commentaire = commentParts.join(' | ');
+      if (noteType === 'basique') {
+        const commentParts = [];
+        if (noteData.note_puissance) {
+          commentParts.push(`Puissance: ${noteData.note_puissance}/5`);
+        }
+        commentParts.push(noteData.evolution === 'evolution' ? 'Évolution' : 'Linéaire');
+        if (noteData.note_libre) {
+          commentParts.push(`Notes: ${noteData.note_libre}`);
+        }
+        commentaire = commentParts.join(' | ');
+      } else {
+        // Fiche Poussée - Format structuré
+        const sections = [];
+        
+        // Avant allumage
+        const avantAllumage = [];
+        if (noteData.cape) avantAllumage.push(`Cape: ${noteData.cape}`);
+        if (noteData.construction) avantAllumage.push(`Construction: ${noteData.construction}`);
+        if (noteData.odeur_cru) avantAllumage.push(`Odeur à cru: ${noteData.odeur_cru}`);
+        if (noteData.tirage_froid) avantAllumage.push(`Tirage à froid: ${noteData.tirage_froid}`);
+        if (avantAllumage.length) sections.push(`[Avant allumage] ${avantAllumage.join(', ')}`);
+        
+        // Premier tiers
+        const premierTiers = [];
+        if (noteData.tirage_premier) premierTiers.push(`Tirage: ${noteData.tirage_premier}`);
+        if (noteData.combustion_premier) premierTiers.push(`Combustion: ${noteData.combustion_premier}`);
+        if (noteData.notes_premier) premierTiers.push(`Notes: ${noteData.notes_premier}`);
+        if (noteData.corps_premier) premierTiers.push(`Corps: ${noteData.corps_premier}`);
+        if (premierTiers.length) sections.push(`[1er tiers] ${premierTiers.join(', ')}`);
+        
+        // Deuxième tiers
+        const deuxiemeTiers = [];
+        if (noteData.evolution_deuxieme) deuxiemeTiers.push(`Évolution: ${noteData.evolution_deuxieme}`);
+        if (noteData.fumee_deuxieme) deuxiemeTiers.push(`Fumée: ${noteData.fumee_deuxieme}`);
+        if (noteData.notes_deuxieme) deuxiemeTiers.push(`Notes: ${noteData.notes_deuxieme}`);
+        if (noteData.retrohale) deuxiemeTiers.push(`Rétro: ${noteData.retrohale}`);
+        if (deuxiemeTiers.length) sections.push(`[2e tiers] ${deuxiemeTiers.join(', ')}`);
+        
+        // Dernier tiers
+        const dernierTiers = [];
+        if (noteData.montee_puissance) dernierTiers.push(`Montée: ${noteData.montee_puissance}`);
+        if (noteData.equilibre) dernierTiers.push(`Équilibre: ${noteData.equilibre}`);
+        if (noteData.finale) dernierTiers.push(`Finale: ${noteData.finale}`);
+        if (dernierTiers.length) sections.push(`[3e tiers] ${dernierTiers.join(', ')}`);
+        
+        // Bilan
+        const bilan = [];
+        if (noteData.points_forts) bilan.push(`Points forts: ${noteData.points_forts}`);
+        if (noteData.defauts) bilan.push(`Défauts: ${noteData.defauts}`);
+        if (bilan.length) sections.push(`[Bilan] ${bilan.join(' | ')}`);
+        
+        commentaire = sections.join(' || ');
+      }
       
       await axios.put(`${API}/ma-cigarotheque/${noteCigare.id}`, null, {
         params: {
@@ -1749,7 +1837,7 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
 
       {/* ==================== MODAL NOTATION GUIDÉE (MA CIGARTHÈQUE) ==================== */}
       <Dialog open={showNoteModal} onOpenChange={setShowNoteModal}>
-        <DialogContent className="max-w-md bg-[#1a1a1a] border-[#D4A024]/50">
+        <DialogContent className="max-w-2xl bg-[#1a1a1a] border-[#D4A024]/50 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl font-serif text-white flex items-center">
               <Star className="w-5 h-5 mr-2 text-[#D4A024]" />
@@ -1760,76 +1848,298 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
             )}
           </DialogHeader>
 
-          <div className="space-y-5 py-4">
-            {/* Note globale */}
-            <div>
-              <Label className="text-gray-300 flex items-center gap-2">
-                <Star className="w-4 h-4 text-[#D4A024]" />
-                Note globale (sur 5)
-              </Label>
-              <Input
-                type="number"
-                step="0.5"
-                min="0"
-                max="5"
-                value={noteData.note_globale || ''}
-                onChange={(e) => setNoteData({...noteData, note_globale: e.target.value})}
-                className="bg-black/60 border-[#D4A024]/30 text-white mt-1 text-lg h-12"
-                placeholder="Ex: 4.5"
-                data-testid="note-globale-input"
-              />
-            </div>
+          {/* Onglets Fiche Basique / Fiche Poussée */}
+          <Tabs value={noteType} onValueChange={setNoteType} className="w-full">
+            <TabsList className="grid w-full grid-cols-2 bg-black/60">
+              <TabsTrigger value="basique" className="data-[state=active]:bg-[#D4A024] data-[state=active]:text-[#7A2020]">
+                Fiche Basique
+              </TabsTrigger>
+              <TabsTrigger value="poussee" className="data-[state=active]:bg-[#D4A024] data-[state=active]:text-[#7A2020]">
+                Fiche Poussée
+              </TabsTrigger>
+            </TabsList>
 
-            {/* Puissance ressentie */}
-            <div>
-              <Label className="text-gray-300 flex items-center gap-2">
-                <Flame className="w-4 h-4 text-orange-400" />
-                Puissance ressentie (sur 5)
-              </Label>
-              <Input
-                type="number"
-                step="0.5"
-                min="0"
-                max="5"
-                value={noteData.note_puissance || ''}
-                onChange={(e) => setNoteData({...noteData, note_puissance: e.target.value})}
-                className="bg-black/60 border-[#D4A024]/30 text-white mt-1 text-lg h-12"
-                placeholder="Ex: 3"
-                data-testid="note-puissance-input"
-              />
-            </div>
+            {/* ===== FICHE BASIQUE ===== */}
+            <TabsContent value="basique" className="space-y-5 py-4">
+              {/* Note globale */}
+              <div>
+                <Label className="text-gray-300 flex items-center gap-2">
+                  <Star className="w-4 h-4 text-[#D4A024]" />
+                  Note globale (sur 5)
+                </Label>
+                <Input
+                  type="number"
+                  step="0.5"
+                  min="0"
+                  max="5"
+                  value={noteData.note_globale || ''}
+                  onChange={(e) => setNoteData({...noteData, note_globale: e.target.value})}
+                  className="bg-black/60 border-[#D4A024]/30 text-white mt-1 text-lg h-12"
+                  placeholder="Ex: 4.5"
+                  data-testid="note-globale-input"
+                />
+              </div>
 
-            {/* Évolution ou Linéaire */}
-            <div>
-              <Label className="text-gray-300 mb-2 block">Caractère du cigare</Label>
-              <RadioGroup 
-                value={noteData.evolution} 
-                onValueChange={(v) => setNoteData({...noteData, evolution: v})}
-                className="flex gap-4"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="evolution" id="evolution" className="border-[#D4A024] text-[#D4A024]" />
-                  <Label htmlFor="evolution" className="text-white cursor-pointer">Évolutif</Label>
+              {/* Puissance ressentie */}
+              <div>
+                <Label className="text-gray-300 flex items-center gap-2">
+                  <Flame className="w-4 h-4 text-orange-400" />
+                  Puissance ressentie (sur 5)
+                </Label>
+                <Input
+                  type="number"
+                  step="0.5"
+                  min="0"
+                  max="5"
+                  value={noteData.note_puissance || ''}
+                  onChange={(e) => setNoteData({...noteData, note_puissance: e.target.value})}
+                  className="bg-black/60 border-[#D4A024]/30 text-white mt-1 text-lg h-12"
+                  placeholder="Ex: 3"
+                  data-testid="note-puissance-input"
+                />
+              </div>
+
+              {/* Évolution ou Linéaire */}
+              <div>
+                <Label className="text-gray-300 mb-2 block">Caractère du cigare</Label>
+                <RadioGroup 
+                  value={noteData.evolution} 
+                  onValueChange={(v) => setNoteData({...noteData, evolution: v})}
+                  className="flex gap-4"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="evolution" id="evolution" className="border-[#D4A024] text-[#D4A024]" />
+                    <Label htmlFor="evolution" className="text-white cursor-pointer">Évolutif</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="lineaire" id="lineaire" className="border-[#D4A024] text-[#D4A024]" />
+                    <Label htmlFor="lineaire" className="text-white cursor-pointer">Linéaire</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              {/* Note libre */}
+              <div>
+                <Label className="text-gray-300">Notes libres</Label>
+                <Textarea
+                  value={noteData.note_libre || ''}
+                  onChange={(e) => setNoteData({...noteData, note_libre: e.target.value})}
+                  className="bg-black/60 border-[#D4A024]/30 text-white mt-1 min-h-[100px]"
+                  placeholder="Arômes perçus, accords, impressions générales..."
+                  data-testid="note-libre-input"
+                />
+              </div>
+            </TabsContent>
+
+            {/* ===== FICHE POUSSÉE ===== */}
+            <TabsContent value="poussee" className="space-y-6 py-4">
+              {/* Avant allumage */}
+              <div className="space-y-3">
+                <h4 className="text-[#D4A024] font-semibold border-b border-[#D4A024]/30 pb-1">Avant allumage</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-gray-400 text-sm">Cape</Label>
+                    <Input
+                      value={noteData.cape || ''}
+                      onChange={(e) => setNoteData({...noteData, cape: e.target.value})}
+                      className="bg-black/60 border-[#D4A024]/30 text-white mt-1"
+                      placeholder="Aspect, couleur, texture..."
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-400 text-sm">Construction</Label>
+                    <Input
+                      value={noteData.construction || ''}
+                      onChange={(e) => setNoteData({...noteData, construction: e.target.value})}
+                      className="bg-black/60 border-[#D4A024]/30 text-white mt-1"
+                      placeholder="Ferme, souple..."
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-400 text-sm">Odeur à cru</Label>
+                    <Input
+                      value={noteData.odeur_cru || ''}
+                      onChange={(e) => setNoteData({...noteData, odeur_cru: e.target.value})}
+                      className="bg-black/60 border-[#D4A024]/30 text-white mt-1"
+                      placeholder="Notes perçues..."
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-400 text-sm">Tirage à froid</Label>
+                    <Input
+                      value={noteData.tirage_froid || ''}
+                      onChange={(e) => setNoteData({...noteData, tirage_froid: e.target.value})}
+                      className="bg-black/60 border-[#D4A024]/30 text-white mt-1"
+                      placeholder="Ouvert, serré..."
+                    />
+                  </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="lineaire" id="lineaire" className="border-[#D4A024] text-[#D4A024]" />
-                  <Label htmlFor="lineaire" className="text-white cursor-pointer">Linéaire</Label>
-                </div>
-              </RadioGroup>
-            </div>
+              </div>
 
-            {/* Note libre */}
-            <div>
-              <Label className="text-gray-300">Notes libres</Label>
-              <Textarea
-                value={noteData.note_libre || ''}
-                onChange={(e) => setNoteData({...noteData, note_libre: e.target.value})}
-                className="bg-black/60 border-[#D4A024]/30 text-white mt-1 min-h-[100px]"
-                placeholder="Arômes perçus, accords, impressions générales..."
-                data-testid="note-libre-input"
-              />
-            </div>
-          </div>
+              {/* Premier tiers */}
+              <div className="space-y-3">
+                <h4 className="text-[#D4A024] font-semibold border-b border-[#D4A024]/30 pb-1">Premier tiers</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-gray-400 text-sm">Tirage</Label>
+                    <Input
+                      value={noteData.tirage_premier || ''}
+                      onChange={(e) => setNoteData({...noteData, tirage_premier: e.target.value})}
+                      className="bg-black/60 border-[#D4A024]/30 text-white mt-1"
+                      placeholder="Facile, résistant..."
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-400 text-sm">Combustion</Label>
+                    <Input
+                      value={noteData.combustion_premier || ''}
+                      onChange={(e) => setNoteData({...noteData, combustion_premier: e.target.value})}
+                      className="bg-black/60 border-[#D4A024]/30 text-white mt-1"
+                      placeholder="Régulière, irrégulière..."
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-400 text-sm">Notes dominantes</Label>
+                    <Input
+                      value={noteData.notes_premier || ''}
+                      onChange={(e) => setNoteData({...noteData, notes_premier: e.target.value})}
+                      className="bg-black/60 border-[#D4A024]/30 text-white mt-1"
+                      placeholder="Boisé, épicé..."
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-400 text-sm">Corps</Label>
+                    <Input
+                      value={noteData.corps_premier || ''}
+                      onChange={(e) => setNoteData({...noteData, corps_premier: e.target.value})}
+                      className="bg-black/60 border-[#D4A024]/30 text-white mt-1"
+                      placeholder="Léger, moyen, plein..."
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Deuxième tiers */}
+              <div className="space-y-3">
+                <h4 className="text-[#D4A024] font-semibold border-b border-[#D4A024]/30 pb-1">Deuxième tiers</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-gray-400 text-sm">Évolution</Label>
+                    <Input
+                      value={noteData.evolution_deuxieme || ''}
+                      onChange={(e) => setNoteData({...noteData, evolution_deuxieme: e.target.value})}
+                      className="bg-black/60 border-[#D4A024]/30 text-white mt-1"
+                      placeholder="Stable, montée..."
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-400 text-sm">Fumée</Label>
+                    <Input
+                      value={noteData.fumee_deuxieme || ''}
+                      onChange={(e) => setNoteData({...noteData, fumee_deuxieme: e.target.value})}
+                      className="bg-black/60 border-[#D4A024]/30 text-white mt-1"
+                      placeholder="Dense, légère..."
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-400 text-sm">Notes</Label>
+                    <Input
+                      value={noteData.notes_deuxieme || ''}
+                      onChange={(e) => setNoteData({...noteData, notes_deuxieme: e.target.value})}
+                      className="bg-black/60 border-[#D4A024]/30 text-white mt-1"
+                      placeholder="Nouvelles notes..."
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-400 text-sm">Rétro-olfaction</Label>
+                    <Input
+                      value={noteData.retrohale || ''}
+                      onChange={(e) => setNoteData({...noteData, retrohale: e.target.value})}
+                      className="bg-black/60 border-[#D4A024]/30 text-white mt-1"
+                      placeholder="Par le nez..."
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Dernier tiers */}
+              <div className="space-y-3">
+                <h4 className="text-[#D4A024] font-semibold border-b border-[#D4A024]/30 pb-1">Dernier tiers</h4>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <Label className="text-gray-400 text-sm">Montée en puissance</Label>
+                    <Input
+                      value={noteData.montee_puissance || ''}
+                      onChange={(e) => setNoteData({...noteData, montee_puissance: e.target.value})}
+                      className="bg-black/60 border-[#D4A024]/30 text-white mt-1"
+                      placeholder="Forte, douce..."
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-400 text-sm">Équilibre</Label>
+                    <Input
+                      value={noteData.equilibre || ''}
+                      onChange={(e) => setNoteData({...noteData, equilibre: e.target.value})}
+                      className="bg-black/60 border-[#D4A024]/30 text-white mt-1"
+                      placeholder="Maintenu, perdu..."
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-400 text-sm">Finale</Label>
+                    <Input
+                      value={noteData.finale || ''}
+                      onChange={(e) => setNoteData({...noteData, finale: e.target.value})}
+                      className="bg-black/60 border-[#D4A024]/30 text-white mt-1"
+                      placeholder="Longue, courte..."
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Bilan */}
+              <div className="space-y-3">
+                <h4 className="text-[#D4A024] font-semibold border-b border-[#D4A024]/30 pb-1">Bilan</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-gray-400 text-sm">Points forts</Label>
+                    <Textarea
+                      value={noteData.points_forts || ''}
+                      onChange={(e) => setNoteData({...noteData, points_forts: e.target.value})}
+                      className="bg-black/60 border-[#D4A024]/30 text-white mt-1 min-h-[80px]"
+                      placeholder="Ce qui vous a plu..."
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-400 text-sm">Défauts</Label>
+                    <Textarea
+                      value={noteData.defauts || ''}
+                      onChange={(e) => setNoteData({...noteData, defauts: e.target.value})}
+                      className="bg-black/60 border-[#D4A024]/30 text-white mt-1 min-h-[80px]"
+                      placeholder="Ce qui pourrait être amélioré..."
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Note globale aussi dans fiche poussée */}
+              <div>
+                <Label className="text-gray-300 flex items-center gap-2">
+                  <Star className="w-4 h-4 text-[#D4A024]" />
+                  Note globale (sur 5)
+                </Label>
+                <Input
+                  type="number"
+                  step="0.5"
+                  min="0"
+                  max="5"
+                  value={noteData.note_globale || ''}
+                  onChange={(e) => setNoteData({...noteData, note_globale: e.target.value})}
+                  className="bg-black/60 border-[#D4A024]/30 text-white mt-1 text-lg h-12"
+                  placeholder="Ex: 4.5"
+                />
+              </div>
+            </TabsContent>
+          </Tabs>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowNoteModal(false)} className="border-gray-600 text-gray-400">
