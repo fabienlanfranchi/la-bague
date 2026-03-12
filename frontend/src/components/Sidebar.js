@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 
 const Sidebar = () => {
-  const { isAdmin, toggleMode, currentMember } = useUser();
+  const { isAdmin, toggleMode, currentMember, logout } = useUser();
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(true);
 
@@ -156,6 +156,7 @@ const Sidebar = () => {
 
             <Link
               to="/"
+              onClick={logout}
               className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-red-900/20 hover:text-red-400 transition-all"
             >
               <LogOut className="w-5 h-5" />

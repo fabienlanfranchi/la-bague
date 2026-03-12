@@ -14,7 +14,7 @@ const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 const LoginPage = () => {
   const navigate = useNavigate();
-  const { setCurrentMember, setMode } = useUser();
+  const { setCurrentMember } = useUser();
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('activation');
 
@@ -116,9 +116,8 @@ const LoginPage = () => {
 
       const { member } = response.data;
 
-      // Connecter l'utilisateur
+      // Connecter l'utilisateur (le mode est automatiquement défini par setCurrentMember)
       setCurrentMember(member);
-      setMode(member.numero_membre === 1 ? 'admin' : 'member');
 
       toast.success('Compte activé avec succès ! Bienvenue !');
       navigate('/dashboard');
@@ -154,8 +153,8 @@ const LoginPage = () => {
 
       const { member } = response.data;
 
+      // Connecter l'utilisateur (le mode est automatiquement défini par setCurrentMember)
       setCurrentMember(member);
-      setMode(member.numero_membre === 1 ? 'admin' : 'member');
 
       // Si "rester connecté", stocker en localStorage
       if (loginData.stayLoggedIn) {

@@ -19,6 +19,51 @@ import Statistiques from './pages/Statistiques';
 import Sauvegarde from './pages/Sauvegarde';
 import LoginPage from './pages/LoginPage';
 
+// Composant de chargement global
+const LoadingScreen = () => {
+  return (
+    <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="text-center">
+        <img
+          src="/assets/logos/logo-principal-transparent.png"
+          alt="La Bague Impériale"
+          className="w-48 mx-auto mb-6 animate-pulse"
+        />
+        <div className="flex items-center justify-center space-x-2">
+          <div className="w-3 h-3 bg-[#D4A024] rounded-full animate-bounce" style={{animationDelay: '0ms'}}></div>
+          <div className="w-3 h-3 bg-[#D4A024] rounded-full animate-bounce" style={{animationDelay: '150ms'}}></div>
+          <div className="w-3 h-3 bg-[#D4A024] rounded-full animate-bounce" style={{animationDelay: '300ms'}}></div>
+        </div>
+        <p className="text-[#D4A024] mt-4 font-serif">Chargement...</p>
+      </div>
+    </div>
+  );
+};
+
+// Composant d'erreur de connexion
+const ErrorScreen = ({ message, onRetry }) => {
+  return (
+    <div className="min-h-screen bg-black flex items-center justify-center p-4">
+      <div className="text-center max-w-md">
+        <img
+          src="/assets/logos/logo-principal-transparent.png"
+          alt="La Bague Impériale"
+          className="w-48 mx-auto mb-6 opacity-50"
+        />
+        <div className="bg-red-900/20 border border-red-600/50 rounded-lg p-6">
+          <p className="text-red-400 text-lg mb-4">{message || 'Erreur de connexion au serveur'}</p>
+          <button
+            onClick={onRetry}
+            className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-bold py-2 px-6 rounded-lg"
+          >
+            Réessayer
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Accès libre pour l'instant - pas de protection
 const ProtectedRoute = ({ children }) => {
   return children;
@@ -92,8 +137,20 @@ const Home = () => {
 };
 
 const AppLayout = ({ children }) => {
+  const { loading, error } = useUser();
+  
   // Sélectionner une photo aléatoire pour le fond
   const randomCigar = Math.floor(Math.random() * 10) + 1;
+  
+  // Afficher l'écran de chargement pendant le chargement initial
+  if (loading) {
+    return <LoadingScreen />;
+  }
+  
+  // Afficher l'écran d'erreur si erreur de connexion
+  if (error) {
+    return <ErrorScreen message={error} onRetry={() => window.location.reload()} />;
+  }
   
   return (
     <div 
