@@ -37,7 +37,7 @@ const AssistantIA = () => {
   const winstonCapabilities = [
     { icon: BookOpen, text: "Guide du Cigare", description: "Expert en terroirs, formats, marques et dégustation" },
     { icon: Heart, text: "Recommandations personnalisées", description: "Basées sur vos goûts, ceux de chaque membre" },
-    { icon: GlassWater, text: "Conseil & Association", description: "Avec quoi irait mon cigare ? Quel accord ? Quel moment ?" },
+    { icon: GlassWater, text: "Conseil & Association", description: "Quel accord ? Quel moment ? Vais-je aimer ce cigare ?" },
     { icon: Award, text: "Certifié Bague Specialist", description: "Connaissance approfondie des 35 membres et du Club" },
     { icon: Award, text: "Certifié Conca Specialist", description: "Siège du club - Carte Bar à Whisky & Rhumerie" },
   ];
@@ -70,7 +70,7 @@ const AssistantIA = () => {
         const prenom = currentMember?.prenom || currentMember?.nom_complet?.split(' ')[0] || 'cher membre';
         setMessages([{
           role: 'assistant',
-          content: `Bonjour ${prenom} ! Je suis Winston, votre concierge personnel de La Bague Impériale.\n\nDouble certifié "Bague Specialist" et "Conca Specialist", je connais parfaitement les 35 membres du club et la carte du Bar à Whisky & Rhumerie.\n\nVoici ce que je peux faire pour vous :\n\n📚 Guide du Cigare - Tout savoir sur les terroirs, formats, marques\n💝 Recommandations personnalisées - Basées sur vos goûts et ceux de chaque membre\n🥃 Conseil & Association - Quel whisky ou rhum avec votre cigare ? Quel moment de la journée ?\n👥 Expertise membres - "Quel cigare non cubain Jacques aime-t-il ?"\n\nComment puis-je vous être utile ?`,
+          content: `Bonjour ${prenom} ! Je suis Winston, votre concierge personnel de La Bague Impériale.\n\nDouble certifié "Bague Specialist" et "Conca Specialist", je connais parfaitement les 35 membres du club et la carte du Bar à Whisky & Rhumerie.\n\nVoici ce que je peux faire pour vous :\n\n📚 Guide du Cigare - Tout savoir sur les terroirs, formats, marques\n💝 Recommandations personnalisées - Basées sur vos goûts et ceux de chaque membre\n🥃 Conseil & Association - Quel whisky avec mon cigare ? Quel moment de la journée ?\n🎯 Prédiction - "Vais-je aimer tel cigare ?" Selon votre Cigarthèque, je peux vous le dire !\n👥 Expertise membres - "Quel cigare non cubain Jacques aime-t-il ?"\n\nComment puis-je vous être utile ?`,
           timestamp: new Date().toISOString()
         }]);
       }
