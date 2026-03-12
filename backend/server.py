@@ -235,23 +235,49 @@ async def login(request: Request, login_data: LoginRequest):
     
     # Première connexion avec nom + prénom + mot de passe temporaire
     elif login_data.nom and login_data.prenom and login_data.temporary_password:
-        # Rechercher par nom complet
-        nom_complet = f"{login_data.prenom} {login_data.nom}"
-        nom_complet_inverse = f"{login_data.nom} {login_data.prenom}"
+        # Nettoyer les entrées (supprimer espaces avant/après)
+        prenom_clean = login_data.prenom.strip()
+        nom_clean = login_data.nom.strip()
+        temp_password_clean = login_data.temporary_password.strip().lower()
         
-        member = await db.members.find_one({
-            "$or": [
-                {"nom_complet": {"$regex": nom_complet, "$options": "i"}},
-                {"nom_complet": {"$regex": nom_complet_inverse, "$options": "i"}}
-            ]
-        }, {"_id": 0})
+        # D'abord, chercher tous les membres avec ce nom de famille
+        membres_candidats = await db.members.find(
+            {"nom_complet": {"$regex": nom_clean, "$options": "i"}},
+            {"_id": 0}
+        ).to_list(100)
+        
+        member = None
+        for candidat in membres_candidats:
+            nom_complet_db = candidat.get('nom_complet', '')
+            # Extraire le prénom de la base (premier mot avant le nom)
+            prenom_db = nom_complet_db.replace(nom_clean, '').strip()
+            if not prenom_db:
+                # Essayer avec split
+                parts = nom_complet_db.split()
+                prenom_db = parts[0] if parts else ''
+            
+            # Vérifier si les prénoms correspondent (partiellement)
+            prenom_clean_lower = prenom_clean.lower()
+            prenom_db_lower = prenom_db.lower()
+            
+            # Match si : 
+            # - Identiques
+            # - L'un commence par l'autre (Fred/Frederic ou Frederic/Fred)
+            # - Contient l'autre
+            if (prenom_clean_lower == prenom_db_lower or 
+                prenom_clean_lower.startswith(prenom_db_lower) or 
+                prenom_db_lower.startswith(prenom_clean_lower) or
+                prenom_clean_lower in prenom_db_lower or
+                prenom_db_lower in prenom_clean_lower):
+                member = candidat
+                break
         
         if not member:
-            raise HTTPException(status_code=401, detail="Membre non trouvé")
+            raise HTTPException(status_code=401, detail="Membre non trouvé. Vérifiez l'orthographe de votre nom et prénom.")
         
         # Vérifier le mot de passe temporaire
-        if member.get('temporary_password') != login_data.temporary_password:
-            raise HTTPException(status_code=401, detail="Mot de passe temporaire incorrect")
+        if member.get('temporary_password') != temp_password_clean:
+            raise HTTPException(status_code=401, detail="Code d'activation incorrect")
         
         # Si déjà validé, demander email/mot de passe
         if member.get('is_validated'):
