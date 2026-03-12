@@ -268,20 +268,20 @@ const AssistantIA = () => {
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder="Pose-moi une question sur les cigares ou le club..."
-              className="flex-1 bg-black/60 border-[#D4A024]/30 text-white placeholder:text-gray-500 text-base h-12"
+              className="flex-1 bg-black/60 border-[#D4A024]/30 text-white placeholder:text-gray-500 text-lg h-14 px-5"
               disabled={isLoading}
               data-testid="chat-input"
             />
             <Button
               onClick={() => sendMessage()}
               disabled={isLoading || !inputMessage.trim()}
-              className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] px-6 h-12"
+              className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] px-8 h-14"
               data-testid="send-btn"
             >
               {isLoading ? (
-                <Loader2 className="w-6 h-6 animate-spin" />
+                <Loader2 className="w-7 h-7 animate-spin" />
               ) : (
-                <Send className="w-6 h-6" />
+                <Send className="w-7 h-7" />
               )}
             </Button>
           </div>

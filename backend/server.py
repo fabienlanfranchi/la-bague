@@ -4107,10 +4107,15 @@ Tu tutoies les membres car c'est un club convivial.
     context_parts.append(club_info)
     
     # 2. Identifier le membre qui parle
-    user_data = await db.users.find_one({"id": user_id})
+    user_data = await db.members.find_one({"id": user_id})
+    if not user_data:
+        # Essayer de trouver par nom si pas par ID
+        user_data = await db.members.find_one({})  # Prendre le premier membre par défaut
+    
     if user_data:
+        nom_complet = user_data.get('nom_complet', f"{user_data.get('prenom', '')} {user_data.get('nom', '')}")
         membre_info = f"""
-Le membre qui te parle est : {user_data.get('prenom', '')} {user_data.get('nom', '')}
+Le membre qui te parle est : {nom_complet}
 - Numéro de membre : {user_data.get('numero_membre', 'N/A')}
 - Email : {user_data.get('email', 'N/A')}
 - Rôle : {user_data.get('role', 'membre')}
@@ -4123,8 +4128,9 @@ Tu t'adresses à lui/elle directement par son prénom.
     
     # 3. La collection personnelle du membre (Ma Cigarthèque)
     ma_collection = await db.ma_cigarotheque.find({"user_id": user_id}).to_list(100)
-    if ma_collection:
-        collection_text = f"\n--- MA CIGARTHÈQUE DE {user_data.get('prenom', 'ce membre').upper()} ({len(ma_collection)} cigares) ---\n"
+    if ma_collection and user_data:
+        nom = user_data.get('nom_complet', user_data.get('prenom', 'ce membre'))
+        collection_text = f"\n--- MA CIGARTHÈQUE DE {nom.upper()} ({len(ma_collection)} cigares) ---\n"
         for c in ma_collection:
             note = c.get('note_globale', '')
             puissance = c.get('note_puissance', '')
@@ -4134,11 +4140,28 @@ Tu t'adresses à lui/elle directement par son prénom.
         context_parts.append(collection_text)
     
     # 4. Tous les membres du club (pour répondre aux questions sur les autres)
-    all_members = await db.users.find({}).to_list(100)
+    all_members = await db.members.find({}).to_list(100)
     if all_members:
         members_text = f"\n--- LES {len(all_members)} MEMBRES DU CLUB ---\n"
         for m in all_members:
-            members_text += f"- {m.get('prenom', '')} {m.get('nom', '')} (#{m.get('numero_membre', '?')}), {m.get('role', 'membre')}, adhésion: {m.get('date_adhesion', 'N/A')}\n"
+            nom_complet = m.get('nom_complet', f"{m.get('prenom', '')} {m.get('nom', '')}")
+            numero = m.get('numero_membre', '?')
+            fonction = m.get('fonction', 'Membre')
+            annee = m.get('annee_entree', m.get('date_adhesion', 'N/A'))
+            saison = m.get('saison_entree', '')
+            presences = m.get('pourcentage_presences', 'N/A')
+            etoiles = m.get('etoiles', 0)
+            
+            members_text += f"- {nom_complet} (#{numero}), {fonction}"
+            if annee and annee != 'N/A':
+                members_text += f", membre depuis {annee}"
+            if saison:
+                members_text += f" ({saison})"
+            if presences and presences != 'N/A':
+                members_text += f", présences: {presences}%"
+            if etoiles:
+                members_text += f", {etoiles} étoiles"
+            members_text += "\n"
         context_parts.append(members_text)
     
     # 5. Collections de tous les membres (pour les recommandations croisées)
@@ -4154,9 +4177,9 @@ Tu t'adresses à lui/elle directement par son prénom.
         
         collections_text = "\n--- CIGARES PRÉFÉRÉS DES MEMBRES ---\n"
         for uid, cigars in collections_by_user.items():
-            member = await db.users.find_one({"id": uid})
+            member = await db.members.find_one({"id": uid})
             if member:
-                name = f"{member.get('prenom', '')} {member.get('nom', '')}"
+                name = member.get('nom_complet', f"{member.get('prenom', '')} {member.get('nom', '')}")
                 # Trouver les cigares les mieux notés
                 top_cigars = sorted(cigars, key=lambda x: float(x.get('note_globale', 0) or 0), reverse=True)[:3]
                 if top_cigars:
