@@ -259,28 +259,6 @@ const AssistantIA = () => {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Questions suggérées (si peu de messages) */}
-        {messages.length <= 2 && (
-          <div className="px-4 pb-3">
-            <p className="text-gray-400 text-sm mb-3">Questions suggérées :</p>
-            <div className="flex flex-wrap gap-2">
-              {suggestedQuestions.map((q, i) => (
-                <Button
-                  key={i}
-                  variant="outline"
-                  size="default"
-                  onClick={() => handleSuggestedQuestion(q.text)}
-                  className="border-[#D4A024]/30 text-gray-300 hover:bg-[#D4A024]/10 text-sm"
-                  disabled={isLoading}
-                >
-                  <q.icon className={`w-4 h-4 mr-2 ${q.color}`} />
-                  {q.text}
-                </Button>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Zone de saisie */}
         <div className="p-4 border-t border-[#D4A024]/20">
           <div className="flex gap-3">
