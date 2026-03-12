@@ -39,7 +39,7 @@ const AssistantIA = () => {
     { icon: Heart, text: "Recommandations personnalisées", description: "Basées sur vos goûts, ceux de chaque membre" },
     { icon: GlassWater, text: "Conseil & Association", description: "Avec quoi irait mon cigare ? Quel accord ? Quel moment ?" },
     { icon: Award, text: "Certifié Bague Specialist", description: "Connaissance approfondie des 35 membres et du Club" },
-    { icon: Award, text: "Certifié Conca Specialist", description: "Connaissance de la Carte Bar à Whisky & Rhumerie" },
+    { icon: Award, text: "Certifié Conca Specialist", description: "Siège du club - Carte Bar à Whisky & Rhumerie" },
   ];
 
   // Scroll automatique vers le bas
