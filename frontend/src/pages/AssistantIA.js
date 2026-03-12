@@ -5,17 +5,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { 
-  Sparkles, 
   Send, 
   User, 
   Bot, 
   RefreshCw,
   Loader2,
-  MessageCircle,
-  Lightbulb,
-  Wine,
-  Users,
-  Calendar
+  BookOpen,
+  Heart,
+  Calendar,
+  GlassWater,
+  Award
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -34,12 +33,13 @@ const AssistantIA = () => {
   // ID utilisateur pour l'API
   const userId = currentMember?.id || 'default-user';
 
-  // Questions suggérées
-  const suggestedQuestions = [
-    { icon: Wine, text: "Conseille-moi un cigare que je n'ai pas encore fumé", color: "text-[#D4A024]" },
-    { icon: Lightbulb, text: "Quel est mon cigare préféré ?", color: "text-purple-400" },
-    { icon: Users, text: "Quel est le cigare préféré de Fabien ?", color: "text-blue-400" },
-    { icon: Calendar, text: "Quels sont les prochains événements du club ?", color: "text-green-400" },
+  // Capacités de Winston
+  const winstonCapabilities = [
+    { icon: BookOpen, text: "Guide du Cigare", description: "Expert en terroirs, formats, marques et dégustation" },
+    { icon: Heart, text: "Recommandations personnalisées", description: "Basées sur vos goûts et ceux des membres" },
+    { icon: Calendar, text: "Rappel d'événements", description: "Apéros, dîners et anniversaires du club" },
+    { icon: GlassWater, text: "Accords cigare & alcool", description: "Rhum, whisky, cognac et plus" },
+    { icon: Award, text: "Certifié Bague Specialist", description: "Connaissance approfondie des 35 membres" },
   ];
 
   // Scroll automatique vers le bas
@@ -70,7 +70,7 @@ const AssistantIA = () => {
         const prenom = currentMember?.prenom || currentMember?.nom_complet?.split(' ')[0] || 'cher membre';
         setMessages([{
           role: 'assistant',
-          content: `Bonjour ${prenom} ! 👋\n\nJe suis l'assistant IA de La Bague Impériale. Je connais le club, tous les membres, et je suis expert en cigares.\n\nJe peux t'aider à :\n• Trouver des cigares qui correspondent à tes goûts\n• Répondre à tes questions sur les cigares\n• Te donner des infos sur le club et les membres\n\nComment puis-je t'aider ?`,
+          content: `Bonjour ${prenom} ! Je suis Winston, votre concierge personnel et assistant IA de La Bague Impériale.\n\nCertifié "Bague Specialist", je connais parfaitement les 35 membres du club, leurs goûts, les événements et tout ce qui touche au monde du cigare.\n\nVoici ce que je peux faire pour vous :\n\n📚 Guide du Cigare - Tout savoir sur les terroirs, formats, marques\n💝 Recommandations personnalisées - Basées sur vos goûts et ceux des membres\n📅 Rappel d'événements - Apéros, dîners, anniversaires du club\n🥃 Accords cigare & alcool - Rhum, whisky, cognac...\n👥 Expertise membres - "Quel cigare non cubain Jacques aime-t-il ?"\n\nComment puis-je vous être utile ?`,
           timestamp: new Date().toISOString()
         }]);
       }
@@ -139,7 +139,7 @@ const AssistantIA = () => {
   };
 
   const resetConversation = async () => {
-    if (!window.confirm('Réinitialiser la conversation ?')) return;
+    if (!window.confirm('Réinitialiser la conversation avec Winston ?')) return;
     
     const prenom = currentMember?.prenom || currentMember?.nom_complet?.split(' ')[0] || 'cher membre';
     
@@ -147,7 +147,7 @@ const AssistantIA = () => {
       await axios.post(`${API}/assistant/reset?user_id=${userId}`);
       setMessages([{
         role: 'assistant',
-        content: `Conversation réinitialisée ! Comment puis-je t'aider, ${prenom} ?`,
+        content: `Nouvelle conversation ! Comment puis-je vous aider, ${prenom} ?`,
         timestamp: new Date().toISOString()
       }]);
       toast.success('Conversation réinitialisée');
@@ -176,24 +176,40 @@ const AssistantIA = () => {
       {/* Header */}
       <div className="text-center md:text-left mb-4">
         <h1 className="text-4xl md:text-5xl font-serif font-bold text-white mb-2">
-          Assistant IA
+          Winston
         </h1>
         <p className="text-[#D4A024] text-lg font-serif">
-          Votre conseiller personnel pour le cigare
+          Concierge & Assistant IA
         </p>
       </div>
+
+      {/* Capacités de Winston (affiché au début) */}
+      {messages.length <= 1 && (
+        <div className="mb-4 grid grid-cols-2 md:grid-cols-5 gap-3">
+          {winstonCapabilities.map((cap, i) => (
+            <div key={i} className="bg-black/40 border border-[#D4A024]/20 rounded-lg p-3 text-center">
+              <cap.icon className="w-6 h-6 text-[#D4A024] mx-auto mb-2" />
+              <p className="text-white text-sm font-medium">{cap.text}</p>
+              <p className="text-gray-400 text-xs mt-1">{cap.description}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Zone de chat */}
       <Card className="flex-1 bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm flex flex-col overflow-hidden">
         {/* Header du chat */}
         <div className="flex items-center justify-between p-5 border-b border-[#D4A024]/20">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#D4A024] to-[#7A2020] flex items-center justify-center">
-              <Sparkles className="w-6 h-6 text-white" />
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#D4A024] to-[#7A2020] flex items-center justify-center text-white font-serif font-bold text-xl">
+              W
             </div>
             <div>
-              <h3 className="text-white font-semibold text-lg">Assistant La Bague Impériale</h3>
-              <p className="text-gray-400">Expert cigares & club</p>
+              <h3 className="text-white font-semibold text-lg">Winston</h3>
+              <div className="flex items-center gap-2">
+                <Badge className="bg-[#7A2020]/80 text-white text-xs">Bague Specialist</Badge>
+                <p className="text-gray-400 text-sm">Concierge du club</p>
+              </div>
             </div>
           </div>
           <Button
@@ -223,7 +239,7 @@ const AssistantIA = () => {
                 {message.role === 'user' ? (
                   <User className="w-5 h-5 text-white" />
                 ) : (
-                  <Bot className="w-5 h-5 text-white" />
+                  <span className="text-white font-serif font-bold text-lg">W</span>
                 )}
               </div>
 
@@ -244,7 +260,7 @@ const AssistantIA = () => {
           {isTyping && (
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#D4A024] to-[#7A2020] flex items-center justify-center">
-                <Bot className="w-5 h-5 text-white" />
+                <span className="text-white font-serif font-bold text-lg">W</span>
               </div>
               <div className="bg-black/60 border border-[#D4A024]/30 rounded-2xl rounded-tl-sm px-5 py-4">
                 <div className="flex gap-2">
