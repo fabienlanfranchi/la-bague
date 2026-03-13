@@ -1806,27 +1806,47 @@ const Dashboard = () => {
               {newManualResponse.type === 'membre_manuel' && (
                 <div>
                   <Label className="text-gray-300 mb-2 block">Sélectionner le membre *</Label>
-                  <select
-                    value={newManualResponse.membre_id || ''}
-                    onChange={(e) => {
-                      const selectedMember = members.find(m => m.id === e.target.value);
-                      setNewManualResponse(prev => ({ 
-                        ...prev, 
-                        membre_id: e.target.value,
-                        nom: selectedMember?.nom_complet || ''
-                      }));
-                    }}
-                    className="w-full bg-black border-2 border-[#D4A024] text-white rounded-lg px-4 py-3 text-base appearance-none cursor-pointer"
-                    style={{ fontSize: '16px' }}
-                  >
-                    <option value="">-- Choisir un membre --</option>
-                    {members
-                      .sort((a, b) => (a.nom_complet || '').localeCompare(b.nom_complet || ''))
-                      .map(m => (
-                        <option key={m.id} value={m.id}>{m.nom_complet}</option>
-                      ))
-                    }
-                  </select>
+                  
+                  {/* Afficher le membre sélectionné ou le placeholder */}
+                  {newManualResponse.membre_id ? (
+                    <div className="w-full bg-green-900/30 border-2 border-green-500 text-white rounded-lg px-4 py-3 flex items-center justify-between">
+                      <span className="font-medium">{newManualResponse.nom}</span>
+                      <button 
+                        type="button"
+                        onClick={() => setNewManualResponse(prev => ({ ...prev, membre_id: '', nom: '' }))}
+                        className="text-red-400 hover:text-red-300"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-gray-400 mb-2">Touchez un nom pour le sélectionner :</p>
+                  )}
+                  
+                  {/* Liste scrollable des membres */}
+                  {!newManualResponse.membre_id && (
+                    <div className="max-h-48 overflow-y-auto border border-[#D4A024]/30 rounded-lg bg-black/50">
+                      {members
+                        .sort((a, b) => (a.nom_complet || '').localeCompare(b.nom_complet || ''))
+                        .map(m => (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => {
+                              setNewManualResponse(prev => ({ 
+                                ...prev, 
+                                membre_id: m.id,
+                                nom: m.nom_complet || ''
+                              }));
+                            }}
+                            className="w-full text-left px-4 py-3 text-white hover:bg-[#D4A024]/20 border-b border-[#D4A024]/10 last:border-b-0 active:bg-[#D4A024]/30"
+                          >
+                            {m.nom_complet}
+                          </button>
+                        ))
+                      }
+                    </div>
+                  )}
                 </div>
               )}
 
