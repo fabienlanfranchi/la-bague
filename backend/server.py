@@ -778,6 +778,32 @@ class ReponseSondageCreate(BaseModel):
     choix_dessert: Optional[str] = None
 
 
+# Réponse manuelle (invités / membres sans accès)
+class ReponseManuelle(BaseModel):
+    """Réponse manuelle pour invités ou membres sans accès app"""
+    model_config = ConfigDict(extra="ignore")
+    
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    evenement_id: str
+    nom: str  # Nom de la personne
+    type: str = "invite"  # "invite" ou "membre_manuel"
+    present: bool = True
+    choix_entree: Optional[str] = None
+    choix_plat: Optional[str] = None
+    choix_dessert: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class ReponseManuelleCreate(BaseModel):
+    evenement_id: str
+    nom: str
+    type: str = "invite"
+    present: bool = True
+    choix_entree: Optional[str] = None
+    choix_plat: Optional[str] = None
+    choix_dessert: Optional[str] = None
+
+
 # ============ MESSAGES & NOTIFICATIONS - MODELS ============
 
 class SondageTemplate(BaseModel):
@@ -1970,6 +1996,47 @@ async def delete_sondage_template(template_id: str):
     """Supprimer un template"""
     await db.sondage_templates.delete_one({"id": template_id})
     return {"message": "Template supprimé"}
+
+
+# ============ RÉPONSES MANUELLES (Invités / Membres sans accès) ============
+
+@api_router.get("/reponses-manuelles/{evenement_id}")
+async def get_reponses_manuelles(evenement_id: str):
+    """Liste les réponses manuelles pour un événement"""
+    reponses = await db.reponses_manuelles.find(
+        {"evenement_id": evenement_id}, 
+        {"_id": 0}
+    ).to_list(100)
+    return reponses
+
+
+@api_router.post("/reponses-manuelles")
+async def create_reponse_manuelle(input: ReponseManuelleCreate):
+    """Ajouter une réponse manuelle (invité ou membre sans accès)"""
+    reponse = ReponseManuelle(
+        evenement_id=input.evenement_id,
+        nom=input.nom,
+        type=input.type,
+        present=input.present,
+        choix_entree=input.choix_entree,
+        choix_plat=input.choix_plat,
+        choix_dessert=input.choix_dessert
+    )
+    
+    doc = reponse.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    await db.reponses_manuelles.insert_one(doc)
+    
+    return {"message": "Réponse ajoutée", "reponse": {k: v for k, v in doc.items() if k != '_id'}}
+
+
+@api_router.delete("/reponses-manuelles/{reponse_id}")
+async def delete_reponse_manuelle(reponse_id: str):
+    """Supprimer une réponse manuelle"""
+    result = await db.reponses_manuelles.delete_one({"id": reponse_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Réponse non trouvée")
+    return {"message": "Réponse supprimée"}
 
 
 # ============ MESSAGES - ROUTES ============

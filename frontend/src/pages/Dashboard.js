@@ -4,7 +4,9 @@ import { api } from '../services/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Users, TrendingUp, Star, Calendar, DollarSign, MessageSquare, Download, X, Bell, RefreshCw, Check, CheckCircle, ScrollText, ChevronDown, ChevronUp } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Users, TrendingUp, Star, Calendar, DollarSign, MessageSquare, Download, X, Bell, RefreshCw, Check, CheckCircle, ScrollText, ChevronDown, ChevronUp, UserPlus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
 
@@ -792,11 +794,85 @@ const Dashboard = () => {
   const [showMembersModal, setShowMembersModal] = useState(false);
   const [selectedStars, setSelectedStars] = useState(null);
   const [filteredMembers, setFilteredMembers] = useState([]);
+  
+  // États pour les réponses manuelles (invités/membres sans accès)
+  const [showAddManualModal, setShowAddManualModal] = useState(false);
+  const [manualResponses, setManualResponses] = useState([]);
+  const [newManualResponse, setNewManualResponse] = useState({
+    nom: '',
+    type: 'invite', // 'invite' ou 'membre_manuel'
+    present: true,
+    choix_entree: '',
+    choix_plat: '',
+    choix_dessert: ''
+  });
 
   useEffect(() => {
     loadDashboardData();
     loadProchainEvenement();
   }, []);
+  
+  // Charger les réponses manuelles pour l'événement
+  const loadManualResponses = async (evenementId) => {
+    try {
+      const response = await axios.get(`${API}/reponses-manuelles/${evenementId}`);
+      setManualResponses(response.data || []);
+    } catch (error) {
+      // Pas de réponses manuelles
+      setManualResponses([]);
+    }
+  };
+  
+  // Ajouter une réponse manuelle
+  const handleAddManualResponse = async () => {
+    if (!newManualResponse.nom.trim()) {
+      toast.error('Veuillez entrer un nom');
+      return;
+    }
+    
+    try {
+      await axios.post(`${API}/reponses-manuelles`, {
+        evenement_id: prochainEvenement.id,
+        nom: newManualResponse.nom.trim(),
+        type: newManualResponse.type,
+        present: newManualResponse.present,
+        choix_entree: newManualResponse.choix_entree || null,
+        choix_plat: newManualResponse.choix_plat || null,
+        choix_dessert: newManualResponse.choix_dessert || null
+      });
+      
+      toast.success(`${newManualResponse.type === 'invite' ? 'Invité' : 'Réponse membre'} ajouté(e) !`);
+      
+      // Réinitialiser le formulaire
+      setNewManualResponse({
+        nom: '',
+        type: 'invite',
+        present: true,
+        choix_entree: '',
+        choix_plat: '',
+        choix_dessert: ''
+      });
+      
+      // Recharger les données
+      await loadManualResponses(prochainEvenement.id);
+      await loadNonRepondants(prochainEvenement.id);
+    } catch (error) {
+      console.error('Erreur ajout réponse manuelle:', error);
+      toast.error('Erreur lors de l\'ajout');
+    }
+  };
+  
+  // Supprimer une réponse manuelle
+  const handleDeleteManualResponse = async (responseId) => {
+    try {
+      await axios.delete(`${API}/reponses-manuelles/${responseId}`);
+      toast.success('Réponse supprimée');
+      await loadManualResponses(prochainEvenement.id);
+      await loadNonRepondants(prochainEvenement.id);
+    } catch (error) {
+      toast.error('Erreur lors de la suppression');
+    }
+  };
 
   // Charger le prochain événement et les non-répondants
   const loadProchainEvenement = async () => {
@@ -815,6 +891,8 @@ const Dashboard = () => {
       if (prochain) {
         // Charger les réponses au sondage pour cet événement
         await loadNonRepondants(prochain.id);
+        // Charger les réponses manuelles
+        await loadManualResponses(prochain.id);
       }
     } catch (error) {
       console.error('Erreur chargement événement:', error);
@@ -979,40 +1057,73 @@ const Dashboard = () => {
     const { presents, absents, choixEntrees, choixPlats, choixDesserts } = nextEvent.sondageResults || {};
     const enAttente = nonRepondants.length;
     
+    // Calculer les invités/réponses manuelles présents
+    const manuelPresents = manualResponses.filter(r => r.present);
+    const manuelAbsents = manualResponses.filter(r => !r.present);
+    
+    // Total avec invités
+    const totalPresents = (presents || 0) + manuelPresents.length;
+    const totalAbsents = (absents || 0) + manuelAbsents.length;
+    
     let message = `📊 Résultats Sondage - ${prochainEvenement?.objet || nextEvent.type} du ${prochainEvenement ? new Date(prochainEvenement.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long' }) : nextEvent.date}\n\n`;
     message += `👥 PARTICIPANTS\n`;
-    message += `✅ Présents: ${presents || 0}\n`;
-    message += `❌ Absents: ${absents || 0}\n`;
+    message += `✅ Présents: ${totalPresents} (${presents || 0} membres + ${manuelPresents.length} invités/manuels)\n`;
+    message += `❌ Absents: ${totalAbsents}\n`;
     message += `⏳ En attente: ${enAttente}\n`;
     
+    // Fusionner les choix de menu des membres et des invités
+    const allChoixEntrees = { ...choixEntrees };
+    const allChoixPlats = { ...choixPlats };
+    const allChoixDesserts = { ...choixDesserts };
+    
+    manuelPresents.forEach(r => {
+      if (r.choix_entree) {
+        allChoixEntrees[r.choix_entree] = (allChoixEntrees[r.choix_entree] || 0) + 1;
+      }
+      if (r.choix_plat) {
+        allChoixPlats[r.choix_plat] = (allChoixPlats[r.choix_plat] || 0) + 1;
+      }
+      if (r.choix_dessert) {
+        allChoixDesserts[r.choix_dessert] = (allChoixDesserts[r.choix_dessert] || 0) + 1;
+      }
+    });
+    
     // Ajouter les détails du menu si c'est un repas et qu'il y a des choix
-    const hasMenuChoices = (choixEntrees && Object.keys(choixEntrees).length > 0) ||
-                          (choixPlats && Object.keys(choixPlats).length > 0) ||
-                          (choixDesserts && Object.keys(choixDesserts).length > 0);
+    const hasMenuChoices = Object.keys(allChoixEntrees).length > 0 ||
+                          Object.keys(allChoixPlats).length > 0 ||
+                          Object.keys(allChoixDesserts).length > 0;
     
     if (hasMenuChoices) {
-      message += `\n🍽️ DÉTAIL DES MENUS\n`;
+      message += `\n🍽️ DÉTAIL DES MENUS (${totalPresents} couverts)\n`;
       
-      if (choixEntrees && Object.keys(choixEntrees).length > 0) {
+      if (Object.keys(allChoixEntrees).length > 0) {
         message += `\n📌 Entrées:\n`;
-        Object.entries(choixEntrees).forEach(([entree, count]) => {
+        Object.entries(allChoixEntrees).forEach(([entree, count]) => {
           message += `   • ${entree}: ${count}\n`;
         });
       }
       
-      if (choixPlats && Object.keys(choixPlats).length > 0) {
+      if (Object.keys(allChoixPlats).length > 0) {
         message += `\n📌 Plats:\n`;
-        Object.entries(choixPlats).forEach(([plat, count]) => {
+        Object.entries(allChoixPlats).forEach(([plat, count]) => {
           message += `   • ${plat}: ${count}\n`;
         });
       }
       
-      if (choixDesserts && Object.keys(choixDesserts).length > 0) {
+      if (Object.keys(allChoixDesserts).length > 0) {
         message += `\n📌 Desserts:\n`;
-        Object.entries(choixDesserts).forEach(([dessert, count]) => {
+        Object.entries(allChoixDesserts).forEach(([dessert, count]) => {
           message += `   • ${dessert}: ${count}\n`;
         });
       }
+    }
+    
+    // Liste des invités/réponses manuelles
+    if (manuelPresents.length > 0) {
+      message += `\n👤 INVITÉS/AJOUTS MANUELS (${manuelPresents.length}):\n`;
+      manuelPresents.forEach(r => {
+        message += `   • ${r.nom}${r.type === 'invite' ? ' (invité)' : ''}\n`;
+      });
     }
     
     // Copier dans le presse-papier
@@ -1349,6 +1460,84 @@ const Dashboard = () => {
                     </div>
                   </div>
                 )}
+
+                {/* ===== SECTION AJOUT MANUEL (Invités / Membres sans accès) ===== */}
+                <div className="border-t border-[#D4A024]/20 pt-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-serif text-white flex items-center">
+                      <UserPlus className="w-5 h-5 mr-2 text-[#D4A024]" />
+                      Ajouts Manuels (Invités / Membres sans accès)
+                    </h3>
+                    <Button
+                      onClick={() => setShowAddManualModal(true)}
+                      className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif"
+                      size="sm"
+                    >
+                      <UserPlus className="w-4 h-4 mr-2" />
+                      Ajouter
+                    </Button>
+                  </div>
+                  
+                  <p className="text-sm text-gray-400 mb-3">
+                    ⚠️ Ces ajouts sont comptés pour le restaurateur mais n'affectent PAS les statistiques de présence du club.
+                  </p>
+                  
+                  {/* Liste des réponses manuelles */}
+                  {manualResponses.length > 0 ? (
+                    <div className="space-y-2">
+                      {manualResponses.map((response) => (
+                        <div 
+                          key={response.id} 
+                          className={`flex items-center justify-between p-3 rounded-lg border ${
+                            response.present 
+                              ? 'bg-green-900/20 border-green-600/30' 
+                              : 'bg-red-900/20 border-red-600/30'
+                          }`}
+                        >
+                          <div className="flex items-center space-x-3">
+                            <Badge className={response.type === 'invite' ? 'bg-purple-600' : 'bg-blue-600'}>
+                              {response.type === 'invite' ? 'Invité' : 'Membre'}
+                            </Badge>
+                            <span className="text-white font-medium">{response.nom}</span>
+                            <Badge className={response.present ? 'bg-green-600' : 'bg-red-600'}>
+                              {response.present ? 'Présent' : 'Absent'}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            {response.choix_entree && (
+                              <span className="text-xs text-amber-400">E: {response.choix_entree}</span>
+                            )}
+                            {response.choix_plat && (
+                              <span className="text-xs text-blue-400">P: {response.choix_plat}</span>
+                            )}
+                            {response.choix_dessert && (
+                              <span className="text-xs text-purple-400">D: {response.choix_dessert}</span>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteManualResponse(response.id)}
+                              className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                      
+                      {/* Résumé */}
+                      <div className="mt-3 p-3 bg-[#D4A024]/10 border border-[#D4A024]/30 rounded-lg">
+                        <p className="text-[#D4A024] text-sm">
+                          📊 Total ajouts manuels : <strong>{manualResponses.filter(r => r.present).length}</strong> présent(s), <strong>{manualResponses.filter(r => !r.present).length}</strong> absent(s)
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-4 text-gray-500">
+                      Aucun ajout manuel pour cet événement
+                    </div>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -1492,6 +1681,209 @@ const Dashboard = () => {
                 Fermer
               </Button>
             </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Modal: Ajout réponse manuelle */}
+      {showAddManualModal && prochainEvenement && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <Card className="bg-[#7A2020] border-2 border-[#D4A024] max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <CardHeader className="border-b border-[#D4A024]/30">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xl font-serif text-[#D4A024] flex items-center">
+                  <UserPlus className="w-5 h-5 mr-2" />
+                  Ajouter une réponse manuelle
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowAddManualModal(false)}
+                  className="text-[#D4A024] hover:bg-[#D4A024]/10"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+              <p className="text-gray-300 text-sm mt-1">
+                Pour un invité ou un membre sans accès à l'application
+              </p>
+            </CardHeader>
+            <CardContent className="pt-4 space-y-4">
+              {/* Type */}
+              <div>
+                <Label className="text-gray-300 mb-2 block">Type</Label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setNewManualResponse(prev => ({ ...prev, type: 'invite' }))}
+                    className={`flex-1 ${
+                      newManualResponse.type === 'invite' 
+                        ? 'bg-purple-600 border-purple-500 text-white' 
+                        : 'border-gray-600 text-gray-300'
+                    }`}
+                  >
+                    Invité
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setNewManualResponse(prev => ({ ...prev, type: 'membre_manuel' }))}
+                    className={`flex-1 ${
+                      newManualResponse.type === 'membre_manuel' 
+                        ? 'bg-blue-600 border-blue-500 text-white' 
+                        : 'border-gray-600 text-gray-300'
+                    }`}
+                  >
+                    Membre (sans accès)
+                  </Button>
+                </div>
+              </div>
+
+              {/* Nom */}
+              <div>
+                <Label className="text-gray-300 mb-2 block">Nom *</Label>
+                <Input
+                  value={newManualResponse.nom}
+                  onChange={(e) => setNewManualResponse(prev => ({ ...prev, nom: e.target.value }))}
+                  placeholder="Nom de la personne"
+                  className="bg-black/30 border-[#D4A024]/50 text-white"
+                />
+              </div>
+
+              {/* Présence */}
+              <div>
+                <Label className="text-gray-300 mb-2 block">Présence</Label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setNewManualResponse(prev => ({ ...prev, present: true }))}
+                    className={`flex-1 ${
+                      newManualResponse.present 
+                        ? 'bg-green-600 border-green-500 text-white' 
+                        : 'border-gray-600 text-gray-300'
+                    }`}
+                  >
+                    <Check className="w-4 h-4 mr-2" />
+                    Présent
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setNewManualResponse(prev => ({ ...prev, present: false }))}
+                    className={`flex-1 ${
+                      !newManualResponse.present 
+                        ? 'bg-red-600 border-red-500 text-white' 
+                        : 'border-gray-600 text-gray-300'
+                    }`}
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    Absent
+                  </Button>
+                </div>
+              </div>
+
+              {/* Choix de menu (si présent et si repas) */}
+              {newManualResponse.present && prochainEvenement.type_sondage === 'repas' && prochainEvenement.options_sondage && (
+                <div className="border-t border-[#D4A024]/30 pt-4 space-y-4">
+                  <h4 className="text-[#D4A024] font-semibold">Choix du menu</h4>
+                  
+                  {/* Entrées */}
+                  {prochainEvenement.options_sondage.entrees?.length > 0 && (
+                    <div>
+                      <Label className="text-amber-400 mb-2 block text-sm">Entrée</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {prochainEvenement.options_sondage.entrees.map((entree, idx) => (
+                          <Button
+                            key={idx}
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setNewManualResponse(prev => ({ ...prev, choix_entree: entree }))}
+                            className={`${
+                              newManualResponse.choix_entree === entree 
+                                ? 'bg-amber-600 border-amber-500 text-white' 
+                                : 'border-amber-600/50 text-amber-400'
+                            }`}
+                          >
+                            {entree}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Plats */}
+                  {prochainEvenement.options_sondage.plats?.length > 0 && (
+                    <div>
+                      <Label className="text-blue-400 mb-2 block text-sm">Plat</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {prochainEvenement.options_sondage.plats.map((plat, idx) => (
+                          <Button
+                            key={idx}
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setNewManualResponse(prev => ({ ...prev, choix_plat: plat }))}
+                            className={`${
+                              newManualResponse.choix_plat === plat 
+                                ? 'bg-blue-600 border-blue-500 text-white' 
+                                : 'border-blue-600/50 text-blue-400'
+                            }`}
+                          >
+                            {plat}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Desserts */}
+                  {prochainEvenement.options_sondage.desserts?.length > 0 && (
+                    <div>
+                      <Label className="text-purple-400 mb-2 block text-sm">Dessert</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {prochainEvenement.options_sondage.desserts.map((dessert, idx) => (
+                          <Button
+                            key={idx}
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setNewManualResponse(prev => ({ ...prev, choix_dessert: dessert }))}
+                            className={`${
+                              newManualResponse.choix_dessert === dessert 
+                                ? 'bg-purple-600 border-purple-500 text-white' 
+                                : 'border-purple-600/50 text-purple-400'
+                            }`}
+                          >
+                            {dessert}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Boutons d'action */}
+              <div className="flex gap-3 pt-4 border-t border-[#D4A024]/30">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowAddManualModal(false)}
+                  className="flex-1 border-gray-600 text-gray-300 hover:bg-gray-800"
+                >
+                  Annuler
+                </Button>
+                <Button
+                  onClick={handleAddManualResponse}
+                  className="flex-1 bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-bold"
+                >
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Ajouter
+                </Button>
+              </div>
+            </CardContent>
           </Card>
         </div>
       )}
