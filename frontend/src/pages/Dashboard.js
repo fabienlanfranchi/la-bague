@@ -898,9 +898,8 @@ const Dashboard = () => {
       // Fermer le modal
       setShowAddManualModal(false);
       
-      // Recharger les données
-      await loadManualResponses(prochainEvenement.id);
-      await loadNonRepondants(prochainEvenement.id);
+      // Recharger TOUT (événement + réponses manuelles + non-répondants)
+      await loadProchainEvenement();
     } catch (error) {
       console.error('Erreur ajout réponse manuelle:', error);
       toast.error('Erreur lors de l\'ajout');
@@ -912,8 +911,8 @@ const Dashboard = () => {
     try {
       await axios.delete(`${API}/reponses-manuelles/${responseId}`);
       toast.success('Réponse supprimée');
-      await loadManualResponses(prochainEvenement.id);
-      await loadNonRepondants(prochainEvenement.id);
+      // Recharger TOUT
+      await loadProchainEvenement();
     } catch (error) {
       toast.error('Erreur lors de la suppression');
     }
@@ -943,10 +942,13 @@ const Dashboard = () => {
       setProchainEvenement(prochain);
       
       if (prochain) {
-        // Charger les réponses au sondage pour cet événement
-        await loadNonRepondants(prochain.id);
-        // Charger les réponses manuelles
-        await loadManualResponses(prochain.id);
+        // Charger les réponses manuelles D'ABORD
+        const manualRes = await axios.get(`${API}/reponses-manuelles/${prochain.id}`);
+        const manualData = manualRes.data || [];
+        setManualResponses(manualData);
+        
+        // Charger les réponses au sondage en passant les réponses manuelles
+        await loadNonRepondants(prochain.id, manualData);
       }
     } catch (error) {
       console.error('Erreur chargement événement:', error);
@@ -954,11 +956,16 @@ const Dashboard = () => {
   };
 
   // Charger la liste des membres qui n'ont pas répondu au sondage
-  const loadNonRepondants = async (evenementId) => {
+  const loadNonRepondants = async (evenementId, manualResponsesData = []) => {
     try {
       // Récupérer tous les membres
       const membresRes = await axios.get(`${API}/members`);
       const allMembres = membresRes.data;
+      
+      // Récupérer les IDs des membres qui ont répondu manuellement
+      const manualMemberIds = manualResponsesData
+        .filter(r => r.type === 'membre_manuel' && r.membre_id)
+        .map(r => r.membre_id);
       
       // Récupérer les réponses directes à l'événement
       try {
@@ -966,11 +973,15 @@ const Dashboard = () => {
         const reponses = reponsesRes.data.reponses || [];
         const respondantIds = reponses.map(r => r.membre_id);
         
+        // Combiner les IDs des répondants (directs + manuels)
+        const allRespondantIds = [...new Set([...respondantIds, ...manualMemberIds])];
+        
         // Calculer les totaux des choix de menu (seulement les présents)
         const choixEntrees = {};
         const choixPlats = {};
         const choixDesserts = {};
         
+        // Compter les réponses directes
         reponses.filter(r => r.present).forEach(r => {
           if (r.choix_entree) {
             choixEntrees[r.choix_entree] = (choixEntrees[r.choix_entree] || 0) + 1;
@@ -983,25 +994,52 @@ const Dashboard = () => {
           }
         });
         
+        // Compter les présents : réponses directes + membres ajoutés manuellement
+        const presentsDirects = reponsesRes.data.presents || 0;
+        const presentsManuels = manualResponsesData.filter(r => r.type === 'membre_manuel' && r.present).length;
+        const totalPresents = presentsDirects + presentsManuels;
+        
+        const absentsDirects = reponsesRes.data.absents || 0;
+        const absentsManuels = manualResponsesData.filter(r => r.type === 'membre_manuel' && !r.present).length;
+        const totalAbsents = absentsDirects + absentsManuels;
+        
         // Mettre à jour les stats du sondage
         setNextEvent(prev => ({
           ...prev,
           sondageResults: {
             ...prev.sondageResults,
-            presents: reponsesRes.data.presents || 0,
-            absents: reponsesRes.data.absents || 0,
+            presents: totalPresents,
+            absents: totalAbsents,
             choixEntrees,
             choixPlats,
             choixDesserts
           }
         }));
         
-        // Filtrer les non-répondants
-        const nonRep = allMembres.filter(m => !respondantIds.includes(m.id));
+        // Filtrer les non-répondants (exclure aussi les membres ajoutés manuellement)
+        const nonRep = allMembres.filter(m => !allRespondantIds.includes(m.id));
         setNonRepondants(nonRep);
       } catch (error) {
-        // Pas encore de réponses = tous sont non-répondants
-        setNonRepondants(allMembres);
+        // Pas encore de réponses directes
+        // Mais vérifier les réponses manuelles de membres
+        const nonRep = allMembres.filter(m => !manualMemberIds.includes(m.id));
+        setNonRepondants(nonRep);
+        
+        // Compter seulement les membres manuels
+        const presentsManuels = manualResponsesData.filter(r => r.type === 'membre_manuel' && r.present).length;
+        const absentsManuels = manualResponsesData.filter(r => r.type === 'membre_manuel' && !r.present).length;
+        
+        setNextEvent(prev => ({
+          ...prev,
+          sondageResults: {
+            ...prev.sondageResults,
+            presents: presentsManuels,
+            absents: absentsManuels,
+            choixEntrees: {},
+            choixPlats: {},
+            choixDesserts: {}
+          }
+        }));
       }
     } catch (error) {
       console.error('Erreur chargement non-répondants:', error);
