@@ -1816,20 +1816,17 @@ const Dashboard = () => {
                         nom: selectedMember?.nom_complet || ''
                       }));
                     }}
-                    className="w-full bg-black/30 border border-[#D4A024]/50 text-white rounded-md px-3 py-2"
+                    className="w-full bg-black border-2 border-[#D4A024] text-white rounded-lg px-4 py-3 text-base appearance-none cursor-pointer"
+                    style={{ fontSize: '16px' }}
                   >
                     <option value="">-- Choisir un membre --</option>
                     {members
-                      .filter(m => nonRepondants.some(nr => nr.id === m.id)) // Seulement ceux qui n'ont pas répondu
-                      .sort((a, b) => a.nom_complet.localeCompare(b.nom_complet))
+                      .sort((a, b) => (a.nom_complet || '').localeCompare(b.nom_complet || ''))
                       .map(m => (
                         <option key={m.id} value={m.id}>{m.nom_complet}</option>
                       ))
                     }
                   </select>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Seuls les membres n'ayant pas encore répondu sont affichés
-                  </p>
                 </div>
               )}
 
