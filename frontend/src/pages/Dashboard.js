@@ -807,6 +807,12 @@ const Dashboard = () => {
     choix_plat: '',
     choix_dessert: ''
   });
+  
+  // États pour les modals de détails du sondage
+  const [showPresentsModal, setShowPresentsModal] = useState(false);
+  const [showMenuDetailModal, setShowMenuDetailModal] = useState(false);
+  const [selectedMenuDetail, setSelectedMenuDetail] = useState({ type: '', item: '' });
+  const [reponsesSondage, setReponsesSondage] = useState([]);
 
   useEffect(() => {
     loadDashboardData();
@@ -821,6 +827,34 @@ const Dashboard = () => {
     } catch (error) {
       // Pas de réponses manuelles
       setManualResponses([]);
+    }
+  };
+  
+  // Charger les réponses détaillées du sondage
+  const loadReponsesSondage = async (evenementId) => {
+    try {
+      const response = await axios.get(`${API}/reponses-sondages/${evenementId}`);
+      // L'API renvoie { reponses: [...] }, on extrait le tableau
+      setReponsesSondage(response.data?.reponses || []);
+    } catch (error) {
+      setReponsesSondage([]);
+    }
+  };
+  
+  // Afficher les détails des présents
+  const handleShowPresents = async () => {
+    if (prochainEvenement) {
+      await loadReponsesSondage(prochainEvenement.id);
+      setShowPresentsModal(true);
+    }
+  };
+  
+  // Afficher les membres qui ont choisi un item de menu
+  const handleShowMenuDetail = async (type, item) => {
+    if (prochainEvenement) {
+      await loadReponsesSondage(prochainEvenement.id);
+      setSelectedMenuDetail({ type, item });
+      setShowMenuDetailModal(true);
     }
   };
   
@@ -1345,11 +1379,15 @@ const Dashboard = () => {
               <div className="space-y-6">
                 {/* Statut des réponses */}
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                  <div className="bg-green-900/20 border border-green-600/30 rounded-lg p-4 text-center">
+                  <div 
+                    onClick={handleShowPresents}
+                    className="bg-green-900/20 border border-green-600/30 rounded-lg p-4 text-center cursor-pointer hover:bg-green-900/40 transition-colors"
+                  >
                     <div className="text-3xl font-serif font-bold text-green-400">
                       {nextEvent.sondageResults?.presents || 0}
                     </div>
                     <div className="text-base text-gray-400">Présents</div>
+                    <div className="text-xs text-green-500 mt-1">Cliquez pour détails</div>
                   </div>
                   <div className="bg-red-900/20 border border-red-600/30 rounded-lg p-4 text-center">
                     <div className="text-3xl font-serif font-bold text-red-400">
@@ -1417,6 +1455,7 @@ const Dashboard = () => {
                     <h3 className="text-lg font-serif text-white mb-3">
                       🍽️ Choix des Menus ({nextEvent.sondageResults.presents} présent{nextEvent.sondageResults.presents > 1 ? 's' : ''})
                     </h3>
+                    <p className="text-xs text-gray-500 mb-3">Cliquez sur un choix pour voir qui l'a sélectionné</p>
                     <div className="space-y-4">
                       {/* Entrées */}
                       {prochainEvenement.options_sondage.entrees && prochainEvenement.options_sondage.entrees.length > 0 && (
@@ -1424,7 +1463,11 @@ const Dashboard = () => {
                           <p className="text-sm text-amber-400 mb-2 font-semibold">Entrées :</p>
                           <div className="grid grid-cols-2 gap-2">
                             {prochainEvenement.options_sondage.entrees.map((entree, idx) => (
-                              <div key={idx} className="bg-black/30 rounded p-2 text-center border border-amber-600/30">
+                              <div 
+                                key={idx} 
+                                onClick={() => handleShowMenuDetail('entree', entree)}
+                                className="bg-black/30 rounded p-2 text-center border border-amber-600/30 cursor-pointer hover:bg-amber-900/30 transition-colors"
+                              >
                                 <div className="text-xl font-bold text-amber-400">
                                   {nextEvent.sondageResults?.choixEntrees?.[entree] || 0}
                                 </div>
@@ -1441,7 +1484,11 @@ const Dashboard = () => {
                           <p className="text-sm text-blue-400 mb-2 font-semibold">Plats :</p>
                           <div className="grid grid-cols-2 gap-2">
                             {prochainEvenement.options_sondage.plats.map((plat, idx) => (
-                              <div key={idx} className="bg-black/30 rounded p-2 text-center border border-blue-600/30">
+                              <div 
+                                key={idx} 
+                                onClick={() => handleShowMenuDetail('plat', plat)}
+                                className="bg-black/30 rounded p-2 text-center border border-blue-600/30 cursor-pointer hover:bg-blue-900/30 transition-colors"
+                              >
                                 <div className="text-xl font-bold text-blue-400">
                                   {nextEvent.sondageResults?.choixPlats?.[plat] || 0}
                                 </div>
@@ -1458,7 +1505,11 @@ const Dashboard = () => {
                           <p className="text-sm text-purple-400 mb-2 font-semibold">Desserts :</p>
                           <div className="grid grid-cols-2 gap-2">
                             {prochainEvenement.options_sondage.desserts.map((dessert, idx) => (
-                              <div key={idx} className="bg-black/30 rounded p-2 text-center border border-purple-600/30">
+                              <div 
+                                key={idx} 
+                                onClick={() => handleShowMenuDetail('dessert', dessert)}
+                                className="bg-black/30 rounded p-2 text-center border border-purple-600/30 cursor-pointer hover:bg-purple-900/30 transition-colors"
+                              >
                                 <div className="text-xl font-bold text-purple-400">
                                   {nextEvent.sondageResults?.choixDesserts?.[dessert] || 0}
                                 </div>
@@ -1926,6 +1977,181 @@ const Dashboard = () => {
                   <UserPlus className="w-4 h-4 mr-2" />
                   Ajouter
                 </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Modal: Liste des présents avec leurs choix */}
+      {showPresentsModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <Card className="bg-[#7A2020] border-2 border-[#D4A024] max-w-2xl w-full max-h-[80vh] overflow-hidden">
+            <CardHeader className="border-b border-[#D4A024]/30">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xl font-serif text-[#D4A024] flex items-center">
+                  <CheckCircle className="w-5 h-5 mr-2 text-green-400" />
+                  Membres Présents ({reponsesSondage.filter(r => r.present).length})
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowPresentsModal(false)}
+                  className="text-[#D4A024] hover:bg-[#D4A024]/10"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-4 overflow-y-auto max-h-[60vh]">
+              <div className="space-y-3">
+                {reponsesSondage
+                  .filter(r => r.present)
+                  .map((reponse, idx) => {
+                    const membre = members.find(m => m.id === reponse.membre_id);
+                    return (
+                      <div key={idx} className="bg-black/30 rounded-lg p-3 border border-green-600/30">
+                        <div className="flex items-center justify-between">
+                          <span className="text-white font-medium text-lg">{membre?.nom_complet || 'Membre inconnu'}</span>
+                          <Badge className="bg-green-600">Présent</Badge>
+                        </div>
+                        {(reponse.choix_entree || reponse.choix_plat || reponse.choix_dessert) && (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {reponse.choix_entree && (
+                              <Badge className="bg-amber-900/50 text-amber-300 border border-amber-600/30">
+                                E: {reponse.choix_entree}
+                              </Badge>
+                            )}
+                            {reponse.choix_plat && (
+                              <Badge className="bg-blue-900/50 text-blue-300 border border-blue-600/30">
+                                P: {reponse.choix_plat}
+                              </Badge>
+                            )}
+                            {reponse.choix_dessert && (
+                              <Badge className="bg-purple-900/50 text-purple-300 border border-purple-600/30">
+                                D: {reponse.choix_dessert}
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                
+                {/* Ajouts manuels présents */}
+                {manualResponses.filter(r => r.present).map((reponse, idx) => (
+                  <div key={`manual-${idx}`} className="bg-black/30 rounded-lg p-3 border border-purple-600/30">
+                    <div className="flex items-center justify-between">
+                      <span className="text-white font-medium text-lg">{reponse.nom}</span>
+                      <div className="flex gap-2">
+                        <Badge className={reponse.type === 'invite' ? 'bg-purple-600' : 'bg-blue-600'}>
+                          {reponse.type === 'invite' ? 'Invité' : 'Ajout manuel'}
+                        </Badge>
+                        <Badge className="bg-green-600">Présent</Badge>
+                      </div>
+                    </div>
+                    {(reponse.choix_entree || reponse.choix_plat || reponse.choix_dessert) && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {reponse.choix_entree && (
+                          <Badge className="bg-amber-900/50 text-amber-300 border border-amber-600/30">
+                            E: {reponse.choix_entree}
+                          </Badge>
+                        )}
+                        {reponse.choix_plat && (
+                          <Badge className="bg-blue-900/50 text-blue-300 border border-blue-600/30">
+                            P: {reponse.choix_plat}
+                          </Badge>
+                        )}
+                        {reponse.choix_dessert && (
+                          <Badge className="bg-purple-900/50 text-purple-300 border border-purple-600/30">
+                            D: {reponse.choix_dessert}
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Modal: Détail d'un choix de menu */}
+      {showMenuDetailModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <Card className="bg-[#7A2020] border-2 border-[#D4A024] max-w-lg w-full max-h-[80vh] overflow-hidden">
+            <CardHeader className="border-b border-[#D4A024]/30">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xl font-serif text-[#D4A024]">
+                  {selectedMenuDetail.type === 'entree' && '🥗 Entrée'}
+                  {selectedMenuDetail.type === 'plat' && '🍽️ Plat'}
+                  {selectedMenuDetail.type === 'dessert' && '🍰 Dessert'}
+                  {' : '}{selectedMenuDetail.item}
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowMenuDetailModal(false)}
+                  className="text-[#D4A024] hover:bg-[#D4A024]/10"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-4 overflow-y-auto max-h-[60vh]">
+              <div className="space-y-2">
+                {/* Membres qui ont choisi cet item */}
+                {reponsesSondage
+                  .filter(r => {
+                    if (selectedMenuDetail.type === 'entree') return r.choix_entree === selectedMenuDetail.item;
+                    if (selectedMenuDetail.type === 'plat') return r.choix_plat === selectedMenuDetail.item;
+                    if (selectedMenuDetail.type === 'dessert') return r.choix_dessert === selectedMenuDetail.item;
+                    return false;
+                  })
+                  .map((reponse, idx) => {
+                    const membre = members.find(m => m.id === reponse.membre_id);
+                    return (
+                      <div key={idx} className="bg-black/30 rounded-lg p-3 border border-[#D4A024]/30 flex items-center justify-between">
+                        <span className="text-white">{membre?.nom_complet || 'Membre inconnu'}</span>
+                        <Badge className="bg-[#D4A024] text-[#7A2020]">Membre</Badge>
+                      </div>
+                    );
+                  })}
+                
+                {/* Ajouts manuels qui ont choisi cet item */}
+                {manualResponses
+                  .filter(r => {
+                    if (selectedMenuDetail.type === 'entree') return r.choix_entree === selectedMenuDetail.item;
+                    if (selectedMenuDetail.type === 'plat') return r.choix_plat === selectedMenuDetail.item;
+                    if (selectedMenuDetail.type === 'dessert') return r.choix_dessert === selectedMenuDetail.item;
+                    return false;
+                  })
+                  .map((reponse, idx) => (
+                    <div key={`manual-${idx}`} className="bg-black/30 rounded-lg p-3 border border-purple-600/30 flex items-center justify-between">
+                      <span className="text-white">{reponse.nom}</span>
+                      <Badge className={reponse.type === 'invite' ? 'bg-purple-600' : 'bg-blue-600'}>
+                        {reponse.type === 'invite' ? 'Invité' : 'Ajout manuel'}
+                      </Badge>
+                    </div>
+                  ))}
+                
+                {/* Message si personne */}
+                {reponsesSondage.filter(r => {
+                  if (selectedMenuDetail.type === 'entree') return r.choix_entree === selectedMenuDetail.item;
+                  if (selectedMenuDetail.type === 'plat') return r.choix_plat === selectedMenuDetail.item;
+                  if (selectedMenuDetail.type === 'dessert') return r.choix_dessert === selectedMenuDetail.item;
+                  return false;
+                }).length === 0 && manualResponses.filter(r => {
+                  if (selectedMenuDetail.type === 'entree') return r.choix_entree === selectedMenuDetail.item;
+                  if (selectedMenuDetail.type === 'plat') return r.choix_plat === selectedMenuDetail.item;
+                  if (selectedMenuDetail.type === 'dessert') return r.choix_dessert === selectedMenuDetail.item;
+                  return false;
+                }).length === 0 && (
+                  <div className="text-center text-gray-400 py-4">
+                    Personne n'a choisi cette option
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
