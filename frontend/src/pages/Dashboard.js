@@ -801,6 +801,7 @@ const Dashboard = () => {
   const [newManualResponse, setNewManualResponse] = useState({
     nom: '',
     type: 'invite', // 'invite' ou 'membre_manuel'
+    membre_id: '', // ID du membre si type = membre_manuel
     present: true,
     choix_entree: '',
     choix_plat: '',
@@ -830,11 +831,17 @@ const Dashboard = () => {
       return;
     }
     
+    if (newManualResponse.type === 'membre_manuel' && !newManualResponse.membre_id) {
+      toast.error('Veuillez sélectionner un membre');
+      return;
+    }
+    
     try {
       await axios.post(`${API}/reponses-manuelles`, {
         evenement_id: prochainEvenement.id,
         nom: newManualResponse.nom.trim(),
         type: newManualResponse.type,
+        membre_id: newManualResponse.membre_id || null,
         present: newManualResponse.present,
         choix_entree: newManualResponse.choix_entree || null,
         choix_plat: newManualResponse.choix_plat || null,
@@ -847,11 +854,15 @@ const Dashboard = () => {
       setNewManualResponse({
         nom: '',
         type: 'invite',
+        membre_id: '',
         present: true,
         choix_entree: '',
         choix_plat: '',
         choix_dessert: ''
       });
+      
+      // Fermer le modal
+      setShowAddManualModal(false);
       
       // Recharger les données
       await loadManualResponses(prochainEvenement.id);
@@ -1066,21 +1077,16 @@ const Dashboard = () => {
     const { presents, absents, choixEntrees, choixPlats, choixDesserts } = nextEvent.sondageResults || {};
     const enAttente = nonRepondants.length;
     
-    // Calculer les invités/réponses manuelles présents
+    // Calculer les réponses manuelles présentes
     const manuelPresents = manualResponses.filter(r => r.present);
-    const manuelAbsents = manualResponses.filter(r => !r.present);
     
-    // Total avec invités
-    const totalPresents = (presents || 0) + manuelPresents.length;
-    const totalAbsents = (absents || 0) + manuelAbsents.length;
+    // Total couverts (membres + invités + manuels)
+    const totalCouverts = (presents || 0) + manuelPresents.length;
     
-    let message = `📊 Résultats Sondage - ${prochainEvenement?.objet || nextEvent.type} du ${prochainEvenement ? new Date(prochainEvenement.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long' }) : nextEvent.date}\n\n`;
-    message += `👥 PARTICIPANTS\n`;
-    message += `✅ Présents: ${totalPresents} (${presents || 0} membres + ${manuelPresents.length} invités/manuels)\n`;
-    message += `❌ Absents: ${totalAbsents}\n`;
-    message += `⏳ En attente: ${enAttente}\n`;
+    let message = `📊 ${prochainEvenement?.objet || nextEvent.type} - ${prochainEvenement ? new Date(prochainEvenement.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long' }) : nextEvent.date}\n\n`;
+    message += `👥 COUVERTS : ${totalCouverts}\n`;
     
-    // Fusionner les choix de menu des membres et des invités
+    // Fusionner les choix de menu des membres et des ajouts manuels
     const allChoixEntrees = { ...choixEntrees };
     const allChoixPlats = { ...choixPlats };
     const allChoixDesserts = { ...choixDesserts };
@@ -1097,47 +1103,39 @@ const Dashboard = () => {
       }
     });
     
-    // Ajouter les détails du menu si c'est un repas et qu'il y a des choix
+    // Ajouter les détails du menu
     const hasMenuChoices = Object.keys(allChoixEntrees).length > 0 ||
                           Object.keys(allChoixPlats).length > 0 ||
                           Object.keys(allChoixDesserts).length > 0;
     
     if (hasMenuChoices) {
-      message += `\n🍽️ DÉTAIL DES MENUS (${totalPresents} couverts)\n`;
+      message += `\n🍽️ MENU\n`;
       
       if (Object.keys(allChoixEntrees).length > 0) {
-        message += `\n📌 Entrées:\n`;
+        message += `\nEntrées:\n`;
         Object.entries(allChoixEntrees).forEach(([entree, count]) => {
-          message += `   • ${entree}: ${count}\n`;
+          message += `• ${entree}: ${count}\n`;
         });
       }
       
       if (Object.keys(allChoixPlats).length > 0) {
-        message += `\n📌 Plats:\n`;
+        message += `\nPlats:\n`;
         Object.entries(allChoixPlats).forEach(([plat, count]) => {
-          message += `   • ${plat}: ${count}\n`;
+          message += `• ${plat}: ${count}\n`;
         });
       }
       
       if (Object.keys(allChoixDesserts).length > 0) {
-        message += `\n📌 Desserts:\n`;
+        message += `\nDesserts:\n`;
         Object.entries(allChoixDesserts).forEach(([dessert, count]) => {
-          message += `   • ${dessert}: ${count}\n`;
+          message += `• ${dessert}: ${count}\n`;
         });
       }
     }
     
-    // Liste des invités/réponses manuelles
-    if (manuelPresents.length > 0) {
-      message += `\n👤 INVITÉS/AJOUTS MANUELS (${manuelPresents.length}):\n`;
-      manuelPresents.forEach(r => {
-        message += `   • ${r.nom}${r.type === 'invite' ? ' (invité)' : ''}\n`;
-      });
-    }
-    
     // Copier dans le presse-papier
     navigator.clipboard.writeText(message);
-    toast.success('Résultats copiés avec détail des menus ! Vous pouvez les coller dans votre SMS.');
+    toast.success('Message copié ! Prêt à envoyer au restaurateur.');
   };
 
   const handleShowMembersByStars = (stars) => {
@@ -1737,7 +1735,7 @@ const Dashboard = () => {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => setNewManualResponse(prev => ({ ...prev, type: 'membre_manuel' }))}
+                    onClick={() => setNewManualResponse(prev => ({ ...prev, type: 'membre_manuel', nom: '', membre_id: '' }))}
                     className={`flex-1 ${
                       newManualResponse.type === 'membre_manuel' 
                         ? 'bg-blue-600 border-blue-500 text-white' 
@@ -1749,16 +1747,49 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              {/* Nom */}
-              <div>
-                <Label className="text-gray-300 mb-2 block">Nom *</Label>
-                <Input
-                  value={newManualResponse.nom}
-                  onChange={(e) => setNewManualResponse(prev => ({ ...prev, nom: e.target.value }))}
-                  placeholder="Nom de la personne"
-                  className="bg-black/30 border-[#D4A024]/50 text-white"
-                />
-              </div>
+              {/* Sélection du membre (si type = membre_manuel) */}
+              {newManualResponse.type === 'membre_manuel' && (
+                <div>
+                  <Label className="text-gray-300 mb-2 block">Sélectionner le membre *</Label>
+                  <select
+                    value={newManualResponse.membre_id || ''}
+                    onChange={(e) => {
+                      const selectedMember = members.find(m => m.id === e.target.value);
+                      setNewManualResponse(prev => ({ 
+                        ...prev, 
+                        membre_id: e.target.value,
+                        nom: selectedMember?.nom_complet || ''
+                      }));
+                    }}
+                    className="w-full bg-black/30 border border-[#D4A024]/50 text-white rounded-md px-3 py-2"
+                  >
+                    <option value="">-- Choisir un membre --</option>
+                    {members
+                      .filter(m => nonRepondants.some(nr => nr.id === m.id)) // Seulement ceux qui n'ont pas répondu
+                      .sort((a, b) => a.nom_complet.localeCompare(b.nom_complet))
+                      .map(m => (
+                        <option key={m.id} value={m.id}>{m.nom_complet}</option>
+                      ))
+                    }
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Seuls les membres n'ayant pas encore répondu sont affichés
+                  </p>
+                </div>
+              )}
+
+              {/* Nom (seulement pour invité) */}
+              {newManualResponse.type === 'invite' && (
+                <div>
+                  <Label className="text-gray-300 mb-2 block">Nom de l'invité *</Label>
+                  <Input
+                    value={newManualResponse.nom}
+                    onChange={(e) => setNewManualResponse(prev => ({ ...prev, nom: e.target.value }))}
+                    placeholder="Nom de l'invité"
+                    className="bg-black/30 border-[#D4A024]/50 text-white"
+                  />
+                </div>
+              )}
 
               {/* Présence */}
               <div>

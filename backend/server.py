@@ -787,6 +787,7 @@ class ReponseManuelle(BaseModel):
     evenement_id: str
     nom: str  # Nom de la personne
     type: str = "invite"  # "invite" ou "membre_manuel"
+    membre_id: Optional[str] = None  # ID du membre si type = membre_manuel
     present: bool = True
     choix_entree: Optional[str] = None
     choix_plat: Optional[str] = None
@@ -798,6 +799,7 @@ class ReponseManuelleCreate(BaseModel):
     evenement_id: str
     nom: str
     type: str = "invite"
+    membre_id: Optional[str] = None
     present: bool = True
     choix_entree: Optional[str] = None
     choix_plat: Optional[str] = None
@@ -2017,6 +2019,7 @@ async def create_reponse_manuelle(input: ReponseManuelleCreate):
         evenement_id=input.evenement_id,
         nom=input.nom,
         type=input.type,
+        membre_id=input.membre_id,
         present=input.present,
         choix_entree=input.choix_entree,
         choix_plat=input.choix_plat,
@@ -2027,15 +2030,53 @@ async def create_reponse_manuelle(input: ReponseManuelleCreate):
     doc['created_at'] = doc['created_at'].isoformat()
     await db.reponses_manuelles.insert_one(doc)
     
+    # Si c'est un membre (pas un invité), créer aussi une vraie réponse de sondage
+    # pour que ça compte dans ses stats et celles du club
+    if input.type == 'membre_manuel' and input.membre_id:
+        # Vérifier si le membre n'a pas déjà répondu
+        existing = await db.reponses_sondages.find_one({
+            "evenement_id": input.evenement_id,
+            "membre_id": input.membre_id
+        })
+        
+        if not existing:
+            # Créer la réponse de sondage officielle
+            sondage_response = {
+                "id": str(uuid.uuid4()),
+                "evenement_id": input.evenement_id,
+                "membre_id": input.membre_id,
+                "present": input.present,
+                "choix_entree": input.choix_entree,
+                "choix_plat": input.choix_plat,
+                "choix_dessert": input.choix_dessert,
+                "repondu_le": datetime.now(timezone.utc).isoformat(),
+                "ajout_manuel": True  # Marqueur pour savoir que c'est un ajout manuel
+            }
+            await db.reponses_sondages.insert_one(sondage_response)
+    
     return {"message": "Réponse ajoutée", "reponse": {k: v for k, v in doc.items() if k != '_id'}}
 
 
 @api_router.delete("/reponses-manuelles/{reponse_id}")
 async def delete_reponse_manuelle(reponse_id: str):
     """Supprimer une réponse manuelle"""
-    result = await db.reponses_manuelles.delete_one({"id": reponse_id})
-    if result.deleted_count == 0:
+    # Récupérer d'abord la réponse pour avoir le membre_id
+    reponse = await db.reponses_manuelles.find_one({"id": reponse_id})
+    
+    if not reponse:
         raise HTTPException(status_code=404, detail="Réponse non trouvée")
+    
+    # Si c'était une réponse de membre, supprimer aussi la réponse de sondage associée
+    if reponse.get('type') == 'membre_manuel' and reponse.get('membre_id'):
+        await db.reponses_sondages.delete_one({
+            "evenement_id": reponse['evenement_id'],
+            "membre_id": reponse['membre_id'],
+            "ajout_manuel": True
+        })
+    
+    # Supprimer la réponse manuelle
+    await db.reponses_manuelles.delete_one({"id": reponse_id})
+    
     return {"message": "Réponse supprimée"}
 
 
