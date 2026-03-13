@@ -1074,19 +1074,17 @@ const Dashboard = () => {
   };
 
   const handleExportSMS = () => {
-    const { presents, absents, choixEntrees, choixPlats, choixDesserts } = nextEvent.sondageResults || {};
+    const { presents, choixEntrees, choixPlats, choixDesserts } = nextEvent.sondageResults || {};
     const enAttente = nonRepondants.length;
     
     // Calculer les réponses manuelles présentes
     const manuelPresents = manualResponses.filter(r => r.present);
     
-    // Total couverts (membres + invités + manuels)
-    const totalCouverts = (presents || 0) + manuelPresents.length;
+    // Total présents (membres + invités + manuels)
+    const totalPresents = (presents || 0) + manuelPresents.length;
+    const totalMax = totalPresents + enAttente;
     
-    let message = `📊 ${prochainEvenement?.objet || nextEvent.type} - ${prochainEvenement ? new Date(prochainEvenement.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long' }) : nextEvent.date}\n\n`;
-    message += `👥 COUVERTS : ${totalCouverts}\n`;
-    
-    // Fusionner les choix de menu des membres et des ajouts manuels
+    // Fusionner les choix de menu
     const allChoixEntrees = { ...choixEntrees };
     const allChoixPlats = { ...choixPlats };
     const allChoixDesserts = { ...choixDesserts };
@@ -1103,34 +1101,40 @@ const Dashboard = () => {
       }
     });
     
-    // Ajouter les détails du menu
-    const hasMenuChoices = Object.keys(allChoixEntrees).length > 0 ||
-                          Object.keys(allChoixPlats).length > 0 ||
-                          Object.keys(allChoixDesserts).length > 0;
+    // Formater la date
+    const dateEvent = prochainEvenement 
+      ? new Date(prochainEvenement.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })
+      : nextEvent.date;
     
-    if (hasMenuChoices) {
-      message += `\n🍽️ MENU\n`;
-      
-      if (Object.keys(allChoixEntrees).length > 0) {
-        message += `\nEntrées:\n`;
-        Object.entries(allChoixEntrees).forEach(([entree, count]) => {
-          message += `• ${entree}: ${count}\n`;
-        });
-      }
-      
-      if (Object.keys(allChoixPlats).length > 0) {
-        message += `\nPlats:\n`;
-        Object.entries(allChoixPlats).forEach(([plat, count]) => {
-          message += `• ${plat}: ${count}\n`;
-        });
-      }
-      
-      if (Object.keys(allChoixDesserts).length > 0) {
-        message += `\nDesserts:\n`;
-        Object.entries(allChoixDesserts).forEach(([dessert, count]) => {
-          message += `• ${dessert}: ${count}\n`;
-        });
-      }
+    // Construire le message
+    let message = `Repas de La Bague Impériale du ${dateEvent}\n\n`;
+    message += `Pour l'instant :\n`;
+    message += `Nbre de Personnes : ${totalPresents}\n`;
+    message += `En attente de réponses : ${enAttente}\n`;
+    message += `Nbre de personnes Max : ${totalMax}\n`;
+    
+    // Entrées
+    if (Object.keys(allChoixEntrees).length > 0) {
+      message += `\n`;
+      Object.entries(allChoixEntrees).forEach(([entree, count]) => {
+        message += `${entree} : ${count}\n`;
+      });
+    }
+    
+    // Plats
+    if (Object.keys(allChoixPlats).length > 0) {
+      message += `\n`;
+      Object.entries(allChoixPlats).forEach(([plat, count]) => {
+        message += `${plat} : ${count}\n`;
+      });
+    }
+    
+    // Desserts
+    if (Object.keys(allChoixDesserts).length > 0) {
+      message += `\n`;
+      Object.entries(allChoixDesserts).forEach(([dessert, count]) => {
+        message += `${dessert} : ${count}\n`;
+      });
     }
     
     // Copier dans le presse-papier
