@@ -881,9 +881,18 @@ const Dashboard = () => {
       const evenements = response.data;
       
       // Trouver le prochain événement (à venir)
+      // On compare uniquement les dates (pas les heures) pour éviter les problèmes de timezone
       const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
       const prochain = evenements
-        .filter(e => e.statut === 'à venir' && new Date(e.date) >= now)
+        .filter(e => {
+          if (e.statut !== 'à venir') return false;
+          const eventDate = new Date(e.date);
+          const eventDayStart = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
+          // L'événement est valide s'il est aujourd'hui ou dans le futur
+          return eventDayStart >= todayStart;
+        })
         .sort((a, b) => new Date(a.date) - new Date(b.date))[0];
       
       setProchainEvenement(prochain);
