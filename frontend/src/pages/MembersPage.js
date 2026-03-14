@@ -28,7 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Star, Plus, Pencil, Trash2, Search, User, TrendingUp, Calendar, X, ChevronRight } from 'lucide-react';
+import { Star, Plus, Pencil, Trash2, Search, User, TrendingUp, Calendar, X, ChevronRight, Key, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -49,6 +49,10 @@ const MembersPage = () => {
   const [memberStats, setMemberStats] = useState(null);
   const [loadingStats, setLoadingStats] = useState(false);
   const [showPresenceDetail, setShowPresenceDetail] = useState(false);
+  
+  // Modal mots de passe
+  const [showMotsDePasseModal, setShowMotsDePasseModal] = useState(false);
+  const [membresMotsDePasse, setMembresMotsDePasse] = useState([]);
   
   const [formData, setFormData] = useState({
     numero_membre: 0,
@@ -88,6 +92,18 @@ const MembersPage = () => {
       toast.error('Erreur lors du chargement des membres');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Charger les mots de passe des membres (admin)
+  const loadMembresMotsDePasse = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/admin/membres-mots-de-passe`);
+      const data = await response.json();
+      setMembresMotsDePasse(data || []);
+      setShowMotsDePasseModal(true);
+    } catch (error) {
+      toast.error('Erreur lors du chargement des mots de passe');
     }
   };
 
@@ -272,6 +288,18 @@ const MembersPage = () => {
                   Ajouter un membre
                 </Button>
               </DialogTrigger>
+              
+              {/* Bouton Espace Mots de Passe */}
+              <Button
+                onClick={loadMembresMotsDePasse}
+                variant="outline"
+                className="border-[#D4A024]/50 text-[#D4A024] hover:bg-[#D4A024]/10 ml-2"
+                data-testid="btn-mots-de-passe"
+              >
+                <Key className="w-4 h-4 mr-2" />
+                Mots de passe
+              </Button>
+              
               <DialogContent className="max-w-2xl max-h-[90vh]">
                 <form onSubmit={handleSubmit} className="flex flex-col max-h-[calc(90vh-2rem)]">
                   <DialogHeader className="flex-shrink-0">
@@ -842,6 +870,80 @@ const MembersPage = () => {
                 >
                   Fermer
                 </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Modal: Espace Mots de Passe des Membres */}
+      {showMotsDePasseModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <Card className="bg-[#7A2020] border-2 border-[#D4A024] max-w-4xl w-full max-h-[85vh] overflow-hidden">
+            <CardHeader className="border-b border-[#D4A024]/30">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-2xl font-serif text-[#D4A024] flex items-center">
+                  <Key className="w-6 h-6 mr-2" />
+                  Espace Mots de Passe des Membres
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowMotsDePasseModal(false)}
+                  className="text-[#D4A024] hover:bg-[#D4A024]/10"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+              <CardDescription className="text-gray-300 mt-2">
+                Utilisez ces informations pour aider les membres qui ont oublié leur mot de passe.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-4 overflow-y-auto max-h-[65vh]">
+              <div className="space-y-2">
+                {membresMotsDePasse.map((membre) => (
+                  <div key={membre.id} className="bg-black/30 rounded-lg p-4 border border-[#D4A024]/30">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div>
+                        <p className="text-white font-bold text-lg">
+                          {membre.numero_membre}. {membre.nom_complet}
+                        </p>
+                        <p className="text-gray-400 text-sm">{membre.email}</p>
+                      </div>
+                      <div className="flex items-center gap-3 bg-black/40 rounded-lg px-4 py-2">
+                        <div>
+                          <p className="text-xs text-gray-500">Code temporaire</p>
+                          <p className="text-orange-400 font-mono text-sm">{membre.temporary_password}</p>
+                        </div>
+                        <div className="border-l border-gray-600 pl-3">
+                          <p className="text-xs text-gray-500">Mot de passe actuel</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-green-400 font-mono text-sm">
+                              {membre.password_clair || membre.temporary_password || '(non défini)'}
+                            </p>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-[#D4A024] hover:bg-[#D4A024]/10"
+                              onClick={() => {
+                                navigator.clipboard.writeText(membre.password_clair || membre.temporary_password || '');
+                                toast.success('Mot de passe copié !');
+                              }}
+                            >
+                              <Copy className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                
+                {membresMotsDePasse.length === 0 && (
+                  <div className="text-center text-gray-400 py-8">
+                    Aucun membre avec un compte activé
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

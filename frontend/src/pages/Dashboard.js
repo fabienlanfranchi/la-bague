@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useUser } from '../context/UserContext';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Users, TrendingUp, Star, Calendar, DollarSign, MessageSquare, Download, X, Bell, RefreshCw, Check, CheckCircle, ScrollText, ChevronDown, ChevronUp, UserPlus, Trash2, CreditCard, Key, Eye, EyeOff, Copy } from 'lucide-react';
+import { Users, TrendingUp, Star, Calendar, DollarSign, MessageSquare, Download, X, Bell, RefreshCw, Check, CheckCircle, ScrollText, ChevronDown, ChevronUp, UserPlus, Trash2, CreditCard, Key, Eye, EyeOff, Copy, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
 
@@ -819,8 +820,8 @@ const Dashboard = () => {
   
   // Demandes de mot de passe oublié (pour le président)
   const [demandesMotDePasse, setDemandesMotDePasse] = useState([]);
-  const [showMotsDePasseModal, setShowMotsDePasseModal] = useState(false);
-  const [membresMotsDePasse, setMembresMotsDePasse] = useState([]);
+  
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadDashboardData();
@@ -846,17 +847,6 @@ const Dashboard = () => {
       setDemandesMotDePasse(response.data || []);
     } catch (error) {
       setDemandesMotDePasse([]);
-    }
-  };
-  
-  // Charger tous les mots de passe des membres
-  const loadMembresMotsDePasse = async () => {
-    try {
-      const response = await axios.get(`${API}/admin/membres-mots-de-passe`);
-      setMembresMotsDePasse(response.data || []);
-      setShowMotsDePasseModal(true);
-    } catch (error) {
-      toast.error('Erreur lors du chargement des mots de passe');
     }
   };
   
@@ -1861,11 +1851,11 @@ const Dashboard = () => {
                       </div>
                       <div className="flex gap-2">
                         <Button
-                          onClick={() => loadMembresMotsDePasse()}
+                          onClick={() => navigate('/membres')}
                           className="bg-blue-700 hover:bg-blue-600 text-white"
                           size="sm"
                         >
-                          <Eye className="w-4 h-4 mr-1" />
+                          <ExternalLink className="w-4 h-4 mr-1" />
                           Voir MDP
                         </Button>
                         <Button
@@ -1885,18 +1875,6 @@ const Dashboard = () => {
           </Card>
         </div>
       )}
-
-      {/* ========== BOUTON ACCÈS ESPACE MOTS DE PASSE ========== */}
-      <div>
-        <Button
-          onClick={() => loadMembresMotsDePasse()}
-          variant="outline"
-          className="border-[#D4A024]/50 text-[#D4A024] hover:bg-[#D4A024]/10"
-        >
-          <Key className="w-4 h-4 mr-2" />
-          Espace Mots de Passe des Membres
-        </Button>
-      </div>
 
       {/* ========== SECTION 4 : CHARTE DU CLUB ========== */}
       <div>
@@ -2406,80 +2384,6 @@ const Dashboard = () => {
                 }).length === 0 && (
                   <div className="text-center text-gray-400 py-4">
                     Personne n'a choisi cette option
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Modal: Espace Mots de Passe des Membres */}
-      {showMotsDePasseModal && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <Card className="bg-[#7A2020] border-2 border-[#D4A024] max-w-4xl w-full max-h-[85vh] overflow-hidden">
-            <CardHeader className="border-b border-[#D4A024]/30">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-2xl font-serif text-[#D4A024] flex items-center">
-                  <Key className="w-6 h-6 mr-2" />
-                  Espace Mots de Passe des Membres
-                </CardTitle>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setShowMotsDePasseModal(false)}
-                  className="text-[#D4A024] hover:bg-[#D4A024]/10"
-                >
-                  <X className="w-5 h-5" />
-                </Button>
-              </div>
-              <p className="text-sm text-gray-300 mt-2">
-                Utilisez ces informations pour aider les membres qui ont oublié leur mot de passe.
-              </p>
-            </CardHeader>
-            <CardContent className="pt-4 overflow-y-auto max-h-[65vh]">
-              <div className="space-y-2">
-                {membresMotsDePasse.map((membre) => (
-                  <div key={membre.id} className="bg-black/30 rounded-lg p-4 border border-[#D4A024]/30">
-                    <div className="flex items-center justify-between flex-wrap gap-2">
-                      <div>
-                        <p className="text-white font-bold text-lg">
-                          {membre.numero_membre}. {membre.nom_complet}
-                        </p>
-                        <p className="text-gray-400 text-sm">{membre.email}</p>
-                      </div>
-                      <div className="flex items-center gap-3 bg-black/40 rounded-lg px-4 py-2">
-                        <div>
-                          <p className="text-xs text-gray-500">Code temporaire</p>
-                          <p className="text-orange-400 font-mono text-sm">{membre.temporary_password}</p>
-                        </div>
-                        <div className="border-l border-gray-600 pl-3">
-                          <p className="text-xs text-gray-500">Mot de passe actuel</p>
-                          <div className="flex items-center gap-2">
-                            <p className="text-green-400 font-mono text-sm">
-                              {membre.password_clair || membre.temporary_password || '(non défini)'}
-                            </p>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 text-[#D4A024] hover:bg-[#D4A024]/10"
-                              onClick={() => {
-                                navigator.clipboard.writeText(membre.password_clair || membre.temporary_password || '');
-                                toast.success('Mot de passe copié !');
-                              }}
-                            >
-                              <Copy className="w-3 h-3" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                
-                {membresMotsDePasse.length === 0 && (
-                  <div className="text-center text-gray-400 py-8">
-                    Aucun membre avec un compte activé
                   </div>
                 )}
               </div>

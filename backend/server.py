@@ -1650,6 +1650,15 @@ async def valider_paiement(paiement_id: str, validateur_id: str = None):
         raise HTTPException(status_code=400, detail="Ce paiement a déjà été traité")
     
     # Créer la transaction dans la comptabilité avec lien vers le paiement d'origine
+    date_signalement = paiement.get('date_signalement', '')
+    if date_signalement and isinstance(date_signalement, str):
+        date_signalement_str = date_signalement[:10]
+    else:
+        date_signalement_str = str(datetime.now(timezone.utc).date())
+    
+    detail_base = paiement.get('detail') or ''
+    detail_complet = f"{detail_base} (signalé par membre le {date_signalement_str})".strip()
+    
     transaction = {
         "id": str(uuid.uuid4()),
         "date": paiement['date_paiement'],
@@ -1658,7 +1667,7 @@ async def valider_paiement(paiement_id: str, validateur_id: str = None):
         "objet": paiement['objet'],
         "montant": paiement['montant'],
         "endroit": paiement['endroit'],
-        "detail": paiement.get('detail', '') + f" (signalé par membre le {paiement['date_signalement'][:10]})",
+        "detail": detail_complet,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "pending_payment_id": paiement_id  # Lien vers le paiement d'origine pour logique inverse
     }
