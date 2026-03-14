@@ -4,7 +4,10 @@ import { api } from '../services/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Star, Calendar, TrendingUp, User, BarChart3, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Star, Calendar, TrendingUp, User, BarChart3, RefreshCw, AlertTriangle, CreditCard, X, Check } from 'lucide-react';
+import { toast } from 'sonner';
 import MemberCard from '../components/MemberCard';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -16,6 +19,19 @@ const ProfilePage = () => {
   const [presencesStats, setPresencesStats] = useState(null);
   const [loadingPresences, setLoadingPresences] = useState(false);
   const [dettes, setDettes] = useState([]);
+  
+  // Modal signalement de paiement
+  const [showPaiementModal, setShowPaiementModal] = useState(false);
+  const [paiementForm, setPaiementForm] = useState({
+    date_paiement: new Date().toISOString().split('T')[0],
+    type: 'recette',
+    objet: '',
+    montant: '',
+    endroit: '',
+    detail: ''
+  });
+  const [mesPaiements, setMesPaiements] = useState([]);
+  const [submittingPaiement, setSubmittingPaiement] = useState(false);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -50,6 +66,71 @@ const ProfilePage = () => {
     };
     loadDettes();
   }, [currentMember]);
+
+  // Charger les paiements signalés par le membre
+  useEffect(() => {
+    const loadMesPaiements = async () => {
+      if (currentMember?.id) {
+        try {
+          const response = await fetch(`${API_URL}/api/paiements-en-attente/membre/${currentMember.id}`);
+          const data = await response.json();
+          setMesPaiements(data || []);
+        } catch (error) {
+          console.error('Erreur chargement paiements:', error);
+          setMesPaiements([]);
+        }
+      }
+    };
+    loadMesPaiements();
+  }, [currentMember]);
+
+  // Soumettre un signalement de paiement
+  const handleSubmitPaiement = async () => {
+    if (!paiementForm.objet || !paiementForm.montant || !paiementForm.endroit) {
+      toast.error('Veuillez remplir tous les champs obligatoires');
+      return;
+    }
+    
+    setSubmittingPaiement(true);
+    try {
+      const response = await fetch(`${API_URL}/api/paiements-en-attente`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          membre_id: currentMember.id,
+          date_paiement: paiementForm.date_paiement,
+          type: paiementForm.type,
+          objet: paiementForm.objet,
+          montant: parseFloat(paiementForm.montant),
+          endroit: paiementForm.endroit,
+          detail: paiementForm.detail || null
+        })
+      });
+      
+      if (response.ok) {
+        toast.success('Paiement signalé ! En attente de validation par le président.');
+        setShowPaiementModal(false);
+        setPaiementForm({
+          date_paiement: new Date().toISOString().split('T')[0],
+          type: 'recette',
+          objet: '',
+          montant: '',
+          endroit: '',
+          detail: ''
+        });
+        // Recharger les paiements
+        const paiementsRes = await fetch(`${API_URL}/api/paiements-en-attente/membre/${currentMember.id}`);
+        const paiementsData = await paiementsRes.json();
+        setMesPaiements(paiementsData || []);
+      } else {
+        toast.error('Erreur lors du signalement');
+      }
+    } catch (error) {
+      console.error('Erreur:', error);
+      toast.error('Erreur lors du signalement');
+    }
+    setSubmittingPaiement(false);
+  };
 
   // Charger les stats de présences quand on va sur l'onglet
   useEffect(() => {
@@ -356,6 +437,70 @@ const ProfilePage = () => {
                 </CardContent>
               </Card>
             )}
+
+            {/* Bouton Signaler un paiement */}
+            <Card className="bg-black/40 border-2 border-green-600/30 backdrop-blur-sm">
+              <CardContent className="py-4">
+                <Button
+                  onClick={() => setShowPaiementModal(true)}
+                  className="w-full bg-green-700 hover:bg-green-600 text-white font-bold py-3"
+                  data-testid="btn-signaler-paiement"
+                >
+                  <CreditCard className="w-5 h-5 mr-2" />
+                  Signaler un paiement
+                </Button>
+                <p className="text-xs text-gray-400 mt-2 text-center">
+                  Signalez un paiement effectué pour qu'il soit validé par le président
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Paiements en attente de validation */}
+            {mesPaiements.length > 0 && (
+              <Card className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg font-serif text-white">
+                    Mes paiements signalés
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {mesPaiements.map((paiement) => (
+                      <div 
+                        key={paiement.id} 
+                        className={`p-3 rounded-lg border ${
+                          paiement.statut === 'en_attente' 
+                            ? 'bg-yellow-900/20 border-yellow-600/30' 
+                            : paiement.statut === 'validé'
+                            ? 'bg-green-900/20 border-green-600/30'
+                            : 'bg-red-900/20 border-red-600/30'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-white font-medium">
+                              {paiement.objet} - {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(paiement.montant)}
+                            </p>
+                            <p className="text-sm text-gray-400">
+                              {paiement.date_paiement} • {paiement.endroit}
+                            </p>
+                          </div>
+                          <Badge className={
+                            paiement.statut === 'en_attente' 
+                              ? 'bg-yellow-600' 
+                              : paiement.statut === 'validé'
+                              ? 'bg-green-600'
+                              : 'bg-red-600'
+                          }>
+                            {paiement.statut === 'en_attente' ? 'En attente' : paiement.statut === 'validé' ? 'Validé' : 'Refusé'}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       ) : (
@@ -485,6 +630,151 @@ const ProfilePage = () => {
               Impossible de charger les statistiques de présence.
             </div>
           )}
+        </div>
+      )}
+
+      {/* Modal Signaler un paiement */}
+      {showPaiementModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <Card className="bg-[#7A2020] border-2 border-[#D4A024] max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <CardHeader className="border-b border-[#D4A024]/30">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xl font-serif text-[#D4A024] flex items-center">
+                  <CreditCard className="w-5 h-5 mr-2" />
+                  Signaler un paiement
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowPaiementModal(false)}
+                  className="text-[#D4A024] hover:bg-[#D4A024]/10"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+              <p className="text-gray-300 text-sm mt-1">
+                Le président sera notifié et devra valider ce paiement
+              </p>
+            </CardHeader>
+            <CardContent className="pt-4 space-y-4">
+              {/* Date */}
+              <div>
+                <Label className="text-gray-300 mb-2 block">Date du paiement *</Label>
+                <Input
+                  type="date"
+                  value={paiementForm.date_paiement}
+                  onChange={(e) => setPaiementForm(prev => ({ ...prev, date_paiement: e.target.value }))}
+                  className="bg-black/30 border-[#D4A024]/50 text-white"
+                />
+              </div>
+
+              {/* Objet */}
+              <div>
+                <Label className="text-gray-300 mb-2 block">Objet du paiement *</Label>
+                <div className="max-h-40 overflow-y-auto border border-[#D4A024]/30 rounded-lg bg-black/50">
+                  {['cotisation', 'album', 'tombola', 'anniversaire', 'autres'].map((obj) => (
+                    <button
+                      key={obj}
+                      type="button"
+                      onClick={() => setPaiementForm(prev => ({ ...prev, objet: obj }))}
+                      className={`w-full text-left px-4 py-3 border-b border-[#D4A024]/10 last:border-b-0 ${
+                        paiementForm.objet === obj 
+                          ? 'bg-[#D4A024]/30 text-[#D4A024]' 
+                          : 'text-white hover:bg-[#D4A024]/10'
+                      }`}
+                    >
+                      {obj.charAt(0).toUpperCase() + obj.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Détail si "autres" */}
+              {paiementForm.objet === 'autres' && (
+                <div>
+                  <Label className="text-gray-300 mb-2 block">Précisez</Label>
+                  <Input
+                    value={paiementForm.detail}
+                    onChange={(e) => setPaiementForm(prev => ({ ...prev, detail: e.target.value }))}
+                    placeholder="Détail du paiement..."
+                    className="bg-black/30 border-[#D4A024]/50 text-white"
+                  />
+                </div>
+              )}
+
+              {/* Montant */}
+              <div>
+                <Label className="text-gray-300 mb-2 block">Montant (€) *</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={paiementForm.montant}
+                  onChange={(e) => setPaiementForm(prev => ({ ...prev, montant: e.target.value }))}
+                  placeholder="0.00"
+                  className="bg-black/30 border-[#D4A024]/50 text-white text-lg"
+                />
+              </div>
+
+              {/* Où / À qui */}
+              <div>
+                <Label className="text-gray-300 mb-2 block">Remis à / Où *</Label>
+                <div className="max-h-40 overflow-y-auto border border-[#D4A024]/30 rounded-lg bg-black/50">
+                  {['Compte', 'Chez Fabien', 'Chez Jacques', 'PayPal', 'Asso Connect', 'Chèque', 'Espèces'].map((lieu) => (
+                    <button
+                      key={lieu}
+                      type="button"
+                      onClick={() => setPaiementForm(prev => ({ ...prev, endroit: lieu }))}
+                      className={`w-full text-left px-4 py-3 border-b border-[#D4A024]/10 last:border-b-0 ${
+                        paiementForm.endroit === lieu 
+                          ? 'bg-[#D4A024]/30 text-[#D4A024]' 
+                          : 'text-white hover:bg-[#D4A024]/10'
+                      }`}
+                    >
+                      {lieu}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Résumé */}
+              {paiementForm.objet && paiementForm.montant && paiementForm.endroit && (
+                <div className="bg-[#D4A024]/10 border border-[#D4A024]/30 rounded-lg p-4">
+                  <p className="text-[#D4A024] font-semibold mb-2">Résumé :</p>
+                  <p className="text-white">
+                    Paiement de <span className="text-[#D4A024] font-bold">{paiementForm.montant}€</span> pour{' '}
+                    <span className="text-[#D4A024] font-bold">{paiementForm.objet}</span>
+                    {paiementForm.objet === 'autres' && paiementForm.detail && ` (${paiementForm.detail})`}
+                    , remis à <span className="text-[#D4A024] font-bold">{paiementForm.endroit}</span> le{' '}
+                    <span className="text-[#D4A024] font-bold">{paiementForm.date_paiement}</span>
+                  </p>
+                </div>
+              )}
+
+              {/* Boutons */}
+              <div className="flex gap-3 pt-4 border-t border-[#D4A024]/30">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowPaiementModal(false)}
+                  className="flex-1 border-gray-600 text-gray-300 hover:bg-gray-800"
+                  disabled={submittingPaiement}
+                >
+                  Annuler
+                </Button>
+                <Button
+                  onClick={handleSubmitPaiement}
+                  className="flex-1 bg-green-700 hover:bg-green-600 text-white font-bold"
+                  disabled={submittingPaiement || !paiementForm.objet || !paiementForm.montant || !paiementForm.endroit}
+                >
+                  {submittingPaiement ? (
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Check className="w-4 h-4 mr-2" />
+                  )}
+                  Signaler
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>

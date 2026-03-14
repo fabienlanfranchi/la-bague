@@ -722,6 +722,36 @@ class DetteCreate(BaseModel):
     cause: str
 
 
+# ============ PAIEMENTS EN ATTENTE - MODELS ============
+
+class PaiementEnAttente(BaseModel):
+    """Paiement signalé par un membre, en attente de validation par le président"""
+    model_config = ConfigDict(extra="ignore")
+    
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    membre_id: str  # Qui signale le paiement
+    date_paiement: str  # Date du paiement
+    type: str = "recette"  # recette ou dépense
+    objet: str  # cotisation, album, tombola, anniversaire, autres
+    montant: float
+    endroit: str  # Compte, Chez Fabien, Chez Jacques, PayPal, Asso Connect, Chèque
+    detail: Optional[str] = None
+    statut: str = "en_attente"  # en_attente, validé, refusé
+    date_signalement: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    date_validation: Optional[datetime] = None
+    validé_par: Optional[str] = None  # ID du membre qui a validé (président)
+
+
+class PaiementEnAttenteCreate(BaseModel):
+    membre_id: str
+    date_paiement: str
+    type: str = "recette"
+    objet: str
+    montant: float
+    endroit: str
+    detail: Optional[str] = None
+
+
 # ============ ÉVÉNEMENTS - MODELS ============
 
 class OptionsSondageRepas(BaseModel):
@@ -1338,6 +1368,142 @@ async def delete_dette(dette_id: str):
         raise HTTPException(status_code=404, detail="Dette non trouvée")
     
     return {"message": "Dette marquée comme réglée"}
+
+
+# ============ PAIEMENTS EN ATTENTE - ROUTES ============
+
+@api_router.get("/paiements-en-attente")
+async def get_paiements_en_attente():
+    """Obtenir tous les paiements en attente de validation"""
+    paiements = await db.paiements_en_attente.find(
+        {"statut": "en_attente"}, 
+        {"_id": 0}
+    ).sort("date_signalement", -1).to_list(100)
+    return paiements
+
+
+@api_router.get("/paiements-en-attente/membre/{membre_id}")
+async def get_paiements_membre(membre_id: str):
+    """Obtenir les paiements d'un membre"""
+    paiements = await db.paiements_en_attente.find(
+        {"membre_id": membre_id}, 
+        {"_id": 0}
+    ).sort("date_signalement", -1).to_list(100)
+    return paiements
+
+
+@api_router.post("/paiements-en-attente")
+async def create_paiement_en_attente(input: PaiementEnAttenteCreate):
+    """Signaler un paiement (par un membre)"""
+    paiement = PaiementEnAttente(
+        membre_id=input.membre_id,
+        date_paiement=input.date_paiement,
+        type=input.type,
+        objet=input.objet,
+        montant=input.montant,
+        endroit=input.endroit,
+        detail=input.detail
+    )
+    
+    doc = paiement.model_dump()
+    doc['date_signalement'] = doc['date_signalement'].isoformat()
+    if doc.get('date_validation'):
+        doc['date_validation'] = doc['date_validation'].isoformat()
+    
+    await db.paiements_en_attente.insert_one(doc)
+    
+    return {"message": "Paiement signalé", "paiement": {k: v for k, v in doc.items() if k != '_id'}}
+
+
+@api_router.post("/paiements-en-attente/{paiement_id}/valider")
+async def valider_paiement(paiement_id: str, validateur_id: str = None):
+    """Valider un paiement et créer le mouvement comptable"""
+    # Récupérer le paiement
+    paiement = await db.paiements_en_attente.find_one({"id": paiement_id})
+    if not paiement:
+        raise HTTPException(status_code=404, detail="Paiement non trouvé")
+    
+    if paiement.get('statut') != 'en_attente':
+        raise HTTPException(status_code=400, detail="Ce paiement a déjà été traité")
+    
+    # Créer la transaction dans la comptabilité
+    transaction = {
+        "id": str(uuid.uuid4()),
+        "date": paiement['date_paiement'],
+        "type": paiement['type'],
+        "membre_id": paiement['membre_id'],
+        "objet": paiement['objet'],
+        "montant": paiement['montant'],
+        "endroit": paiement['endroit'],
+        "detail": paiement.get('detail', '') + f" (signalé par membre le {paiement['date_signalement'][:10]})",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.transactions.insert_one(transaction)
+    
+    # Si c'est une cotisation, mettre à jour le statut du membre
+    if paiement['objet'] == 'cotisation':
+        await db.members.update_one(
+            {"id": paiement['membre_id']},
+            {"$set": {"situation_cotisation": 1, "updated_at": datetime.now(timezone.utc).isoformat()}}
+        )
+    
+    # Si c'est un autre objet avec dette, supprimer la dette correspondante
+    if paiement['objet'] in ['tombola', 'album', 'anniversaire']:
+        await db.dettes.delete_one({
+            "membre_id": paiement['membre_id'],
+            "cause": paiement['objet']
+        })
+    
+    # Mettre à jour le solde du compte
+    if paiement['type'] == 'recette':
+        await db.comptes.update_one(
+            {"nom": paiement['endroit']},
+            {"$inc": {"solde": paiement['montant']}}
+        )
+    else:
+        await db.comptes.update_one(
+            {"nom": paiement['endroit']},
+            {"$inc": {"solde": -paiement['montant']}}
+        )
+    
+    # Marquer le paiement comme validé
+    await db.paiements_en_attente.update_one(
+        {"id": paiement_id},
+        {"$set": {
+            "statut": "validé",
+            "date_validation": datetime.now(timezone.utc).isoformat(),
+            "validé_par": validateur_id
+        }}
+    )
+    
+    return {"message": "Paiement validé et mouvement créé", "transaction_id": transaction['id']}
+
+
+@api_router.post("/paiements-en-attente/{paiement_id}/refuser")
+async def refuser_paiement(paiement_id: str, validateur_id: str = None):
+    """Refuser un paiement signalé"""
+    result = await db.paiements_en_attente.update_one(
+        {"id": paiement_id, "statut": "en_attente"},
+        {"$set": {
+            "statut": "refusé",
+            "date_validation": datetime.now(timezone.utc).isoformat(),
+            "validé_par": validateur_id
+        }}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Paiement non trouvé ou déjà traité")
+    
+    return {"message": "Paiement refusé"}
+
+
+@api_router.delete("/paiements-en-attente/{paiement_id}")
+async def delete_paiement_en_attente(paiement_id: str):
+    """Supprimer un paiement en attente"""
+    result = await db.paiements_en_attente.delete_one({"id": paiement_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Paiement non trouvé")
+    return {"message": "Paiement supprimé"}
 
 
 # ============ ÉVÉNEMENTS - ROUTES ============

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Users, TrendingUp, Star, Calendar, DollarSign, MessageSquare, Download, X, Bell, RefreshCw, Check, CheckCircle, ScrollText, ChevronDown, ChevronUp, UserPlus, Trash2 } from 'lucide-react';
+import { Users, TrendingUp, Star, Calendar, DollarSign, MessageSquare, Download, X, Bell, RefreshCw, Check, CheckCircle, ScrollText, ChevronDown, ChevronUp, UserPlus, Trash2, CreditCard } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
 
@@ -813,11 +813,48 @@ const Dashboard = () => {
   const [showMenuDetailModal, setShowMenuDetailModal] = useState(false);
   const [selectedMenuDetail, setSelectedMenuDetail] = useState({ type: '', item: '' });
   const [reponsesSondage, setReponsesSondage] = useState([]);
+  
+  // Paiements en attente de validation (pour le président)
+  const [paiementsEnAttente, setPaiementsEnAttente] = useState([]);
 
   useEffect(() => {
     loadDashboardData();
     loadProchainEvenement();
+    loadPaiementsEnAttente();
   }, []);
+  
+  // Charger les paiements en attente
+  const loadPaiementsEnAttente = async () => {
+    try {
+      const response = await axios.get(`${API}/paiements-en-attente`);
+      setPaiementsEnAttente(response.data || []);
+    } catch (error) {
+      setPaiementsEnAttente([]);
+    }
+  };
+  
+  // Valider un paiement
+  const handleValiderPaiement = async (paiementId) => {
+    try {
+      await axios.post(`${API}/paiements-en-attente/${paiementId}/valider?validateur_id=${currentMember?.id}`);
+      toast.success('Paiement validé et enregistré dans la comptabilité !');
+      loadPaiementsEnAttente();
+      loadDashboardData(); // Recharger les stats
+    } catch (error) {
+      toast.error('Erreur lors de la validation');
+    }
+  };
+  
+  // Refuser un paiement
+  const handleRefuserPaiement = async (paiementId) => {
+    try {
+      await axios.post(`${API}/paiements-en-attente/${paiementId}/refuser?validateur_id=${currentMember?.id}`);
+      toast.success('Paiement refusé');
+      loadPaiementsEnAttente();
+    } catch (error) {
+      toast.error('Erreur lors du refus');
+    }
+  };
   
   // Charger les réponses manuelles pour l'événement
   const loadManualResponses = async (evenementId) => {
@@ -1696,6 +1733,67 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* ========== SECTION 3.5 : PAIEMENTS EN ATTENTE ========== */}
+      {paiementsEnAttente.length > 0 && (
+        <div>
+          <h2 className="text-2xl font-serif font-bold text-white mb-4 flex items-center">
+            <CreditCard className="w-6 h-6 mr-2 text-yellow-400" />
+            Paiements à valider
+            <Badge className="ml-3 bg-yellow-600">{paiementsEnAttente.length}</Badge>
+          </h2>
+
+          <Card className="bg-black/40 border-2 border-yellow-600/30 backdrop-blur-sm">
+            <CardContent className="pt-4">
+              <div className="space-y-3">
+                {paiementsEnAttente.map((paiement) => {
+                  const membre = members.find(m => m.id === paiement.membre_id);
+                  return (
+                    <div key={paiement.id} className="bg-yellow-900/20 border border-yellow-600/30 rounded-lg p-4">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="text-white font-bold text-lg">
+                            {membre?.nom_complet || 'Membre inconnu'}
+                          </p>
+                          <p className="text-yellow-400 font-semibold">
+                            {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(paiement.montant)} - {paiement.objet}
+                            {paiement.detail && ` (${paiement.detail})`}
+                          </p>
+                          <p className="text-gray-400 text-sm mt-1">
+                            Payé le {paiement.date_paiement} • {paiement.endroit}
+                          </p>
+                          <p className="text-gray-500 text-xs mt-1">
+                            Signalé le {paiement.date_signalement?.split('T')[0]}
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={() => handleValiderPaiement(paiement.id)}
+                            className="bg-green-700 hover:bg-green-600 text-white"
+                            size="sm"
+                          >
+                            <Check className="w-4 h-4 mr-1" />
+                            Valider
+                          </Button>
+                          <Button
+                            onClick={() => handleRefuserPaiement(paiement.id)}
+                            variant="outline"
+                            className="border-red-600 text-red-400 hover:bg-red-900/30"
+                            size="sm"
+                          >
+                            <X className="w-4 h-4 mr-1" />
+                            Refuser
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* ========== SECTION 4 : CHARTE DU CLUB ========== */}
       <div>
