@@ -1166,7 +1166,11 @@ async def get_transactions_summary():
 
 @api_router.delete("/transactions/{transaction_id}")
 async def delete_transaction(transaction_id: str):
-    """Supprimer une transaction (et ajuster le solde du compte)"""
+    """Supprimer une transaction (et ajuster le solde du compte)
+    
+    LOGIQUE INVERSE: Si la transaction provient d'un paiement validé par un membre,
+    restaurer la dette ou la cotisation originale du membre.
+    """
     transaction = await db.transactions.find_one({"id": transaction_id}, {"_id": 0})
     if not transaction:
         raise HTTPException(status_code=404, detail="Transaction non trouvée")
@@ -1201,10 +1205,65 @@ async def delete_transaction(transaction_id: str):
             }
         )
     
+    # ============ LOGIQUE INVERSE - RESTAURER LA DETTE/COTISATION ============
+    dette_restauree = None
+    pending_payment_id = transaction.get('pending_payment_id')
+    
+    if pending_payment_id:
+        # Cette transaction provient d'un paiement validé par un membre
+        paiement_original = await db.paiements_en_attente.find_one({"id": pending_payment_id})
+        
+        if paiement_original:
+            membre_id = transaction.get('membre_id') or paiement_original.get('membre_id')
+            objet = transaction.get('objet') or paiement_original.get('objet')
+            montant = transaction.get('montant') or paiement_original.get('montant')
+            
+            # Restaurer selon le type d'objet
+            if objet == 'cotisation' and membre_id:
+                # Restaurer la situation cotisation (+1 saison due)
+                await db.members.update_one(
+                    {"id": membre_id},
+                    {
+                        "$inc": {"situation_cotisation": 1},
+                        "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}
+                    }
+                )
+                dette_restauree = f"Cotisation restaurée (+1 saison due) pour membre {membre_id}"
+            
+            elif objet in ['tombola', 'album', 'anniversaire'] and membre_id:
+                # Recréer la dette
+                dette_doc = {
+                    "id": str(uuid.uuid4()),
+                    "membre_id": membre_id,
+                    "montant": montant,
+                    "cause": objet,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }
+                await db.dettes.insert_one(dette_doc)
+                dette_restauree = f"Dette restaurée: {objet} - {montant}€ pour membre {membre_id}"
+            
+            # Marquer le paiement comme "annulé" pour garder une trace
+            await db.paiements_en_attente.update_one(
+                {"id": pending_payment_id},
+                {
+                    "$set": {
+                        "statut": "annulé",
+                        "date_annulation": datetime.now(timezone.utc).isoformat(),
+                        "raison_annulation": "Transaction supprimée par l'admin"
+                    }
+                }
+            )
+    # ============ FIN LOGIQUE INVERSE ============
+    
     # Supprimer la transaction
     await db.transactions.delete_one({"id": transaction_id})
     
-    return {"message": "Transaction supprimée avec succès"}
+    response = {"message": "Transaction supprimée avec succès"}
+    if dette_restauree:
+        response["dette_restauree"] = dette_restauree
+    
+    return response
 
 
 # ============ VIREMENTS ENTRE COMPTES ============
@@ -1426,7 +1485,7 @@ async def valider_paiement(paiement_id: str, validateur_id: str = None):
     if paiement.get('statut') != 'en_attente':
         raise HTTPException(status_code=400, detail="Ce paiement a déjà été traité")
     
-    # Créer la transaction dans la comptabilité
+    # Créer la transaction dans la comptabilité avec lien vers le paiement d'origine
     transaction = {
         "id": str(uuid.uuid4()),
         "date": paiement['date_paiement'],
@@ -1436,16 +1495,20 @@ async def valider_paiement(paiement_id: str, validateur_id: str = None):
         "montant": paiement['montant'],
         "endroit": paiement['endroit'],
         "detail": paiement.get('detail', '') + f" (signalé par membre le {paiement['date_signalement'][:10]})",
-        "created_at": datetime.now(timezone.utc).isoformat()
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "pending_payment_id": paiement_id  # Lien vers le paiement d'origine pour logique inverse
     }
     await db.transactions.insert_one(transaction)
     
-    # Si c'est une cotisation, mettre à jour le statut du membre
+    # Si c'est une cotisation, décrémenter la situation du membre
     if paiement['objet'] == 'cotisation':
-        await db.members.update_one(
-            {"id": paiement['membre_id']},
-            {"$set": {"situation_cotisation": 1, "updated_at": datetime.now(timezone.utc).isoformat()}}
-        )
+        membre = await db.members.find_one({"id": paiement['membre_id']}, {"_id": 0})
+        if membre:
+            nouvelle_situation = max(0, membre.get('situation_cotisation', 0) - 1)
+            await db.members.update_one(
+                {"id": paiement['membre_id']},
+                {"$set": {"situation_cotisation": nouvelle_situation, "updated_at": datetime.now(timezone.utc).isoformat()}}
+            )
     
     # Si c'est un autre objet avec dette, supprimer la dette correspondante
     if paiement['objet'] in ['tombola', 'album', 'anniversaire']:
