@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Users, TrendingUp, Star, Calendar, DollarSign, MessageSquare, Download, X, Bell, RefreshCw, Check, CheckCircle, ScrollText, ChevronDown, ChevronUp, UserPlus, Trash2, CreditCard } from 'lucide-react';
+import { Users, TrendingUp, Star, Calendar, DollarSign, MessageSquare, Download, X, Bell, RefreshCw, Check, CheckCircle, ScrollText, ChevronDown, ChevronUp, UserPlus, Trash2, CreditCard, Key, Eye, EyeOff, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
 
@@ -816,11 +816,17 @@ const Dashboard = () => {
   
   // Paiements en attente de validation (pour le président)
   const [paiementsEnAttente, setPaiementsEnAttente] = useState([]);
+  
+  // Demandes de mot de passe oublié (pour le président)
+  const [demandesMotDePasse, setDemandesMotDePasse] = useState([]);
+  const [showMotsDePasseModal, setShowMotsDePasseModal] = useState(false);
+  const [membresMotsDePasse, setMembresMotsDePasse] = useState([]);
 
   useEffect(() => {
     loadDashboardData();
     loadProchainEvenement();
     loadPaiementsEnAttente();
+    loadDemandesMotDePasse();
   }, []);
   
   // Charger les paiements en attente
@@ -830,6 +836,38 @@ const Dashboard = () => {
       setPaiementsEnAttente(response.data || []);
     } catch (error) {
       setPaiementsEnAttente([]);
+    }
+  };
+  
+  // Charger les demandes de mot de passe
+  const loadDemandesMotDePasse = async () => {
+    try {
+      const response = await axios.get(`${API}/admin/demandes-mot-de-passe`);
+      setDemandesMotDePasse(response.data || []);
+    } catch (error) {
+      setDemandesMotDePasse([]);
+    }
+  };
+  
+  // Charger tous les mots de passe des membres
+  const loadMembresMotsDePasse = async () => {
+    try {
+      const response = await axios.get(`${API}/admin/membres-mots-de-passe`);
+      setMembresMotsDePasse(response.data || []);
+      setShowMotsDePasseModal(true);
+    } catch (error) {
+      toast.error('Erreur lors du chargement des mots de passe');
+    }
+  };
+  
+  // Marquer une demande de mot de passe comme traitée
+  const handleTraiterDemande = async (demandeId) => {
+    try {
+      await axios.post(`${API}/admin/demandes-mot-de-passe/${demandeId}/traiter`);
+      toast.success('Demande marquée comme traitée');
+      loadDemandesMotDePasse();
+    } catch (error) {
+      toast.error('Erreur lors du traitement');
     }
   };
   
@@ -1795,6 +1833,71 @@ const Dashboard = () => {
         </div>
       )}
 
+      {/* ========== SECTION 3.6 : DEMANDES DE MOT DE PASSE OUBLIÉ ========== */}
+      {demandesMotDePasse.length > 0 && (
+        <div>
+          <h2 className="text-2xl font-serif font-bold text-white mb-4 flex items-center">
+            <Key className="w-6 h-6 mr-2 text-orange-400" />
+            Mots de passe oubliés
+            <Badge className="ml-3 bg-orange-600">{demandesMotDePasse.length}</Badge>
+          </h2>
+
+          <Card className="bg-black/40 border-2 border-orange-600/30 backdrop-blur-sm">
+            <CardContent className="pt-4">
+              <div className="space-y-3">
+                {demandesMotDePasse.map((demande) => (
+                  <div key={demande.id} className="bg-orange-900/20 border border-orange-600/30 rounded-lg p-4">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="text-white font-bold text-lg">
+                          {demande.membre_nom}
+                        </p>
+                        <p className="text-orange-400 text-sm">
+                          {demande.membre_email}
+                        </p>
+                        <p className="text-gray-500 text-xs mt-1">
+                          Demandé le {demande.created_at?.split('T')[0]}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => loadMembresMotsDePasse()}
+                          className="bg-blue-700 hover:bg-blue-600 text-white"
+                          size="sm"
+                        >
+                          <Eye className="w-4 h-4 mr-1" />
+                          Voir MDP
+                        </Button>
+                        <Button
+                          onClick={() => handleTraiterDemande(demande.id)}
+                          className="bg-green-700 hover:bg-green-600 text-white"
+                          size="sm"
+                        >
+                          <Check className="w-4 h-4 mr-1" />
+                          Traité
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* ========== BOUTON ACCÈS ESPACE MOTS DE PASSE ========== */}
+      <div>
+        <Button
+          onClick={() => loadMembresMotsDePasse()}
+          variant="outline"
+          className="border-[#D4A024]/50 text-[#D4A024] hover:bg-[#D4A024]/10"
+        >
+          <Key className="w-4 h-4 mr-2" />
+          Espace Mots de Passe des Membres
+        </Button>
+      </div>
+
       {/* ========== SECTION 4 : CHARTE DU CLUB ========== */}
       <div>
         <h2 className="text-2xl font-serif font-bold text-white mb-4 flex items-center">
@@ -2303,6 +2406,80 @@ const Dashboard = () => {
                 }).length === 0 && (
                   <div className="text-center text-gray-400 py-4">
                     Personne n'a choisi cette option
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Modal: Espace Mots de Passe des Membres */}
+      {showMotsDePasseModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <Card className="bg-[#7A2020] border-2 border-[#D4A024] max-w-4xl w-full max-h-[85vh] overflow-hidden">
+            <CardHeader className="border-b border-[#D4A024]/30">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-2xl font-serif text-[#D4A024] flex items-center">
+                  <Key className="w-6 h-6 mr-2" />
+                  Espace Mots de Passe des Membres
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowMotsDePasseModal(false)}
+                  className="text-[#D4A024] hover:bg-[#D4A024]/10"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+              <p className="text-sm text-gray-300 mt-2">
+                Utilisez ces informations pour aider les membres qui ont oublié leur mot de passe.
+              </p>
+            </CardHeader>
+            <CardContent className="pt-4 overflow-y-auto max-h-[65vh]">
+              <div className="space-y-2">
+                {membresMotsDePasse.map((membre) => (
+                  <div key={membre.id} className="bg-black/30 rounded-lg p-4 border border-[#D4A024]/30">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div>
+                        <p className="text-white font-bold text-lg">
+                          {membre.numero_membre}. {membre.nom_complet}
+                        </p>
+                        <p className="text-gray-400 text-sm">{membre.email}</p>
+                      </div>
+                      <div className="flex items-center gap-3 bg-black/40 rounded-lg px-4 py-2">
+                        <div>
+                          <p className="text-xs text-gray-500">Code temporaire</p>
+                          <p className="text-orange-400 font-mono text-sm">{membre.temporary_password}</p>
+                        </div>
+                        <div className="border-l border-gray-600 pl-3">
+                          <p className="text-xs text-gray-500">Mot de passe actuel</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-green-400 font-mono text-sm">
+                              {membre.password_clair || membre.temporary_password || '(non défini)'}
+                            </p>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-[#D4A024] hover:bg-[#D4A024]/10"
+                              onClick={() => {
+                                navigator.clipboard.writeText(membre.password_clair || membre.temporary_password || '');
+                                toast.success('Mot de passe copié !');
+                              }}
+                            >
+                              <Copy className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                
+                {membresMotsDePasse.length === 0 && (
+                  <div className="text-center text-gray-400 py-8">
+                    Aucun membre avec un compte activé
                   </div>
                 )}
               </div>

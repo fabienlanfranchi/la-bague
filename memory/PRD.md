@@ -5,176 +5,122 @@ Application de gestion complète pour le club de cigares "La Bague Impériale" a
 
 ## What's Been Implemented
 
-### Session 11 Mars 2026 - Mise à jour 2
+### Session 14 Mars 2026
 
-**Normalisation des marques (TERMINÉ) :**
-- Les marques "LIGNE XXX" sont maintenant correctement affichées :
-  - "LIGNE BEHIKE" → **COHIBA** (marque) + "Ligne Behike" (sous-ligne)
-  - "LIGNE CHURCHILL" → **ROMEO Y JULIETA** + "Ligne Churchill"
-  - "LIGNE EDMUNDO" → **MONTECRISTO** + "Ligne Edmundo"
-- Le filtre "Marque" affiche les vraies marques (pas les LIGNE)
+**Logique inverse de suppression de transactions (TERMINÉ) :**
+- Quand l'admin supprime une transaction créée par validation d'un paiement membre :
+  - La dette originale est automatiquement restaurée (tombola, album, anniversaire)
+  - Ou la cotisation est incrémentée (+1 saison due)
+  - Le paiement original est marqué "annulé" avec trace d'audit
+- Lien `pending_payment_id` ajouté aux transactions validées
 
-**Bouton Toggle Apéro du Club (TERMINÉ) :**
-- Un seul bouton en bas à droite des cartes de cigares (icône verre de vin)
-- **Grisé** = le cigare n'est PAS dans l'Apéro du Club
-- **Rouge** = le cigare EST dans l'Apéro du Club  
-- Clic sur le bouton = toggle avec **confirmation** ("Ajouter X à l'Apéro du Club ?" ou "Retirer X de l'Apéro du Club ?")
-- Le même comportement est présent dans la modal de détail
-- Les marques normalisées sont utilisées lors de l'ajout à l'Apéro
+**Nouvelle stratégie d'authentification sans email (TERMINÉ) :**
+- **Activation du compte** :
+  - Option de garder le code temporaire `labagueimperialeXX` comme mot de passe
+  - Ou créer un nouveau mot de passe personnalisé
+  - Stockage du mot de passe en clair pour l'admin (`password_clair`)
 
-**Comparateur de Cigares (TERMINÉ) :**
-- Bouton "Comparateur de cigares" en haut de la page (icône balance)
-- Mode sélection : cliquez sur 2 cigares pour les comparer
-- Les cigares sélectionnés s'affichent avec un badge violet "Comparateur"
-- Vue comparaison côte à côte avec :
-  - Photos des deux cigares
-  - Note, Prix, Puissance, Origine
-  - Dimensions (mm, cepo, diamètre)
-  - Composition (Cape, Sous-cape, Tripe)
-  - Conclusion
-- Possibilité de changer les cigares ou d'effacer la comparaison
+- **Espace Mots de Passe Admin** :
+  - Liste de tous les membres activés avec leurs mots de passe
+  - Code temporaire + mot de passe actuel visibles
+  - Bouton copier pour chaque mot de passe
 
-**Assistant IA Claude (TERMINÉ) :**
-- Interface de chat complète dans l'onglet "Assistant IA"
-- Basé sur Claude Sonnet 4.5 via emergentintegrations
-- Connaissances intégrées :
-  - Guide du Cigare complet (10 parties)
-  - Données du club (membres, événements, statistiques)
-  - Ma Cigarthèque de chaque membre (préférences)
-  - Catalogue de 657 cigares
-- Fonctionnalités :
-  - Recommandations personnalisées basées sur les goûts
-  - Questions sur les autres membres ("le cigare préféré de X")
-  - Expertise technique sur les cigares
-  - Connaissance du club et des événements
-- Interface :
-  - Questions suggérées au démarrage
-  - Historique de conversation sauvegardé
-  - Indicateur de frappe animé
-  - Bouton de réinitialisation
+- **Mot de passe oublié** :
+  - Crée une demande de récupération (collection `demandes_mot_de_passe`)
+  - Notification sur le Dashboard admin avec badge
+  - Boutons "Voir MDP" et "Traité" pour chaque demande
+  - L'admin envoie le mot de passe en privé au membre
 
-### Session 11 Mars 2026
+**Nouveaux endpoints API :**
+- `GET /api/admin/membres-mots-de-passe` - Liste des mots de passe membres
+- `GET /api/admin/demandes-mot-de-passe` - Demandes de récupération en attente
+- `GET /api/admin/demandes-mot-de-passe/count` - Compteur pour badge
+- `POST /api/admin/demandes-mot-de-passe/{id}/traiter` - Marquer comme traité
+- `DELETE /api/admin/demandes-mot-de-passe/{id}` - Supprimer une demande
+- `POST /api/auth/change-password` - Changer son mot de passe
 
-**Cigarthèque - Refonte complète selon les rôles :**
+### Sessions précédentes
 
-#### Vue Admin (Président) - 2 onglets :
-- **Catalogue** : 657 cigares avec recherche et filtres (Marque, Pays, Puissance, Module, Prix)
-  - Bouton "Modifier" (crayon bleu) → Modal d'édition avec tous les champs + **bouton Supprimer**
-  - Bouton "Apéro" (verre bordeaux) → Ajoute le cigare à l'Apéro du Club
-  - Bouton "Copier" → Format prêt à coller dans un événement Apéro
-  - **Badge "verre de rouge"** sur les cigares déjà dans l'Apéro
-- **Apéro du Club** : Gestion complète (ajouter/supprimer) des cigares fumés lors des événements
+**Système de paiements membres (TERMINÉ) :**
+- Les membres peuvent signaler un paiement depuis leur profil
+- L'admin valide sur le Dashboard, crée automatiquement la transaction
+- La dette correspondante est supprimée
 
-#### Vue Membre - 3 onglets :
-- **Catalogue** : Consultation + bouton "+" pour importer vers Ma Cigarthèque
-- **Apéro du Club** : Consultation + bouton "Copier vers Ma Cigarthèque"
-- **Ma Cigarthèque** : Collection personnelle avec :
-  - **Filtres** : Recherche, Terroir (pays), Marque, Module
-  - **Tri** : Par Terroir, Par Marque, Par Module (avec groupement visuel)
-  - **Bouton "Ajouter un cigare"** → Recherche dans le catalogue (remplace "Fiche vierge")
-  - **Notation guidée** :
-    - Note globale (sur 5)
-    - Puissance ressentie (sur 5)
-    - Caractère : Évolutif ou Linéaire
-    - Notes libres
+**Sondages et événements (TERMINÉ) :**
+- Réponses manuelles pour invités/membres sans accès
+- Drill-down sur les résultats (voir qui a choisi quoi)
+- Export SMS pour restaurateurs
 
-**Note importante** : Certaines conclusions de cigares sont tronquées dans la base MySQL source (ex: "Résolument puiss" au lieu de "Résolument puissant"). Ce problème vient de la base originale.
-
-**APIs implémentées :**
-- `PUT /api/cigares/{id}` - Modifier un cigare MySQL (admin)
-- `DELETE /api/cigares/{id}` - Supprimer un cigare du catalogue MySQL (admin)
-- `GET/POST/DELETE /api/ma-cigarotheque` - Collection personnelle membre
-- `PUT /api/ma-cigarotheque/{id}?note=X&commentaire=Y` - Noter un cigare
-- `GET/POST/DELETE /api/apero-club` - Cigares de l'Apéro du Club
-
-### Session 10 Mars 2026 (Précédente)
-
-**Système de connexion membre:**
-- Page de login avec activation par code `labagueimperialeXX`
-- Validation du compte (email + mot de passe)
-- "Rester connecté" et "Mot de passe oublié"
-- Conseil de mot de passe: `prenom + numéro`
-
-**Catalogue Cigares (MySQL OVH):**
-- Connexion à la base OVH (gb60402-001.eu.clouddb.ovh.net:35741)
-- 657 cigares avec recherche et filtres
-- Fiches détaillées avec notes de dégustation
-
-**Améliorations UI:**
-- Tailles de texte augmentées (lisibilité)
-- Boutons "Copier" sur les messages
-- 2 liens WhatsApp (Membres + Bureau)
-
-**Comptabilité:**
-- Données nettoyées (899€ Compte, 632€ PayPal)
-- Transaction abonnement Asso Connect (336€)
-
-**Sondages:**
-- Système complet avec persistance MongoDB
+**Cigarthèque complète (TERMINÉ) :**
+- 657 cigares avec photos
+- Assistant IA "Winston" (Claude Sonnet 4.5)
+- Collection personnelle "Ma Cigarthèque"
+- Apéro du Club avec gestion admin
 
 ## Prioritized Backlog
 
 ### P0 - Terminé ✅
-- [x] Fonction "Modifier" cigare (admin) - Modal complet avec tous les champs
-- [x] Fonction "Supprimer" cigare (admin) - Bouton dans le modal d'édition
-- [x] **Affichage des photos** - Photos sur les cartes et dans le modal de détail
-- [x] Structure des onglets selon le rôle (admin vs membre)
-- [x] Importateur de cigares vers Ma Cigarthèque
-- [x] Système de notation et commentaires personnels
-- [x] **Normalisation des marques** - LIGNE XXX → Vraie marque + sous-ligne
-- [x] **Badge Apéro du Club** - Verre de rouge sur les cigares dans l'Apéro
+- [x] Logique inverse suppression transactions
+- [x] Nouvelle stratégie d'authentification sans email
+- [x] Espace mots de passe admin
 
 ### P1 - À faire
-- [ ] Nouvelles fonctionnalités "Ma Cigarthèque" :
-  - Tri/Filtres avancés (terroir, marque, module) - déjà partiellement fait
-  - Changer "Fiche Vierge" → "Importer" avec modal de recherche - fait
-  - Notation guidée : Note (sur 5), Puissance (sur 5), Évolution/Linéaire, Note libre - fait
-- [ ] Fonctionnalité "Copier" depuis Apéro du Club vers messages événements
-- [ ] Assistant IA Claude (playbook disponible)
-- [ ] Refonte page Messages admin
+- [ ] **Activer l'authentification membre** - Désactiver le mode "accès ouvert" dans `UserContext.js`
+- [ ] Tester le flux complet d'activation pour les 35 membres
 
-### P2 - Future
-- [ ] Notifications admin détaillées
-- [ ] Page Instagram
-- [ ] Envoi email (mot de passe oublié)
-- [ ] Réactiver l'authentification (quand demandé)
+### P2 - Backlog
+- [ ] Bouton "Copier" depuis Apéro du Club vers messages événements
+- [ ] Construire les onglets "Jeux" et "Instagram"
+- [ ] Corriger le nombre de repas Saison 13 (config en DB)
+
+### P3 - Future
+- [ ] Refactoring `server.py` en routers FastAPI
+- [ ] Refactoring `Dashboard.js` en composants
+- [ ] Corriger troncature `conclusion` cigares (base MySQL externe)
 
 ## Technical Details
+
+### Base de données MongoDB - Nouvelles collections
+- `demandes_mot_de_passe` - Demandes de récupération mot de passe
+- `paiements_en_attente` - Paiements signalés par membres
+
+### Champs membres ajoutés
+- `password_clair` - Mot de passe en clair (pour admin)
+
+### Champs transactions ajoutés
+- `pending_payment_id` - Lien vers paiement d'origine (pour logique inverse)
 
 ### Base de données Cigares (MySQL OVH)
 - Host: gb60402-001.eu.clouddb.ovh.net
 - Port: 35741
 - User: cigare20
 - Database: CIGARE
-- Table: cigares (657 entrées)
-- Colonne photo: `./photos_cigares/...` → URL complète: `https://51.68.122.192/cigares/photos_cigares/...`
-- ~650 cigares ont une photo (préfixes: `cig1004_` pour Cigaroscope, `hav1005_` pour Havanoscope)
 
 ### Comptes Admin
-- Fabien Lanfranchi (n°1): fabienlanfranchi@yahoo.fr / fabienlanfranchi01
+- Fabien Lanfranchi (n°1): fabienlanfranchi@yahoo.fr
 - ID: d6b30499-2c9b-43e4-9402-7234da4c9855
 
 ### Codes d'activation membres
 Format: labagueimperialeXX (XX = numéro membre)
 
 ## Key API Endpoints
-- `GET /api/cigares` - Catalogue avec filtres et pagination
-- `GET /api/cigares-filtres` - Options de filtres
-- `PUT /api/cigares/{id}` - Modifier un cigare (admin)
-- `GET/POST/DELETE /api/ma-cigarotheque/{membre_id}` - Collection personnelle
-- `PUT /api/ma-cigarotheque/{cigare_id}` - Noter un cigare
-- `GET/POST/DELETE /api/apero-club` - Cigares apéro club
-- `POST /api/auth/login` - Connexion
-- `POST /api/auth/validate-account` - Activer compte
+- `POST /api/auth/validate-account` - Activation avec option use_temp_password
+- `POST /api/auth/forgot-password` - Crée demande récupération
+- `POST /api/auth/change-password` - Changer mot de passe
+- `GET /api/admin/membres-mots-de-passe` - Liste mots de passe
+- `GET /api/admin/demandes-mot-de-passe` - Demandes en attente
+- `DELETE /api/transactions/{id}` - Suppression avec logique inverse
 
 ## Files Modified This Session
-- `/app/frontend/src/pages/Cigarotheque.js` - Refonte complète avec onglets selon rôle
-- `/app/backend/server.py` - Modèles CigarePersonnel et AperoClubCigare enrichis
+- `/app/backend/server.py` - Endpoints admin mots de passe, logique inverse
+- `/app/frontend/src/pages/Dashboard.js` - Section demandes MDP, modal espace MDP
+- `/app/frontend/src/pages/LoginPage.js` - Option garder code temporaire
 
-## Tests Passés
-- `/app/test_reports/iteration_3.json` - 100% réussite (17/17 tests backend, 100% frontend)
+## Tests Effectués
+- ✅ Création/validation/suppression paiement avec restauration dette
+- ✅ Création demande mot de passe oublié
+- ✅ Affichage Dashboard avec notifications
+- ✅ Modal espace mots de passe fonctionnel
 
-## Questions en attente
-1. URL du serveur PHP pour les photos de cigares ?
-2. Intégration email (SendGrid/Resend/Gmail) ?
-3. Quand réactiver l'authentification ?
+## Prochaine étape critique
+Activer l'authentification membre en désactivant le mode "accès ouvert" dans `UserContext.js` pour permettre aux 35 membres de se connecter.

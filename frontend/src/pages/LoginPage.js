@@ -36,6 +36,7 @@ const LoginPage = () => {
   const [showValidation, setShowValidation] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
+  const [useTempPassword, setUseTempPassword] = useState(false); // Garder le code temporaire comme MDP
   const [validationData, setValidationData] = useState({
     memberId: '',
     email: '',
@@ -94,14 +95,17 @@ const LoginPage = () => {
   const handleValidation = async (e) => {
     e.preventDefault();
 
-    if (validationData.password !== validationData.confirmPassword) {
-      toast.error('Les mots de passe ne correspondent pas');
-      return;
-    }
+    // Si on utilise le code temporaire, pas besoin de vérifier les mots de passe
+    if (!useTempPassword) {
+      if (validationData.password !== validationData.confirmPassword) {
+        toast.error('Les mots de passe ne correspondent pas');
+        return;
+      }
 
-    if (validationData.password.length < 4) {
-      toast.error('Le mot de passe doit contenir au moins 4 caractères');
-      return;
+      if (validationData.password.length < 4) {
+        toast.error('Le mot de passe doit contenir au moins 4 caractères');
+        return;
+      }
     }
 
     setLoading(true);
@@ -110,8 +114,9 @@ const LoginPage = () => {
       const response = await axios.post(`${API_URL}/api/auth/validate-account`, {
         member_id: validationData.memberId,
         email: validationData.email,
-        password: validationData.password,
-        confirm_password: validationData.confirmPassword
+        password: useTempPassword ? 'temp' : validationData.password,
+        confirm_password: useTempPassword ? 'temp' : validationData.confirmPassword,
+        use_temp_password: useTempPassword
       });
 
       const { member } = response.data;
@@ -195,12 +200,19 @@ const LoginPage = () => {
         email: forgotPasswordEmail
       });
 
-      toast.success(response.data.message || 'Si cet email existe, vous recevrez vos informations.');
+      // Nouveau message: demande envoyée au président
+      if (response.data.demande_creee) {
+        toast.success('Votre demande a été envoyée au président. Il vous contactera rapidement avec votre mot de passe.');
+      } else if (response.data.demande_existante) {
+        toast.info('Une demande est déjà en cours. Le président va vous contacter.');
+      } else {
+        toast.info(response.data.message || 'Si cet email existe, le président sera notifié.');
+      }
       setShowForgotPassword(false);
       setForgotPasswordEmail('');
     } catch (error) {
       // On affiche un message générique pour ne pas révéler si l'email existe
-      toast.info('Si cet email existe dans notre base, vous recevrez un rappel de vos identifiants.');
+      toast.info('Si cet email existe dans notre base, le président sera notifié.');
       setShowForgotPassword(false);
     } finally {
       setLoading(false);
@@ -267,47 +279,69 @@ const LoginPage = () => {
                   </div>
                 </div>
 
-                <div>
-                  <Label htmlFor="val-password" className="text-white">Mot de passe *</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                    <Input
-                      id="val-password"
-                      type="password"
-                      value={validationData.password}
-                      onChange={(e) => setValidationData({...validationData, password: e.target.value})}
-                      placeholder="Minimum 4 caractères"
-                      className="pl-10 bg-black/50 border-[#D4A024]/30 text-white"
-                      required
+                {/* Option: Garder le code temporaire comme mot de passe */}
+                <div className="bg-blue-900/20 border border-blue-600/30 rounded-lg p-4">
+                  <label className="flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={useTempPassword}
+                      onChange={(e) => setUseTempPassword(e.target.checked)}
+                      className="w-4 h-4 mr-3 accent-[#D4A024]"
                     />
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="val-confirm" className="text-white">Confirmer le mot de passe *</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                    <Input
-                      id="val-confirm"
-                      type="password"
-                      value={validationData.confirmPassword}
-                      onChange={(e) => setValidationData({...validationData, confirmPassword: e.target.value})}
-                      placeholder="Confirmez votre mot de passe"
-                      className="pl-10 bg-black/50 border-[#D4A024]/30 text-white"
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* Conseil mot de passe */}
-                <div className="bg-[#D4A024]/10 border border-[#D4A024]/30 rounded-lg p-3">
-                  <p className="text-sm text-gray-300">
-                    <span className="text-[#D4A024] font-semibold">Conseil :</span> Utilisez votre <span className="text-white font-mono">prénom + numéro de membre</span>
-                  </p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    Exemple : fabien1, jacques3, nini4... (facile à retenir !)
+                    <span className="text-white text-sm">
+                      Garder mon code d'activation comme mot de passe
+                    </span>
+                  </label>
+                  <p className="text-xs text-gray-400 mt-2 ml-7">
+                    Votre code <span className="text-[#D4A024] font-mono">labagueimperialeXX</span> deviendra votre mot de passe.
                   </p>
                 </div>
+
+                {!useTempPassword && (
+                  <>
+                    <div>
+                      <Label htmlFor="val-password" className="text-white">Nouveau mot de passe *</Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                        <Input
+                          id="val-password"
+                          type="password"
+                          value={validationData.password}
+                          onChange={(e) => setValidationData({...validationData, password: e.target.value})}
+                          placeholder="Minimum 4 caractères"
+                          className="pl-10 bg-black/50 border-[#D4A024]/30 text-white"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="val-confirm" className="text-white">Confirmer le mot de passe *</Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                        <Input
+                          id="val-confirm"
+                          type="password"
+                          value={validationData.confirmPassword}
+                          onChange={(e) => setValidationData({...validationData, confirmPassword: e.target.value})}
+                          placeholder="Confirmez votre mot de passe"
+                          className="pl-10 bg-black/50 border-[#D4A024]/30 text-white"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    {/* Conseil mot de passe */}
+                    <div className="bg-[#D4A024]/10 border border-[#D4A024]/30 rounded-lg p-3">
+                      <p className="text-sm text-gray-300">
+                        <span className="text-[#D4A024] font-semibold">Conseil :</span> Utilisez votre <span className="text-white font-mono">prénom + numéro de membre</span>
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        Exemple : fabien1, jacques3, nini4... (facile à retenir !)
+                      </p>
+                    </div>
+                  </>
+                )}
 
                 <Button
                   type="submit"

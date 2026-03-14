@@ -150,6 +150,22 @@ class ValidateAccountRequest(BaseModel):
     email: EmailStr
     password: str
     confirm_password: str
+    use_temp_password: bool = False  # Si True, garder le code temporaire comme mot de passe
+
+
+# ============ DEMANDES MOT DE PASSE OUBLIÉ - MODELS ============
+
+class DemandeMotDePasse(BaseModel):
+    """Demande de récupération de mot de passe"""
+    model_config = ConfigDict(extra="ignore")
+    
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    membre_id: str
+    membre_nom: str
+    membre_email: str
+    statut: str = "en_attente"  # en_attente, traité
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    traite_at: Optional[datetime] = None
 
 
 # Helper functions
@@ -310,7 +326,12 @@ async def login(request: Request, login_data: LoginRequest):
 
 @api_router.post("/auth/validate-account")
 async def validate_account(request: Request, data: ValidateAccountRequest):
-    """Valider le compte en ajoutant email et mot de passe"""
+    """Valider le compte en ajoutant email et mot de passe
+    
+    Options:
+    - Créer un nouveau mot de passe
+    - Ou garder le code temporaire comme mot de passe (use_temp_password=True)
+    """
     
     # Récupérer le membre directement par ID (pas besoin d'être connecté)
     member = await db.members.find_one({"id": data.member_id}, {"_id": 0})
@@ -322,17 +343,23 @@ async def validate_account(request: Request, data: ValidateAccountRequest):
     if member.get('is_validated') or member.get('compte_valide'):
         raise HTTPException(status_code=400, detail="Compte déjà validé")
     
-    # Vérifier que les mots de passe correspondent
-    if data.password != data.confirm_password:
-        raise HTTPException(status_code=400, detail="Les mots de passe ne correspondent pas")
+    # Déterminer le mot de passe à utiliser
+    if data.use_temp_password:
+        # Utiliser le code temporaire comme mot de passe
+        password_to_use = member.get('temporary_password', '')
+    else:
+        # Vérifier que les mots de passe correspondent
+        if data.password != data.confirm_password:
+            raise HTTPException(status_code=400, detail="Les mots de passe ne correspondent pas")
+        password_to_use = data.password
     
     # Vérifier que l'email n'est pas déjà utilisé par un autre membre
     existing = await db.members.find_one({"email": data.email, "id": {"$ne": data.member_id}}, {"_id": 0})
     if existing:
         raise HTTPException(status_code=400, detail="Cet email est déjà utilisé")
     
-    # Mettre à jour le membre
-    password_hash = hash_password(data.password)
+    # Mettre à jour le membre avec le mot de passe hashé ET le mot de passe en clair pour l'admin
+    password_hash = hash_password(password_to_use)
     
     await db.members.update_one(
         {"id": data.member_id},
@@ -340,6 +367,7 @@ async def validate_account(request: Request, data: ValidateAccountRequest):
             "$set": {
                 "email": data.email,
                 "password_hash": password_hash,
+                "password_clair": password_to_use,  # Stocké pour que l'admin puisse le retrouver
                 "is_validated": True,
                 "compte_valide": True,
                 "updated_at": datetime.now(timezone.utc).isoformat()
@@ -382,23 +410,159 @@ class ForgotPasswordRequest(BaseModel):
 
 @api_router.post("/auth/forgot-password")
 async def forgot_password(data: ForgotPasswordRequest):
-    """Mot de passe oublié - retourne un rappel"""
+    """Mot de passe oublié - Crée une demande de récupération pour l'admin"""
     # Chercher le membre par email
     member = await db.members.find_one({"email": data.email}, {"_id": 0})
     
     if member:
-        # En production, on enverrait un email
-        # Pour l'instant, on retourne juste un message générique
-        prenom = member.get('prenom', member.get('nom_complet', '').split()[0]).lower()
-        numero = member.get('numero_membre', '')
+        # Vérifier s'il y a déjà une demande en attente pour ce membre
+        existing_request = await db.demandes_mot_de_passe.find_one({
+            "membre_id": member['id'],
+            "statut": "en_attente"
+        })
+        
+        if existing_request:
+            return {
+                "message": "Une demande est déjà en cours. Le président va vous contacter.",
+                "demande_existante": True
+            }
+        
+        # Créer une nouvelle demande de récupération
+        demande = {
+            "id": str(uuid.uuid4()),
+            "membre_id": member['id'],
+            "membre_nom": member.get('nom_complet', ''),
+            "membre_email": data.email,
+            "statut": "en_attente",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.demandes_mot_de_passe.insert_one(demande)
         
         return {
-            "message": f"Rappel : votre mot de passe par défaut est {prenom}{numero}",
-            "hint": f"{prenom}{numero}"
+            "message": "Votre demande a été envoyée au président. Il vous contactera rapidement.",
+            "demande_creee": True
         }
     
     # Message générique pour ne pas révéler si l'email existe
-    return {"message": "Si cet email existe, vous recevrez un rappel."}
+    return {"message": "Si cet email existe, une demande sera envoyée au président."}
+
+
+# ============ ADMIN - GESTION MOTS DE PASSE ============
+
+@api_router.get("/admin/membres-mots-de-passe")
+async def get_membres_mots_de_passe():
+    """[ADMIN] Obtenir la liste des membres avec leurs mots de passe
+    
+    Permet à l'admin de récupérer les mots de passe des membres pour les aider
+    """
+    members = await db.members.find(
+        {"is_validated": True},
+        {
+            "_id": 0,
+            "id": 1,
+            "numero_membre": 1,
+            "nom_complet": 1,
+            "email": 1,
+            "temporary_password": 1,
+            "password_clair": 1,
+            "is_validated": 1,
+            "compte_valide": 1
+        }
+    ).sort("numero_membre", 1).to_list(1000)
+    
+    return members
+
+
+@api_router.get("/admin/demandes-mot-de-passe")
+async def get_demandes_mot_de_passe():
+    """[ADMIN] Obtenir les demandes de récupération de mot de passe en attente"""
+    demandes = await db.demandes_mot_de_passe.find(
+        {"statut": "en_attente"},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    
+    return demandes
+
+
+@api_router.get("/admin/demandes-mot-de-passe/count")
+async def count_demandes_mot_de_passe():
+    """[ADMIN] Compter les demandes de mot de passe en attente (pour badge Dashboard)"""
+    count = await db.demandes_mot_de_passe.count_documents({"statut": "en_attente"})
+    return {"count": count}
+
+
+@api_router.post("/admin/demandes-mot-de-passe/{demande_id}/traiter")
+async def traiter_demande_mot_de_passe(demande_id: str):
+    """[ADMIN] Marquer une demande de mot de passe comme traitée"""
+    result = await db.demandes_mot_de_passe.update_one(
+        {"id": demande_id, "statut": "en_attente"},
+        {
+            "$set": {
+                "statut": "traité",
+                "traite_at": datetime.now(timezone.utc).isoformat()
+            }
+        }
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Demande non trouvée ou déjà traitée")
+    
+    return {"message": "Demande marquée comme traitée"}
+
+
+@api_router.delete("/admin/demandes-mot-de-passe/{demande_id}")
+async def supprimer_demande_mot_de_passe(demande_id: str):
+    """[ADMIN] Supprimer une demande de mot de passe"""
+    result = await db.demandes_mot_de_passe.delete_one({"id": demande_id})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Demande non trouvée")
+    
+    return {"message": "Demande supprimée"}
+
+
+# Endpoint pour qu'un membre change son mot de passe
+class ChangePasswordRequest(BaseModel):
+    membre_id: str
+    ancien_mot_de_passe: str
+    nouveau_mot_de_passe: str
+    confirmer_mot_de_passe: str
+
+
+@api_router.post("/auth/change-password")
+async def change_password(data: ChangePasswordRequest):
+    """Changer son mot de passe (membre connecté)"""
+    member = await db.members.find_one({"id": data.membre_id}, {"_id": 0})
+    
+    if not member:
+        raise HTTPException(status_code=404, detail="Membre non trouvé")
+    
+    # Vérifier l'ancien mot de passe
+    if not member.get('password_hash'):
+        raise HTTPException(status_code=400, detail="Compte non activé")
+    
+    if not verify_password(data.ancien_mot_de_passe, member['password_hash']):
+        raise HTTPException(status_code=401, detail="Ancien mot de passe incorrect")
+    
+    # Vérifier que les nouveaux mots de passe correspondent
+    if data.nouveau_mot_de_passe != data.confirmer_mot_de_passe:
+        raise HTTPException(status_code=400, detail="Les mots de passe ne correspondent pas")
+    
+    # Mettre à jour le mot de passe
+    new_hash = hash_password(data.nouveau_mot_de_passe)
+    
+    await db.members.update_one(
+        {"id": data.membre_id},
+        {
+            "$set": {
+                "password_hash": new_hash,
+                "password_clair": data.nouveau_mot_de_passe,  # Mise à jour pour l'admin
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+        }
+    )
+    
+    return {"message": "Mot de passe modifié avec succès"}
 
 
 # ============ MEMBERS ROUTES ============
