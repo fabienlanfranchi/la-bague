@@ -1690,15 +1690,25 @@ async def valider_paiement(paiement_id: str, validateur_id: str = None):
             "cause": paiement['objet']
         })
     
+    # Mapping des noms de compte (formulaire -> base de données)
+    compte_mapping = {
+        "Compte": "Compte Bancaire",
+        "chèque": "Compte Bancaire",
+        "Fabien": "Chez Fabien",
+        "Jacques": "Chez Jacques",
+        "Enveloppe bar": "Dehors"
+    }
+    nom_compte = compte_mapping.get(paiement['endroit'], paiement['endroit'])
+    
     # Mettre à jour le solde du compte
     if paiement['type'] == 'recette':
         await db.comptes.update_one(
-            {"nom": paiement['endroit']},
+            {"nom": nom_compte},
             {"$inc": {"solde": paiement['montant']}}
         )
     else:
         await db.comptes.update_one(
-            {"nom": paiement['endroit']},
+            {"nom": nom_compte},
             {"$inc": {"solde": -paiement['montant']}}
         )
     
