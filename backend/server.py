@@ -93,6 +93,7 @@ class Member(BaseModel):
     situation_cotisation: int = 0  # 0, 1, 2 ou 3
     autres_infos: str = ""
     saisons_exclues: List[int] = []  # Saisons où le membre était en sommeil (ex: [5, 6, 7])
+    telephone: Optional[str] = None  # Numéro de téléphone portable pour WhatsApp
     
     # Authentification
     email: Optional[str] = None

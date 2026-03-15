@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Users, TrendingUp, Star, Calendar, DollarSign, MessageSquare, Download, X, Bell, RefreshCw, Check, CheckCircle, ScrollText, ChevronDown, ChevronUp, UserPlus, Trash2, CreditCard, Key, Eye, EyeOff, Copy, ExternalLink } from 'lucide-react';
+import { Users, TrendingUp, Star, Calendar, DollarSign, MessageSquare, Download, X, Bell, RefreshCw, Check, CheckCircle, ScrollText, ChevronDown, ChevronUp, UserPlus, Trash2, CreditCard, Key, Eye, EyeOff, Copy, ExternalLink, Phone, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
 
@@ -754,6 +754,7 @@ const Dashboard = () => {
   const [prochainEvenement, setProchainEvenement] = useState(null);
   const [nonRepondants, setNonRepondants] = useState([]);
   const [loadingRelance, setLoadingRelance] = useState(false);
+  const [showRelanceModal, setShowRelanceModal] = useState(false);  // Modal de relance WhatsApp
   const [stats, setStats] = useState({
     totalMembers: 0,
     avgPresenceGlobal: 0,
@@ -1112,37 +1113,46 @@ const Dashboard = () => {
     }
   };
 
-  // Relancer le sondage uniquement aux non-répondants
-  const handleRelanceSondage = async () => {
+  // Relancer le sondage - Ouvrir le modal WhatsApp
+  const handleRelanceSondage = () => {
     if (!prochainEvenement || nonRepondants.length === 0) {
       toast.info('Tous les membres ont répondu au sondage');
       return;
     }
+    setShowRelanceModal(true);
+  };
 
-    setLoadingRelance(true);
-    try {
-      const dateEvt = new Date(prochainEvenement.date).toLocaleDateString('fr-FR', {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric'
-      });
+  // Générer le message de relance
+  const getMessageRelance = () => {
+    if (!prochainEvenement) return '';
+    const dateEvt = new Date(prochainEvenement.date).toLocaleDateString('fr-FR', {
+      weekday: 'long',
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric'
+    });
+    return `🔔 *Rappel - La Bague Impériale*\n\nBonjour,\n\nNous n'avons pas encore reçu votre réponse pour le ${prochainEvenement.objet} du ${dateEvt} à ${prochainEvenement.lieu}.\n\nMerci de répondre sur l'application dès que possible.\n\nCordialement,\nLe Président`;
+  };
 
-      await axios.post(`${API}/messages`, {
-        type: 'rappel_sondage',
-        titre: `⚠️ Rappel : Sondage ${prochainEvenement.objet}`,
-        contenu: `Bonjour,\n\nNous n'avons pas encore reçu votre réponse au sondage pour le ${prochainEvenement.objet} du ${dateEvt} à ${prochainEvenement.lieu}.\n\nMerci de répondre rapidement.\n\nCordialement,\nLe Président`,
-        destinataires: nonRepondants.map(m => m.id),
-        evenement_id: prochainEvenement.id
-      });
-
-      toast.success(`Rappel envoyé à ${nonRepondants.length} membre(s) non-répondant(s)`);
-      loadProchainEvenement(); // Recharger les données
-    } catch (error) {
-      console.error('Erreur relance:', error);
-      toast.error('Erreur lors de l\'envoi du rappel');
-    } finally {
-      setLoadingRelance(false);
+  // Copier les numéros de téléphone
+  const copyTelephones = () => {
+    const telephones = nonRepondants
+      .filter(m => m.telephone)
+      .map(m => m.telephone.replace(/\s/g, ''))
+      .join('\n');
+    
+    if (!telephones) {
+      toast.warning('Aucun numéro de téléphone enregistré');
+      return;
     }
+    navigator.clipboard.writeText(telephones);
+    toast.success(`${nonRepondants.filter(m => m.telephone).length} numéro(s) copié(s)`);
+  };
+
+  // Copier le message
+  const copyMessage = () => {
+    navigator.clipboard.writeText(getMessageRelance());
+    toast.success('Message copié !');
   };
 
   const loadDashboardData = async () => {
@@ -2386,6 +2396,97 @@ const Dashboard = () => {
                     Personne n'a choisi cette option
                   </div>
                 )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* ========== MODAL RELANCE WHATSAPP ========== */}
+      {showRelanceModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <Card className="bg-[#7A2020] border-2 border-[#D4A024] max-w-2xl w-full max-h-[85vh] overflow-hidden">
+            <CardHeader className="border-b border-[#D4A024]/30">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-2xl font-serif text-[#D4A024] flex items-center">
+                  <Send className="w-6 h-6 mr-2" />
+                  Relance WhatsApp
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowRelanceModal(false)}
+                  className="text-[#D4A024] hover:bg-[#D4A024]/10"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+              <p className="text-sm text-gray-300 mt-2">
+                {nonRepondants.length} membre(s) n'ont pas encore répondu au sondage
+              </p>
+            </CardHeader>
+            <CardContent className="pt-4 overflow-y-auto max-h-[60vh]">
+              {/* Liste des non-répondants */}
+              <div className="mb-6">
+                <h3 className="text-white font-semibold mb-3 flex items-center">
+                  <Users className="w-4 h-4 mr-2 text-[#D4A024]" />
+                  Membres à relancer
+                </h3>
+                <div className="bg-black/30 rounded-lg p-3 max-h-40 overflow-y-auto">
+                  {nonRepondants.map((m, index) => (
+                    <div key={m.id} className="flex items-center justify-between py-1 border-b border-gray-700 last:border-0">
+                      <span className="text-white text-sm">{m.nom_complet}</span>
+                      <span className="text-gray-400 text-xs font-mono">
+                        {m.telephone || 'Pas de tel.'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                
+                {/* Bouton copier numéros */}
+                <Button
+                  onClick={copyTelephones}
+                  variant="outline"
+                  className="w-full mt-3 border-green-600/50 text-green-400 hover:bg-green-600/10"
+                >
+                  <Phone className="w-4 h-4 mr-2" />
+                  Copier tous les numéros ({nonRepondants.filter(m => m.telephone).length})
+                </Button>
+              </div>
+
+              {/* Message pré-formaté */}
+              <div className="mb-6">
+                <h3 className="text-white font-semibold mb-3 flex items-center">
+                  <MessageSquare className="w-4 h-4 mr-2 text-[#D4A024]" />
+                  Message à envoyer
+                </h3>
+                <div className="bg-black/30 rounded-lg p-4 text-gray-300 text-sm whitespace-pre-wrap">
+                  {getMessageRelance()}
+                </div>
+                
+                {/* Bouton copier message */}
+                <Button
+                  onClick={copyMessage}
+                  variant="outline"
+                  className="w-full mt-3 border-blue-600/50 text-blue-400 hover:bg-blue-600/10"
+                >
+                  <Copy className="w-4 h-4 mr-2" />
+                  Copier le message
+                </Button>
+              </div>
+
+              {/* Instructions */}
+              <div className="bg-[#D4A024]/10 border border-[#D4A024]/30 rounded-lg p-4">
+                <h4 className="text-[#D4A024] font-semibold mb-2">📱 Comment envoyer ?</h4>
+                <ol className="text-sm text-gray-300 space-y-2">
+                  <li>1. Cliquez sur <strong>"Copier tous les numéros"</strong></li>
+                  <li>2. Sur WhatsApp, créez une <strong>Liste de diffusion</strong> avec ces numéros</li>
+                  <li>3. Cliquez sur <strong>"Copier le message"</strong></li>
+                  <li>4. Collez et envoyez dans la liste de diffusion</li>
+                </ol>
+                <p className="text-xs text-gray-500 mt-3">
+                  💡 Une liste de diffusion permet d'envoyer un message à plusieurs contacts sans créer de groupe.
+                </p>
               </div>
             </CardContent>
           </Card>

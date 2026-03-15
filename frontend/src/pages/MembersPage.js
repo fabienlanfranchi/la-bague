@@ -65,6 +65,7 @@ const MembersPage = () => {
     situation_cotisation: 0,
     autres_infos: '',
     email: '',
+    telephone: '',  // Numéro pour WhatsApp
     is_president: false,
     saisons_exclues: [],  // Saisons où le membre était en sommeil
   });
@@ -162,6 +163,7 @@ const MembersPage = () => {
         situation_cotisation: member.situation_cotisation,
         autres_infos: member.autres_infos || '',
         email: member.email || '',
+        telephone: member.telephone || '',
         is_president: member.is_president || false,
         saisons_exclues: member.saisons_exclues || [],
       });
@@ -180,6 +182,7 @@ const MembersPage = () => {
         situation_cotisation: 0,
         autres_infos: '',
         email: '',
+        telephone: '',
         is_president: false,
         saisons_exclues: [],
       });
@@ -293,11 +296,12 @@ const MembersPage = () => {
               <Button
                 onClick={loadMembresMotsDePasse}
                 variant="outline"
-                className="border-[#D4A024]/50 text-[#D4A024] hover:bg-[#D4A024]/10 ml-2"
+                size="icon"
+                className="border-[#D4A024]/50 text-[#D4A024] hover:bg-[#D4A024]/10 ml-2 w-10 h-10"
                 data-testid="btn-mots-de-passe"
+                title="Mots de passe des membres"
               >
-                <Key className="w-4 h-4 mr-2" />
-                Mots de passe
+                <Key className="w-5 h-5" />
               </Button>
               
               <DialogContent className="max-w-2xl max-h-[90vh]">
@@ -361,6 +365,18 @@ const MembersPage = () => {
                             setFormData({ ...formData, email: e.target.value })
                           }
                           placeholder="email@exemple.com"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="telephone">Téléphone (WhatsApp)</Label>
+                        <Input
+                          id="telephone"
+                          type="tel"
+                          value={formData.telephone}
+                          onChange={(e) =>
+                            setFormData({ ...formData, telephone: e.target.value })
+                          }
+                          placeholder="06 12 34 56 78"
                         />
                       </div>
                     </div>
