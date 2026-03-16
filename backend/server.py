@@ -128,6 +128,10 @@ class MemberUpdate(BaseModel):
     etoiles: Optional[int] = None
     situation_cotisation: Optional[int] = None
     autres_infos: Optional[str] = None
+    email: Optional[str] = None
+    telephone: Optional[str] = None
+    is_president: Optional[bool] = None
+    saisons_exclues: Optional[List[int]] = None
 
 
 class MemberImport(BaseModel):
