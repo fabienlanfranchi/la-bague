@@ -59,7 +59,7 @@ const MembersPage = () => {
     nom_complet: '',
     fonction: '',
     annee_entree: new Date().getFullYear(),
-    saison_entree: 'Printemps',
+    saison_entree: 'Saison 13',  // Saison actuelle par défaut
     pourcentage_presences: 0,
     etoiles: 1,
     situation_cotisation: 0,
@@ -176,7 +176,7 @@ const MembersPage = () => {
         nom_complet: '',
         fonction: '',
         annee_entree: new Date().getFullYear(),
-        saison_entree: 'Printemps',
+        saison_entree: 'Saison 13',  // Saison actuelle par défaut
         pourcentage_presences: 0,
         etoiles: 1,
         situation_cotisation: 0,
@@ -367,18 +367,19 @@ const MembersPage = () => {
                           placeholder="email@exemple.com"
                         />
                       </div>
-                      <div>
-                        <Label htmlFor="telephone">Téléphone (WhatsApp)</Label>
-                        <Input
-                          id="telephone"
-                          type="tel"
-                          value={formData.telephone}
-                          onChange={(e) =>
-                            setFormData({ ...formData, telephone: e.target.value })
-                          }
-                          placeholder="06 12 34 56 78"
-                        />
-                      </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="telephone">Téléphone (WhatsApp)</Label>
+                      <Input
+                        id="telephone"
+                        type="tel"
+                        value={formData.telephone}
+                        onChange={(e) =>
+                          setFormData({ ...formData, telephone: e.target.value })
+                        }
+                        placeholder="06 12 34 56 78"
+                      />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
@@ -409,10 +410,11 @@ const MembersPage = () => {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="Printemps">Printemps</SelectItem>
-                            <SelectItem value="Été">Été</SelectItem>
-                            <SelectItem value="Automne">Automne</SelectItem>
-                            <SelectItem value="Hiver">Hiver</SelectItem>
+                            {[...Array(15)].map((_, i) => (
+                              <SelectItem key={i + 1} value={`Saison ${i + 1}`}>
+                                Saison {i + 1}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>
