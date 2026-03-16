@@ -1506,13 +1506,6 @@ const Dashboard = () => {
                     </Button>
                   )}
                   <Button
-                    onClick={handleOpenSMSRelance}
-                    className="bg-green-700 hover:bg-green-600 text-white font-serif"
-                  >
-                    <Phone className="w-4 h-4 mr-2" />
-                    SMS Relance
-                  </Button>
-                  <Button
                     onClick={handleExportSMS}
                     className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif"
                   >
