@@ -1155,6 +1155,29 @@ const Dashboard = () => {
     toast.success('Message copié !');
   };
 
+  // Ouvrir SMS avec numéros et message pré-rempli
+  const handleOpenSMSRelance = () => {
+    const telephones = nonRepondants
+      .filter(m => m.telephone)
+      .map(m => m.telephone.replace(/\s/g, '').replace(/^0/, '+33'))
+      .join(',');
+    
+    if (!telephones) {
+      toast.warning('Aucun numéro de téléphone enregistré pour les non-répondants');
+      return;
+    }
+    
+    // Message simplifié pour SMS (sans formatage WhatsApp)
+    const dateEvt = prochainEvenement 
+      ? new Date(prochainEvenement.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long' })
+      : '';
+    const message = `Rappel La Bague Impériale: Merci de répondre au sondage pour le ${prochainEvenement?.objet || 'repas'} du ${dateEvt}. Cordialement, Le Président`;
+    
+    // Créer le lien SMS (format iOS/Android)
+    const smsUrl = `sms:${telephones}?body=${encodeURIComponent(message)}`;
+    window.location.href = smsUrl;
+  };
+
   const loadDashboardData = async () => {
     try {
       const membersData = await api.getMembers();
@@ -1478,6 +1501,13 @@ const Dashboard = () => {
                       Relancer ({nonRepondants.length})
                     </Button>
                   )}
+                  <Button
+                    onClick={handleOpenSMSRelance}
+                    className="bg-green-700 hover:bg-green-600 text-white font-serif"
+                  >
+                    <Phone className="w-4 h-4 mr-2" />
+                    SMS Relance
+                  </Button>
                   <Button
                     onClick={handleExportSMS}
                     className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif"
