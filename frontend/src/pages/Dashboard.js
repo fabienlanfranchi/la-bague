@@ -1855,19 +1855,31 @@ const Dashboard = () => {
                         <p className="text-orange-400 text-sm">
                           {demande.membre_email}
                         </p>
+                        {/* Afficher le mot de passe réinitialisé */}
+                        {demande.mot_de_passe_reinitialise && (
+                          <div className="mt-2 bg-green-900/30 border border-green-600/50 rounded px-3 py-1">
+                            <p className="text-xs text-gray-400">Mot de passe réinitialisé :</p>
+                            <p className="text-green-400 font-mono text-sm flex items-center">
+                              {demande.mot_de_passe_reinitialise}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-5 w-5 ml-2 text-green-400 hover:bg-green-600/20"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(demande.mot_de_passe_reinitialise);
+                                  toast.success('Mot de passe copié !');
+                                }}
+                              >
+                                <Copy className="w-3 h-3" />
+                              </Button>
+                            </p>
+                          </div>
+                        )}
                         <p className="text-gray-500 text-xs mt-1">
                           Demandé le {demande.created_at?.split('T')[0]}
                         </p>
                       </div>
-                      <div className="flex gap-2">
-                        <Button
-                          onClick={() => navigate('/membres')}
-                          className="bg-blue-700 hover:bg-blue-600 text-white"
-                          size="sm"
-                        >
-                          <ExternalLink className="w-4 h-4 mr-1" />
-                          Voir MDP
-                        </Button>
+                      <div className="flex flex-col gap-2">
                         <Button
                           onClick={() => handleTraiterDemande(demande.id)}
                           className="bg-green-700 hover:bg-green-600 text-white"

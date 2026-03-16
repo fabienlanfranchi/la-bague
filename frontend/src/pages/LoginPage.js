@@ -60,12 +60,16 @@ const LoginPage = () => {
 
       if (needs_validation) {
         // Compte pas encore validé - afficher le formulaire de validation
+        // Pré-remplir le mot de passe avec la clé d'activation (suggéré)
+        const codeActivation = activationData.code.trim().toLowerCase();
         setValidationData({
           ...validationData,
-          memberId: member.id
+          memberId: member.id,
+          password: codeActivation,         // Pré-remplir avec la clé
+          confirmPassword: codeActivation   // Pré-remplir avec la clé
         });
         setShowValidation(true);
-        toast.info('Compte trouvé ! Veuillez définir votre email et mot de passe.');
+        toast.info('Compte trouvé ! Confirmez votre email et mot de passe.');
       } else {
         // Compte déjà validé - rediriger vers connexion email
         toast.warning('Ce compte est déjà activé. Connectez-vous avec votre email.');
@@ -332,12 +336,12 @@ const LoginPage = () => {
                     </div>
 
                     {/* Conseil mot de passe */}
-                    <div className="bg-[#D4A024]/10 border border-[#D4A024]/30 rounded-lg p-3">
+                    <div className="bg-green-900/20 border border-green-600/30 rounded-lg p-3">
                       <p className="text-sm text-gray-300">
-                        <span className="text-[#D4A024] font-semibold">Conseil :</span> Utilisez votre <span className="text-white font-mono">prénom + numéro de membre</span>
+                        <span className="text-green-400 font-semibold">💡 Recommandé :</span> Gardez votre <span className="text-white font-mono">clé d'activation</span> comme mot de passe
                       </p>
                       <p className="text-xs text-gray-400 mt-1">
-                        Exemple : fabien1, jacques3, nini4... (facile à retenir !)
+                        Elle est déjà pré-remplie ci-dessus. En cas d'oubli, elle sera facilement récupérable.
                       </p>
                     </div>
                   </>

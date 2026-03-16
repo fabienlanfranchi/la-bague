@@ -411,7 +411,7 @@ class ForgotPasswordRequest(BaseModel):
 
 @api_router.post("/auth/forgot-password")
 async def forgot_password(data: ForgotPasswordRequest):
-    """Mot de passe oublié - Crée une demande de récupération pour l'admin"""
+    """Mot de passe oublié - Réinitialise au mot de passe par défaut ET notifie l'admin"""
     # Chercher le membre par email
     member = await db.members.find_one({"email": data.email}, {"_id": 0})
     
@@ -424,28 +424,43 @@ async def forgot_password(data: ForgotPasswordRequest):
         
         if existing_request:
             return {
-                "message": "Une demande est déjà en cours. Le président va vous contacter.",
+                "message": "Une demande est déjà en cours. Le président va vous contacter avec votre mot de passe.",
                 "demande_existante": True
             }
         
-        # Créer une nouvelle demande de récupération
+        # RÉINITIALISER le mot de passe à la clé d'activation (temporary_password)
+        default_password = member.get('temporary_password', f"labagueimperiale{member.get('numero_membre', '')}")
+        new_hash = hash_password(default_password)
+        
+        await db.members.update_one(
+            {"id": member['id']},
+            {
+                "$set": {
+                    "password_hash": new_hash,
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }
+            }
+        )
+        
+        # Créer une notification pour l'admin
         demande = {
             "id": str(uuid.uuid4()),
             "membre_id": member['id'],
             "membre_nom": member.get('nom_complet', ''),
             "membre_email": data.email,
+            "mot_de_passe_reinitialise": default_password,  # Stocker le MDP réinitialisé
             "statut": "en_attente",
             "created_at": datetime.now(timezone.utc).isoformat()
         }
         await db.demandes_mot_de_passe.insert_one(demande)
         
         return {
-            "message": "Votre demande a été envoyée au président. Il vous contactera rapidement.",
+            "message": "Votre mot de passe a été réinitialisé. Le président va vous contacter avec votre nouveau mot de passe.",
             "demande_creee": True
         }
     
     # Message générique pour ne pas révéler si l'email existe
-    return {"message": "Si cet email existe, une demande sera envoyée au président."}
+    return {"message": "Si cet email existe, votre mot de passe sera réinitialisé et le président vous contactera."}
 
 
 # ============ ADMIN - GESTION MOTS DE PASSE ============
