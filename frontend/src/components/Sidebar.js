@@ -43,7 +43,7 @@ const Sidebar = () => {
     { path: '/sondages', label: 'Sondages', icon: BarChart3, adminOnly: false },
     { path: '/statistiques', label: 'Statistiques', icon: PieChart, adminOnly: true },
     { path: '/sauvegarde', label: 'Sauvegarde', icon: Save, adminOnly: true },
-    { path: '/cigarotheque', label: 'Cigarthèque', icon: Book, adminOnly: false },
+    { path: '/cigarotheque', label: 'Cigarothèque', icon: Book, adminOnly: false },
     { path: '/assistant-ia', label: 'Winston', icon: Sparkles, adminOnly: false },
     { path: '/instagram', label: 'Instagram', icon: InstagramIcon, adminOnly: false, external: true },
     { path: '/profile', label: 'Profil', icon: User, adminOnly: false, memberOnly: true },
