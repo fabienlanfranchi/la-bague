@@ -1157,25 +1157,29 @@ const Dashboard = () => {
 
   // Ouvrir SMS avec numéros et message pré-rempli
   const handleOpenSMSRelance = () => {
-    const telephones = nonRepondants
-      .filter(m => m.telephone)
-      .map(m => m.telephone.replace(/\s/g, '').replace(/^0/, '+33'))
-      .join(',');
+    const membresAvecTel = nonRepondants.filter(m => m.telephone);
     
-    if (!telephones) {
+    if (membresAvecTel.length === 0) {
       toast.warning('Aucun numéro de téléphone enregistré pour les non-répondants');
       return;
     }
     
-    // Message simplifié pour SMS (sans formatage WhatsApp)
+    // Formater les numéros (format français)
+    const telephones = membresAvecTel
+      .map(m => m.telephone.replace(/\s/g, ''))
+      .join(',');
+    
+    // Message court pour SMS
     const dateEvt = prochainEvenement 
       ? new Date(prochainEvenement.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long' })
       : '';
-    const message = `Rappel La Bague Impériale: Merci de répondre au sondage pour le ${prochainEvenement?.objet || 'repas'} du ${dateEvt}. Cordialement, Le Président`;
+    const message = `Rappel La Bague Imperiale: Merci de repondre au sondage pour le ${prochainEvenement?.objet || 'repas'} du ${dateEvt}. Le President`;
     
-    // Créer le lien SMS (format iOS/Android)
-    const smsUrl = `sms:${telephones}?body=${encodeURIComponent(message)}`;
-    window.location.href = smsUrl;
+    // Format iOS : sms:numéros&body=message
+    const smsUrl = `sms:${telephones}&body=${encodeURIComponent(message)}`;
+    
+    // Ouvrir dans une nouvelle fenêtre pour éviter le crash
+    window.open(smsUrl, '_self');
   };
 
   const loadDashboardData = async () => {
