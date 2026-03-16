@@ -3820,6 +3820,7 @@ class MemberFullUpdate(BaseModel):
     situation_cotisation: Optional[int] = None
     autres_infos: Optional[str] = None
     email: Optional[str] = None
+    telephone: Optional[str] = None  # Numéro pour WhatsApp
     is_president: Optional[bool] = None
     is_validated: Optional[bool] = None
     saisons_exclues: Optional[List[int]] = None  # Saisons où le membre était en sommeil
