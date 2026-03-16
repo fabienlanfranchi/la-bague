@@ -1155,7 +1155,7 @@ const Dashboard = () => {
     toast.success('Message copié !');
   };
 
-  // Ouvrir SMS avec numéros + copie automatique du message
+  // Copier numéros ET message pour SMS (solution simple et fiable)
   const handleOpenSMSRelance = () => {
     const membresAvecTel = nonRepondants.filter(m => m.telephone);
     
@@ -1164,10 +1164,10 @@ const Dashboard = () => {
       return;
     }
     
-    // Formater les numéros (format français sans espaces)
+    // Formater les numéros
     const telephones = membresAvecTel
       .map(m => m.telephone.replace(/\s/g, ''))
-      .join(',');
+      .join(', ');
     
     // Message de relance
     const dateEvt = prochainEvenement 
@@ -1175,18 +1175,11 @@ const Dashboard = () => {
       : '';
     const message = `Rappel La Bague Imperiale: Merci de repondre au sondage pour le ${prochainEvenement?.objet || 'repas'} du ${dateEvt}. Le President`;
     
-    // 1. Copier le message dans le presse-papier
-    navigator.clipboard.writeText(message).then(() => {
-      toast.success('Message copié ! Collez-le dans le SMS');
-      
-      // 2. Ouvrir SMS avec les numéros (petit délai pour voir le toast)
-      setTimeout(() => {
-        window.location.href = `sms:${telephones}`;
-      }, 500);
-    }).catch(() => {
-      // Si la copie échoue, ouvrir quand même
-      window.location.href = `sms:${telephones}`;
-    });
+    // Copier tout : numéros + message
+    const textToCopy = `DESTINATAIRES:\n${telephones}\n\nMESSAGE:\n${message}`;
+    
+    navigator.clipboard.writeText(textToCopy);
+    toast.success(`${membresAvecTel.length} numéro(s) + message copiés !`);
   };
 
   const loadDashboardData = async () => {
