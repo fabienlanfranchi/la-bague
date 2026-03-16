@@ -1155,7 +1155,7 @@ const Dashboard = () => {
     toast.success('Message copié !');
   };
 
-  // Ouvrir SMS avec numéros et message pré-rempli
+  // Ouvrir SMS avec numéros + copie automatique du message
   const handleOpenSMSRelance = () => {
     const membresAvecTel = nonRepondants.filter(m => m.telephone);
     
@@ -1164,22 +1164,29 @@ const Dashboard = () => {
       return;
     }
     
-    // Formater les numéros (format français)
+    // Formater les numéros (format français sans espaces)
     const telephones = membresAvecTel
       .map(m => m.telephone.replace(/\s/g, ''))
       .join(',');
     
-    // Message court pour SMS
+    // Message de relance
     const dateEvt = prochainEvenement 
       ? new Date(prochainEvenement.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long' })
       : '';
     const message = `Rappel La Bague Imperiale: Merci de repondre au sondage pour le ${prochainEvenement?.objet || 'repas'} du ${dateEvt}. Le President`;
     
-    // Format iOS : sms:numéros&body=message
-    const smsUrl = `sms:${telephones}&body=${encodeURIComponent(message)}`;
-    
-    // Ouvrir dans une nouvelle fenêtre pour éviter le crash
-    window.open(smsUrl, '_self');
+    // 1. Copier le message dans le presse-papier
+    navigator.clipboard.writeText(message).then(() => {
+      toast.success('Message copié ! Collez-le dans le SMS');
+      
+      // 2. Ouvrir SMS avec les numéros (petit délai pour voir le toast)
+      setTimeout(() => {
+        window.location.href = `sms:${telephones}`;
+      }, 500);
+    }).catch(() => {
+      // Si la copie échoue, ouvrir quand même
+      window.location.href = `sms:${telephones}`;
+    });
   };
 
   const loadDashboardData = async () => {
