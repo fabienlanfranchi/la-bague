@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Star, Calendar, TrendingUp, User, BarChart3, RefreshCw, AlertTriangle, CreditCard, X, Check } from 'lucide-react';
+import { Star, Calendar, TrendingUp, User, BarChart3, RefreshCw, AlertTriangle, CreditCard, X, Check, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import MemberCard from '../components/MemberCard';
 
@@ -451,6 +451,32 @@ const ProfilePage = () => {
                 </Button>
                 <p className="text-xs text-gray-400 mt-2 text-center">
                   Signalez un paiement effectué pour qu'il soit validé par le président
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Liens de paiement externes */}
+            <Card className="bg-black/40 border-2 border-blue-600/30 backdrop-blur-sm">
+              <CardContent className="py-4">
+                <h3 className="text-white font-semibold mb-3 text-center">Effectuer un paiement</h3>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Button
+                    onClick={() => window.open('https://www.paypal.com', '_blank')}
+                    className="flex-1 bg-[#0070ba] hover:bg-[#005ea6] text-white font-bold py-3"
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Paiement PayPal
+                  </Button>
+                  <Button
+                    onClick={() => window.open('https://www.assoconnect.com', '_blank')}
+                    className="flex-1 bg-[#FF6B35] hover:bg-[#e55a2b] text-white font-bold py-3"
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Paiement AssoConnect
+                  </Button>
+                </div>
+                <p className="text-xs text-gray-400 mt-2 text-center">
+                  Connectez-vous à votre compte pour effectuer un virement au club
                 </p>
               </CardContent>
             </Card>
