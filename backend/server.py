@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Query
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Query, File, UploadFile
 from fastapi.responses import JSONResponse, StreamingResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -13,6 +13,7 @@ from typing import List, Optional
 import uuid
 from datetime import datetime, timezone
 from passlib.context import CryptContext
+import base64
 import secrets
 import pymysql
 from contextlib import contextmanager
@@ -958,6 +959,7 @@ class Evenement(BaseModel):
     saison: int  # 1-13
     total_presents: int = 0  # Nombre de présents (pour historique)
     options_sondage: Optional[dict] = None  # Pour "repas": {entrees: [], plats: [], desserts: []}
+    image_url: Optional[str] = None  # URL ou base64 de l'image (menu, affiche, etc.)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -968,6 +970,7 @@ class EvenementCreate(BaseModel):
     type_sondage: str
     saison: int
     options_sondage: Optional[dict] = None
+    image_url: Optional[str] = None  # Image optionnelle
 
 
 class ReponseSondage(BaseModel):
@@ -1853,6 +1856,51 @@ async def get_evenement(evenement_id: str):
         evt['created_at'] = datetime.fromisoformat(evt['created_at'])
     
     return evt
+
+
+@api_router.post("/evenements/{evenement_id}/image")
+async def upload_evenement_image(evenement_id: str, file: UploadFile = File(...)):
+    """Uploader une image pour un événement (menu, affiche, etc.)"""
+    evt = await db.evenements.find_one({"id": evenement_id})
+    if not evt:
+        raise HTTPException(status_code=404, detail="Événement non trouvé")
+    
+    # Vérifier le type de fichier
+    if not file.content_type.startswith('image/'):
+        raise HTTPException(status_code=400, detail="Le fichier doit être une image")
+    
+    # Lire et encoder en base64
+    contents = await file.read()
+    
+    # Limiter la taille (max 5MB)
+    if len(contents) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Image trop grande (max 5MB)")
+    
+    # Encoder en base64 avec le type MIME
+    base64_image = f"data:{file.content_type};base64,{base64.b64encode(contents).decode('utf-8')}"
+    
+    # Mettre à jour l'événement
+    await db.evenements.update_one(
+        {"id": evenement_id},
+        {"$set": {"image_url": base64_image, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    return {"message": "Image uploadée avec succès", "image_url": base64_image}
+
+
+@api_router.delete("/evenements/{evenement_id}/image")
+async def delete_evenement_image(evenement_id: str):
+    """Supprimer l'image d'un événement"""
+    evt = await db.evenements.find_one({"id": evenement_id})
+    if not evt:
+        raise HTTPException(status_code=404, detail="Événement non trouvé")
+    
+    await db.evenements.update_one(
+        {"id": evenement_id},
+        {"$set": {"image_url": None, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    return {"message": "Image supprimée"}
 
 
 @api_router.get("/evenements/{evenement_id}/stats")

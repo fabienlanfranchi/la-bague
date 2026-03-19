@@ -511,6 +511,19 @@ const DashboardMembre = ({ prochainEvenement, currentMember }) => {
                   {prochainEvenement.lieu}
                 </p>
               </div>
+              
+              {/* Image de l'événement (menu, affiche, etc.) */}
+              {prochainEvenement.image_url && (
+                <div className="mt-4">
+                  <img 
+                    src={prochainEvenement.image_url} 
+                    alt={prochainEvenement.objet}
+                    className="w-full max-h-64 object-contain rounded-lg border border-[#D4A024]/30 cursor-pointer hover:opacity-90 transition-opacity"
+                    onClick={() => window.open(prochainEvenement.image_url, '_blank')}
+                    title="Cliquer pour agrandir"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Date limite du sondage */}

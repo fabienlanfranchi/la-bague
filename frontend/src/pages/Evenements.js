@@ -18,7 +18,8 @@ import {
   Table,
   List,
   Download,
-  Upload
+  Upload,
+  Image
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -91,6 +92,10 @@ const Evenements = () => {
     }
   });
 
+  // État pour l'upload d'image
+  const [eventImage, setEventImage] = useState(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+
   useEffect(() => {
     loadEvenements();
   }, []);
@@ -105,6 +110,40 @@ const Evenements = () => {
       toast.error('Erreur lors du chargement des événements');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Upload d'image pour un événement
+  const handleImageUpload = async (evenementId, file) => {
+    if (!file) return;
+    
+    setUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      await axios.post(`${API}/evenements/${evenementId}/image`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      
+      toast.success('Image uploadée !');
+      loadEvenements();
+    } catch (error) {
+      console.error('Erreur upload:', error);
+      toast.error('Erreur lors de l\'upload de l\'image');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  // Supprimer l'image d'un événement
+  const handleDeleteImage = async (evenementId) => {
+    try {
+      await axios.delete(`${API}/evenements/${evenementId}/image`);
+      toast.success('Image supprimée');
+      loadEvenements();
+    } catch (error) {
+      toast.error('Erreur lors de la suppression');
     }
   };
 
@@ -615,6 +654,58 @@ const Evenements = () => {
                     </div>
                   </div>
                 )}
+
+                {/* Image de l'événement (visible par tous, modifiable par admin) */}
+                <div className="mt-4 pt-4 border-t border-[#D4A024]/20">
+                  <h4 className="text-white font-semibold mb-3 flex items-center">
+                    <Image className="w-4 h-4 mr-2 text-[#D4A024]" />
+                    Image de l'événement
+                  </h4>
+                  
+                  {prochainEvenement.image_url ? (
+                    <div className="relative">
+                      <img 
+                        src={prochainEvenement.image_url} 
+                        alt={prochainEvenement.objet}
+                        className="max-h-64 object-contain rounded-lg border border-[#D4A024]/30 cursor-pointer hover:opacity-90"
+                        onClick={() => window.open(prochainEvenement.image_url, '_blank')}
+                        title="Cliquer pour agrandir"
+                      />
+                      {isAdmin && (
+                        <Button
+                          onClick={() => handleDeleteImage(prochainEvenement.id)}
+                          variant="destructive"
+                          size="sm"
+                          className="absolute top-2 right-2"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ) : isAdmin ? (
+                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-[#D4A024]/50 rounded-lg cursor-pointer hover:bg-[#D4A024]/10 transition-colors">
+                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                        <Upload className="w-8 h-8 text-[#D4A024] mb-2" />
+                        <p className="text-sm text-gray-400">
+                          {uploadingImage ? 'Upload en cours...' : 'Cliquer pour ajouter une image'}
+                        </p>
+                        <p className="text-xs text-gray-500">(Menu, affiche, etc.)</p>
+                      </div>
+                      <input 
+                        type="file" 
+                        className="hidden" 
+                        accept="image/*"
+                        disabled={uploadingImage}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleImageUpload(prochainEvenement.id, file);
+                        }}
+                      />
+                    </label>
+                  ) : (
+                    <p className="text-gray-500 text-sm italic">Aucune image</p>
+                  )}
+                </div>
 
                 <div className="flex space-x-3 pt-4 border-t border-[#D4A024]/20">
                   <Button 
