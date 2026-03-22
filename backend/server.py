@@ -3900,19 +3900,20 @@ async def admin_update_member(member_id: str, input: MemberFullUpdate):
 
 @api_router.get("/cigares")
 async def get_cigares(
-    search: Optional[str] = Query(None, description="Recherche par marque ou gamme"),
+    search: Optional[str] = Query(None, description="Recherche par marque, nom ou gamme"),
     marque: Optional[str] = Query(None, description="Filtrer par marque"),
-    pays: Optional[str] = Query(None, description="Filtrer par pays de fabrication"),
+    terroir: Optional[str] = Query(None, description="Filtrer par terroir/pays"),
+    is_cubain: Optional[bool] = Query(None, description="Filtrer cubain (true) ou non-cubain (false)"),
+    module: Optional[str] = Query(None, description="Filtrer par module"),
     puissance: Optional[str] = Query(None, description="Filtrer par puissance (A/B/C)"),
-    vitole: Optional[str] = Query(None, description="Filtrer par type de vitole/module"),
     note_min: Optional[float] = Query(None, description="Note minimum"),
     note_max: Optional[float] = Query(None, description="Note maximum"),
     prix_min: Optional[float] = Query(None, description="Prix minimum"),
     prix_max: Optional[float] = Query(None, description="Prix maximum"),
-    limit: int = Query(50, le=200, description="Nombre de résultats"),
+    limit: int = Query(50, le=500, description="Nombre de résultats"),
     offset: int = Query(0, description="Offset pour pagination")
 ):
-    """Récupérer les cigares avec filtres"""
+    """Récupérer les cigares avec filtres (nouveau schéma avec terroir et is_cubain)"""
     try:
         with get_mysql_connection() as conn:
             cursor = conn.cursor(pymysql.cursors.DictCursor)
@@ -3921,25 +3922,21 @@ async def get_cigares(
             query = "SELECT * FROM cigares WHERE 1=1"
             params = []
             
+            # Recherche textuelle
             if search:
-                query += " AND (marque LIKE %s OR gamme LIKE %s OR vitole_nom LIKE %s)"
+                query += " AND (marque LIKE %s OR gamme LIKE %s OR nom_cigare LIKE %s OR vitole_nom LIKE %s)"
                 search_term = f"%{search}%"
-                params.extend([search_term, search_term, search_term])
+                params.extend([search_term, search_term, search_term, search_term])
             
+            # Filtre par marque
             if marque:
                 if marque == "__NULL__":
                     query += " AND (marque IS NULL OR marque = '')"
                 else:
-                    # Recherche par marque normalisée (inclut les LIGNE et variantes)
-                    # Trouver toutes les marques originales qui correspondent à cette marque normalisée
-                    marques_originales = [marque]  # La marque elle-même
-                    
-                    # Ajouter les variantes LIGNE correspondantes
+                    marques_originales = [marque]
                     for ligne, vraie_marque in LIGNE_TO_MARQUE.items():
                         if vraie_marque.upper() == marque.upper():
                             marques_originales.append(ligne)
-                    
-                    # Ajouter COHIBA BEHIKE si on cherche COHIBA
                     if marque.upper() == 'COHIBA':
                         marques_originales.append('COHIBA BEHIKE')
                     
@@ -3951,38 +3948,27 @@ async def get_cigares(
                         query += f" AND marque IN ({placeholders})"
                         params.extend(marques_originales)
             
-            if pays:
-                # Recherche par pays normalisé (inclut les variantes)
-                if pays == "République dominicaine":
-                    query += " AND (pays_fabrication LIKE %s OR pays_fabrication LIKE %s)"
-                    params.extend(['%dominicain%', '%Rép%dom%'])
-                elif pays == "Nicaragua":
-                    query += " AND pays_fabrication LIKE %s"
-                    params.append('%Nicaragua%')
-                elif pays == "Honduras":
-                    query += " AND pays_fabrication LIKE %s"
-                    params.append('%Honduras%')
-                elif pays == "Cuba":
-                    query += " AND pays_fabrication LIKE %s"
-                    params.append('%Cuba%')
-                elif pays == "Costa Rica":
-                    query += " AND pays_fabrication LIKE %s"
-                    params.append('%Costa%Rica%')
-                elif pays == "Mexique":
-                    query += " AND (pays_fabrication LIKE %s OR pays_fabrication LIKE %s)"
-                    params.extend(['%Mexique%', '%Mexico%'])
-                else:
-                    query += " AND pays_fabrication = %s"
-                    params.append(pays)
+            # Filtre cubain / non-cubain
+            if is_cubain is not None:
+                query += " AND is_cubain = %s"
+                params.append(is_cubain)
             
+            # Filtre par terroir (pays)
+            if terroir:
+                query += " AND terroir = %s"
+                params.append(terroir)
+            
+            # Filtre par module
+            if module:
+                query += " AND (module = %s OR module LIKE %s)"
+                params.extend([module, f"%{module}%"])
+            
+            # Filtre par puissance
             if puissance:
                 query += " AND puissance = %s"
                 params.append(puissance)
             
-            if vitole:
-                query += " AND (vitole_type = %s OR vitole_nom LIKE %s)"
-                params.extend([vitole, f"%{vitole}%"])
-            
+            # Filtres de notation
             if note_min is not None:
                 query += " AND note_bagues >= %s"
                 params.append(note_min)
@@ -3991,6 +3977,7 @@ async def get_cigares(
                 query += " AND note_bagues <= %s"
                 params.append(note_max)
             
+            # Filtres de prix
             if prix_min is not None:
                 query += " AND prix >= %s"
                 params.append(prix_min)
@@ -4005,7 +3992,7 @@ async def get_cigares(
             total = cursor.fetchone()['COUNT(*)']
             
             # Ajouter pagination et tri
-            query += " ORDER BY marque, gamme LIMIT %s OFFSET %s"
+            query += " ORDER BY marque, gamme, nom_cigare LIMIT %s OFFSET %s"
             params.extend([limit, offset])
             
             cursor.execute(query, params)
@@ -4016,6 +4003,9 @@ async def get_cigares(
                 marque_display, gamme_display = get_marque_display(cigare.get('marque'), cigare.get('gamme'))
                 cigare['marque_display'] = marque_display
                 cigare['gamme_display'] = gamme_display
+                # Convertir created_at en string si présent
+                if cigare.get('created_at'):
+                    cigare['created_at'] = str(cigare['created_at'])
             
             return {
                 "cigares": cigares,
@@ -4235,77 +4225,109 @@ async def get_cigare_photo(photo_name: str):
 
 
 @api_router.get("/cigares-filtres")
-async def get_cigares_filtres(pays: Optional[str] = None):
-    """Récupérer les options de filtres disponibles (marques filtrées par pays si spécifié)"""
+async def get_cigares_filtres(is_cubain: Optional[bool] = None, terroir: Optional[str] = None):
+    """Récupérer les options de filtres disponibles pour la Cigarothèque"""
     try:
         with get_mysql_connection() as conn:
             cursor = conn.cursor(pymysql.cursors.DictCursor)
             
-            # Pays - récupérer tous et normaliser
-            cursor.execute("SELECT DISTINCT pays_fabrication FROM cigares WHERE pays_fabrication IS NOT NULL")
-            pays_raw = [row['pays_fabrication'] for row in cursor.fetchall()]
-            # Normaliser et dédupliquer
-            pays_normalized = sorted(list(set([normalize_pays(p) for p in pays_raw if normalize_pays(p)])))
+            # Statistiques globales
+            cursor.execute("SELECT COUNT(*) as total FROM cigares")
+            total = cursor.fetchone()['total']
             
-            # Puissances
-            cursor.execute("SELECT DISTINCT puissance FROM cigares WHERE puissance IS NOT NULL ORDER BY puissance")
-            puissances = [row['puissance'] for row in cursor.fetchall()]
+            cursor.execute("SELECT COUNT(*) as cubains FROM cigares WHERE is_cubain = TRUE")
+            cubains = cursor.fetchone()['cubains']
             
-            # Marques - filtrées par pays si spécifié, puis normalisées
-            if pays and pays != 'all':
-                # Construire la condition de filtrage par pays
-                if pays == "République dominicaine":
-                    pays_condition = "(pays_fabrication LIKE %s OR pays_fabrication LIKE %s)"
-                    pays_params = ['%dominicain%', '%Rép%dom%']
-                elif pays == "Nicaragua":
-                    pays_condition = "pays_fabrication LIKE %s"
-                    pays_params = ['%Nicaragua%']
-                elif pays == "Honduras":
-                    pays_condition = "pays_fabrication LIKE %s"
-                    pays_params = ['%Honduras%']
-                elif pays == "Cuba":
-                    pays_condition = "pays_fabrication LIKE %s"
-                    pays_params = ['%Cuba%']
-                elif pays == "Costa Rica":
-                    pays_condition = "pays_fabrication LIKE %s"
-                    pays_params = ['%Costa%Rica%']
-                elif pays == "Mexique":
-                    pays_condition = "(pays_fabrication LIKE %s OR pays_fabrication LIKE %s)"
-                    pays_params = ['%Mexique%', '%Mexico%']
-                else:
-                    pays_condition = "pays_fabrication = %s"
-                    pays_params = [pays]
-                
-                cursor.execute(f"SELECT DISTINCT marque, gamme FROM cigares WHERE marque IS NOT NULL AND {pays_condition}", pays_params)
-            else:
-                cursor.execute("SELECT DISTINCT marque, gamme FROM cigares WHERE marque IS NOT NULL")
+            cursor.execute("SELECT COUNT(*) as non_cubains FROM cigares WHERE is_cubain = FALSE")
+            non_cubains = cursor.fetchone()['non_cubains']
+            
+            # Terroirs avec comptage (pour les non-cubains)
+            cursor.execute("""
+                SELECT terroir, COUNT(*) as count 
+                FROM cigares 
+                WHERE terroir IS NOT NULL AND is_cubain = FALSE
+                GROUP BY terroir 
+                ORDER BY count DESC
+            """)
+            terroirs = [{"nom": row['terroir'], "count": row['count']} for row in cursor.fetchall()]
+            
+            # Construire la condition de filtrage
+            where_conditions = ["1=1"]
+            params = []
+            
+            if is_cubain is not None:
+                where_conditions.append("is_cubain = %s")
+                params.append(is_cubain)
+            
+            if terroir:
+                where_conditions.append("terroir = %s")
+                params.append(terroir)
+            
+            where_clause = " AND ".join(where_conditions)
+            
+            # Marques (filtrées selon les critères)
+            cursor.execute(f"""
+                SELECT DISTINCT marque, gamme, COUNT(*) as count
+                FROM cigares 
+                WHERE marque IS NOT NULL AND marque != '' AND {where_clause}
+                GROUP BY marque, gamme
+                ORDER BY marque
+            """, params)
+            marques_raw = cursor.fetchall()
             
             # Normaliser les marques
-            marques_raw = cursor.fetchall()
-            marques_normalized = set()
+            marques_normalized = {}
             for row in marques_raw:
                 normalized = normalize_marque(row['marque'], row.get('gamme'))
                 if normalized:
-                    marques_normalized.add(normalized)
-            marques = sorted(list(marques_normalized))
+                    if normalized not in marques_normalized:
+                        marques_normalized[normalized] = 0
+                    marques_normalized[normalized] += row['count']
             
-            # Vitoles (modules)
-            cursor.execute("SELECT DISTINCT vitole_type FROM cigares WHERE vitole_type IS NOT NULL ORDER BY vitole_type")
-            vitoles = [row['vitole_type'] for row in cursor.fetchall()]
+            marques = [{"nom": m, "count": c} for m, c in sorted(marques_normalized.items())]
+            
+            # Modules (filtrés)
+            cursor.execute(f"""
+                SELECT DISTINCT module, COUNT(*) as count
+                FROM cigares 
+                WHERE module IS NOT NULL AND module != '' AND {where_clause}
+                GROUP BY module
+                ORDER BY module
+            """, params)
+            modules = [{"nom": row['module'], "count": row['count']} for row in cursor.fetchall()]
+            
+            # Puissances
+            cursor.execute(f"""
+                SELECT DISTINCT puissance, COUNT(*) as count
+                FROM cigares 
+                WHERE puissance IS NOT NULL AND {where_clause}
+                GROUP BY puissance
+                ORDER BY puissance
+            """, params)
+            puissances = [{"code": row['puissance'], "count": row['count']} for row in cursor.fetchall()]
             
             # Stats prix et notes
-            cursor.execute("SELECT MIN(prix) as prix_min, MAX(prix) as prix_max, MIN(note_bagues) as note_min, MAX(note_bagues) as note_max FROM cigares")
+            cursor.execute(f"""
+                SELECT MIN(prix) as prix_min, MAX(prix) as prix_max, 
+                       MIN(note_bagues) as note_min, MAX(note_bagues) as note_max 
+                FROM cigares WHERE {where_clause}
+            """, params)
             stats = cursor.fetchone()
             
             return {
-                "pays": pays_normalized,
-                "puissances": puissances,
+                "stats": {
+                    "total": total,
+                    "cubains": cubains,
+                    "non_cubains": non_cubains
+                },
+                "terroirs": terroirs,
                 "marques": marques,
-                "vitoles": vitoles,
-                "prix_min": stats['prix_min'],
-                "prix_max": stats['prix_max'],
-                "note_min": stats['note_min'],
-                "note_max": stats['note_max']
+                "modules": modules,
+                "puissances": puissances,
+                "prix_min": float(stats['prix_min']) if stats['prix_min'] else None,
+                "prix_max": float(stats['prix_max']) if stats['prix_max'] else None,
+                "note_min": float(stats['note_min']) if stats['note_min'] else None,
+                "note_max": float(stats['note_max']) if stats['note_max'] else None
             }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur filtres: {str(e)}")

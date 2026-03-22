@@ -5,6 +5,43 @@ Application de gestion complète pour le club de cigares "La Bague Impériale" a
 
 ## What's Been Implemented
 
+### Session 22 Mars 2026 - Refonte Cigarothèque
+
+**Refonte complète de la Cigarothèque (TERMINÉ) :**
+- Importation des deux fichiers Excel fournis par l'utilisateur :
+  - `habanoscope_cigares_2026.xlsx` : 210 cigares cubains
+  - `cigaroscope_cigares_2025.xlsx` : 452 cigares non-cubains
+- **Total : 857 cigares** dans le catalogue fusionné
+
+**Nouveau schéma de données cigares :**
+- `nom_cigare` : Nom commercial du cigare
+- `marque` : Marque (Cohiba, Davidoff, Padrón, etc.)
+- `gamme` : Gamme/Ligne (Behike, Linea 1492, etc.)
+- `module` : Format générique (Robusto, Churchill, Corona, etc.)
+- `vitole` : Spécification précise (robustos, marevas, etc.)
+- `dimensions` : Dimensions exactes (ex: "124 mm x 50 (19,84 mm)")
+- `terroir` : Pays d'origine (Cuba, Nicaragua, Honduras, etc.)
+- `is_cubain` : Boolean pour filtrage rapide
+- `bagues_etoiles` : Notation en étoiles (⭐ à ⭐⭐⭐⭐⭐)
+- Notes de dégustation : `tiers1`, `tiers2`, `tiers3`
+
+**Nouveaux filtres frontend :**
+- Catégorie : Tous / Cubain (272) / Non-Cubain (585)
+- Terroir : Nicaragua, Honduras, République dominicaine, Costa Rica, Mexique, Brésil
+- Marque avec compteur
+- Module avec compteur
+- Puissance
+- Prix
+
+**Corrections de données :**
+- 3 cigares Cohiba Behike (Genios, Mágicos, Secretos) corrigés
+- Terroirs normalisés (ex: "Rép. dominicaine" → "République dominicaine")
+- 650 cigares conservent leurs photos existantes
+
+**API mises à jour :**
+- `GET /api/cigares` : Nouveaux paramètres `is_cubain`, `terroir`, `module`
+- `GET /api/cigares-filtres` : Retourne stats, terroirs avec comptage, marques avec comptage
+
 ### Session 14 Mars 2026
 
 **Logique inverse de suppression de transactions (TERMINÉ) :**
@@ -18,7 +55,6 @@ Application de gestion complète pour le club de cigares "La Bague Impériale" a
 - **Activation du compte** :
   - Option de garder le code temporaire `labagueimperialeXX` comme mot de passe
   - Ou créer un nouveau mot de passe personnalisé
-  - Stockage du mot de passe en clair pour l'admin (`password_clair`)
 
 - **Espace Mots de Passe Admin** :
   - Liste de tous les membres activés avec leurs mots de passe
@@ -28,73 +64,56 @@ Application de gestion complète pour le club de cigares "La Bague Impériale" a
 - **Mot de passe oublié** :
   - Crée une demande de récupération (collection `demandes_mot_de_passe`)
   - Notification sur le Dashboard admin avec badge
-  - Boutons "Voir MDP" et "Traité" pour chaque demande
   - L'admin envoie le mot de passe en privé au membre
-
-**Nouveaux endpoints API :**
-- `GET /api/admin/membres-mots-de-passe` - Liste des mots de passe membres
-- `GET /api/admin/demandes-mot-de-passe` - Demandes de récupération en attente
-- `GET /api/admin/demandes-mot-de-passe/count` - Compteur pour badge
-- `POST /api/admin/demandes-mot-de-passe/{id}/traiter` - Marquer comme traité
-- `DELETE /api/admin/demandes-mot-de-passe/{id}` - Supprimer une demande
-- `POST /api/auth/change-password` - Changer son mot de passe
 
 ### Sessions précédentes
 
-**Système de paiements membres (TERMINÉ) :**
-- Les membres peuvent signaler un paiement depuis leur profil
-- L'admin valide sur le Dashboard, crée automatiquement la transaction
-- La dette correspondante est supprimée
-
-**Sondages et événements (TERMINÉ) :**
-- Réponses manuelles pour invités/membres sans accès
-- Drill-down sur les résultats (voir qui a choisi quoi)
-- Export SMS pour restaurateurs
-
-**Cigarthèque complète (TERMINÉ) :**
-- 657 cigares avec photos
-- Assistant IA "Winston" (Claude Sonnet 4.5)
-- Collection personnelle "Ma Cigarthèque"
-- Apéro du Club avec gestion admin
+**Système de paiements membres (TERMINÉ)**
+**Sondages et événements (TERMINÉ)**
+**Assistant IA "Winston" (TERMINÉ)**
 
 ## Prioritized Backlog
 
 ### P0 - Terminé ✅
+- [x] Refonte Cigarothèque avec fichiers Excel utilisateur
+- [x] Filtres Cubain/Non-Cubain/Terroir
 - [x] Logique inverse suppression transactions
 - [x] Nouvelle stratégie d'authentification sans email
-- [x] Espace mots de passe admin
 
 ### P1 - À faire
 - [ ] **Activer l'authentification membre** - Désactiver le mode "accès ouvert" dans `UserContext.js`
-- [ ] Tester le flux complet d'activation pour les 35 membres
+- [ ] Investiguer le crash de la page Statistiques signalé
 
 ### P2 - Backlog
 - [ ] Bouton "Copier" depuis Apéro du Club vers messages événements
-- [ ] Construire les onglets "Jeux" et "Instagram"
 - [ ] Corriger le nombre de repas Saison 13 (config en DB)
 
 ### P3 - Future
 - [ ] Refactoring `server.py` en routers FastAPI
 - [ ] Refactoring `Dashboard.js` en composants
-- [ ] Corriger troncature `conclusion` cigares (base MySQL externe)
 
 ## Technical Details
-
-### Base de données MongoDB - Nouvelles collections
-- `demandes_mot_de_passe` - Demandes de récupération mot de passe
-- `paiements_en_attente` - Paiements signalés par membres
-
-### Champs membres ajoutés
-- `password_clair` - Mot de passe en clair (pour admin)
-
-### Champs transactions ajoutés
-- `pending_payment_id` - Lien vers paiement d'origine (pour logique inverse)
 
 ### Base de données Cigares (MySQL OVH)
 - Host: gb60402-001.eu.clouddb.ovh.net
 - Port: 35741
 - User: cigare20
 - Database: CIGARE
+- **Table cigares** : 857 enregistrements
+  - 272 cubains, 585 non-cubains
+  - 650 avec photos
+  - 260 marques uniques
+
+### Répartition par Terroir
+| Terroir | Cigares |
+|---------|---------|
+| Cuba | 272 |
+| Nicaragua | 219 |
+| République dominicaine | 164 |
+| Honduras | 122 |
+| Costa Rica | 17 |
+| Mexique | 5 |
+| Brésil | 1 |
 
 ### Comptes Admin
 - Fabien Lanfranchi (n°1): fabienlanfranchi@yahoo.fr

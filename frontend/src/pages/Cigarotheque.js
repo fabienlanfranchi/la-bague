@@ -73,9 +73,10 @@ const Cigarotheque = () => {
   // Filtres actifs - Catalogue
   const [search, setSearch] = useState('');
   const [marqueFilter, setMarqueFilter] = useState('');
-  const [paysFilter, setPaysFilter] = useState('');
+  const [isCubainFilter, setIsCubainFilter] = useState(''); // '', 'true', 'false'
+  const [terroirFilter, setTerroirFilter] = useState('');
+  const [moduleFilter, setModuleFilter] = useState('');
   const [puissanceFilter, setPuissanceFilter] = useState('');
-  const [vitoleFilter, setVitoleFilter] = useState('');
   const [prixMin, setPrixMin] = useState('');
   const [prixMax, setPrixMax] = useState('');
   const [collectionFilter, setCollectionFilter] = useState(''); // '', 'dans', 'pas_dans'
@@ -193,11 +194,14 @@ const Cigarotheque = () => {
     }
   }, [isAdmin, currentMember?.id]);
 
-  const loadFiltres = async (paysSelected = '') => {
+  const loadFiltres = async (isCubain = null, terroir = null) => {
     try {
       const params = new URLSearchParams();
-      if (paysSelected && paysSelected !== 'all') {
-        params.append('pays', paysSelected);
+      if (isCubain !== null && isCubain !== '') {
+        params.append('is_cubain', isCubain);
+      }
+      if (terroir && terroir !== 'all') {
+        params.append('terroir', terroir);
       }
       const response = await axios.get(`${API}/cigares-filtres?${params}`);
       setFiltres(response.data);
@@ -206,11 +210,26 @@ const Cigarotheque = () => {
     }
   };
 
-  // Handler pour le changement de pays (cascade sur les marques)
-  const handlePaysFilterChange = (value) => {
-    setPaysFilter(value);
-    setMarqueFilter(''); // Réinitialiser la marque quand le pays change
-    loadFiltres(value); // Recharger les marques filtrées par pays
+  // Handler pour le changement de filtre cubain/non-cubain
+  const handleCubainFilterChange = (value) => {
+    setIsCubainFilter(value);
+    setTerroirFilter(''); // Réinitialiser le terroir
+    setMarqueFilter(''); // Réinitialiser la marque
+    if (value === 'true') {
+      loadFiltres(true, null);
+    } else if (value === 'false') {
+      loadFiltres(false, null);
+    } else {
+      loadFiltres(null, null);
+    }
+    setPage(0);
+  };
+
+  // Handler pour le changement de terroir
+  const handleTerroirFilterChange = (value) => {
+    setTerroirFilter(value);
+    setMarqueFilter(''); // Réinitialiser la marque
+    loadFiltres(isCubainFilter === 'true' ? true : isCubainFilter === 'false' ? false : null, value);
     setPage(0);
   };
 
@@ -222,9 +241,11 @@ const Cigarotheque = () => {
       params.append('offset', page * LIMIT);
       if (search) params.append('search', search);
       if (marqueFilter && marqueFilter !== 'all') params.append('marque', marqueFilter);
-      if (paysFilter && paysFilter !== 'all') params.append('pays', paysFilter);
+      if (isCubainFilter === 'true') params.append('is_cubain', 'true');
+      if (isCubainFilter === 'false') params.append('is_cubain', 'false');
+      if (terroirFilter && terroirFilter !== 'all') params.append('terroir', terroirFilter);
+      if (moduleFilter && moduleFilter !== 'all') params.append('module', moduleFilter);
       if (puissanceFilter && puissanceFilter !== 'all') params.append('puissance', puissanceFilter);
-      if (vitoleFilter && vitoleFilter !== 'all') params.append('vitole', vitoleFilter);
       if (prixMin) params.append('prix_min', prixMin);
       if (prixMax) params.append('prix_max', prixMax);
 
@@ -264,15 +285,14 @@ const Cigarotheque = () => {
         .map(r => r.data);
       
       // Appliquer les filtres supplémentaires si présents
-      if (paysFilter && paysFilter !== 'all') {
-        cigareDetails = cigareDetails.filter(c => {
-          const paysNorm = c.pays_fabrication ? c.pays_fabrication.toLowerCase() : '';
-          const filterNorm = paysFilter.toLowerCase();
-          return paysNorm.includes(filterNorm) || 
-                 (paysFilter === 'Cuba' && paysNorm.includes('cuba')) ||
-                 (paysFilter === 'Nicaragua' && paysNorm.includes('nicaragua')) ||
-                 (paysFilter === 'République dominicaine' && (paysNorm.includes('dominicain') || paysNorm.includes('rép')));
-        });
+      if (isCubainFilter === 'true') {
+        cigareDetails = cigareDetails.filter(c => c.is_cubain === true || c.terroir === 'Cuba');
+      } else if (isCubainFilter === 'false') {
+        cigareDetails = cigareDetails.filter(c => c.is_cubain === false || (c.terroir && c.terroir !== 'Cuba'));
+      }
+      
+      if (terroirFilter && terroirFilter !== 'all') {
+        cigareDetails = cigareDetails.filter(c => c.terroir === terroirFilter);
       }
       
       if (marqueFilter && marqueFilter !== 'all') {
@@ -299,7 +319,7 @@ const Cigarotheque = () => {
     } else {
       loadCigares();
     }
-  }, [page, search, marqueFilter, paysFilter, puissanceFilter, vitoleFilter, prixMin, prixMax, collectionFilter, maCigarotheque]);
+  }, [page, search, marqueFilter, isCubainFilter, terroirFilter, moduleFilter, puissanceFilter, prixMin, prixMax, collectionFilter, maCigarotheque]);
 
   // Filtrer les cigares selon le filtre "pas dans ma collection" uniquement
   const filteredCigares = useMemo(() => {
@@ -344,14 +364,15 @@ const Cigarotheque = () => {
   const resetFiltres = () => {
     setSearch('');
     setMarqueFilter('');
-    setPaysFilter('');
+    setIsCubainFilter('');
+    setTerroirFilter('');
+    setModuleFilter('');
     setPuissanceFilter('');
-    setVitoleFilter('');
     setPrixMin('');
     setPrixMax('');
     setCollectionFilter('');
     setPage(0);
-    loadFiltres(''); // Recharger tous les filtres sans restriction
+    loadFiltres(null, null); // Recharger tous les filtres sans restriction
   };
 
   const getPuissanceLabel = (p) => {
@@ -991,7 +1012,46 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
                 </div>
 
                 {/* Filtres */}
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
+                {/* Ligne 1: Catégorie (Cubain/Non-Cubain) + Terroir + Marque */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+                  {/* Filtre Cubain / Non-Cubain */}
+                  <Select value={isCubainFilter} onValueChange={handleCubainFilterChange}>
+                    <SelectTrigger className="bg-black/60 border-[#D4A024]/30 text-white h-12" data-testid="filter-cubain">
+                      <MapPin className="w-4 h-4 mr-2 text-[#D4A024]" />
+                      <SelectValue placeholder="Catégorie" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#1a1a1a] border-[#D4A024]/30">
+                      <SelectItem value="all" className="text-gray-400">
+                        Tous ({filtres?.stats?.total || 0})
+                      </SelectItem>
+                      <SelectItem value="true" className="text-amber-400">
+                        🇨🇺 Cubain ({filtres?.stats?.cubains || 0})
+                      </SelectItem>
+                      <SelectItem value="false" className="text-blue-400">
+                        🌎 Non-Cubain ({filtres?.stats?.non_cubains || 0})
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  {/* Filtre Terroir (visible uniquement si Non-Cubain sélectionné) */}
+                  {isCubainFilter === 'false' && (
+                    <Select value={terroirFilter} onValueChange={handleTerroirFilterChange}>
+                      <SelectTrigger className="bg-black/60 border-[#D4A024]/30 text-white h-12" data-testid="filter-terroir">
+                        <MapPin className="w-4 h-4 mr-2 text-blue-400" />
+                        <SelectValue placeholder="Terroir" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#1a1a1a] border-[#D4A024]/30 max-h-[300px]">
+                        <SelectItem value="all" className="text-gray-400">Tous les terroirs</SelectItem>
+                        {filtres?.terroirs?.map(t => (
+                          <SelectItem key={t.nom} value={t.nom} className="text-white">
+                            {t.nom} ({t.count})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+
+                  {/* Filtre Marque */}
                   <Select value={marqueFilter} onValueChange={setMarqueFilter}>
                     <SelectTrigger className="bg-black/60 border-[#D4A024]/30 text-white h-12" data-testid="filter-marque">
                       <SelectValue placeholder="Marque" />
@@ -1000,20 +1060,27 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
                       <SelectItem value="all" className="text-gray-400">Toutes marques</SelectItem>
                       <SelectItem value="__NULL__" className="text-gray-400">Sans marque</SelectItem>
                       {filtres?.marques?.map(m => (
-                        <SelectItem key={m} value={m} className="text-white">{m}</SelectItem>
+                        <SelectItem key={m.nom} value={m.nom} className="text-white">
+                          {m.nom} ({m.count})
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
 
-                  <Select value={paysFilter} onValueChange={handlePaysFilterChange}>
-                    <SelectTrigger className="bg-black/60 border-[#D4A024]/30 text-white h-12" data-testid="filter-pays">
-                      <MapPin className="w-4 h-4 mr-2 text-[#D4A024]" />
-                      <SelectValue placeholder="Pays" />
+                {/* Ligne 2: Module + Puissance */}
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
+                  <Select value={moduleFilter} onValueChange={setModuleFilter}>
+                    <SelectTrigger className="bg-black/60 border-[#D4A024]/30 text-white h-12" data-testid="filter-module">
+                      <Box className="w-4 h-4 mr-2 text-[#D4A024]" />
+                      <SelectValue placeholder="Module" />
                     </SelectTrigger>
                     <SelectContent className="bg-[#1a1a1a] border-[#D4A024]/30 max-h-[300px]">
-                      <SelectItem value="all" className="text-gray-400">Tous les pays</SelectItem>
-                      {filtres?.pays?.map(p => (
-                        <SelectItem key={p} value={p} className="text-white">{p}</SelectItem>
+                      <SelectItem value="all" className="text-gray-400">Tous modules</SelectItem>
+                      {filtres?.modules?.map(m => (
+                        <SelectItem key={m.nom} value={m.nom} className="text-white">
+                          {m.nom} ({m.count})
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -1028,21 +1095,6 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
                       <SelectItem value="A" className="text-red-400">Forte (A)</SelectItem>
                       <SelectItem value="B" className="text-orange-400">Moyenne (B)</SelectItem>
                       <SelectItem value="C" className="text-green-400">Légère (C)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <Select value={vitoleFilter} onValueChange={setVitoleFilter}>
-                    <SelectTrigger className="bg-black/60 border-[#D4A024]/30 text-white h-12" data-testid="filter-module">
-                      <Box className="w-4 h-4 mr-2 text-[#D4A024]" />
-                      <SelectValue placeholder="Module" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-[#1a1a1a] border-[#D4A024]/30 max-h-[300px]">
-                      <SelectItem value="all" className="text-gray-400">Tous modules</SelectItem>
-                      {filtres?.vitoles?.map(v => (
-                        <SelectItem key={v} value={v} className="text-white">{v}</SelectItem>
-                      ))}
                     </SelectContent>
                   </Select>
 
@@ -1068,7 +1120,10 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
                       </SelectContent>
                     </Select>
                   )}
+                </div>
 
+                {/* Ligne 3: Prix + Réinitialiser */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <Input
                     type="number"
                     value={prixMin}
@@ -1087,7 +1142,7 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
                     data-testid="filter-prix-max"
                   />
 
-                  <Button type="button" variant="outline" onClick={resetFiltres} className="text-gray-400 hover:text-white border-gray-600 h-12" data-testid="reset-filters-btn">
+                  <Button type="button" variant="outline" onClick={resetFiltres} className="text-gray-400 hover:text-white border-gray-600 h-12 col-span-2 md:col-span-1" data-testid="reset-filters-btn">
                     Réinitialiser
                   </Button>
                 </div>
