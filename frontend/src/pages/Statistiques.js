@@ -39,11 +39,13 @@ export default function Statistiques() {
     try {
       // Charger les membres
       const membresRes = await fetch(`${API_URL}/api/members`);
+      if (!membresRes.ok) throw new Error('Erreur chargement membres');
       const membresData = await membresRes.json();
       setMembres(membresData.sort((a, b) => a.numero_membre - b.numero_membre));
 
       // Charger les stats globales
       const globalRes = await fetch(`${API_URL}/api/statistiques/global`);
+      if (!globalRes.ok) throw new Error('Erreur chargement stats globales');
       const globalData = await globalRes.json();
       setGlobalStats(globalData.membres || []);
       
@@ -56,6 +58,7 @@ export default function Statistiques() {
 
       // Charger les stats résumées par saison
       const saisonsResumeRes = await fetch(`${API_URL}/api/statistiques/saisons-resume`);
+      if (!saisonsResumeRes.ok) throw new Error('Erreur chargement résumé saisons');
       const saisonsResumeData = await saisonsResumeRes.json();
       setSaisonsResume(saisonsResumeData || []);
 
@@ -64,7 +67,8 @@ export default function Statistiques() {
       
     } catch (error) {
       console.error('Erreur chargement:', error);
-      toast.error('Erreur lors du chargement des données');
+      toast.error(`Erreur: ${error.message}. Essayez de rafraîchir la page.`);
+      // Ne pas vider les données existantes en cas d'erreur pour éviter la "disparition"
     }
     setLoading(false);
   }, [selectedSaison]);
@@ -72,6 +76,12 @@ export default function Statistiques() {
   const loadSaisonPresences = async (saison) => {
     try {
       const res = await fetch(`${API_URL}/api/statistiques/saison/${saison}`);
+      
+      // Vérifier si la requête a réussi
+      if (!res.ok) {
+        throw new Error(`Erreur serveur: ${res.status}`);
+      }
+      
       const data = await res.json();
       
       // Mettre à jour la config de la saison
@@ -95,6 +105,9 @@ export default function Statistiques() {
       setHasChanges(false);
     } catch (error) {
       console.error('Erreur chargement présences:', error);
+      toast.error(`Erreur de chargement: ${error.message}`);
+      // En cas d'erreur, réinitialiser les présences pour éviter d'afficher des données incohérentes
+      setPresences({});
     }
   };
 
@@ -300,7 +313,7 @@ export default function Statistiques() {
     try {
       // 1. Sauvegarder la config de la saison
       const config = getCurrentConfig();
-      await fetch(`${API_URL}/api/saisons-config`, {
+      const configRes = await fetch(`${API_URL}/api/saisons-config`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -310,6 +323,10 @@ export default function Statistiques() {
           nb_anniversaires: config.nb_anniversaires || 0
         })
       });
+      
+      if (!configRes.ok) {
+        throw new Error('Erreur sauvegarde config saison');
+      }
 
       // 2. Sauvegarder les présences en masse
       const presencesList = Object.entries(presences).map(([membreId, data]) => ({
@@ -319,7 +336,7 @@ export default function Statistiques() {
         presences_anniversaires: data.presences_anniversaires || 0
       }));
 
-      await fetch(`${API_URL}/api/presences/bulk`, {
+      const presencesRes = await fetch(`${API_URL}/api/presences/bulk`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -327,18 +344,24 @@ export default function Statistiques() {
           presences: presencesList
         })
       });
+      
+      if (!presencesRes.ok) {
+        throw new Error('Erreur sauvegarde présences');
+      }
 
       toast.success('Données sauvegardées avec succès !');
       setHasChanges(false);
       
       // Recharger les stats globales
       const globalRes = await fetch(`${API_URL}/api/statistiques/global`);
-      const globalData = await globalRes.json();
-      setGlobalStats(globalData.membres || []);
+      if (globalRes.ok) {
+        const globalData = await globalRes.json();
+        setGlobalStats(globalData.membres || []);
+      }
       
     } catch (error) {
       console.error('Erreur sauvegarde:', error);
-      toast.error('Erreur lors de la sauvegarde');
+      toast.error(`Erreur: ${error.message}. Vos données n'ont pas été perdues, réessayez.`);
     }
     setSaving(false);
   };
