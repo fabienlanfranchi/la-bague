@@ -1213,7 +1213,10 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
                             {cigare.marque_display || cigare.marque || 'Sans marque'}
                           </h3>
                           <p className="text-[#D4A024] truncate">{cigare.gamme_display || cigare.gamme || ''}</p>
-                          <p className="text-gray-400 text-sm truncate">{cigare.vitole_nom || cigare.vitole_type || ''}</p>
+                          <p className="text-gray-300 text-sm truncate">{cigare.nom_cigare || cigare.vitole_nom || ''}</p>
+                          {cigare.module && (
+                            <p className="text-gray-500 text-xs truncate">{cigare.module}{cigare.vitole ? ` (${cigare.vitole})` : ''}</p>
+                          )}
                         </div>
                         {cigare.note_bagues && (
                           <Badge className="bg-[#D4A024] text-[#7A2020] text-lg px-3 py-1 ml-2 shrink-0">
@@ -1609,7 +1612,10 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
                     {selectedCigare.marque_display || selectedCigare.marque || 'Sans marque'}
                   </DialogTitle>
                   <p className="text-[#D4A024] text-lg">{selectedCigare.gamme_display || selectedCigare.gamme || ''}</p>
-                  <p className="text-gray-400">{selectedCigare.vitole_nom || selectedCigare.vitole_type || ''}</p>
+                  <p className="text-gray-200 text-lg font-medium">{selectedCigare.nom_cigare || selectedCigare.vitole_nom || ''}</p>
+                  {selectedCigare.module && (
+                    <p className="text-gray-400 text-sm">{selectedCigare.module}{selectedCigare.vitole ? ` (${selectedCigare.vitole})` : ''}</p>
+                  )}
                 </div>
               </DialogHeader>
 
@@ -1792,21 +1798,42 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label className="text-gray-300">Vitole</Label>
+                <Label className="text-gray-300">Nom du cigare</Label>
                 <Input
-                  value={editData.vitole_nom || ''}
-                  onChange={(e) => setEditData({...editData, vitole_nom: e.target.value})}
+                  value={editData.nom_cigare || ''}
+                  onChange={(e) => setEditData({...editData, nom_cigare: e.target.value})}
                   className="bg-black/60 border-[#D4A024]/30 text-white mt-1"
-                  data-testid="edit-vitole"
+                  data-testid="edit-nom-cigare"
                 />
               </div>
               <div>
-                <Label className="text-gray-300">Pays</Label>
+                <Label className="text-gray-300">Terroir / Pays</Label>
                 <Input
-                  value={editData.pays_fabrication || ''}
-                  onChange={(e) => setEditData({...editData, pays_fabrication: e.target.value})}
+                  value={editData.terroir || editData.pays_fabrication || ''}
+                  onChange={(e) => setEditData({...editData, terroir: e.target.value, pays_fabrication: e.target.value})}
                   className="bg-black/60 border-[#D4A024]/30 text-white mt-1"
-                  data-testid="edit-pays"
+                  data-testid="edit-terroir"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-gray-300">Module</Label>
+                <Input
+                  value={editData.module || ''}
+                  onChange={(e) => setEditData({...editData, module: e.target.value})}
+                  className="bg-black/60 border-[#D4A024]/30 text-white mt-1"
+                  data-testid="edit-module"
+                />
+              </div>
+              <div>
+                <Label className="text-gray-300">Vitole (précision)</Label>
+                <Input
+                  value={editData.vitole || ''}
+                  onChange={(e) => setEditData({...editData, vitole: e.target.value})}
+                  className="bg-black/60 border-[#D4A024]/30 text-white mt-1"
+                  data-testid="edit-vitole"
                 />
               </div>
             </div>
@@ -2321,7 +2348,10 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
                             {cigare.marque_display || cigare.marque || 'Sans marque'}
                           </CardTitle>
                           <p className="text-[#D4A024]">{cigare.gamme_display || cigare.gamme || ''}</p>
-                          <p className="text-gray-400 text-sm">{cigare.vitole_nom || cigare.vitole_type || ''}</p>
+                          <p className="text-gray-200 text-sm font-medium">{cigare.nom_cigare || cigare.vitole_nom || ''}</p>
+                          {cigare.module && (
+                            <p className="text-gray-500 text-xs">{cigare.module}{cigare.vitole ? ` (${cigare.vitole})` : ''}</p>
+                          )}
                         </div>
                         <Button
                           size="sm"
