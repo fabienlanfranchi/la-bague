@@ -1209,11 +1209,11 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
                       
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-lg font-serif font-bold text-white truncate">
-                            {cigare.marque_display || cigare.marque || 'Sans marque'}
+                          <h3 className="text-lg font-serif font-bold text-white truncate uppercase">
+                            {cigare.nom_cigare || cigare.vitole_nom || 'Sans nom'}
                           </h3>
-                          <p className="text-[#D4A024] truncate">{cigare.gamme_display || cigare.gamme || ''}</p>
-                          <p className="text-gray-300 text-sm truncate">{cigare.nom_cigare || cigare.vitole_nom || ''}</p>
+                          <p className="text-[#D4A024] truncate">{cigare.marque_display || cigare.marque || ''}</p>
+                          <p className="text-gray-400 text-sm truncate">{cigare.gamme_display || cigare.gamme || ''}</p>
                           {cigare.module && (
                             <p className="text-gray-500 text-xs truncate">{cigare.module}{cigare.vitole ? ` (${cigare.vitole})` : ''}</p>
                           )}
@@ -1608,13 +1608,13 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
             <>
               <DialogHeader>
                 <div>
-                  <DialogTitle className="text-2xl font-serif text-white">
-                    {selectedCigare.marque_display || selectedCigare.marque || 'Sans marque'}
+                  <DialogTitle className="text-2xl font-serif text-white uppercase">
+                    {selectedCigare.nom_cigare || selectedCigare.vitole_nom || 'Sans nom'}
                   </DialogTitle>
-                  <p className="text-[#D4A024] text-lg">{selectedCigare.gamme_display || selectedCigare.gamme || ''}</p>
-                  <p className="text-gray-200 text-lg font-medium">{selectedCigare.nom_cigare || selectedCigare.vitole_nom || ''}</p>
+                  <p className="text-[#D4A024] text-lg">{selectedCigare.marque_display || selectedCigare.marque || ''}</p>
+                  <p className="text-gray-400">{selectedCigare.gamme_display || selectedCigare.gamme || ''}</p>
                   {selectedCigare.module && (
-                    <p className="text-gray-400 text-sm">{selectedCigare.module}{selectedCigare.vitole ? ` (${selectedCigare.vitole})` : ''}</p>
+                    <p className="text-gray-500 text-sm">{selectedCigare.module}{selectedCigare.vitole ? ` (${selectedCigare.vitole})` : ''}</p>
                   )}
                 </div>
               </DialogHeader>
@@ -2344,11 +2344,11 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
                           <Badge className={idx === 0 ? 'bg-blue-600' : 'bg-orange-600'}>
                             Cigare {idx + 1}
                           </Badge>
-                          <CardTitle className="text-xl font-serif text-white mt-2">
-                            {cigare.marque_display || cigare.marque || 'Sans marque'}
+                          <CardTitle className="text-xl font-serif text-white mt-2 uppercase">
+                            {cigare.nom_cigare || cigare.vitole_nom || 'Sans nom'}
                           </CardTitle>
-                          <p className="text-[#D4A024]">{cigare.gamme_display || cigare.gamme || ''}</p>
-                          <p className="text-gray-200 text-sm font-medium">{cigare.nom_cigare || cigare.vitole_nom || ''}</p>
+                          <p className="text-[#D4A024]">{cigare.marque_display || cigare.marque || ''}</p>
+                          <p className="text-gray-400 text-sm">{cigare.gamme_display || cigare.gamme || ''}</p>
                           {cigare.module && (
                             <p className="text-gray-500 text-xs">{cigare.module}{cigare.vitole ? ` (${cigare.vitole})` : ''}</p>
                           )}
