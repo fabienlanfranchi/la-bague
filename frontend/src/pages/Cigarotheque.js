@@ -696,8 +696,10 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
       await axios.put(`${API}/cigares/${editData.id}`, {
         marque: editData.marque || null,
         gamme: editData.gamme || null,
-        vitole_nom: editData.vitole_nom || null,
-        pays_fabrication: editData.pays_fabrication || null,
+        nom_cigare: editData.nom_cigare || null,
+        module: editData.module || null,
+        vitole: editData.vitole || null,
+        terroir: editData.terroir || null,
         puissance: editData.puissance || null,
         prix: editData.prix ? parseFloat(editData.prix) : null,
         note_bagues: editData.note_bagues ? parseFloat(editData.note_bagues) : null,

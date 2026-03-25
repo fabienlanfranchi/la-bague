@@ -4337,15 +4337,18 @@ class CigareUpdate(BaseModel):
     """Mise à jour d'un cigare"""
     marque: Optional[str] = None
     gamme: Optional[str] = None
-    vitole_nom: Optional[str] = None
-    vitole_type: Optional[str] = None
-    pays_fabrication: Optional[str] = None
+    nom_cigare: Optional[str] = None
+    module: Optional[str] = None
+    vitole: Optional[str] = None
+    terroir: Optional[str] = None
+    dimensions: Optional[str] = None
     puissance: Optional[str] = None
     prix: Optional[float] = None
     note_bagues: Optional[float] = None
-    cape: Optional[str] = None
-    sous_cape: Optional[str] = None
-    tripe: Optional[str] = None
+    bagues_etoiles: Optional[str] = None
+    premier_tiers: Optional[str] = None
+    deuxieme_tiers: Optional[str] = None
+    troisieme_tiers: Optional[str] = None
     conclusion: Optional[str] = None
 
 
