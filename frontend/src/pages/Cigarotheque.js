@@ -680,11 +680,18 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
       id: cigare.id,
       marque: cigare.marque || '',
       gamme: cigare.gamme || '',
-      vitole_nom: cigare.vitole_nom || '',
-      pays_fabrication: cigare.pays_fabrication || '',
+      nom_cigare: cigare.nom_cigare || cigare.vitole_nom || '',
+      module: cigare.module || cigare.vitole_type || '',
+      vitole: cigare.vitole || cigare.vitole_cubain || '',
+      terroir: cigare.terroir || cigare.pays_fabrication || '',
+      dimensions: cigare.dimensions || '',
       puissance: cigare.puissance || '',
       prix: cigare.prix || '',
       note_bagues: cigare.note_bagues || '',
+      bagues_etoiles: cigare.bagues_etoiles || '',
+      premier_tiers: cigare.premier_tiers || '',
+      deuxieme_tiers: cigare.deuxieme_tiers || '',
+      troisieme_tiers: cigare.troisieme_tiers || '',
       conclusion: cigare.conclusion || ''
     });
     setShowEditModal(true);
@@ -1840,6 +1847,29 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
               </div>
             </div>
 
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-gray-300">Dimensions</Label>
+                <Input
+                  value={editData.dimensions || ''}
+                  onChange={(e) => setEditData({...editData, dimensions: e.target.value})}
+                  placeholder="ex: 124 mm x 50"
+                  className="bg-black/60 border-[#D4A024]/30 text-white mt-1"
+                  data-testid="edit-dimensions"
+                />
+              </div>
+              <div>
+                <Label className="text-gray-300">Notation (étoiles)</Label>
+                <Input
+                  value={editData.bagues_etoiles || ''}
+                  onChange={(e) => setEditData({...editData, bagues_etoiles: e.target.value})}
+                  placeholder="ex: ⭐⭐⭐⭐"
+                  className="bg-black/60 border-[#D4A024]/30 text-white mt-1"
+                  data-testid="edit-bagues"
+                />
+              </div>
+            </div>
+
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <Label className="text-gray-300">Puissance</Label>
@@ -1881,6 +1911,36 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
                   data-testid="edit-note"
                 />
               </div>
+            </div>
+
+            <div>
+              <Label className="text-gray-300">1er Tiers (description)</Label>
+              <Textarea
+                value={editData.premier_tiers || ''}
+                onChange={(e) => setEditData({...editData, premier_tiers: e.target.value})}
+                className="bg-black/60 border-[#D4A024]/30 text-white mt-1 min-h-[60px]"
+                data-testid="edit-tiers1"
+              />
+            </div>
+
+            <div>
+              <Label className="text-gray-300">2ème Tiers (description)</Label>
+              <Textarea
+                value={editData.deuxieme_tiers || ''}
+                onChange={(e) => setEditData({...editData, deuxieme_tiers: e.target.value})}
+                className="bg-black/60 border-[#D4A024]/30 text-white mt-1 min-h-[60px]"
+                data-testid="edit-tiers2"
+              />
+            </div>
+
+            <div>
+              <Label className="text-gray-300">3ème Tiers (description)</Label>
+              <Textarea
+                value={editData.troisieme_tiers || ''}
+                onChange={(e) => setEditData({...editData, troisieme_tiers: e.target.value})}
+                className="bg-black/60 border-[#D4A024]/30 text-white mt-1 min-h-[60px]"
+                data-testid="edit-tiers3"
+              />
             </div>
 
             <div>
