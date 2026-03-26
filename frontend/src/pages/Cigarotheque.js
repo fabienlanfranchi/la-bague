@@ -751,9 +751,11 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
         module: editData.module || null,
         vitole: editData.vitole || null,
         terroir: editData.terroir || null,
+        dimensions: editData.dimensions || null,
         puissance: editData.puissance || null,
         prix: editData.prix ? parseFloat(editData.prix) : null,
         note_bagues: editData.note_bagues ? parseFloat(editData.note_bagues) : null,
+        bagues_etoiles: editData.bagues_etoiles || null,
         conclusion: editData.conclusion || null,
         // Notes de dégustation
         premier_tiers: editData.premier_tiers || null,
