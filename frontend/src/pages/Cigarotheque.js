@@ -46,7 +46,8 @@ import {
   Check,
   CircleOff,
   Scale,
-  AlertTriangle
+  AlertTriangle,
+  Settings
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -1107,6 +1108,18 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
                       <AlertTriangle className="w-5 h-5 mr-2" />
                       {showIncompleteOnly ? 'Voir tous' : 'À corriger'}
                     </Button>
+                  )}
+                  
+                  {/* Bouton Admin: Gestion des données */}
+                  {isAdmin && (
+                    <a 
+                      href="/cigarotheque/admin"
+                      className="h-12 px-4 bg-purple-600 hover:bg-purple-700 text-white rounded-md flex items-center justify-center font-medium"
+                      data-testid="admin-data-btn"
+                    >
+                      <Settings className="w-5 h-5 mr-2" />
+                      Gérer données
+                    </a>
                   )}
                 </div>
 

@@ -12,6 +12,7 @@ import Evenements from './pages/Evenements';
 import Jeux from './pages/Jeux';
 import Messages from './pages/Messages';
 import Cigarotheque from './pages/Cigarotheque';
+import AdminCigarotheque from './pages/AdminCigarotheque';
 import AssistantIA from './pages/AssistantIA';
 import Boutique from './pages/Boutique';
 import Sondages from './pages/Sondages';
@@ -247,6 +248,16 @@ function App() {
                     <Cigarotheque />
                   </AppLayout>
                 </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/cigarotheque/admin"
+              element={
+                <AdminRoute>
+                  <AppLayout>
+                    <AdminCigarotheque />
+                  </AppLayout>
+                </AdminRoute>
               }
             />
             <Route

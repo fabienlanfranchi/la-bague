@@ -4276,7 +4276,207 @@ async def get_cigares_incomplets(
         raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
 
 
-# Fonction pour normaliser les noms de pays
+# ============================================
+# ADMINISTRATION CIGAROTHÈQUE - GESTION DES DONNÉES
+# ============================================
+
+@api_router.get("/cigares/admin/marques")
+async def get_all_marques():
+    """Récupérer toutes les marques avec leur nombre de cigares"""
+    try:
+        with get_mysql_connection() as conn:
+            cursor = conn.cursor(pymysql.cursors.DictCursor)
+            cursor.execute('''
+                SELECT marque, COUNT(*) as count 
+                FROM cigares 
+                WHERE marque IS NOT NULL AND marque != ''
+                GROUP BY marque 
+                ORDER BY marque
+            ''')
+            marques = cursor.fetchall()
+            return {"marques": marques, "total": len(marques)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
+
+
+@api_router.get("/cigares/admin/modules")
+async def get_all_modules():
+    """Récupérer tous les modules avec leur nombre de cigares"""
+    try:
+        with get_mysql_connection() as conn:
+            cursor = conn.cursor(pymysql.cursors.DictCursor)
+            cursor.execute('''
+                SELECT module, COUNT(*) as count 
+                FROM cigares 
+                WHERE module IS NOT NULL AND module != ''
+                GROUP BY module 
+                ORDER BY module
+            ''')
+            modules = cursor.fetchall()
+            return {"modules": modules, "total": len(modules)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
+
+
+@api_router.get("/cigares/admin/terroirs")
+async def get_all_terroirs():
+    """Récupérer tous les terroirs avec leur nombre de cigares"""
+    try:
+        with get_mysql_connection() as conn:
+            cursor = conn.cursor(pymysql.cursors.DictCursor)
+            cursor.execute('''
+                SELECT terroir, COUNT(*) as count 
+                FROM cigares 
+                WHERE terroir IS NOT NULL AND terroir != ''
+                GROUP BY terroir 
+                ORDER BY terroir
+            ''')
+            terroirs = cursor.fetchall()
+            return {"terroirs": terroirs, "total": len(terroirs)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
+
+
+@api_router.put("/cigares/admin/rename-marque")
+async def rename_marque(old_name: str = Query(...), new_name: str = Query(...)):
+    """Renommer une marque (fusionner les doublons)"""
+    try:
+        with get_mysql_connection() as conn:
+            cursor = conn.cursor()
+            # Compter les cigares affectés
+            cursor.execute('SELECT COUNT(*) FROM cigares WHERE marque = %s', (old_name,))
+            count = cursor.fetchone()[0]
+            
+            if count == 0:
+                raise HTTPException(status_code=404, detail=f"Marque '{old_name}' non trouvée")
+            
+            # Renommer
+            cursor.execute('UPDATE cigares SET marque = %s WHERE marque = %s', (new_name, old_name))
+            conn.commit()
+            
+            return {
+                "message": f"Marque '{old_name}' renommée en '{new_name}'",
+                "cigares_modifies": count
+            }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
+
+
+@api_router.put("/cigares/admin/rename-module")
+async def rename_module(old_name: str = Query(...), new_name: str = Query(...)):
+    """Renommer un module"""
+    try:
+        with get_mysql_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT COUNT(*) FROM cigares WHERE module = %s', (old_name,))
+            count = cursor.fetchone()[0]
+            
+            if count == 0:
+                raise HTTPException(status_code=404, detail=f"Module '{old_name}' non trouvé")
+            
+            cursor.execute('UPDATE cigares SET module = %s WHERE module = %s', (new_name, old_name))
+            conn.commit()
+            
+            return {
+                "message": f"Module '{old_name}' renommé en '{new_name}'",
+                "cigares_modifies": count
+            }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
+
+
+@api_router.put("/cigares/admin/rename-terroir")
+async def rename_terroir(old_name: str = Query(...), new_name: str = Query(...)):
+    """Renommer un terroir"""
+    try:
+        with get_mysql_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT COUNT(*) FROM cigares WHERE terroir = %s', (old_name,))
+            count = cursor.fetchone()[0]
+            
+            if count == 0:
+                raise HTTPException(status_code=404, detail=f"Terroir '{old_name}' non trouvé")
+            
+            cursor.execute('UPDATE cigares SET terroir = %s WHERE terroir = %s', (new_name, old_name))
+            conn.commit()
+            
+            return {
+                "message": f"Terroir '{old_name}' renommé en '{new_name}'",
+                "cigares_modifies": count
+            }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
+
+
+@api_router.delete("/cigares/admin/delete-marque")
+async def delete_marque(marque: str = Query(...)):
+    """Supprimer tous les cigares d'une marque"""
+    try:
+        with get_mysql_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT COUNT(*) FROM cigares WHERE marque = %s', (marque,))
+            count = cursor.fetchone()[0]
+            
+            if count == 0:
+                raise HTTPException(status_code=404, detail=f"Marque '{marque}' non trouvée")
+            
+            cursor.execute('DELETE FROM cigares WHERE marque = %s', (marque,))
+            conn.commit()
+            
+            return {
+                "message": f"Marque '{marque}' supprimée",
+                "cigares_supprimes": count
+            }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
+
+
+@api_router.get("/cigares/admin/doublons")
+async def detect_doublons():
+    """Détecter les doublons potentiels de marques"""
+    try:
+        import difflib
+        with get_mysql_connection() as conn:
+            cursor = conn.cursor(pymysql.cursors.DictCursor)
+            cursor.execute('''
+                SELECT marque, COUNT(*) as count 
+                FROM cigares 
+                WHERE marque IS NOT NULL AND marque != ''
+                GROUP BY marque 
+                ORDER BY marque
+            ''')
+            marques = cursor.fetchall()
+            
+            # Chercher les doublons
+            marques_list = [(m['marque'], m['count']) for m in marques]
+            doublons = []
+            
+            for i, (m1, c1) in enumerate(marques_list):
+                for m2, c2 in marques_list[i+1:]:
+                    ratio = difflib.SequenceMatcher(None, m1.lower(), m2.lower()).ratio()
+                    if ratio > 0.65 and ratio < 1.0:
+                        doublons.append({
+                            "marque1": m1,
+                            "count1": c1,
+                            "marque2": m2,
+                            "count2": c2,
+                            "similarite": round(ratio * 100)
+                        })
+            
+            # Trier par similarité décroissante
+            doublons.sort(key=lambda x: -x['similarite'])
+            
+            return {"doublons": doublons[:30], "total": len(doublons)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
 def normalize_pays(pays_raw):
     """Normalise les noms de pays pour regrouper les variantes"""
     if not pays_raw:
