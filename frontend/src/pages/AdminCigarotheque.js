@@ -1020,6 +1020,46 @@ const AdminCigarotheque = () => {
                     </p>
                   )}
                 </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-gray-400 text-sm mb-4">
+                      Ces paires de cigares ont été marquées comme "Pas un doublon" et ne s'afficheront plus dans la recherche.
+                    </p>
+                    <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-2">
+                      {doublonsCigaresIgnores.map((item, idx) => (
+                        <div 
+                          key={idx}
+                          className="bg-gray-800/50 border border-gray-700 rounded-lg p-3 flex items-center justify-between"
+                        >
+                          <div className="flex-1">
+                            <span className="text-white">{item.cigare1_nom || `ID ${item.cigare1_id}`}</span>
+                            <span className="text-gray-500 mx-2">↔</span>
+                            <span className="text-white">{item.cigare2_nom || `ID ${item.cigare2_id}`}</span>
+                            <span className="text-gray-500 text-xs ml-2">
+                              ({item.cigare1_marque} / {item.cigare2_marque})
+                            </span>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-red-400 hover:text-red-300 hover:bg-red-900/30"
+                            onClick={() => handleRestaurerDoublonCigare(item.cigare1_id, item.cigare2_id)}
+                            disabled={loading}
+                          >
+                            <RotateCcw className="w-4 h-4 mr-1" />
+                            Restaurer
+                          </Button>
+                        </div>
+                      ))}
+                      {doublonsCigaresIgnores.length === 0 && (
+                        <p className="text-gray-500 text-center py-8">
+                          Aucun doublon de cigares ignoré
+                        </p>
+                      )}
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

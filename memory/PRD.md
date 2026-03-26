@@ -66,9 +66,11 @@ Application de gestion complète pour le club de cigares "La Bague Impériale" a
 - [x] **Activation authentification membre** 
 
 ### P1 - À faire
+- [x] **Ignorer doublons cigares** - Fonctionnalité terminée (26 Mars 2026)
 - [ ] Vérifier que tous les membres peuvent se connecter correctement
 
 ### P2 - Backlog
+- [ ] Supprimer le bouton "Accès direct (Président)" sur la page d'accueil
 - [ ] Bouton "Copier" depuis Apéro du Club vers messages événements
 - [ ] Corriger le nombre de repas Saison 13 (config en DB)
 
@@ -107,6 +109,8 @@ Format: labagueimperialeXX (XX = numéro membre)
 - `/app/frontend/src/context/UserContext.js` - Suppression bypass auto-login
 - `/app/frontend/src/App.js` - Activation ProtectedRoute/AdminRoute
 - `/app/frontend/src/pages/LoginPage.js` - Suppression lien "Mode développement", fix toast
+- `/app/frontend/src/pages/AdminCigarotheque.js` - Ajout section "Ignorés" pour doublons cigares
+- `/app/backend/server.py` - Endpoints pour ignorer/restaurer doublons cigares
 
 ## Tests Effectués
 - ✅ Restauration notes MySQL depuis Excel (474 cigares)
@@ -114,6 +118,9 @@ Format: labagueimperialeXX (XX = numéro membre)
 - ✅ Connexion email/mot de passe
 - ✅ Redirection vers /login si non connecté
 - ✅ Dashboard accessible après connexion
+- ✅ Ignorer doublons cigares (API + UI testés)
+- ✅ Restaurer doublons cigares ignorés
+- ✅ Liste des doublons ignorés avec bouton Restaurer
 
 ## Prochaine étape
 Vérifier avec l'utilisateur que tous les membres peuvent se connecter et que l'application fonctionne correctement en mode production.
