@@ -564,10 +564,10 @@ const LoginPage = () => {
 
                   <div className="bg-[#D4A024]/10 border border-[#D4A024]/30 rounded-lg p-3">
                     <p className="text-sm text-gray-300">
-                      <span className="text-[#D4A024] font-semibold">Rappel :</span> Votre mot de passe par défaut est votre <span className="text-white font-mono">prénom + numéro de membre</span>
+                      <span className="text-[#D4A024] font-semibold">Rappel :</span> Votre code d'activation est <span className="text-white font-mono">labagueimperialeX</span> (X = numéro membre)
                     </p>
                     <p className="text-xs text-gray-400 mt-1">
-                      Exemple : fabien1, jacques3, nini4...
+                      Exemple : labagueimperiale1, labagueimperiale3, labagueimperiale18...
                     </p>
                   </div>
 
