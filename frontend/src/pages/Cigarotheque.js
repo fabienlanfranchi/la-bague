@@ -45,7 +45,8 @@ import {
   SortAsc,
   Check,
   CircleOff,
-  Scale
+  Scale,
+  AlertTriangle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -110,6 +111,9 @@ const Cigarotheque = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editData, setEditData] = useState({});
   const [editLoading, setEditLoading] = useState(false);
+  
+  // Filtre admin: cigares incomplets
+  const [showIncompleteOnly, setShowIncompleteOnly] = useState(false);
   
   // Modal recherche cigare (pour ajouter à Ma Cigarthèque)
   const [showSearchModal, setShowSearchModal] = useState(false);
@@ -236,22 +240,34 @@ const Cigarotheque = () => {
   const loadCigares = async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      params.append('limit', LIMIT);
-      params.append('offset', page * LIMIT);
-      if (search) params.append('search', search);
-      if (marqueFilter && marqueFilter !== 'all') params.append('marque', marqueFilter);
-      if (isCubainFilter === 'true') params.append('is_cubain', 'true');
-      if (isCubainFilter === 'false') params.append('is_cubain', 'false');
-      if (terroirFilter && terroirFilter !== 'all') params.append('terroir', terroirFilter);
-      if (moduleFilter && moduleFilter !== 'all') params.append('module', moduleFilter);
-      if (puissanceFilter && puissanceFilter !== 'all') params.append('puissance', puissanceFilter);
-      if (prixMin) params.append('prix_min', prixMin);
-      if (prixMax) params.append('prix_max', prixMax);
+      // Si mode "À corriger" activé (admin seulement)
+      if (showIncompleteOnly && isAdmin) {
+        const params = new URLSearchParams();
+        params.append('limit', LIMIT);
+        params.append('offset', page * LIMIT);
+        
+        const response = await axios.get(`${API}/cigares-incomplets?${params}`);
+        setCigares(response.data.cigares);
+        setTotal(response.data.total);
+      } else {
+        // Mode normal
+        const params = new URLSearchParams();
+        params.append('limit', LIMIT);
+        params.append('offset', page * LIMIT);
+        if (search) params.append('search', search);
+        if (marqueFilter && marqueFilter !== 'all') params.append('marque', marqueFilter);
+        if (isCubainFilter === 'true') params.append('is_cubain', 'true');
+        if (isCubainFilter === 'false') params.append('is_cubain', 'false');
+        if (terroirFilter && terroirFilter !== 'all') params.append('terroir', terroirFilter);
+        if (moduleFilter && moduleFilter !== 'all') params.append('module', moduleFilter);
+        if (puissanceFilter && puissanceFilter !== 'all') params.append('puissance', puissanceFilter);
+        if (prixMin) params.append('prix_min', prixMin);
+        if (prixMax) params.append('prix_max', prixMax);
 
-      const response = await axios.get(`${API}/cigares?${params}`);
-      setCigares(response.data.cigares);
-      setTotal(response.data.total);
+        const response = await axios.get(`${API}/cigares?${params}`);
+        setCigares(response.data.cigares);
+        setTotal(response.data.total);
+      }
     } catch (error) {
       console.error('Erreur chargement cigares:', error);
       toast.error('Erreur lors du chargement des cigares');
@@ -319,7 +335,7 @@ const Cigarotheque = () => {
     } else {
       loadCigares();
     }
-  }, [page, search, marqueFilter, isCubainFilter, terroirFilter, moduleFilter, puissanceFilter, prixMin, prixMax, collectionFilter, maCigarotheque]);
+  }, [page, search, marqueFilter, isCubainFilter, terroirFilter, moduleFilter, puissanceFilter, prixMin, prixMax, collectionFilter, maCigarotheque, showIncompleteOnly, isAdmin]);
 
   // Filtrer les cigares selon le filtre "pas dans ma collection" uniquement
   const filteredCigares = useMemo(() => {
@@ -1018,6 +1034,22 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
                   <Button type="submit" className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] h-12 px-6" data-testid="search-btn">
                     <Search className="w-5 h-5" />
                   </Button>
+                  
+                  {/* Bouton Admin: Cigares à corriger */}
+                  {isAdmin && (
+                    <Button 
+                      type="button"
+                      onClick={() => {
+                        setShowIncompleteOnly(!showIncompleteOnly);
+                        setPage(0);
+                      }}
+                      className={`h-12 px-4 ${showIncompleteOnly ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-600 hover:bg-orange-700'} text-white`}
+                      data-testid="filter-incomplete-btn"
+                    >
+                      <AlertTriangle className="w-5 h-5 mr-2" />
+                      {showIncompleteOnly ? 'Voir tous' : 'À corriger'}
+                    </Button>
+                  )}
                 </div>
 
                 {/* Filtres */}
@@ -1158,6 +1190,26 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
               </form>
             </CardContent>
           </Card>
+
+          {/* Bannière mode "À corriger" */}
+          {showIncompleteOnly && isAdmin && (
+            <div className="bg-orange-600/20 border border-orange-500 rounded-lg p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="w-6 h-6 text-orange-500" />
+                <div>
+                  <p className="text-orange-400 font-semibold">Mode correction activé</p>
+                  <p className="text-orange-300 text-sm">{total} cigare(s) incomplet(s) à corriger (sans nom, marque, module ou description)</p>
+                </div>
+              </div>
+              <Button 
+                onClick={() => setShowIncompleteOnly(false)} 
+                variant="outline" 
+                className="border-orange-500 text-orange-400 hover:bg-orange-500/20"
+              >
+                Désactiver
+              </Button>
+            </div>
+          )}
 
           {/* Liste des cigares */}
           {loading ? (

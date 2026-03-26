@@ -4041,6 +4041,65 @@ async def get_cigare_detail(cigare_id: int):
         raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
 
 
+@api_router.get("/cigares-incomplets")
+async def get_cigares_incomplets(
+    limit: int = Query(50, le=500),
+    offset: int = Query(0)
+):
+    """Récupérer les cigares incomplets (admin seulement) - sans nom, sans marque, sans module, ou marqués 'A MODIFIER'"""
+    try:
+        with get_mysql_connection() as conn:
+            cursor = conn.cursor(pymysql.cursors.DictCursor)
+            
+            # Cigares incomplets: sans nom_cigare, sans marque, sans module, ou avec "A MODIFIER"
+            query = """
+                SELECT * FROM cigares 
+                WHERE (nom_cigare IS NULL OR nom_cigare = '' OR nom_cigare LIKE '%%A MODIFIER%%')
+                   OR (marque IS NULL OR marque = '' OR marque = 'A Modifier')
+                   OR (module IS NULL OR module = '')
+                   OR (premier_tiers IS NULL OR premier_tiers = '')
+                ORDER BY 
+                    CASE 
+                        WHEN marque = 'A Modifier' OR marque IS NULL THEN 0
+                        WHEN nom_cigare LIKE '%%A MODIFIER%%' THEN 1
+                        WHEN module IS NULL OR module = '' THEN 2
+                        ELSE 3
+                    END,
+                    marque, nom_cigare
+                LIMIT %s OFFSET %s
+            """
+            cursor.execute(query, (limit, offset))
+            cigares = cursor.fetchall()
+            
+            # Compter le total
+            count_query = """
+                SELECT COUNT(*) as cnt FROM cigares 
+                WHERE (nom_cigare IS NULL OR nom_cigare = '' OR nom_cigare LIKE '%%A MODIFIER%%')
+                   OR (marque IS NULL OR marque = '' OR marque = 'A Modifier')
+                   OR (module IS NULL OR module = '')
+                   OR (premier_tiers IS NULL OR premier_tiers = '')
+            """
+            cursor.execute(count_query)
+            total = cursor.fetchone()['cnt']
+            
+            # Ajouter les infos d'affichage
+            for cigare in cigares:
+                marque_display, gamme_display = get_marque_display(cigare.get('marque'), cigare.get('gamme'))
+                cigare['marque_display'] = marque_display
+                cigare['gamme_display'] = gamme_display
+                if cigare.get('created_at'):
+                    cigare['created_at'] = str(cigare['created_at'])
+            
+            return {
+                "cigares": cigares,
+                "total": total,
+                "limit": limit,
+                "offset": offset
+            }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
+
+
 # Fonction pour normaliser les noms de pays
 def normalize_pays(pays_raw):
     """Normalise les noms de pays pour regrouper les variantes"""
