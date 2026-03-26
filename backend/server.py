@@ -159,6 +159,20 @@ class ValidateAccountRequest(BaseModel):
     use_temp_password: bool = False  # Si True, garder le code temporaire comme mot de passe
 
 
+class ActivateAccountRequest(BaseModel):
+    """Activation par prénom + nom + numéro membre"""
+    prenom: str
+    nom: str
+    numero_membre: int
+
+
+class CreatePasswordRequest(BaseModel):
+    """Création du mot de passe après activation"""
+    member_id: str
+    email: EmailStr
+    password: str
+
+
 # ============ DEMANDES MOT DE PASSE OUBLIÉ - MODELS ============
 
 class DemandeMotDePasse(BaseModel):
@@ -185,6 +199,16 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 def generate_temporary_password(numero_membre: int) -> str:
     return f"labagueimperiale{numero_membre}"
+
+
+def generate_default_password(prenom: str, numero_membre: int) -> str:
+    """Génère le mot de passe par défaut : prénomlabagueX"""
+    import unicodedata
+    # Normaliser le prénom (enlever accents, minuscules, pas d'espaces)
+    prenom_clean = unicodedata.normalize('NFD', prenom.lower())
+    prenom_clean = ''.join(c for c in prenom_clean if unicodedata.category(c) != 'Mn')
+    prenom_clean = prenom_clean.replace(' ', '').replace('-', '')
+    return f"{prenom_clean}labague{numero_membre}"
 
 
 # Get current user from session
@@ -330,6 +354,104 @@ async def login(request: Request, login_data: LoginRequest):
         )
 
 
+@api_router.post("/auth/activate")
+async def activate_account(request: Request, data: ActivateAccountRequest):
+    """Activation du compte par prénom + nom + numéro membre
+    
+    Étape 1 du nouveau flux : le membre s'identifie avec ses infos
+    """
+    prenom_clean = data.prenom.strip()
+    nom_clean = data.nom.strip()
+    numero = data.numero_membre
+    
+    # Chercher le membre par numéro
+    member = await db.members.find_one({"numero_membre": numero}, {"_id": 0})
+    
+    if not member:
+        raise HTTPException(status_code=404, detail=f"Aucun membre trouvé avec le numéro {numero}")
+    
+    # Vérifier que le nom correspond (partiellement)
+    nom_complet_db = member.get('nom_complet', '').lower()
+    if nom_clean.lower() not in nom_complet_db and prenom_clean.lower() not in nom_complet_db:
+        raise HTTPException(
+            status_code=401, 
+            detail="Le nom ou prénom ne correspond pas au membre n°" + str(numero)
+        )
+    
+    # Vérifier si le compte est déjà activé (a un mot de passe)
+    if member.get('is_validated') and member.get('password_hash'):
+        return {
+            "message": "Compte déjà activé",
+            "member": member,
+            "needs_password": False
+        }
+    
+    # Compte non activé - besoin de créer un mot de passe
+    request.session['member_id'] = member['id']
+    
+    return {
+        "message": "Membre trouvé ! Créez votre mot de passe.",
+        "member": member,
+        "needs_password": True
+    }
+
+
+@api_router.post("/auth/create-password")
+async def create_password(request: Request, data: CreatePasswordRequest):
+    """Création du mot de passe après activation
+    
+    Étape 2 : le membre définit son email et mot de passe
+    """
+    member = await db.members.find_one({"id": data.member_id}, {"_id": 0})
+    
+    if not member:
+        raise HTTPException(status_code=404, detail="Membre non trouvé")
+    
+    # Vérifier si l'email est déjà utilisé par un autre membre
+    existing = await db.members.find_one({
+        "email": {"$regex": f"^{data.email}$", "$options": "i"},
+        "id": {"$ne": data.member_id}
+    })
+    if existing:
+        raise HTTPException(status_code=400, detail="Cet email est déjà utilisé par un autre membre")
+    
+    # Hasher le mot de passe
+    password_hash = hash_password(data.password)
+    
+    # Extraire le prénom pour générer le mot de passe par défaut (pour référence)
+    prenom = member.get('nom_complet', '').split()[0] if member.get('nom_complet') else ''
+    default_pwd = generate_default_password(prenom, member.get('numero_membre', 0))
+    
+    # Mettre à jour le membre
+    now = datetime.now(timezone.utc).isoformat()
+    await db.members.update_one(
+        {"id": data.member_id},
+        {
+            "$set": {
+                "email": data.email,
+                "password_hash": password_hash,
+                "password_clair": data.password,  # Stocker en clair pour l'admin
+                "default_password": default_pwd,   # Mot de passe par défaut de référence
+                "is_validated": True,
+                "compte_valide": True,
+                "validated_at": now,
+                "updated_at": now
+            }
+        }
+    )
+    
+    # Récupérer le membre mis à jour
+    updated_member = await db.members.find_one({"id": data.member_id}, {"_id": 0})
+    
+    # Stocker en session
+    request.session['member_id'] = updated_member['id']
+    
+    return {
+        "message": "Compte activé avec succès !",
+        "member": updated_member
+    }
+
+
 @api_router.post("/auth/validate-account")
 async def validate_account(request: Request, data: ValidateAccountRequest):
     """Valider le compte en ajoutant email et mot de passe
@@ -418,7 +540,7 @@ class ForgotPasswordRequest(BaseModel):
 async def forgot_password(data: ForgotPasswordRequest):
     """Mot de passe oublié - Réinitialise au mot de passe par défaut ET notifie l'admin"""
     # Chercher le membre par email
-    member = await db.members.find_one({"email": data.email}, {"_id": 0})
+    member = await db.members.find_one({"email": {"$regex": f"^{data.email}$", "$options": "i"}}, {"_id": 0})
     
     if member:
         # Vérifier s'il y a déjà une demande en attente pour ce membre
@@ -433,8 +555,12 @@ async def forgot_password(data: ForgotPasswordRequest):
                 "demande_existante": True
             }
         
-        # RÉINITIALISER le mot de passe à la clé d'activation (temporary_password)
-        default_password = member.get('temporary_password', f"labagueimperiale{member.get('numero_membre', '')}")
+        # Générer le mot de passe par défaut : prénomlabagueX
+        prenom = member.get('nom_complet', '').split()[0] if member.get('nom_complet') else 'membre'
+        numero = member.get('numero_membre', 0)
+        default_password = generate_default_password(prenom, numero)
+        
+        # Hasher et mettre à jour
         new_hash = hash_password(default_password)
         
         await db.members.update_one(
@@ -442,18 +568,28 @@ async def forgot_password(data: ForgotPasswordRequest):
             {
                 "$set": {
                     "password_hash": new_hash,
+                    "password_clair": default_password,
                     "updated_at": datetime.now(timezone.utc).isoformat()
                 }
             }
         )
         
-        # Créer une notification pour l'admin
+        # Récupérer le téléphone du membre pour WhatsApp
+        telephone = member.get('telephone', '')
+        
+        # Message pré-rempli pour WhatsApp
+        message_whatsapp = f"Bonjour {prenom},\n\nTon mot de passe La Bague Impériale a été réinitialisé.\n\nNouveau mot de passe : {default_password}\n\nÀ bientôt !"
+        
+        # Créer une notification pour l'admin avec infos WhatsApp
         demande = {
             "id": str(uuid.uuid4()),
             "membre_id": member['id'],
             "membre_nom": member.get('nom_complet', ''),
+            "membre_numero": numero,
             "membre_email": data.email,
-            "mot_de_passe_reinitialise": default_password,  # Stocker le MDP réinitialisé
+            "membre_telephone": telephone,
+            "mot_de_passe_reinitialise": default_password,
+            "message_whatsapp": message_whatsapp,
             "statut": "en_attente",
             "created_at": datetime.now(timezone.utc).isoformat()
         }

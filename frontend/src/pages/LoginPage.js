@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { LogIn, UserPlus, KeyRound, Mail, Lock, User } from 'lucide-react';
+import { LogIn, UserPlus, KeyRound, Mail, Lock, User, Hash } from 'lucide-react';
 import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -18,11 +18,11 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('activation');
 
-  // État pour l'activation de compte (première connexion)
+  // État pour l'activation de compte (Prénom + Nom + Numéro membre)
   const [activationData, setActivationData] = useState({
     nom: '',
     prenom: '',
-    code: '' // labagueimperialeXX
+    numeroMembre: ''
   });
 
   // État pour la connexion normale (email + mot de passe)
@@ -32,61 +32,66 @@ const LoginPage = () => {
     stayLoggedIn: false
   });
 
-  // État pour la validation du compte (après activation)
-  const [showValidation, setShowValidation] = useState(false);
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
-  const [useTempPassword, setUseTempPassword] = useState(false); // Garder le code temporaire comme MDP
-  const [validationData, setValidationData] = useState({
+  // État pour la création de mot de passe (première connexion après activation)
+  const [showPasswordCreation, setShowPasswordCreation] = useState(false);
+  const [passwordCreationData, setPasswordCreationData] = useState({
     memberId: '',
+    memberName: '',
+    memberNumero: '',
     email: '',
     password: '',
     confirmPassword: ''
   });
 
-  // Activation du compte (première connexion)
+  // État pour mot de passe oublié
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
+
+  // Générer le mot de passe par défaut suggéré
+  const getDefaultPassword = (prenom, numero) => {
+    const prenomClean = prenom.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '');
+    return `${prenomClean}labague${numero}`;
+  };
+
+  // Activation du compte (Prénom + Nom + Numéro membre)
   const handleActivation = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const response = await axios.post(`${API_URL}/api/auth/login`, {
+      const response = await axios.post(`${API_URL}/api/auth/activate`, {
         nom: activationData.nom.trim(),
         prenom: activationData.prenom.trim(),
-        temporary_password: activationData.code.trim().toLowerCase()
+        numero_membre: parseInt(activationData.numeroMembre)
       });
 
-      const { member, needs_validation } = response.data;
+      const { member, needs_password } = response.data;
 
-      if (needs_validation) {
-        // Compte pas encore validé - afficher le formulaire de validation
-        // Pré-remplir le mot de passe avec la clé d'activation (suggéré)
-        const codeActivation = activationData.code.trim().toLowerCase();
-        setValidationData({
-          ...validationData,
+      if (needs_password) {
+        // Première fois - demander de créer un mot de passe
+        const suggestedPassword = getDefaultPassword(activationData.prenom, activationData.numeroMembre);
+        setPasswordCreationData({
           memberId: member.id,
-          password: codeActivation,         // Pré-remplir avec la clé
-          confirmPassword: codeActivation   // Pré-remplir avec la clé
+          memberName: member.nom_complet,
+          memberNumero: activationData.numeroMembre,
+          email: member.email || '',
+          password: suggestedPassword,
+          confirmPassword: suggestedPassword
         });
-        setShowValidation(true);
-        toast.info('Compte trouvé ! Confirmez votre email et mot de passe.');
+        setShowPasswordCreation(true);
+        toast.info('Compte trouvé ! Créez votre mot de passe.');
       } else {
-        // Compte déjà validé - rediriger vers connexion email
+        // Compte déjà activé
         toast.warning('Ce compte est déjà activé. Connectez-vous avec votre email.');
         setActiveTab('connexion');
       }
     } catch (error) {
       console.error('Erreur activation:', error);
-      let message = 'Erreur lors de l\'activation';
+      let message = 'Membre non trouvé. Vérifiez vos informations.';
       if (error.response?.data?.detail) {
         const detail = error.response.data.detail;
-        // Si c'est un objet (erreur Pydantic), extraire le message
         if (typeof detail === 'string') {
           message = detail;
-        } else if (Array.isArray(detail)) {
-          message = detail.map(e => e.msg || e).join(', ');
-        } else if (detail.msg) {
-          message = detail.msg;
         }
       }
       toast.error(message);
@@ -95,53 +100,41 @@ const LoginPage = () => {
     }
   };
 
-  // Validation du compte (définir email + mot de passe)
-  const handleValidation = async (e) => {
+  // Création du mot de passe (après activation)
+  const handlePasswordCreation = async (e) => {
     e.preventDefault();
 
-    // Si on utilise le code temporaire, pas besoin de vérifier les mots de passe
-    if (!useTempPassword) {
-      if (validationData.password !== validationData.confirmPassword) {
-        toast.error('Les mots de passe ne correspondent pas');
-        return;
-      }
+    if (passwordCreationData.password !== passwordCreationData.confirmPassword) {
+      toast.error('Les mots de passe ne correspondent pas');
+      return;
+    }
 
-      if (validationData.password.length < 4) {
-        toast.error('Le mot de passe doit contenir au moins 4 caractères');
-        return;
-      }
+    if (passwordCreationData.password.length < 4) {
+      toast.error('Le mot de passe doit contenir au moins 4 caractères');
+      return;
     }
 
     setLoading(true);
 
     try {
-      const response = await axios.post(`${API_URL}/api/auth/validate-account`, {
-        member_id: validationData.memberId,
-        email: validationData.email,
-        password: useTempPassword ? 'temp' : validationData.password,
-        confirm_password: useTempPassword ? 'temp' : validationData.confirmPassword,
-        use_temp_password: useTempPassword
+      const response = await axios.post(`${API_URL}/api/auth/create-password`, {
+        member_id: passwordCreationData.memberId,
+        email: passwordCreationData.email,
+        password: passwordCreationData.password
       });
 
       const { member } = response.data;
 
-      // Connecter l'utilisateur (le mode est automatiquement défini par setCurrentMember)
+      // Connecter l'utilisateur
       setCurrentMember(member);
 
       toast.success('Compte activé avec succès ! Bienvenue !');
       navigate('/dashboard');
     } catch (error) {
-      console.error('Erreur validation:', error);
-      let message = 'Erreur lors de la validation';
+      console.error('Erreur création mot de passe:', error);
+      let message = 'Erreur lors de la création du mot de passe';
       if (error.response?.data?.detail) {
-        const detail = error.response.data.detail;
-        if (typeof detail === 'string') {
-          message = detail;
-        } else if (Array.isArray(detail)) {
-          message = detail.map(e => e.msg || e).join(', ');
-        } else if (detail.msg) {
-          message = detail.msg;
-        }
+        message = error.response.data.detail;
       }
       toast.error(message);
     } finally {
@@ -162,10 +155,9 @@ const LoginPage = () => {
 
       const { member } = response.data;
 
-      // Connecter l'utilisateur (le mode est automatiquement défini par setCurrentMember)
+      // Connecter l'utilisateur
       setCurrentMember(member);
 
-      // Si "rester connecté", stocker en localStorage
       if (loginData.stayLoggedIn) {
         localStorage.setItem('rememberedMember', JSON.stringify({
           id: member.id,
@@ -182,10 +174,6 @@ const LoginPage = () => {
         const detail = error.response.data.detail;
         if (typeof detail === 'string') {
           message = detail;
-        } else if (Array.isArray(detail)) {
-          message = detail.map(e => e.msg || e).join(', ');
-        } else if (detail.msg) {
-          message = detail.msg;
         }
       }
       toast.error(message);
@@ -204,9 +192,8 @@ const LoginPage = () => {
         email: forgotPasswordEmail
       });
 
-      // Nouveau message: demande envoyée au président
       if (response.data.demande_creee) {
-        toast.success('Votre demande a été envoyée au président. Il vous contactera rapidement avec votre mot de passe.');
+        toast.success('Votre mot de passe a été réinitialisé. Le président va vous contacter avec votre nouveau mot de passe.');
       } else if (response.data.demande_existante) {
         toast.info('Une demande est déjà en cours. Le président va vous contacter.');
       } else {
@@ -215,7 +202,6 @@ const LoginPage = () => {
       setShowForgotPassword(false);
       setForgotPasswordEmail('');
     } catch (error) {
-      // On affiche un message générique pour ne pas révéler si l'email existe
       toast.info('Si cet email existe dans notre base, le président sera notifié.');
       setShowForgotPassword(false);
     } finally {
@@ -253,29 +239,30 @@ const LoginPage = () => {
           <p className="text-gray-400 text-sm">Club Cigare - Espace Membres</p>
         </div>
 
-        {/* Formulaire de validation (après activation) */}
-        {showValidation ? (
+        {/* Formulaire de création de mot de passe (après activation) */}
+        {showPasswordCreation ? (
           <Card className="bg-[#1a1a1a]/95 border-2 border-[#D4A024]/50 backdrop-blur-md">
             <CardHeader>
               <CardTitle className="text-xl font-serif text-[#D4A024] flex items-center">
-                <UserPlus className="w-5 h-5 mr-2" />
-                Finaliser l'activation
+                <Lock className="w-5 h-5 mr-2" />
+                Créer votre mot de passe
               </CardTitle>
               <CardDescription className="text-gray-400">
-                Définissez votre email et mot de passe pour sécuriser votre compte
+                Bienvenue <span className="text-white">{passwordCreationData.memberName}</span> !
+                <br />Choisissez votre mot de passe pour finaliser l'activation.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleValidation} className="space-y-4">
+              <form onSubmit={handlePasswordCreation} className="space-y-4">
                 <div>
-                  <Label htmlFor="val-email" className="text-white">Email *</Label>
+                  <Label htmlFor="val-email" className="text-white">Votre email</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
                     <Input
                       id="val-email"
                       type="email"
-                      value={validationData.email}
-                      onChange={(e) => setValidationData({...validationData, email: e.target.value})}
+                      value={passwordCreationData.email}
+                      onChange={(e) => setPasswordCreationData({...passwordCreationData, email: e.target.value})}
                       placeholder="votre@email.com"
                       className="pl-10 bg-black/50 border-[#D4A024]/30 text-white"
                       required
@@ -283,104 +270,86 @@ const LoginPage = () => {
                   </div>
                 </div>
 
-                {/* Option: Garder le code temporaire comme mot de passe */}
-                <div className="bg-blue-900/20 border border-blue-600/30 rounded-lg p-4">
-                  <label className="flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={useTempPassword}
-                      onChange={(e) => setUseTempPassword(e.target.checked)}
-                      className="w-4 h-4 mr-3 accent-[#D4A024]"
-                    />
-                    <span className="text-white text-sm">
-                      Garder mon code d'activation comme mot de passe
+                {/* Suggestion de mot de passe */}
+                <div className="bg-[#D4A024]/10 border border-[#D4A024]/30 rounded-lg p-3">
+                  <p className="text-sm text-gray-300">
+                    <span className="text-[#D4A024] font-semibold">Suggestion :</span> Utilisez 
+                    <span className="text-white font-mono ml-1">
+                      {getDefaultPassword(passwordCreationData.memberName?.split(' ')[0] || 'prenom', passwordCreationData.memberNumero)}
                     </span>
-                  </label>
-                  <p className="text-xs text-gray-400 mt-2 ml-7">
-                    Votre code <span className="text-[#D4A024] font-mono">labagueimperialeXX</span> deviendra votre mot de passe.
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Format : prénomlabague + numéro membre
                   </p>
                 </div>
 
-                {!useTempPassword && (
-                  <>
-                    <div>
-                      <Label htmlFor="val-password" className="text-white">Nouveau mot de passe *</Label>
-                      <div className="relative">
-                        <Lock className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                        <Input
-                          id="val-password"
-                          type="password"
-                          value={validationData.password}
-                          onChange={(e) => setValidationData({...validationData, password: e.target.value})}
-                          placeholder="Minimum 4 caractères"
-                          className="pl-10 bg-black/50 border-[#D4A024]/30 text-white"
-                          required
-                        />
-                      </div>
-                    </div>
+                <div>
+                  <Label htmlFor="val-password" className="text-white">Mot de passe</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                    <Input
+                      id="val-password"
+                      type="password"
+                      value={passwordCreationData.password}
+                      onChange={(e) => setPasswordCreationData({...passwordCreationData, password: e.target.value})}
+                      placeholder="Votre mot de passe"
+                      className="pl-10 bg-black/50 border-[#D4A024]/30 text-white"
+                      required
+                    />
+                  </div>
+                </div>
 
-                    <div>
-                      <Label htmlFor="val-confirm" className="text-white">Confirmer le mot de passe *</Label>
-                      <div className="relative">
-                        <Lock className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                        <Input
-                          id="val-confirm"
-                          type="password"
-                          value={validationData.confirmPassword}
-                          onChange={(e) => setValidationData({...validationData, confirmPassword: e.target.value})}
-                          placeholder="Confirmez votre mot de passe"
-                          className="pl-10 bg-black/50 border-[#D4A024]/30 text-white"
-                          required
-                        />
-                      </div>
-                    </div>
+                <div>
+                  <Label htmlFor="val-confirm" className="text-white">Confirmer le mot de passe</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                    <Input
+                      id="val-confirm"
+                      type="password"
+                      value={passwordCreationData.confirmPassword}
+                      onChange={(e) => setPasswordCreationData({...passwordCreationData, confirmPassword: e.target.value})}
+                      placeholder="Confirmer le mot de passe"
+                      className="pl-10 bg-black/50 border-[#D4A024]/30 text-white"
+                      required
+                    />
+                  </div>
+                </div>
 
-                    {/* Conseil mot de passe */}
-                    <div className="bg-green-900/20 border border-green-600/30 rounded-lg p-3">
-                      <p className="text-sm text-gray-300">
-                        <span className="text-green-400 font-semibold">💡 Recommandé :</span> Gardez votre <span className="text-white font-mono">clé d'activation</span> comme mot de passe
-                      </p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        Elle est déjà pré-remplie ci-dessus. En cas d'oubli, elle sera facilement récupérable.
-                      </p>
-                    </div>
-                  </>
-                )}
-
-                <Button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-bold font-serif"
-                >
-                  {loading ? 'Activation...' : 'Activer mon compte'}
-                </Button>
-
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setShowValidation(false)}
-                  className="w-full text-gray-400 hover:text-white"
-                >
-                  Retour
-                </Button>
+                <div className="flex space-x-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowPasswordCreation(false)}
+                    className="flex-1 border-gray-600 text-gray-300"
+                  >
+                    Retour
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    className="flex-1 bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-bold"
+                  >
+                    {loading ? 'Activation...' : 'Activer mon compte'}
+                  </Button>
+                </div>
               </form>
             </CardContent>
           </Card>
         ) : (
-          /* Tabs Activation / Connexion */
+          /* Onglets Activation / Connexion */
           <Card className="bg-[#1a1a1a]/95 border-2 border-[#D4A024]/50 backdrop-blur-md">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="grid w-full grid-cols-2 bg-black/50">
                 <TabsTrigger 
                   value="activation" 
-                  className="data-[state=active]:bg-[#D4A024] data-[state=active]:text-[#7A2020]"
+                  className="data-[state=active]:bg-[#D4A024]/20 data-[state=active]:text-[#D4A024]"
                 >
                   <KeyRound className="w-4 h-4 mr-2" />
                   Activation
                 </TabsTrigger>
                 <TabsTrigger 
                   value="connexion"
-                  className="data-[state=active]:bg-[#D4A024] data-[state=active]:text-[#7A2020]"
+                  className="data-[state=active]:bg-[#D4A024]/20 data-[state=active]:text-[#D4A024]"
                 >
                   <LogIn className="w-4 h-4 mr-2" />
                   Connexion
@@ -394,7 +363,7 @@ const LoginPage = () => {
                     Première connexion
                   </CardTitle>
                   <CardDescription className="text-gray-400">
-                    Entrez vos informations et le code reçu du Président
+                    Entrez vos informations pour activer votre compte
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -425,20 +394,22 @@ const LoginPage = () => {
                     </div>
 
                     <div>
-                      <Label htmlFor="code" className="text-white">Code d'activation</Label>
+                      <Label htmlFor="numero" className="text-white">Numéro de membre</Label>
                       <div className="relative">
-                        <KeyRound className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                        <Hash className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
                         <Input
-                          id="code"
-                          value={activationData.code}
-                          onChange={(e) => setActivationData({...activationData, code: e.target.value})}
-                          placeholder="labagueimperialeXX"
+                          id="numero"
+                          type="number"
+                          min="1"
+                          value={activationData.numeroMembre}
+                          onChange={(e) => setActivationData({...activationData, numeroMembre: e.target.value})}
+                          placeholder="1"
                           className="pl-10 bg-black/50 border-[#D4A024]/30 text-white"
                           required
                         />
                       </div>
                       <p className="text-xs text-gray-500 mt-1">
-                        Code fourni par le Président du club
+                        Numéro fourni par le Président du club
                       </p>
                     </div>
 
@@ -497,21 +468,21 @@ const LoginPage = () => {
                       </div>
                     </div>
 
-                    {/* Rester connecté */}
                     <div className="flex items-center justify-between">
                       <label className="flex items-center space-x-2 cursor-pointer">
                         <input
                           type="checkbox"
                           checked={loginData.stayLoggedIn}
                           onChange={(e) => setLoginData({...loginData, stayLoggedIn: e.target.checked})}
-                          className="w-4 h-4 accent-[#D4A024] rounded"
+                          className="w-4 h-4 rounded border-gray-600 bg-black/50 text-[#D4A024] focus:ring-[#D4A024]"
                         />
-                        <span className="text-gray-300 text-sm">Rester connecté</span>
+                        <span className="text-sm text-gray-400">Rester connecté</span>
                       </label>
+
                       <button
                         type="button"
                         onClick={() => setShowForgotPassword(true)}
-                        className="text-[#D4A024] text-sm hover:underline"
+                        className="text-sm text-[#D4A024] hover:underline"
                       >
                         Mot de passe oublié ?
                       </button>
@@ -541,7 +512,7 @@ const LoginPage = () => {
                   Mot de passe oublié
                 </CardTitle>
                 <CardDescription className="text-gray-400">
-                  Entrez votre email pour recevoir vos identifiants
+                  Entrez votre email. Votre mot de passe sera réinitialisé et le président vous contactera.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -564,10 +535,11 @@ const LoginPage = () => {
 
                   <div className="bg-[#D4A024]/10 border border-[#D4A024]/30 rounded-lg p-3">
                     <p className="text-sm text-gray-300">
-                      <span className="text-[#D4A024] font-semibold">Rappel :</span> Votre code d'activation est <span className="text-white font-mono">labagueimperialeX</span> (X = numéro membre)
+                      <span className="text-[#D4A024] font-semibold">Info :</span> Votre mot de passe sera réinitialisé au format par défaut 
+                      <span className="text-white font-mono ml-1">prénomlabagueX</span>
                     </p>
                     <p className="text-xs text-gray-400 mt-1">
-                      Exemple : labagueimperiale1, labagueimperiale3, labagueimperiale18...
+                      Le président vous contactera pour vous le communiquer.
                     </p>
                   </div>
 
@@ -585,7 +557,7 @@ const LoginPage = () => {
                       disabled={loading}
                       className="flex-1 bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-bold"
                     >
-                      {loading ? 'Envoi...' : 'Récupérer'}
+                      {loading ? 'Envoi...' : 'Réinitialiser'}
                     </Button>
                   </div>
                 </form>
