@@ -4153,6 +4153,137 @@ async def get_cigares(
         raise HTTPException(status_code=500, detail=f"Erreur base cigares: {str(e)}")
 
 
+@api_router.get("/cigares/doublons-potentiels")
+async def detect_doublons_cigares(
+    search: str = Query(None, description="Rechercher des doublons par nom")
+):
+    """Détecter les doublons potentiels de cigares (même nom ou nom similaire)"""
+    try:
+        import difflib
+        with get_mysql_connection() as conn:
+            cursor = conn.cursor(pymysql.cursors.DictCursor)
+            
+            if search:
+                # Rechercher les cigares correspondants
+                cursor.execute('''
+                    SELECT id, nom_cigare, marque, gamme, module,
+                           premier_tiers IS NOT NULL AND premier_tiers != '' as has_notes,
+                           (nom_cigare IS NOT NULL AND nom_cigare != '' AND nom_cigare NOT LIKE '%%MODIFIER%%') as has_nom
+                    FROM cigares 
+                    WHERE nom_cigare LIKE %s OR marque LIKE %s
+                    ORDER BY nom_cigare
+                ''', (f'%{search}%', f'%{search}%'))
+            else:
+                # Récupérer tous les cigares
+                cursor.execute('''
+                    SELECT id, nom_cigare, marque, gamme, module,
+                           premier_tiers IS NOT NULL AND premier_tiers != '' as has_notes,
+                           (nom_cigare IS NOT NULL AND nom_cigare != '' AND nom_cigare NOT LIKE '%%MODIFIER%%') as has_nom
+                    FROM cigares 
+                    ORDER BY nom_cigare
+                    LIMIT 500
+                ''')
+            
+            cigares = cursor.fetchall()
+            
+            # Chercher les doublons (même nom+marque ou très similaires)
+            doublons = []
+            seen = set()
+            
+            for i, c1 in enumerate(cigares):
+                for c2 in cigares[i+1:]:
+                    # Créer une clé unique pour éviter les doublons
+                    pair_key = tuple(sorted([c1['id'], c2['id']]))
+                    if pair_key in seen:
+                        continue
+                    
+                    nom1 = (c1.get('nom_cigare') or '').lower()
+                    nom2 = (c2.get('nom_cigare') or '').lower()
+                    marque1 = (c1.get('marque') or '').lower()
+                    marque2 = (c2.get('marque') or '').lower()
+                    
+                    # Même marque et noms similaires
+                    if marque1 == marque2 and nom1 and nom2:
+                        ratio = difflib.SequenceMatcher(None, nom1, nom2).ratio()
+                        if ratio > 0.7:
+                            seen.add(pair_key)
+                            doublons.append({
+                                "cigare1": {
+                                    "id": c1['id'],
+                                    "nom": c1['nom_cigare'],
+                                    "marque": c1['marque'],
+                                    "gamme": c1['gamme'],
+                                    "module": c1['module'],
+                                    "has_notes": bool(c1['has_notes']),
+                                    "has_nom": bool(c1['has_nom'])
+                                },
+                                "cigare2": {
+                                    "id": c2['id'],
+                                    "nom": c2['nom_cigare'],
+                                    "marque": c2['marque'],
+                                    "gamme": c2['gamme'],
+                                    "module": c2['module'],
+                                    "has_notes": bool(c2['has_notes']),
+                                    "has_nom": bool(c2['has_nom'])
+                                },
+                                "similarite": round(ratio * 100)
+                            })
+            
+            # Trier par similarité décroissante
+            doublons.sort(key=lambda x: -x['similarite'])
+            
+            return {"doublons": doublons[:50], "total": len(doublons)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur doublons cigares: {str(e)}")
+
+
+@api_router.get("/cigares/fusionner-preview")
+async def preview_fusion_cigares(
+    cigare1_id: int = Query(...),
+    cigare2_id: int = Query(...)
+):
+    """Prévisualiser la fusion de deux cigares"""
+    try:
+        with get_mysql_connection() as conn:
+            cursor = conn.cursor(pymysql.cursors.DictCursor)
+            
+            cursor.execute('SELECT * FROM cigares WHERE id IN (%s, %s)', (cigare1_id, cigare2_id))
+            cigares = cursor.fetchall()
+            
+            if len(cigares) != 2:
+                raise HTTPException(status_code=404, detail="Un ou plusieurs cigares non trouvés")
+            
+            c1 = cigares[0] if cigares[0]['id'] == cigare1_id else cigares[1]
+            c2 = cigares[1] if cigares[0]['id'] == cigare1_id else cigares[0]
+            
+            # Préparer la prévisualisation
+            preview = {
+                "cigare1": {k: v for k, v in c1.items() if k != 'created_at'},
+                "cigare2": {k: v for k, v in c2.items() if k != 'created_at'},
+                "champs_a_fusionner": []
+            }
+            
+            # Identifier les champs qui seront fusionnés
+            fields = ['premier_tiers', 'deuxieme_tiers', 'troisieme_tiers', 'conclusion',
+                     'module', 'vitole', 'gamme', 'terroir', 'puissance', 'dimensions']
+            
+            for field in fields:
+                v1 = c1.get(field)
+                v2 = c2.get(field)
+                if (not v1 or v1 == '') and v2 and v2 != '':
+                    preview["champs_a_fusionner"].append({
+                        "champ": field,
+                        "source": "cigare2",
+                        "valeur": v2[:100] if isinstance(v2, str) else v2
+                    })
+            
+            return preview
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
+
+
 @api_router.get("/cigares/{cigare_id}")
 async def get_cigare_detail(cigare_id: int):
     """Récupérer le détail d'un cigare"""
@@ -5142,6 +5273,74 @@ async def update_cigare(cigare_id: int, data: CigareUpdate):
                 raise HTTPException(status_code=404, detail="Cigare non trouvé")
             
             return {"message": "Cigare mis à jour avec succès"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
+
+
+@api_router.post("/cigares/fusionner")
+async def fusionner_cigares(
+    cigare_complet_id: int = Query(..., description="ID du cigare avec fiche complète (à garder)"),
+    cigare_notes_id: int = Query(..., description="ID du cigare avec notes de dégustation (à fusionner)")
+):
+    """Fusionner deux cigares : prend les notes de dégustation du 2ème et les ajoute au 1er, puis supprime le 2ème.
+    
+    Cas d'usage : Un cigare a une fiche complète mais pas de notes, l'autre a les notes mais fiche incomplète.
+    """
+    try:
+        with get_mysql_connection() as conn:
+            cursor = conn.cursor(pymysql.cursors.DictCursor)
+            
+            # Récupérer les deux cigares
+            cursor.execute('SELECT * FROM cigares WHERE id = %s', (cigare_complet_id,))
+            cigare_complet = cursor.fetchone()
+            
+            cursor.execute('SELECT * FROM cigares WHERE id = %s', (cigare_notes_id,))
+            cigare_notes = cursor.fetchone()
+            
+            if not cigare_complet:
+                raise HTTPException(status_code=404, detail=f"Cigare {cigare_complet_id} non trouvé")
+            if not cigare_notes:
+                raise HTTPException(status_code=404, detail=f"Cigare {cigare_notes_id} non trouvé")
+            
+            # Préparer la fusion : prendre les champs non vides du cigare avec notes
+            updates = []
+            params = []
+            
+            # Champs à fusionner depuis cigare_notes si vides dans cigare_complet
+            fields_to_merge = [
+                'premier_tiers', 'deuxieme_tiers', 'troisieme_tiers', 'conclusion',
+                'module', 'vitole', 'gamme', 'terroir', 'puissance', 'dimensions',
+                'prix', 'note_bagues', 'bagues_etoiles'
+            ]
+            
+            for field in fields_to_merge:
+                # Si le champ est vide dans cigare_complet mais rempli dans cigare_notes
+                complet_value = cigare_complet.get(field)
+                notes_value = cigare_notes.get(field)
+                
+                if (not complet_value or complet_value == '') and notes_value and notes_value != '':
+                    updates.append(f"{field} = %s")
+                    params.append(notes_value)
+            
+            # Appliquer les mises à jour si nécessaire
+            if updates:
+                params.append(cigare_complet_id)
+                query = f"UPDATE cigares SET {', '.join(updates)} WHERE id = %s"
+                cursor.execute(query, params)
+            
+            # Supprimer le cigare fusionné (celui avec les notes)
+            cursor.execute('DELETE FROM cigares WHERE id = %s', (cigare_notes_id,))
+            
+            conn.commit()
+            
+            return {
+                "message": f"Cigares fusionnés avec succès",
+                "cigare_conserve": cigare_complet_id,
+                "cigare_supprime": cigare_notes_id,
+                "champs_fusionnes": len(updates)
+            }
     except HTTPException:
         raise
     except Exception as e:

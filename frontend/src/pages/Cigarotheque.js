@@ -754,7 +754,11 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
         puissance: editData.puissance || null,
         prix: editData.prix ? parseFloat(editData.prix) : null,
         note_bagues: editData.note_bagues ? parseFloat(editData.note_bagues) : null,
-        conclusion: editData.conclusion || null
+        conclusion: editData.conclusion || null,
+        // Notes de dégustation
+        premier_tiers: editData.premier_tiers || null,
+        deuxieme_tiers: editData.deuxieme_tiers || null,
+        troisieme_tiers: editData.troisieme_tiers || null
       });
       toast.success('Cigare modifié avec succès !');
       setShowEditModal(false);

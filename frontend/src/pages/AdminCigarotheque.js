@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { 
   Tags, Edit2, Trash2, Check, X, AlertTriangle, 
-  Search, ArrowRight, Globe, Box, RefreshCw, Layers, Ban, RotateCcw, GitMerge
+  Search, ArrowRight, Globe, Box, RefreshCw, Layers, Ban, RotateCcw, GitMerge, FileText, Cigarette
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -21,6 +21,8 @@ const AdminCigarotheque = () => {
   const [gammes, setGammes] = useState([]);
   const [doublons, setDoublons] = useState([]);
   const [doublonsIgnores, setDoublonsIgnores] = useState([]);
+  const [doublonsCigares, setDoublonsCigares] = useState([]);
+  const [searchCigares, setSearchCigares] = useState('');
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showIgnored, setShowIgnored] = useState(false);
@@ -84,6 +86,20 @@ const AdminCigarotheque = () => {
     }
   };
 
+  // Charger les doublons de cigares
+  const loadDoublonsCigares = async (search = '') => {
+    try {
+      let url = `${API}/api/cigares/doublons-potentiels`;
+      if (search) {
+        url += `?search=${encodeURIComponent(search)}`;
+      }
+      const res = await axios.get(url);
+      setDoublonsCigares(res.data.doublons);
+    } catch (error) {
+      console.error('Erreur chargement doublons cigares:', error);
+    }
+  };
+
   useEffect(() => {
     loadMarques();
     loadModules();
@@ -92,6 +108,23 @@ const AdminCigarotheque = () => {
     loadDoublons();
     loadDoublonsIgnores();
   }, []);
+
+  // Fusionner deux cigares
+  const handleFusionnerCigares = async (cigareCompletId, cigareNotesId) => {
+    if (!window.confirm(`Fusionner les cigares ?\n\nLe cigare ${cigareCompletId} gardera sa fiche et récupérera les notes du cigare ${cigareNotesId}.\nLe cigare ${cigareNotesId} sera supprimé.`)) {
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await axios.post(`${API}/api/cigares/fusionner?cigare_complet_id=${cigareCompletId}&cigare_notes_id=${cigareNotesId}`);
+      toast.success(res.data.message);
+      loadDoublonsCigares(searchCigares);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Erreur lors de la fusion');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Ignorer un doublon (pas un vrai doublon)
   const handleIgnorerDoublon = async (marque1, marque2) => {
@@ -525,7 +558,15 @@ const AdminCigarotheque = () => {
             </TabsTrigger>
             <TabsTrigger value="doublons" className="data-[state=active]:bg-orange-600/20 data-[state=active]:text-orange-400">
               <AlertTriangle className="w-4 h-4 mr-2" />
-              Doublons ({doublons.length})
+              Doublons Marques ({doublons.length})
+            </TabsTrigger>
+            <TabsTrigger 
+              value="doublons-cigares" 
+              className="data-[state=active]:bg-red-600/20 data-[state=active]:text-red-400"
+              onClick={() => { if (doublonsCigares.length === 0) loadDoublonsCigares(); }}
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              Doublons Cigares
             </TabsTrigger>
           </TabsList>
 
@@ -776,6 +817,147 @@ const AdminCigarotheque = () => {
                     </div>
                   </>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Onglet Doublons Cigares */}
+          <TabsContent value="doublons-cigares">
+            <Card className="bg-black/40 border-2 border-red-600/30">
+              <CardHeader>
+                <CardTitle className="text-red-400 flex items-center justify-between">
+                  <div className="flex items-center">
+                    <FileText className="w-5 h-5 mr-2" />
+                    Doublons de cigares
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-400 text-sm mb-4">
+                  Recherchez des cigares similaires pour les fusionner (ex: un avec fiche complète, l'autre avec notes).
+                </p>
+                
+                {/* Recherche */}
+                <div className="flex gap-2 mb-4">
+                  <Input
+                    value={searchCigares}
+                    onChange={(e) => setSearchCigares(e.target.value)}
+                    placeholder="Rechercher un cigare (ex: Red Caiman, Cohiba...)"
+                    className="bg-black/50 border-red-600/30 text-white"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        loadDoublonsCigares(searchCigares);
+                      }
+                    }}
+                  />
+                  <Button
+                    onClick={() => loadDoublonsCigares(searchCigares)}
+                    className="bg-red-600 hover:bg-red-500"
+                  >
+                    <Search className="w-4 h-4 mr-2" />
+                    Chercher
+                  </Button>
+                </div>
+
+                <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+                  {doublonsCigares.map((doublon, idx) => (
+                    <div 
+                      key={idx}
+                      className="bg-red-900/20 border border-red-600/30 rounded-lg p-4"
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <Badge className="bg-red-600/30 text-red-300">
+                          {doublon.similarite}% similaire
+                        </Badge>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        {/* Cigare 1 */}
+                        <div className="bg-black/30 rounded-lg p-3">
+                          <p className="text-white font-medium">{doublon.cigare1.nom || '(Sans nom)'}</p>
+                          <p className="text-gray-400 text-sm">{doublon.cigare1.marque}</p>
+                          {doublon.cigare1.gamme && (
+                            <p className="text-purple-400 text-xs">Gamme: {doublon.cigare1.gamme}</p>
+                          )}
+                          {doublon.cigare1.module && (
+                            <p className="text-gray-500 text-xs">Module: {doublon.cigare1.module}</p>
+                          )}
+                          <div className="mt-2 flex gap-2">
+                            {doublon.cigare1.has_nom && (
+                              <Badge className="bg-green-600/30 text-green-300 text-xs">Fiche OK</Badge>
+                            )}
+                            {doublon.cigare1.has_notes && (
+                              <Badge className="bg-blue-600/30 text-blue-300 text-xs">Notes OK</Badge>
+                            )}
+                            {!doublon.cigare1.has_nom && (
+                              <Badge className="bg-orange-600/30 text-orange-300 text-xs">Fiche incomplète</Badge>
+                            )}
+                            {!doublon.cigare1.has_notes && (
+                              <Badge className="bg-gray-600/30 text-gray-300 text-xs">Sans notes</Badge>
+                            )}
+                          </div>
+                          <p className="text-gray-600 text-xs mt-1">ID: {doublon.cigare1.id}</p>
+                        </div>
+
+                        {/* Cigare 2 */}
+                        <div className="bg-black/30 rounded-lg p-3">
+                          <p className="text-white font-medium">{doublon.cigare2.nom || '(Sans nom)'}</p>
+                          <p className="text-gray-400 text-sm">{doublon.cigare2.marque}</p>
+                          {doublon.cigare2.gamme && (
+                            <p className="text-purple-400 text-xs">Gamme: {doublon.cigare2.gamme}</p>
+                          )}
+                          {doublon.cigare2.module && (
+                            <p className="text-gray-500 text-xs">Module: {doublon.cigare2.module}</p>
+                          )}
+                          <div className="mt-2 flex gap-2">
+                            {doublon.cigare2.has_nom && (
+                              <Badge className="bg-green-600/30 text-green-300 text-xs">Fiche OK</Badge>
+                            )}
+                            {doublon.cigare2.has_notes && (
+                              <Badge className="bg-blue-600/30 text-blue-300 text-xs">Notes OK</Badge>
+                            )}
+                            {!doublon.cigare2.has_nom && (
+                              <Badge className="bg-orange-600/30 text-orange-300 text-xs">Fiche incomplète</Badge>
+                            )}
+                            {!doublon.cigare2.has_notes && (
+                              <Badge className="bg-gray-600/30 text-gray-300 text-xs">Sans notes</Badge>
+                            )}
+                          </div>
+                          <p className="text-gray-600 text-xs mt-1">ID: {doublon.cigare2.id}</p>
+                        </div>
+                      </div>
+
+                      {/* Boutons de fusion */}
+                      <div className="flex justify-center gap-4 mt-3">
+                        <Button
+                          size="sm"
+                          className="bg-green-600 hover:bg-green-500 text-white"
+                          onClick={() => handleFusionnerCigares(doublon.cigare1.id, doublon.cigare2.id)}
+                          disabled={loading}
+                          title="Garder le cigare 1 et récupérer les infos du cigare 2"
+                        >
+                          <ArrowRight className="w-4 h-4 mr-1 rotate-180" />
+                          Garder gauche
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="bg-green-600 hover:bg-green-500 text-white"
+                          onClick={() => handleFusionnerCigares(doublon.cigare2.id, doublon.cigare1.id)}
+                          disabled={loading}
+                          title="Garder le cigare 2 et récupérer les infos du cigare 1"
+                        >
+                          Garder droite
+                          <ArrowRight className="w-4 h-4 ml-1" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  {doublonsCigares.length === 0 && (
+                    <p className="text-gray-500 text-center py-8">
+                      Recherchez un cigare pour trouver des doublons potentiels
+                    </p>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
