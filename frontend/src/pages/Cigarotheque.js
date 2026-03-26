@@ -758,6 +758,56 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
     }
   };
 
+  // Marquer un cigare comme corrigé (retirer de la liste "À corriger")
+  const markAsComplete = async (cigare) => {
+    try {
+      // Nettoyer le nom si contient "A MODIFIER"
+      let newNom = cigare.nom_cigare || '';
+      if (newNom.includes('A MODIFIER')) {
+        newNom = newNom.replace('A MODIFIER - ', '').replace('A MODIFIER', '').trim();
+        if (!newNom) newNom = cigare.vitole_nom || 'Cigare';
+      }
+      
+      // Nettoyer la marque si "A Modifier"
+      let newMarque = cigare.marque || '';
+      if (newMarque === 'A Modifier' || newMarque === 'A MODIFIER') {
+        newMarque = cigare.marque_display || 'Marque inconnue';
+      }
+      
+      await axios.put(`${API}/cigares/${cigare.id}`, {
+        nom_cigare: newNom,
+        marque: newMarque,
+        // Marquer avec un module par défaut si vide
+        module: cigare.module || 'Non spécifié',
+        // Ajouter une description minimale si vide
+        premier_tiers: cigare.premier_tiers || 'À compléter'
+      });
+      
+      toast.success('Cigare marqué comme corrigé !');
+      loadCigares(); // Recharger la liste
+    } catch (error) {
+      toast.error('Erreur lors du marquage');
+      console.error(error);
+    }
+  };
+
+  // Supprimer un cigare incomplet
+  const deleteIncomplete = async (cigare) => {
+    const nomDisplay = cigare.nom_cigare || cigare.vitole_nom || 'ce cigare';
+    if (!window.confirm(`Supprimer "${nomDisplay}" définitivement ?\n\nCette action est irréversible.`)) {
+      return;
+    }
+    
+    try {
+      await axios.delete(`${API}/cigares/${cigare.id}`);
+      toast.success('Cigare supprimé');
+      loadCigares();
+    } catch (error) {
+      toast.error('Erreur lors de la suppression');
+      console.error(error);
+    }
+  };
+
   // ===== MODAL NOTATION GUIDÉE (MA CIGARTHÈQUE) =====
   
   const openNoteModal = (cigare) => {
@@ -1327,6 +1377,33 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
                               >
                                 <Edit3 className="w-4 h-4" />
                               </Button>
+                              
+                              {/* Bouton Marquer comme corrigé (mode À corriger) */}
+                              {showIncompleteOnly && (
+                                <>
+                                  <Button 
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => markAsComplete(cigare)}
+                                    className="border-green-500/50 text-green-400 hover:bg-green-500/20"
+                                    title="Marquer comme corrigé (retirer de la liste)"
+                                    data-testid={`mark-complete-btn-${cigare.id}`}
+                                  >
+                                    <Check className="w-4 h-4" />
+                                  </Button>
+                                  <Button 
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => deleteIncomplete(cigare)}
+                                    className="border-red-500/50 text-red-400 hover:bg-red-500/20"
+                                    title="Supprimer ce cigare"
+                                    data-testid={`delete-incomplete-btn-${cigare.id}`}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </>
+                              )}
+                              
                               {/* Bouton toggle Apéro du Club - Grisé si pas dedans, Rouge avec glow si dedans */}
                               <Button 
                                 size="sm"
