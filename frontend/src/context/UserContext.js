@@ -75,12 +75,22 @@ export const UserProvider = ({ children }) => {
             setCurrentMember(savedMember);
             setMode(savedMember.is_president ? 'admin' : 'member');
           } else {
-            // Membre non trouvé dans la liste, effacer localStorage
+            // Membre non trouvé, charger Fabien par défaut
             localStorage.removeItem('currentMemberId');
-            // Pas de connexion automatique - l'utilisateur doit se connecter
+            const fabien = membersData.find(m => m.nom_complet?.includes('Fabien Lanfranchi'));
+            if (fabien) {
+              setCurrentMember(fabien);
+              setMode('admin');
+            }
+          }
+        } else {
+          // Mode développement : charger Fabien par défaut
+          const fabien = membersData.find(m => m.nom_complet?.includes('Fabien Lanfranchi'));
+          if (fabien) {
+            setCurrentMember(fabien);
+            setMode('admin');
           }
         }
-        // Pas de membre sauvegardé = pas de connexion automatique
         setLoading(false);
       } catch (err) {
         console.error('Erreur chargement membres:', err);

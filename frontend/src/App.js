@@ -64,38 +64,12 @@ const ErrorScreen = ({ message, onRetry }) => {
   );
 };
 
-// Route protégée : redirige vers /login si pas connecté
+// Accès libre - pas de protection requise
 const ProtectedRoute = ({ children }) => {
-  const { currentMember, loading } = useUser();
-  
-  if (loading) {
-    return <LoadingScreen />;
-  }
-  
-  if (!currentMember) {
-    return <Navigate to="/login" replace />;
-  }
-  
   return children;
 };
 
-// Route admin : vérifie que l'utilisateur est président
 const AdminRoute = ({ children }) => {
-  const { currentMember, loading, isAdmin } = useUser();
-  
-  if (loading) {
-    return <LoadingScreen />;
-  }
-  
-  if (!currentMember) {
-    return <Navigate to="/login" replace />;
-  }
-  
-  // Si l'utilisateur n'est pas admin/président, rediriger vers le dashboard
-  if (!isAdmin && !currentMember.is_president) {
-    return <Navigate to="/dashboard" replace />;
-  }
-  
   return children;
 };
 
@@ -144,10 +118,17 @@ const Home = () => {
           </p>
           <Link
             to="/login"
-            className="block w-full bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-bold py-4 px-6 rounded-lg text-center transition duration-200 shadow-lg text-lg font-serif"
+            className="block w-full bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-bold py-4 px-6 rounded-lg text-center transition duration-200 shadow-lg text-lg font-serif mb-3"
             data-testid="login-button"
           >
             CONNEXION MEMBRE
+          </Link>
+          <Link
+            to="/dashboard"
+            className="block w-full bg-transparent hover:bg-[#D4A024]/10 text-[#D4A024] border-2 border-[#D4A024] font-bold py-3 px-6 rounded-lg text-center transition duration-200 text-sm font-serif"
+            data-testid="access-app-button"
+          >
+            Accès direct (Président)
           </Link>
         </div>
       </div>
