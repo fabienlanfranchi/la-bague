@@ -1904,7 +1904,7 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
 
       {/* ==================== MODAL ÉDITION ADMIN ==================== */}
       <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-        <DialogContent className="max-w-lg bg-[#1a1a1a] border-[#D4A024]/50">
+        <DialogContent className="max-w-2xl bg-[#1a1a1a] border-[#D4A024]/50 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl font-serif text-white flex items-center">
               <Edit3 className="w-5 h-5 mr-2 text-[#D4A024]" />
@@ -1912,7 +1912,7 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-4 overflow-y-auto">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label className="text-gray-300">Marque</Label>
