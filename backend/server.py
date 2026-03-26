@@ -4074,41 +4074,42 @@ def normalize_pays(pays_raw):
         return 'Mexique'
 
 
-# Mapping des lignes vers leurs vraies marques
+# Mapping des lignes vers leurs vraies marques (en Title Case)
 LIGNE_TO_MARQUE = {
-    'LIGNE CHURCHILL': 'ROMEO Y JULIETA',
-    'LIGNE LINEA DE ORO': 'ROMEO Y JULIETA',
-    'LIGNE BEHIKE': 'COHIBA',
-    'LIGNE EDMUNDO': 'MONTECRISTO',
-    'LIGNE OPEN': 'MONTECRISTO',
-    'LIGNE EPICURE': 'HOYO DE MONTERREY',
-    'LIGNE LE HOYO': 'HOYO DE MONTERREY',
-    'LIGNE LINEA MAESTRA': 'PARTAGÁS',
-    'LIGNE MADURO': 'PARTAGÁS',
-    'LIGNE SERIE': 'PARTAGÁS',
-    'LIGNE MAGNUM': 'H. UPMANN',
-    'COHIBA BEHIKE': 'COHIBA',
+    'LIGNE CHURCHILL': 'Romeo y Julieta',
+    'LIGNE LINEA DE ORO': 'Romeo y Julieta',
+    'LIGNE BEHIKE': 'Cohiba',
+    'LIGNE EDMUNDO': 'Montecristo',
+    'LIGNE OPEN': 'Montecristo',
+    'LIGNE EPICURE': 'Hoyo de Monterrey',
+    'LIGNE LE HOYO': 'Hoyo de Monterrey',
+    'LIGNE LINEA MAESTRA': 'Partagás',
+    'LIGNE MADURO': 'Partagás',
+    'LIGNE SERIE': 'Partagás',
+    'LIGNE MAGNUM': 'H. Upmann',
+    'COHIBA BEHIKE': 'Cohiba',
 }
 
 # Normalisation des marques (variantes d'orthographe)
-# Les clés doivent être en MAJUSCULES avec apostrophe droite (')
+# Format: clé en majuscules -> valeur en Title Case
 MARQUE_NORMALIZATION = {
-    'H.UPMANN': 'H. UPMANN',
-    'HOYO DE': 'HOYO DE MONTERREY',
-    'LA FLOR': 'LA FLOR DE CANO',
-    'LA GLORIA': 'LA GLORIA CUBANA',
-    'POR': 'POR LARRAÑAGA',
-    'QUAI': "QUAI D'ORSAY",
-    "QUAI D'ORSAY": "QUAI D'ORSAY",  # apostrophe droite
-    'RAFAEL': 'RAFAEL GONZÁLEZ',
-    'RAMÓN': 'RAMÓN ALLONES',
-    'SAN': 'SAN CRISTÓBAL',
-    'SANCHO': 'SANCHO PANZA',
-    'VEGAS': 'VEGAS ROBAINA',
-    'JOSÉ': 'JOSÉ L. PIEDRA',
-    'JUAN': 'JUAN LÓPEZ',
-    'EL REY': 'EL REY DEL MUNDO',
-    'DEUX BOLÍVAR': 'BOLÍVAR',
+    'H.UPMANN': 'H. Upmann',
+    'HOYO DE': 'Hoyo de Monterrey',
+    'LA FLOR': 'La Flor de Cano',
+    'LA GLORIA': 'La Gloria Cubana',
+    'POR': 'Por Larrañaga',
+    'QUAI': "Quai d'Orsay",
+    "QUAI D'ORSAY": "Quai d'Orsay",
+    'RAFAEL': 'Rafael González',
+    'RAMÓN': 'Ramón Allones',
+    'SAN': 'San Cristóbal',
+    'SANCHO': 'Sancho Panza',
+    'VEGAS': 'Vegas Robaina',
+    'JOSÉ': 'José L. Piedra',
+    'JUAN': 'Juan López',
+    'EL REY': 'El Rey del Mundo',
+    'DEUX BOLÍVAR': 'Bolívar',
+    'BOLÍVAR': 'Bolívar',
 }
 
 
@@ -4141,17 +4142,17 @@ def normalize_marque(marque_raw, gamme=None):
         # La gamme contient souvent la vraie marque
         gamme_clean = gamme.upper().strip()
         if 'HOYO DE MONTERREY' in gamme_clean:
-            return 'HOYO DE MONTERREY'
+            return 'Hoyo de Monterrey'
         if 'PARTAGÁS' in gamme_clean or 'PARTAGAS' in gamme_clean:
-            return 'PARTAGÁS'
+            return 'Partagás'
         if 'MONTECRISTO' in gamme_clean:
-            return 'MONTECRISTO'
+            return 'Montecristo'
         if 'COHIBA' in gamme_clean:
-            return 'COHIBA'
+            return 'Cohiba'
         if 'ROMEO' in gamme_clean or 'JULIETA' in gamme_clean:
-            return 'ROMEO Y JULIETA'
+            return 'Romeo y Julieta'
         if 'H. UPMANN' in gamme_clean or 'UPMANN' in gamme_clean:
-            return 'H. UPMANN'
+            return 'H. Upmann'
     
     # Retourner la version nettoyée (apostrophes normalisées)
     return marque_clean
