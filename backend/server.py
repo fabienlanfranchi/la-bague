@@ -4160,6 +4160,15 @@ async def detect_doublons_cigares(
     """Détecter les doublons potentiels de cigares (même nom ou nom similaire)"""
     try:
         import difflib
+        
+        # Récupérer les doublons de cigares ignorés depuis MongoDB
+        doublons_ignores = await db.doublons_cigares_ignores.find({}).to_list(length=1000)
+        ignores_set = set()
+        for d in doublons_ignores:
+            # Créer une clé unique pour la paire (ordre par ID)
+            pair = tuple(sorted([d.get('cigare1_id', 0), d.get('cigare2_id', 0)]))
+            ignores_set.add(pair)
+        
         with get_mysql_connection() as conn:
             cursor = conn.cursor(pymysql.cursors.DictCursor)
             
@@ -4195,6 +4204,10 @@ async def detect_doublons_cigares(
                     # Créer une clé unique pour éviter les doublons
                     pair_key = tuple(sorted([c1['id'], c2['id']]))
                     if pair_key in seen:
+                        continue
+                    
+                    # Vérifier si cette paire est ignorée
+                    if pair_key in ignores_set:
                         continue
                     
                     nom1 = (c1.get('nom_cigare') or '').lower()
@@ -4235,6 +4248,92 @@ async def detect_doublons_cigares(
             return {"doublons": doublons[:50], "total": len(doublons)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur doublons cigares: {str(e)}")
+
+
+@api_router.post("/cigares/doublons/ignorer")
+async def ignorer_doublon_cigare(
+    cigare1_id: int = Query(...),
+    cigare2_id: int = Query(...)
+):
+    """Ignorer un doublon de cigares (marquer comme faux positif)"""
+    try:
+        # Ordonner les IDs pour avoir une clé cohérente
+        id1, id2 = sorted([cigare1_id, cigare2_id])
+        
+        # Vérifier si déjà ignoré
+        existing = await db.doublons_cigares_ignores.find_one({
+            "cigare1_id": id1,
+            "cigare2_id": id2
+        })
+        
+        if existing:
+            return {"message": "Ce doublon est déjà ignoré", "already_ignored": True}
+        
+        # Récupérer les infos des cigares pour référence
+        with get_mysql_connection() as conn:
+            cursor = conn.cursor(pymysql.cursors.DictCursor)
+            cursor.execute('''
+                SELECT id, nom_cigare, marque, gamme FROM cigares WHERE id IN (%s, %s)
+            ''', (id1, id2))
+            cigares = cursor.fetchall()
+        
+        c1 = next((c for c in cigares if c['id'] == id1), {})
+        c2 = next((c for c in cigares if c['id'] == id2), {})
+        
+        # Ajouter à la liste des ignorés
+        await db.doublons_cigares_ignores.insert_one({
+            "cigare1_id": id1,
+            "cigare1_nom": c1.get('nom_cigare', ''),
+            "cigare1_marque": c1.get('marque', ''),
+            "cigare1_gamme": c1.get('gamme', ''),
+            "cigare2_id": id2,
+            "cigare2_nom": c2.get('nom_cigare', ''),
+            "cigare2_marque": c2.get('marque', ''),
+            "cigare2_gamme": c2.get('gamme', ''),
+            "ignored_at": datetime.now(timezone.utc).isoformat()
+        })
+        
+        return {
+            "message": f"Doublon ignoré : {c1.get('nom_cigare', '')} / {c2.get('nom_cigare', '')}",
+            "success": True
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
+
+
+@api_router.get("/cigares/doublons/ignores")
+async def get_doublons_cigares_ignores():
+    """Récupérer la liste des doublons de cigares ignorés"""
+    try:
+        doublons = await db.doublons_cigares_ignores.find({}, {"_id": 0}).to_list(length=1000)
+        return {"doublons_ignores": doublons, "total": len(doublons)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
+
+
+@api_router.delete("/cigares/doublons/restaurer")
+async def restaurer_doublon_cigare(
+    cigare1_id: int = Query(...),
+    cigare2_id: int = Query(...)
+):
+    """Restaurer un doublon de cigares ignoré (le remettre dans la liste)"""
+    try:
+        id1, id2 = sorted([cigare1_id, cigare2_id])
+        
+        result = await db.doublons_cigares_ignores.delete_one({
+            "cigare1_id": id1,
+            "cigare2_id": id2
+        })
+        
+        if result.deleted_count == 0:
+            return {"message": "Ce doublon n'était pas dans la liste des ignorés", "success": False}
+        
+        return {
+            "message": "Doublon restauré dans la liste",
+            "success": True
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
 
 
 @api_router.get("/cigares/fusionner-preview")
