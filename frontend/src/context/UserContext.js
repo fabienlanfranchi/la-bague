@@ -69,7 +69,7 @@ export const UserProvider = ({ children }) => {
         }
         
         if (savedMemberId) {
-          // Restaurer le membre sauvegardé
+          // Restaurer le membre sauvegardé depuis localStorage
           const savedMember = membersData.find(m => m.id === savedMemberId);
           if (savedMember) {
             setCurrentMember(savedMember);
@@ -77,21 +77,10 @@ export const UserProvider = ({ children }) => {
           } else {
             // Membre non trouvé dans la liste, effacer localStorage
             localStorage.removeItem('currentMemberId');
-            // Mode développement : charger Fabien par défaut
-            const fabien = membersData.find(m => m.nom_complet?.includes('Fabien Lanfranchi'));
-            if (fabien) {
-              setCurrentMember(fabien);
-              setMode('admin');
-            }
-          }
-        } else {
-          // Pas de membre sauvegardé = Mode développement : charger Fabien par défaut
-          const fabien = membersData.find(m => m.nom_complet?.includes('Fabien Lanfranchi'));
-          if (fabien) {
-            setCurrentMember(fabien);
-            setMode('admin');
+            // Pas de connexion automatique - l'utilisateur doit se connecter
           }
         }
+        // Pas de membre sauvegardé = pas de connexion automatique
         setLoading(false);
       } catch (err) {
         console.error('Erreur chargement membres:', err);

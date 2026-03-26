@@ -173,7 +173,7 @@ const LoginPage = () => {
         }));
       }
 
-      toast.success(`Bienvenue ${member.prenom} !`);
+      toast.success(`Bienvenue ${member.nom_complet?.split(' ')[0] || 'membre'} !`);
       navigate('/dashboard');
     } catch (error) {
       console.error('Erreur connexion:', error);
@@ -530,16 +530,6 @@ const LoginPage = () => {
             </Tabs>
           </Card>
         )}
-
-        {/* Lien mode développement */}
-        <div className="text-center mt-4">
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="text-gray-500 hover:text-gray-300 text-sm underline"
-          >
-            Mode développement (accès libre)
-          </button>
-        </div>
 
         {/* Modal Mot de passe oublié */}
         {showForgotPassword && (
