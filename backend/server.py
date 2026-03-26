@@ -4337,6 +4337,25 @@ async def get_all_terroirs():
         raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
 
 
+@api_router.get("/cigares/admin/gammes")
+async def get_all_gammes():
+    """Récupérer toutes les gammes/lignes avec leur marque et nombre de cigares"""
+    try:
+        with get_mysql_connection() as conn:
+            cursor = conn.cursor(pymysql.cursors.DictCursor)
+            cursor.execute('''
+                SELECT gamme, marque, COUNT(*) as count 
+                FROM cigares 
+                WHERE gamme IS NOT NULL AND gamme != ''
+                GROUP BY gamme, marque
+                ORDER BY gamme, marque
+            ''')
+            gammes = cursor.fetchall()
+            return {"gammes": gammes, "total": len(gammes)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
+
+
 @api_router.put("/cigares/admin/rename-marque")
 async def rename_marque(old_name: str = Query(...), new_name: str = Query(...)):
     """Renommer une marque (fusionner les doublons)"""
@@ -4432,6 +4451,80 @@ async def delete_marque(marque: str = Query(...)):
             return {
                 "message": f"Marque '{marque}' supprimée",
                 "cigares_supprimes": count
+            }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
+
+
+@api_router.put("/cigares/admin/rename-gamme")
+async def rename_gamme(old_name: str = Query(...), new_name: str = Query(...), marque: str = Query(None)):
+    """Renommer une gamme/ligne (optionnellement pour une marque spécifique)"""
+    try:
+        with get_mysql_connection() as conn:
+            cursor = conn.cursor()
+            
+            if marque:
+                # Renommer pour une marque spécifique
+                cursor.execute('SELECT COUNT(*) FROM cigares WHERE gamme = %s AND marque = %s', (old_name, marque))
+                count = cursor.fetchone()[0]
+                
+                if count == 0:
+                    raise HTTPException(status_code=404, detail=f"Gamme '{old_name}' non trouvée pour la marque '{marque}'")
+                
+                cursor.execute('UPDATE cigares SET gamme = %s WHERE gamme = %s AND marque = %s', (new_name, old_name, marque))
+            else:
+                # Renommer pour toutes les marques
+                cursor.execute('SELECT COUNT(*) FROM cigares WHERE gamme = %s', (old_name,))
+                count = cursor.fetchone()[0]
+                
+                if count == 0:
+                    raise HTTPException(status_code=404, detail=f"Gamme '{old_name}' non trouvée")
+                
+                cursor.execute('UPDATE cigares SET gamme = %s WHERE gamme = %s', (new_name, old_name))
+            
+            conn.commit()
+            
+            return {
+                "message": f"Gamme '{old_name}' renommée en '{new_name}'",
+                "cigares_modifies": count
+            }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
+
+
+@api_router.delete("/cigares/admin/delete-gamme")
+async def delete_gamme(gamme: str = Query(...), marque: str = Query(None)):
+    """Supprimer une gamme (vider le champ gamme, pas supprimer les cigares)"""
+    try:
+        with get_mysql_connection() as conn:
+            cursor = conn.cursor()
+            
+            if marque:
+                cursor.execute('SELECT COUNT(*) FROM cigares WHERE gamme = %s AND marque = %s', (gamme, marque))
+                count = cursor.fetchone()[0]
+                
+                if count == 0:
+                    raise HTTPException(status_code=404, detail=f"Gamme '{gamme}' non trouvée pour la marque '{marque}'")
+                
+                cursor.execute('UPDATE cigares SET gamme = NULL WHERE gamme = %s AND marque = %s', (gamme, marque))
+            else:
+                cursor.execute('SELECT COUNT(*) FROM cigares WHERE gamme = %s', (gamme,))
+                count = cursor.fetchone()[0]
+                
+                if count == 0:
+                    raise HTTPException(status_code=404, detail=f"Gamme '{gamme}' non trouvée")
+                
+                cursor.execute('UPDATE cigares SET gamme = NULL WHERE gamme = %s', (gamme,))
+            
+            conn.commit()
+            
+            return {
+                "message": f"Gamme '{gamme}' supprimée (champ vidé)",
+                "cigares_modifies": count
             }
     except HTTPException:
         raise

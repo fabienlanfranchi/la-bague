@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { 
   Tags, Edit2, Trash2, Check, X, AlertTriangle, 
-  Search, ArrowRight, Globe, Box, RefreshCw
+  Search, ArrowRight, Globe, Box, RefreshCw, Layers
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -18,6 +18,7 @@ const AdminCigarotheque = () => {
   const [marques, setMarques] = useState([]);
   const [modules, setModules] = useState([]);
   const [terroirs, setTerroirs] = useState([]);
+  const [gammes, setGammes] = useState([]);
   const [doublons, setDoublons] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -54,6 +55,15 @@ const AdminCigarotheque = () => {
     }
   };
 
+  const loadGammes = async () => {
+    try {
+      const res = await axios.get(`${API}/api/cigares/admin/gammes`);
+      setGammes(res.data.gammes);
+    } catch (error) {
+      toast.error('Erreur lors du chargement des gammes');
+    }
+  };
+
   const loadDoublons = async () => {
     try {
       const res = await axios.get(`${API}/api/cigares/admin/doublons`);
@@ -67,6 +77,7 @@ const AdminCigarotheque = () => {
     loadMarques();
     loadModules();
     loadTerroirs();
+    loadGammes();
     loadDoublons();
   }, []);
 
@@ -131,6 +142,51 @@ const AdminCigarotheque = () => {
     }
   };
 
+  // Renommer une gamme
+  const handleRenameGamme = async (oldName, marque) => {
+    if (!newName.trim()) {
+      toast.error('Le nouveau nom ne peut pas être vide');
+      return;
+    }
+    setLoading(true);
+    try {
+      let url = `${API}/api/cigares/admin/rename-gamme?old_name=${encodeURIComponent(oldName)}&new_name=${encodeURIComponent(newName.trim())}`;
+      if (marque) {
+        url += `&marque=${encodeURIComponent(marque)}`;
+      }
+      const res = await axios.put(url);
+      toast.success(res.data.message);
+      setEditingItem(null);
+      setNewName('');
+      loadGammes();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Erreur lors du renommage');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Supprimer une gamme (vider le champ)
+  const handleDeleteGamme = async (gamme, marque) => {
+    if (!window.confirm(`Êtes-vous sûr de vouloir supprimer la gamme "${gamme}" ${marque ? `pour ${marque}` : ''} ? (Le champ sera vidé, les cigares ne seront pas supprimés)`)) {
+      return;
+    }
+    setLoading(true);
+    try {
+      let url = `${API}/api/cigares/admin/delete-gamme?gamme=${encodeURIComponent(gamme)}`;
+      if (marque) {
+        url += `&marque=${encodeURIComponent(marque)}`;
+      }
+      const res = await axios.delete(url);
+      toast.success(res.data.message);
+      loadGammes();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Erreur lors de la suppression');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Supprimer une marque
   const handleDeleteMarque = async (marque) => {
     if (!window.confirm(`Êtes-vous sûr de vouloir supprimer la marque "${marque}" et TOUS ses cigares ?`)) {
@@ -168,18 +224,19 @@ const AdminCigarotheque = () => {
   };
 
   // Filtrer les éléments
-  const filterItems = (items) => {
+  const filterItems = (items, key) => {
     if (!searchTerm) return items;
     return items.filter(item => {
-      const name = item.marque || item.module || item.terroir || '';
-      return name.toLowerCase().includes(searchTerm.toLowerCase());
+      const name = item[key] || '';
+      const marque = item.marque || '';
+      return name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+             marque.toLowerCase().includes(searchTerm.toLowerCase());
     });
   };
 
-  // Composant pour afficher une liste d'items
-  const ItemList = ({ items, type, onRename, onDelete }) => {
-    const filteredItems = filterItems(items);
-    const itemKey = type === 'marques' ? 'marque' : type === 'modules' ? 'module' : 'terroir';
+  // Composant pour afficher une liste d'items simple (marques, modules, terroirs)
+  const ItemList = ({ items, type, itemKey, onRename, onDelete, showDelete = true }) => {
+    const filteredItems = filterItems(items, itemKey);
 
     return (
       <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-2">
@@ -231,7 +288,7 @@ const AdminCigarotheque = () => {
                   >
                     <Edit2 className="w-4 h-4" />
                   </Button>
-                  {type === 'marques' && (
+                  {showDelete && onDelete && (
                     <Button
                       size="icon"
                       variant="ghost"
@@ -253,6 +310,88 @@ const AdminCigarotheque = () => {
     );
   };
 
+  // Composant pour afficher les gammes (avec marque associée)
+  const GammesList = () => {
+    const filteredGammes = filterItems(gammes, 'gamme');
+
+    return (
+      <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-2">
+        {filteredGammes.map((item, idx) => (
+          <div 
+            key={idx}
+            className="flex items-center justify-between bg-black/30 border border-gray-700 rounded-lg p-3 hover:border-[#D4A024]/50 transition-colors"
+          >
+            {editingItem === `gamme-${item.gamme}-${item.marque}` ? (
+              <div className="flex items-center gap-2 flex-1">
+                <Input
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="Nouveau nom..."
+                  className="bg-black/50 border-[#D4A024]/30 text-white flex-1"
+                  autoFocus
+                />
+                <Button
+                  size="icon"
+                  className="bg-green-600 hover:bg-green-500 h-8 w-8"
+                  onClick={() => handleRenameGamme(item.gamme, item.marque)}
+                  disabled={loading}
+                >
+                  <Check className="w-4 h-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="border-gray-600 h-8 w-8"
+                  onClick={() => { setEditingItem(null); setNewName(''); }}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="text-white font-medium">{item.gamme}</span>
+                  <Badge variant="outline" className="border-purple-500/50 text-purple-300">
+                    {item.marque}
+                  </Badge>
+                  <Badge variant="secondary" className="bg-[#D4A024]/20 text-[#D4A024]">
+                    {item.count} cigares
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 text-blue-400 hover:text-blue-300 hover:bg-blue-900/30"
+                    onClick={() => { 
+                      setEditingItem(`gamme-${item.gamme}-${item.marque}`); 
+                      setNewName(item.gamme); 
+                    }}
+                    title="Renommer cette gamme"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-900/30"
+                    onClick={() => handleDeleteGamme(item.gamme, item.marque)}
+                    title="Supprimer cette gamme (vide le champ)"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        ))}
+        {filteredGammes.length === 0 && (
+          <p className="text-gray-500 text-center py-4">Aucune gamme trouvée</p>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#1a1a1a] via-[#2d1f1f] to-[#1a1a1a] p-6">
       <div className="max-w-6xl mx-auto">
@@ -262,13 +401,13 @@ const AdminCigarotheque = () => {
               Administration Cigarothèque
             </h1>
             <p className="text-gray-400 mt-1">
-              Gérer les marques, modules et terroirs
+              Gérer les marques, gammes, modules et terroirs
             </p>
           </div>
           <Button
             variant="outline"
             className="border-[#D4A024]/50 text-[#D4A024] hover:bg-[#D4A024]/10"
-            onClick={() => { loadMarques(); loadModules(); loadTerroirs(); loadDoublons(); }}
+            onClick={() => { loadMarques(); loadModules(); loadTerroirs(); loadGammes(); loadDoublons(); }}
           >
             <RefreshCw className="w-4 h-4 mr-2" />
             Actualiser
@@ -282,17 +421,21 @@ const AdminCigarotheque = () => {
             <Input
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Rechercher une marque, un module, un terroir..."
+              placeholder="Rechercher une marque, une gamme, un module, un terroir..."
               className="pl-10 bg-black/50 border-[#D4A024]/30 text-white h-12"
             />
           </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="bg-black/50 border border-gray-700 mb-6">
+          <TabsList className="bg-black/50 border border-gray-700 mb-6 flex-wrap h-auto p-1">
             <TabsTrigger value="marques" className="data-[state=active]:bg-[#D4A024]/20 data-[state=active]:text-[#D4A024]">
               <Tags className="w-4 h-4 mr-2" />
               Marques ({marques.length})
+            </TabsTrigger>
+            <TabsTrigger value="gammes" className="data-[state=active]:bg-purple-600/20 data-[state=active]:text-purple-400">
+              <Layers className="w-4 h-4 mr-2" />
+              Gammes ({gammes.length})
             </TabsTrigger>
             <TabsTrigger value="modules" className="data-[state=active]:bg-[#D4A024]/20 data-[state=active]:text-[#D4A024]">
               <Box className="w-4 h-4 mr-2" />
@@ -321,9 +464,29 @@ const AdminCigarotheque = () => {
                 <ItemList 
                   items={marques} 
                   type="marques"
+                  itemKey="marque"
                   onRename={handleRenameMarque}
                   onDelete={handleDeleteMarque}
+                  showDelete={true}
                 />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Onglet Gammes */}
+          <TabsContent value="gammes">
+            <Card className="bg-black/40 border-2 border-purple-600/30">
+              <CardHeader>
+                <CardTitle className="text-purple-400 flex items-center">
+                  <Layers className="w-5 h-5 mr-2" />
+                  Toutes les gammes/lignes
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-400 text-sm mb-4">
+                  Chaque gamme est associée à une marque. Renommer ou supprimer affecte uniquement cette combinaison.
+                </p>
+                <GammesList />
               </CardContent>
             </Card>
           </TabsContent>
@@ -341,8 +504,10 @@ const AdminCigarotheque = () => {
                 <ItemList 
                   items={modules} 
                   type="modules"
+                  itemKey="module"
                   onRename={handleRenameModule}
-                  onDelete={() => {}}
+                  onDelete={null}
+                  showDelete={false}
                 />
               </CardContent>
             </Card>
@@ -361,8 +526,10 @@ const AdminCigarotheque = () => {
                 <ItemList 
                   items={terroirs} 
                   type="terroirs"
+                  itemKey="terroir"
                   onRename={handleRenameTerroir}
-                  onDelete={() => {}}
+                  onDelete={null}
+                  showDelete={false}
                 />
               </CardContent>
             </Card>
