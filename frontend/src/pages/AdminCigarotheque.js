@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { 
   Tags, Edit2, Trash2, Check, X, AlertTriangle, 
-  Search, ArrowRight, Globe, Box, RefreshCw, Layers
+  Search, ArrowRight, Globe, Box, RefreshCw, Layers, Ban, RotateCcw
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -20,8 +20,10 @@ const AdminCigarotheque = () => {
   const [terroirs, setTerroirs] = useState([]);
   const [gammes, setGammes] = useState([]);
   const [doublons, setDoublons] = useState([]);
+  const [doublonsIgnores, setDoublonsIgnores] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showIgnored, setShowIgnored] = useState(false);
   
   // État pour l'édition
   const [editingItem, setEditingItem] = useState(null);
@@ -73,13 +75,53 @@ const AdminCigarotheque = () => {
     }
   };
 
+  const loadDoublonsIgnores = async () => {
+    try {
+      const res = await axios.get(`${API}/api/cigares/admin/doublons-ignores`);
+      setDoublonsIgnores(res.data.doublons_ignores);
+    } catch (error) {
+      console.error('Erreur chargement doublons ignorés:', error);
+    }
+  };
+
   useEffect(() => {
     loadMarques();
     loadModules();
     loadTerroirs();
     loadGammes();
     loadDoublons();
+    loadDoublonsIgnores();
   }, []);
+
+  // Ignorer un doublon (pas un vrai doublon)
+  const handleIgnorerDoublon = async (marque1, marque2) => {
+    setLoading(true);
+    try {
+      const res = await axios.post(`${API}/api/cigares/admin/ignorer-doublon?marque1=${encodeURIComponent(marque1)}&marque2=${encodeURIComponent(marque2)}`);
+      toast.success(res.data.message);
+      loadDoublons();
+      loadDoublonsIgnores();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Erreur');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Restaurer un doublon ignoré
+  const handleRestaurerDoublon = async (marque1, marque2) => {
+    setLoading(true);
+    try {
+      const res = await axios.delete(`${API}/api/cigares/admin/restaurer-doublon?marque1=${encodeURIComponent(marque1)}&marque2=${encodeURIComponent(marque2)}`);
+      toast.success(res.data.message);
+      loadDoublons();
+      loadDoublonsIgnores();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Erreur');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Renommer une marque
   const handleRenameMarque = async (oldName) => {
@@ -539,69 +581,130 @@ const AdminCigarotheque = () => {
           <TabsContent value="doublons">
             <Card className="bg-black/40 border-2 border-orange-600/30">
               <CardHeader>
-                <CardTitle className="text-orange-400 flex items-center">
-                  <AlertTriangle className="w-5 h-5 mr-2" />
-                  Doublons potentiels de marques
+                <CardTitle className="text-orange-400 flex items-center justify-between">
+                  <div className="flex items-center">
+                    <AlertTriangle className="w-5 h-5 mr-2" />
+                    Doublons potentiels de marques
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={`${showIgnored ? 'bg-gray-600 text-white' : 'border-gray-600 text-gray-400'}`}
+                    onClick={() => setShowIgnored(!showIgnored)}
+                  >
+                    {showIgnored ? 'Masquer ignorés' : `Voir ignorés (${doublonsIgnores.length})`}
+                  </Button>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-400 text-sm mb-4">
-                  Ces marques semblent être des doublons. Cliquez sur une flèche pour fusionner.
-                </p>
-                <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
-                  {doublons.map((doublon, idx) => (
-                    <div 
-                      key={idx}
-                      className="bg-orange-900/20 border border-orange-600/30 rounded-lg p-4"
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <Badge className="bg-orange-600/30 text-orange-300">
-                          {doublon.similarite}% similaire
-                        </Badge>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        {/* Marque 1 */}
-                        <div className="flex-1 bg-black/30 rounded-lg p-3 text-center">
-                          <p className="text-white font-medium">{doublon.marque1}</p>
-                          <p className="text-gray-400 text-sm">{doublon.count1} cigares</p>
-                        </div>
+                {!showIgnored ? (
+                  <>
+                    <p className="text-gray-400 text-sm mb-4">
+                      Ces marques semblent être des doublons. Fusionnez-les ou marquez comme "Pas un doublon".
+                    </p>
+                    <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
+                      {doublons.map((doublon, idx) => (
+                        <div 
+                          key={idx}
+                          className="bg-orange-900/20 border border-orange-600/30 rounded-lg p-4"
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <Badge className="bg-orange-600/30 text-orange-300">
+                              {doublon.similarite}% similaire
+                            </Badge>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-gray-400 hover:text-gray-200 hover:bg-gray-700/50"
+                              onClick={() => handleIgnorerDoublon(doublon.marque1, doublon.marque2)}
+                              disabled={loading}
+                              title="Pas un doublon - ignorer cette suggestion"
+                            >
+                              <Ban className="w-4 h-4 mr-1" />
+                              Pas un doublon
+                            </Button>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            {/* Marque 1 */}
+                            <div className="flex-1 bg-black/30 rounded-lg p-3 text-center">
+                              <p className="text-white font-medium">{doublon.marque1}</p>
+                              <p className="text-gray-400 text-sm">{doublon.count1} cigares</p>
+                            </div>
 
-                        {/* Boutons de fusion */}
-                        <div className="flex flex-col gap-2">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="text-green-400 hover:bg-green-900/30"
-                            onClick={() => handleMergeDoublon(doublon.marque1, doublon.marque2)}
-                            disabled={loading}
-                            title={`Fusionner "${doublon.marque1}" vers "${doublon.marque2}"`}
-                          >
-                            <ArrowRight className="w-5 h-5" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="text-green-400 hover:bg-green-900/30 rotate-180"
-                            onClick={() => handleMergeDoublon(doublon.marque2, doublon.marque1)}
-                            disabled={loading}
-                            title={`Fusionner "${doublon.marque2}" vers "${doublon.marque1}"`}
-                          >
-                            <ArrowRight className="w-5 h-5" />
-                          </Button>
-                        </div>
+                            {/* Boutons de fusion */}
+                            <div className="flex flex-col gap-2">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-green-400 hover:bg-green-900/30"
+                                onClick={() => handleMergeDoublon(doublon.marque1, doublon.marque2)}
+                                disabled={loading}
+                                title={`Fusionner "${doublon.marque1}" vers "${doublon.marque2}"`}
+                              >
+                                <ArrowRight className="w-5 h-5" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-green-400 hover:bg-green-900/30 rotate-180"
+                                onClick={() => handleMergeDoublon(doublon.marque2, doublon.marque1)}
+                                disabled={loading}
+                                title={`Fusionner "${doublon.marque2}" vers "${doublon.marque1}"`}
+                              >
+                                <ArrowRight className="w-5 h-5" />
+                              </Button>
+                            </div>
 
-                        {/* Marque 2 */}
-                        <div className="flex-1 bg-black/30 rounded-lg p-3 text-center">
-                          <p className="text-white font-medium">{doublon.marque2}</p>
-                          <p className="text-gray-400 text-sm">{doublon.count2} cigares</p>
+                            {/* Marque 2 */}
+                            <div className="flex-1 bg-black/30 rounded-lg p-3 text-center">
+                              <p className="text-white font-medium">{doublon.marque2}</p>
+                              <p className="text-gray-400 text-sm">{doublon.count2} cigares</p>
+                            </div>
+                          </div>
                         </div>
-                      </div>
+                      ))}
+                      {doublons.length === 0 && (
+                        <p className="text-gray-500 text-center py-4">Aucun doublon détecté</p>
+                      )}
                     </div>
-                  ))}
-                  {doublons.length === 0 && (
-                    <p className="text-gray-500 text-center py-4">Aucun doublon détecté</p>
-                  )}
-                </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-gray-400 text-sm mb-4">
+                      Ces paires ont été marquées comme "Pas un doublon" et ne s'afficheront plus.
+                    </p>
+                    <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
+                      {doublonsIgnores.map((doublon, idx) => (
+                        <div 
+                          key={idx}
+                          className="bg-gray-800/50 border border-gray-600/30 rounded-lg p-4"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <span className="text-white">{doublon.marque1}</span>
+                              <span className="text-gray-500">/</span>
+                              <span className="text-white">{doublon.marque2}</span>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-blue-400 hover:text-blue-300 hover:bg-blue-900/30"
+                              onClick={() => handleRestaurerDoublon(doublon.marque1, doublon.marque2)}
+                              disabled={loading}
+                              title="Restaurer dans la liste des doublons"
+                            >
+                              <RotateCcw className="w-4 h-4 mr-1" />
+                              Restaurer
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                      {doublonsIgnores.length === 0 && (
+                        <p className="text-gray-500 text-center py-4">Aucun doublon ignoré</p>
+                      )}
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

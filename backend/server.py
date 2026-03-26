@@ -4534,9 +4534,18 @@ async def delete_gamme(gamme: str = Query(...), marque: str = Query(None)):
 
 @api_router.get("/cigares/admin/doublons")
 async def detect_doublons():
-    """Détecter les doublons potentiels de marques"""
+    """Détecter les doublons potentiels de marques (excluant ceux ignorés)"""
     try:
         import difflib
+        
+        # Récupérer les doublons ignorés depuis MongoDB
+        doublons_ignores = await db.doublons_ignores.find({}).to_list(length=1000)
+        ignores_set = set()
+        for d in doublons_ignores:
+            # Créer une clé unique pour la paire (ordre alphabétique)
+            pair = tuple(sorted([d.get('marque1', ''), d.get('marque2', '')]))
+            ignores_set.add(pair)
+        
         with get_mysql_connection() as conn:
             cursor = conn.cursor(pymysql.cursors.DictCursor)
             cursor.execute('''
@@ -4554,6 +4563,11 @@ async def detect_doublons():
             
             for i, (m1, c1) in enumerate(marques_list):
                 for m2, c2 in marques_list[i+1:]:
+                    # Vérifier si cette paire est ignorée
+                    pair = tuple(sorted([m1, m2]))
+                    if pair in ignores_set:
+                        continue
+                    
                     ratio = difflib.SequenceMatcher(None, m1.lower(), m2.lower()).ratio()
                     if ratio > 0.65 and ratio < 1.0:
                         doublons.append({
@@ -4568,6 +4582,68 @@ async def detect_doublons():
             doublons.sort(key=lambda x: -x['similarite'])
             
             return {"doublons": doublons[:30], "total": len(doublons)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
+
+
+@api_router.post("/cigares/admin/ignorer-doublon")
+async def ignorer_doublon(marque1: str = Query(...), marque2: str = Query(...)):
+    """Ignorer un doublon (marquer comme faux positif)"""
+    try:
+        # Vérifier si déjà ignoré
+        pair = tuple(sorted([marque1, marque2]))
+        existing = await db.doublons_ignores.find_one({
+            "marque1": pair[0],
+            "marque2": pair[1]
+        })
+        
+        if existing:
+            return {"message": "Ce doublon est déjà ignoré", "already_ignored": True}
+        
+        # Ajouter à la liste des ignorés
+        await db.doublons_ignores.insert_one({
+            "marque1": pair[0],
+            "marque2": pair[1],
+            "ignored_at": datetime.now(timezone.utc).isoformat()
+        })
+        
+        return {
+            "message": f"Doublon '{marque1}' / '{marque2}' ignoré",
+            "success": True
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
+
+
+@api_router.get("/cigares/admin/doublons-ignores")
+async def get_doublons_ignores():
+    """Récupérer la liste des doublons ignorés"""
+    try:
+        doublons = await db.doublons_ignores.find({}, {"_id": 0}).to_list(length=1000)
+        return {"doublons_ignores": doublons, "total": len(doublons)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
+
+
+@api_router.delete("/cigares/admin/restaurer-doublon")
+async def restaurer_doublon(marque1: str = Query(...), marque2: str = Query(...)):
+    """Restaurer un doublon ignoré (le remettre dans la liste)"""
+    try:
+        pair = tuple(sorted([marque1, marque2]))
+        result = await db.doublons_ignores.delete_one({
+            "marque1": pair[0],
+            "marque2": pair[1]
+        })
+        
+        if result.deleted_count == 0:
+            return {"message": "Ce doublon n'était pas dans la liste des ignorés", "success": False}
+        
+        return {
+            "message": f"Doublon '{marque1}' / '{marque2}' restauré",
+            "success": True
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
 def normalize_pays(pays_raw):
