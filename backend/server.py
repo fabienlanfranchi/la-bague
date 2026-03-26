@@ -4383,6 +4383,81 @@ async def rename_marque(old_name: str = Query(...), new_name: str = Query(...)):
         raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
 
 
+@api_router.put("/cigares/admin/fusionner-avec-gamme")
+async def fusionner_avec_gamme(
+    marque_source: str = Query(..., description="Marque à fusionner (ex: Bentley White)"),
+    marque_cible: str = Query(..., description="Marque de destination (ex: Bentley)"),
+    gamme_extraite: str = Query(None, description="Gamme à extraire (ex: White). Si non fourni, déduit automatiquement")
+):
+    """Fusionner une marque vers une autre ET extraire la partie différente comme gamme.
+    
+    Exemple: 'Bentley White' → 'Bentley' avec gamme 'White'
+    - Les cigares 'Bentley White' deviennent 'Bentley'
+    - La gamme 'White' est ajoutée à ces cigares
+    """
+    try:
+        with get_mysql_connection() as conn:
+            cursor = conn.cursor()
+            
+            # Compter les cigares à modifier
+            cursor.execute('SELECT COUNT(*) FROM cigares WHERE marque = %s', (marque_source,))
+            count = cursor.fetchone()[0]
+            
+            if count == 0:
+                raise HTTPException(status_code=404, detail=f"Marque '{marque_source}' non trouvée")
+            
+            # Déduire la gamme si non fournie
+            if not gamme_extraite:
+                # Essayer de trouver la différence entre les deux noms
+                source_lower = marque_source.lower()
+                cible_lower = marque_cible.lower()
+                
+                if source_lower.startswith(cible_lower):
+                    # Ex: "Bentley White" commence par "Bentley" → gamme = "White"
+                    gamme_extraite = marque_source[len(marque_cible):].strip()
+                elif source_lower.endswith(cible_lower):
+                    # Ex: "White Bentley" finit par "Bentley" → gamme = "White"
+                    gamme_extraite = marque_source[:-len(marque_cible)].strip()
+                else:
+                    # Pas de pattern clair, utiliser la source complète comme gamme
+                    gamme_extraite = marque_source
+            
+            # Nettoyer la gamme (enlever tirets/espaces en début/fin)
+            gamme_extraite = gamme_extraite.strip(' -')
+            
+            if not gamme_extraite:
+                # Si pas de gamme à extraire, faire une fusion simple
+                cursor.execute('UPDATE cigares SET marque = %s WHERE marque = %s', (marque_cible, marque_source))
+                conn.commit()
+                return {
+                    "message": f"Marque '{marque_source}' fusionnée vers '{marque_cible}' (pas de gamme extraite)",
+                    "cigares_modifies": count,
+                    "gamme_extraite": None
+                }
+            
+            # Mettre à jour : changer la marque ET ajouter la gamme
+            cursor.execute('''
+                UPDATE cigares 
+                SET marque = %s, 
+                    gamme = CASE 
+                        WHEN gamme IS NULL OR gamme = '' THEN %s
+                        ELSE CONCAT(gamme, ' / ', %s)
+                    END
+                WHERE marque = %s
+            ''', (marque_cible, gamme_extraite, gamme_extraite, marque_source))
+            conn.commit()
+            
+            return {
+                "message": f"Marque '{marque_source}' fusionnée vers '{marque_cible}' avec gamme '{gamme_extraite}'",
+                "cigares_modifies": count,
+                "gamme_extraite": gamme_extraite
+            }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
+
+
 @api_router.put("/cigares/admin/rename-module")
 async def rename_module(old_name: str = Query(...), new_name: str = Query(...)):
     """Renommer un module"""

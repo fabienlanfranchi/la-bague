@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { 
   Tags, Edit2, Trash2, Check, X, AlertTriangle, 
-  Search, ArrowRight, Globe, Box, RefreshCw, Layers, Ban, RotateCcw
+  Search, ArrowRight, Globe, Box, RefreshCw, Layers, Ban, RotateCcw, GitMerge
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -249,7 +249,7 @@ const AdminCigarotheque = () => {
 
   // Fusionner deux marques (renommer l'une vers l'autre)
   const handleMergeDoublon = async (marqueToRename, marqueTarget) => {
-    if (!window.confirm(`Fusionner "${marqueToRename}" vers "${marqueTarget}" ?`)) {
+    if (!window.confirm(`Fusionner "${marqueToRename}" vers "${marqueTarget}" ?\n\nTous les cigares "${marqueToRename}" deviendront "${marqueTarget}".`)) {
       return;
     }
     setLoading(true);
@@ -257,6 +257,42 @@ const AdminCigarotheque = () => {
       const res = await axios.put(`${API}/api/cigares/admin/rename-marque?old_name=${encodeURIComponent(marqueToRename)}&new_name=${encodeURIComponent(marqueTarget)}`);
       toast.success(res.data.message);
       loadMarques();
+      loadGammes();
+      loadDoublons();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Erreur lors de la fusion');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fusionner avec extraction de gamme (ex: "Bentley White" → "Bentley" + gamme "White")
+  const handleMergeWithGamme = async (marqueSource, marqueCible) => {
+    // Déduire la gamme
+    let gammeExtraite = '';
+    if (marqueSource.toLowerCase().startsWith(marqueCible.toLowerCase())) {
+      gammeExtraite = marqueSource.substring(marqueCible.length).trim();
+    } else if (marqueSource.toLowerCase().endsWith(marqueCible.toLowerCase())) {
+      gammeExtraite = marqueSource.substring(0, marqueSource.length - marqueCible.length).trim();
+    }
+    
+    const message = gammeExtraite 
+      ? `Fusionner "${marqueSource}" vers "${marqueCible}" ET extraire "${gammeExtraite}" comme gamme ?\n\nLes cigares garderont la trace de leur gamme d'origine.`
+      : `Fusionner "${marqueSource}" vers "${marqueCible}" avec extraction de gamme ?`;
+    
+    if (!window.confirm(message)) {
+      return;
+    }
+    setLoading(true);
+    try {
+      let url = `${API}/api/cigares/admin/fusionner-avec-gamme?marque_source=${encodeURIComponent(marqueSource)}&marque_cible=${encodeURIComponent(marqueCible)}`;
+      if (gammeExtraite) {
+        url += `&gamme_extraite=${encodeURIComponent(gammeExtraite)}`;
+      }
+      const res = await axios.put(url);
+      toast.success(res.data.message);
+      loadMarques();
+      loadGammes();
       loadDoublons();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Erreur lors de la fusion');
@@ -632,27 +668,56 @@ const AdminCigarotheque = () => {
                             </div>
 
                             {/* Boutons de fusion */}
-                            <div className="flex flex-col gap-2">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="text-green-400 hover:bg-green-900/30"
-                                onClick={() => handleMergeDoublon(doublon.marque1, doublon.marque2)}
-                                disabled={loading}
-                                title={`Fusionner "${doublon.marque1}" vers "${doublon.marque2}"`}
-                              >
-                                <ArrowRight className="w-5 h-5" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="text-green-400 hover:bg-green-900/30 rotate-180"
-                                onClick={() => handleMergeDoublon(doublon.marque2, doublon.marque1)}
-                                disabled={loading}
-                                title={`Fusionner "${doublon.marque2}" vers "${doublon.marque1}"`}
-                              >
-                                <ArrowRight className="w-5 h-5" />
-                              </Button>
+                            <div className="flex flex-col gap-1">
+                              {/* Fusion simple */}
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="text-green-400 hover:bg-green-900/30 px-2"
+                                  onClick={() => handleMergeDoublon(doublon.marque1, doublon.marque2)}
+                                  disabled={loading}
+                                  title={`Fusionner "${doublon.marque1}" vers "${doublon.marque2}"`}
+                                >
+                                  <ArrowRight className="w-5 h-5" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="text-green-400 hover:bg-green-900/30 rotate-180 px-2"
+                                  onClick={() => handleMergeDoublon(doublon.marque2, doublon.marque1)}
+                                  disabled={loading}
+                                  title={`Fusionner "${doublon.marque2}" vers "${doublon.marque1}"`}
+                                >
+                                  <ArrowRight className="w-5 h-5" />
+                                </Button>
+                              </div>
+                              
+                              {/* Fusion + Gamme */}
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="text-purple-400 hover:bg-purple-900/30 px-2 text-xs"
+                                  onClick={() => handleMergeWithGamme(doublon.marque1, doublon.marque2)}
+                                  disabled={loading}
+                                  title={`Fusionner "${doublon.marque1}" vers "${doublon.marque2}" et extraire la gamme`}
+                                >
+                                  <GitMerge className="w-4 h-4" />
+                                  <ArrowRight className="w-3 h-3" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="text-purple-400 hover:bg-purple-900/30 px-2 text-xs"
+                                  onClick={() => handleMergeWithGamme(doublon.marque2, doublon.marque1)}
+                                  disabled={loading}
+                                  title={`Fusionner "${doublon.marque2}" vers "${doublon.marque1}" et extraire la gamme`}
+                                >
+                                  <ArrowRight className="w-3 h-3 rotate-180" />
+                                  <GitMerge className="w-4 h-4" />
+                                </Button>
+                              </div>
                             </div>
 
                             {/* Marque 2 */}
@@ -660,6 +725,12 @@ const AdminCigarotheque = () => {
                               <p className="text-white font-medium">{doublon.marque2}</p>
                               <p className="text-gray-400 text-sm">{doublon.count2} cigares</p>
                             </div>
+                          </div>
+                          
+                          {/* Légende */}
+                          <div className="mt-2 flex justify-center gap-4 text-xs text-gray-500">
+                            <span><ArrowRight className="w-3 h-3 inline text-green-400" /> Fusion simple</span>
+                            <span><GitMerge className="w-3 h-3 inline text-purple-400" /> Fusion + Gamme</span>
                           </div>
                         </div>
                       ))}
