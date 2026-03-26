@@ -245,6 +245,14 @@ const Cigarotheque = () => {
         const params = new URLSearchParams();
         params.append('limit', LIMIT);
         params.append('offset', page * LIMIT);
+        // Ajouter les filtres également en mode "À corriger"
+        if (search) params.append('search', search);
+        if (marqueFilter && marqueFilter !== 'all') params.append('marque', marqueFilter);
+        if (isCubainFilter === 'true') params.append('is_cubain', 'true');
+        if (isCubainFilter === 'false') params.append('is_cubain', 'false');
+        if (terroirFilter && terroirFilter !== 'all') params.append('terroir', terroirFilter);
+        if (moduleFilter && moduleFilter !== 'all') params.append('module', moduleFilter);
+        if (puissanceFilter && puissanceFilter !== 'all') params.append('puissance', puissanceFilter);
         
         const response = await axios.get(`${API}/cigares-incomplets?${params}`);
         setCigares(response.data.cigares);

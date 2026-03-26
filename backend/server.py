@@ -4180,20 +4180,64 @@ async def get_cigare_detail(cigare_id: int):
 @api_router.get("/cigares-incomplets")
 async def get_cigares_incomplets(
     limit: int = Query(50, le=500),
-    offset: int = Query(0)
+    offset: int = Query(0),
+    search: str = Query(None),
+    marque: str = Query(None),
+    is_cubain: str = Query(None),
+    terroir: str = Query(None),
+    module: str = Query(None),
+    puissance: str = Query(None)
 ):
-    """Récupérer les cigares incomplets (admin seulement) - sans nom, sans marque, sans module, ou marqués 'A MODIFIER'"""
+    """Récupérer les cigares incomplets (admin seulement) - sans nom, sans marque, sans module, ou marqués 'A MODIFIER'
+    Supporte les filtres pour permettre de trier marque par marque"""
     try:
         with get_mysql_connection() as conn:
             cursor = conn.cursor(pymysql.cursors.DictCursor)
             
-            # Cigares incomplets: sans nom_cigare, sans marque, sans module, ou avec "A MODIFIER"
-            query = """
+            # Condition de base: cigares incomplets
+            base_condition = """
+                ((nom_cigare IS NULL OR nom_cigare = '' OR nom_cigare LIKE '%%A MODIFIER%%')
+                OR (marque IS NULL OR marque = '' OR marque = 'A Modifier')
+                OR (module IS NULL OR module = '')
+                OR (premier_tiers IS NULL OR premier_tiers = ''))
+            """
+            
+            # Construire les conditions additionnelles avec les filtres
+            conditions = [base_condition]
+            params = []
+            
+            if search:
+                conditions.append("(nom_cigare LIKE %s OR marque LIKE %s OR gamme LIKE %s)")
+                search_param = f"%{search}%"
+                params.extend([search_param, search_param, search_param])
+            
+            if marque:
+                conditions.append("marque = %s")
+                params.append(marque)
+            
+            if is_cubain == 'true':
+                conditions.append("is_cubain = 1")
+            elif is_cubain == 'false':
+                conditions.append("(is_cubain = 0 OR is_cubain IS NULL)")
+            
+            if terroir:
+                conditions.append("terroir = %s")
+                params.append(terroir)
+            
+            if module:
+                conditions.append("module = %s")
+                params.append(module)
+            
+            if puissance:
+                conditions.append("puissance = %s")
+                params.append(puissance)
+            
+            where_clause = " AND ".join(conditions)
+            
+            # Requête principale
+            query = f"""
                 SELECT * FROM cigares 
-                WHERE (nom_cigare IS NULL OR nom_cigare = '' OR nom_cigare LIKE '%%A MODIFIER%%')
-                   OR (marque IS NULL OR marque = '' OR marque = 'A Modifier')
-                   OR (module IS NULL OR module = '')
-                   OR (premier_tiers IS NULL OR premier_tiers = '')
+                WHERE {where_clause}
                 ORDER BY 
                     CASE 
                         WHEN marque = 'A Modifier' OR marque IS NULL THEN 0
@@ -4204,18 +4248,14 @@ async def get_cigares_incomplets(
                     marque, nom_cigare
                 LIMIT %s OFFSET %s
             """
-            cursor.execute(query, (limit, offset))
+            params.extend([limit, offset])
+            cursor.execute(query, params)
             cigares = cursor.fetchall()
             
-            # Compter le total
-            count_query = """
-                SELECT COUNT(*) as cnt FROM cigares 
-                WHERE (nom_cigare IS NULL OR nom_cigare = '' OR nom_cigare LIKE '%%A MODIFIER%%')
-                   OR (marque IS NULL OR marque = '' OR marque = 'A Modifier')
-                   OR (module IS NULL OR module = '')
-                   OR (premier_tiers IS NULL OR premier_tiers = '')
-            """
-            cursor.execute(count_query)
+            # Compter le total avec les mêmes filtres
+            count_query = f"SELECT COUNT(*) as cnt FROM cigares WHERE {where_clause}"
+            count_params = params[:-2]  # Sans limit et offset
+            cursor.execute(count_query, count_params)
             total = cursor.fetchone()['cnt']
             
             # Ajouter les infos d'affichage
