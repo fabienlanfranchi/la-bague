@@ -5446,6 +5446,105 @@ async def fusionner_cigares(
         raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
 
 
+@api_router.post("/cigares/fusionner-intelligent")
+async def fusionner_cigares_intelligent(
+    cigare1_id: int = Query(..., description="ID du premier cigare"),
+    cigare2_id: int = Query(..., description="ID du deuxième cigare")
+):
+    """Fusion intelligente : prend le meilleur de chaque champ des deux cigares.
+    
+    Pour chaque champ :
+    - Si un seul cigare a la valeur, on la prend
+    - Si les deux ont une valeur, on prend la plus longue (pour les textes) ou celle du cigare le plus complet
+    
+    Le cigare résultant est celui avec l'ID le plus petit (conservé pour les références).
+    """
+    try:
+        with get_mysql_connection() as conn:
+            cursor = conn.cursor(pymysql.cursors.DictCursor)
+            
+            # Récupérer les deux cigares
+            cursor.execute('SELECT * FROM cigares WHERE id = %s', (cigare1_id,))
+            cigare1 = cursor.fetchone()
+            
+            cursor.execute('SELECT * FROM cigares WHERE id = %s', (cigare2_id,))
+            cigare2 = cursor.fetchone()
+            
+            if not cigare1:
+                raise HTTPException(status_code=404, detail=f"Cigare {cigare1_id} non trouvé")
+            if not cigare2:
+                raise HTTPException(status_code=404, detail=f"Cigare {cigare2_id} non trouvé")
+            
+            # Déterminer quel cigare garder (ID le plus petit)
+            cigare_garde = cigare1 if cigare1['id'] < cigare2['id'] else cigare2
+            cigare_supprime = cigare2 if cigare1['id'] < cigare2['id'] else cigare1
+            
+            # Champs à fusionner
+            fields_to_merge = [
+                'nom_cigare', 'marque', 'gamme', 'module', 'vitole', 'terroir',
+                'dimensions', 'puissance', 'prix', 'note_bagues', 'bagues_etoiles',
+                'premier_tiers', 'deuxieme_tiers', 'troisieme_tiers', 'conclusion',
+                'photo', 'photo_url', 'cape', 'sous_cape', 'tripe'
+            ]
+            
+            updates = []
+            params = []
+            merged_fields = []
+            
+            for field in fields_to_merge:
+                garde_value = cigare_garde.get(field)
+                supprime_value = cigare_supprime.get(field)
+                
+                # Normaliser les valeurs vides
+                garde_empty = not garde_value or garde_value == '' or garde_value is None
+                supprime_empty = not supprime_value or supprime_value == '' or supprime_value is None
+                
+                best_value = None
+                
+                if garde_empty and not supprime_empty:
+                    # Cigare gardé n'a pas la valeur, prendre celle du supprimé
+                    best_value = supprime_value
+                    merged_fields.append(f"{field} (de ID {cigare_supprime['id']})")
+                elif not garde_empty and supprime_empty:
+                    # Cigare gardé a déjà la valeur, rien à faire
+                    pass
+                elif not garde_empty and not supprime_empty:
+                    # Les deux ont une valeur - prendre la meilleure
+                    if isinstance(garde_value, str) and isinstance(supprime_value, str):
+                        # Pour les textes, prendre le plus long
+                        if len(supprime_value) > len(garde_value):
+                            best_value = supprime_value
+                            merged_fields.append(f"{field} (plus complet de ID {cigare_supprime['id']})")
+                    # Pour les nombres, on garde celui du cigare gardé par défaut
+                
+                if best_value is not None:
+                    updates.append(f"{field} = %s")
+                    params.append(best_value)
+            
+            # Appliquer les mises à jour
+            if updates:
+                params.append(cigare_garde['id'])
+                query = f"UPDATE cigares SET {', '.join(updates)} WHERE id = %s"
+                cursor.execute(query, params)
+            
+            # Supprimer l'autre cigare
+            cursor.execute('DELETE FROM cigares WHERE id = %s', (cigare_supprime['id'],))
+            
+            conn.commit()
+            
+            return {
+                "message": f"Fusion intelligente réussie ! Cigare ID {cigare_garde['id']} conservé avec les meilleures données.",
+                "cigare_conserve": cigare_garde['id'],
+                "cigare_supprime": cigare_supprime['id'],
+                "champs_fusionnes": merged_fields,
+                "nb_champs_fusionnes": len(merged_fields)
+            }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
+
+
 @api_router.delete("/cigares/{cigare_id}")
 async def delete_cigare(cigare_id: int):
     """Supprimer un cigare du catalogue (admin only)"""

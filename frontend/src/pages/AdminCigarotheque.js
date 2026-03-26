@@ -140,6 +140,23 @@ const AdminCigarotheque = () => {
     }
   };
 
+  // Fusion intelligente : prend le meilleur des deux cigares
+  const handleFusionIntelligente = async (cigare1Id, cigare2Id) => {
+    if (!window.confirm(`Fusion intelligente ?\n\nLes meilleurs champs de chaque cigare seront combinés.\nLe cigare avec l'ID le plus petit sera conservé, l'autre supprimé.`)) {
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await axios.post(`${API}/api/cigares/fusionner-intelligent?cigare1_id=${cigare1Id}&cigare2_id=${cigare2Id}`);
+      toast.success(`${res.data.message} (${res.data.nb_champs_fusionnes} champs fusionnés)`);
+      loadDoublonsCigares(searchCigares);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Erreur lors de la fusion');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Ignorer un doublon de cigares
   const handleIgnorerDoublonCigare = async (cigare1Id, cigare2Id) => {
     setLoading(true);
@@ -1236,6 +1253,17 @@ const AdminCigarotheque = () => {
                 >
                   <ArrowRight className="w-4 h-4 mr-1 rotate-180" />
                   Garder gauche (ID {compareModal.cigare1.id})
+                </Button>
+                <Button
+                  className="bg-purple-600 hover:bg-purple-500 text-white"
+                  onClick={() => {
+                    handleFusionIntelligente(compareModal.cigare1.id, compareModal.cigare2.id);
+                    setCompareModal(null);
+                  }}
+                  disabled={loading}
+                >
+                  <GitMerge className="w-4 h-4 mr-1" />
+                  Fusionner les deux
                 </Button>
                 <Button
                   className="bg-green-600 hover:bg-green-500 text-white"
