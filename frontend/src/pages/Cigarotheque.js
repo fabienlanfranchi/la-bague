@@ -215,6 +215,25 @@ const Cigarotheque = () => {
     }
   };
 
+  // Charger les filtres spécifiques pour le mode "À corriger"
+  const loadFiltresIncomplets = async () => {
+    try {
+      const response = await axios.get(`${API}/cigares-incomplets-filtres`);
+      setFiltres(response.data);
+    } catch (error) {
+      console.error('Erreur chargement filtres incomplets:', error);
+    }
+  };
+
+  // Recharger les filtres quand on change de mode (normal / À corriger)
+  useEffect(() => {
+    if (showIncompleteOnly && isAdmin) {
+      loadFiltresIncomplets();
+    } else {
+      loadFiltres(isCubainFilter === 'true' ? true : isCubainFilter === 'false' ? false : null, terroirFilter);
+    }
+  }, [showIncompleteOnly, isAdmin]);
+
   // Handler pour le changement de filtre cubain/non-cubain
   const handleCubainFilterChange = (value) => {
     setIsCubainFilter(value);

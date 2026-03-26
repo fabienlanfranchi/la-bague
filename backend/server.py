@@ -4769,6 +4769,87 @@ async def get_cigares_filtres(is_cubain: Optional[bool] = None, terroir: Optiona
         raise HTTPException(status_code=500, detail=f"Erreur filtres: {str(e)}")
 
 
+@api_router.get("/cigares-incomplets-filtres")
+async def get_cigares_incomplets_filtres():
+    """Récupérer les options de filtres disponibles pour les cigares incomplets uniquement"""
+    try:
+        with get_mysql_connection() as conn:
+            cursor = conn.cursor(pymysql.cursors.DictCursor)
+            
+            # Condition de base pour les cigares incomplets
+            base_condition = """
+                ((nom_cigare IS NULL OR nom_cigare = '' OR nom_cigare LIKE '%%A MODIFIER%%')
+                OR (marque IS NULL OR marque = '' OR marque = 'A Modifier')
+                OR (module IS NULL OR module = '')
+                OR (premier_tiers IS NULL OR premier_tiers = ''))
+            """
+            
+            # Total des cigares incomplets
+            cursor.execute(f"SELECT COUNT(*) as total FROM cigares WHERE {base_condition}")
+            total = cursor.fetchone()['total']
+            
+            # Marques des cigares incomplets
+            cursor.execute(f"""
+                SELECT marque, COUNT(*) as count
+                FROM cigares 
+                WHERE marque IS NOT NULL AND marque != '' AND {base_condition}
+                GROUP BY marque
+                ORDER BY marque
+            """)
+            marques = [{"nom": row['marque'], "count": row['count']} for row in cursor.fetchall()]
+            
+            # Modules des cigares incomplets
+            cursor.execute(f"""
+                SELECT module, COUNT(*) as count
+                FROM cigares 
+                WHERE module IS NOT NULL AND module != '' AND {base_condition}
+                GROUP BY module
+                ORDER BY module
+            """)
+            modules = [{"nom": row['module'], "count": row['count']} for row in cursor.fetchall()]
+            
+            # Terroirs des cigares incomplets
+            cursor.execute(f"""
+                SELECT terroir, COUNT(*) as count
+                FROM cigares 
+                WHERE terroir IS NOT NULL AND terroir != '' AND {base_condition}
+                GROUP BY terroir
+                ORDER BY terroir
+            """)
+            terroirs = [{"nom": row['terroir'], "count": row['count']} for row in cursor.fetchall()]
+            
+            # Puissances des cigares incomplets
+            cursor.execute(f"""
+                SELECT puissance, COUNT(*) as count
+                FROM cigares 
+                WHERE puissance IS NOT NULL AND {base_condition}
+                GROUP BY puissance
+                ORDER BY puissance
+            """)
+            puissances = [{"code": row['puissance'], "count": row['count']} for row in cursor.fetchall()]
+            
+            # Cubains / Non-cubains
+            cursor.execute(f"SELECT COUNT(*) as cnt FROM cigares WHERE is_cubain = TRUE AND {base_condition}")
+            cubains = cursor.fetchone()['cnt']
+            
+            cursor.execute(f"SELECT COUNT(*) as cnt FROM cigares WHERE (is_cubain = FALSE OR is_cubain IS NULL) AND {base_condition}")
+            non_cubains = cursor.fetchone()['cnt']
+            
+            return {
+                "stats": {
+                    "total": total,
+                    "cubains": cubains,
+                    "non_cubains": non_cubains
+                },
+                "marques": marques,
+                "modules": modules,
+                "terroirs": terroirs,
+                "puissances": puissances
+            }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur filtres incomplets: {str(e)}")
+
+
 class CigareUpdate(BaseModel):
     """Mise à jour d'un cigare"""
     marque: Optional[str] = None
