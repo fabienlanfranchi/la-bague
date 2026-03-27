@@ -215,30 +215,35 @@ const AdminCigarotheque = () => {
     toast.success(`${field} transféré`);
   };
 
-  // Valider : sauvegarder le cigare le plus complet et supprimer l'autre
-  const handleValiderComparaison = async () => {
+  // Supprimer un cigare depuis la comparaison
+  const handleDeleteCigareCompare = async (cigareKey) => {
+    const cigare = editedCigares[cigareKey];
+    if (!window.confirm(`Supprimer définitivement le cigare ID ${cigare.id} (${cigare.nom_cigare}) ?`)) {
+      return;
+    }
     setLoading(true);
     try {
-      const score1 = getCompletionScore(editedCigares.cigare1);
-      const score2 = getCompletionScore(editedCigares.cigare2);
-      
-      // Déterminer quel cigare garder (le plus complet)
-      const cigareGarde = score1.filled >= score2.filled ? editedCigares.cigare1 : editedCigares.cigare2;
-      const cigareSupprime = score1.filled >= score2.filled ? editedCigares.cigare2 : editedCigares.cigare1;
-      
-      // Sauvegarder le cigare le plus complet
-      await axios.put(`${API}/api/cigares/${cigareGarde.id}`, cigareGarde);
-      
-      // Supprimer l'autre
-      await axios.delete(`${API}/api/cigares/${cigareSupprime.id}`);
-      
-      toast.success(`Cigare ID ${cigareGarde.id} conservé (${score1.filled >= score2.filled ? score1.percent : score2.percent}% complet). ID ${cigareSupprime.id} supprimé.`);
+      await axios.delete(`${API}/api/cigares/${cigare.id}`);
+      toast.success(`Cigare ID ${cigare.id} supprimé`);
       setCompareModal(null);
       setEditedCigares({ cigare1: null, cigare2: null });
       loadDoublonsCigares(searchCigares);
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Erreur lors de la validation');
-      console.error(error);
+      toast.error(error.response?.data?.detail || 'Erreur lors de la suppression');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Enregistrer un cigare depuis la comparaison
+  const handleSaveCigareCompare = async (cigareKey) => {
+    const cigare = editedCigares[cigareKey];
+    setLoading(true);
+    try {
+      await axios.put(`${API}/api/cigares/${cigare.id}`, cigare);
+      toast.success(`Cigare ID ${cigare.id} enregistré`);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Erreur lors de l\'enregistrement');
     } finally {
       setLoading(false);
     }
@@ -1184,7 +1189,7 @@ const AdminCigarotheque = () => {
             </div>
             
             <div className="p-4">
-              {/* En-têtes des deux cigares */}
+              {/* En-têtes des deux cigares avec boutons */}
               <div className="grid grid-cols-2 gap-4 mb-4">
                 {['cigare1', 'cigare2'].map((cigareKey, idx) => {
                   const cigare = editedCigares[cigareKey];
@@ -1203,6 +1208,28 @@ const AdminCigarotheque = () => {
                       {cigare.photo_url && (
                         <img src={cigare.photo_url} alt={cigare.nom_cigare} className="w-full h-24 object-contain rounded mt-2" />
                       )}
+                      {/* Boutons Enregistrer / Supprimer */}
+                      <div className="flex gap-2 mt-3">
+                        <Button
+                          size="sm"
+                          className="flex-1 bg-green-600 hover:bg-green-500 text-white"
+                          onClick={() => handleSaveCigareCompare(cigareKey)}
+                          disabled={loading}
+                        >
+                          <Check className="w-3 h-3 mr-1" />
+                          Enregistrer
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="flex-1 bg-red-600 hover:bg-red-500 text-white"
+                          onClick={() => handleDeleteCigareCompare(cigareKey)}
+                          disabled={loading}
+                        >
+                          <Trash2 className="w-3 h-3 mr-1" />
+                          Supprimer
+                        </Button>
+                      </div>
                     </div>
                   );
                 })}
@@ -1295,16 +1322,8 @@ const AdminCigarotheque = () => {
                 </table>
               </div>
 
-              {/* Boutons d'action simplifiés */}
+              {/* Boutons en bas */}
               <div className="mt-6 flex justify-center gap-4">
-                <Button
-                  className="bg-green-600 hover:bg-green-500 text-white px-8"
-                  onClick={handleValiderComparaison}
-                  disabled={loading}
-                >
-                  <Check className="w-4 h-4 mr-2" />
-                  Valider (garde le plus complet)
-                </Button>
                 <Button
                   variant="outline"
                   className="border-gray-600 text-gray-400 hover:bg-gray-800"
@@ -1317,6 +1336,16 @@ const AdminCigarotheque = () => {
                 >
                   <Ban className="w-4 h-4 mr-1" />
                   Pas un doublon
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="text-gray-400 hover:text-white"
+                  onClick={() => {
+                    setCompareModal(null);
+                    setEditedCigares({ cigare1: null, cigare2: null });
+                  }}
+                >
+                  Fermer
                 </Button>
               </div>
             </div>
