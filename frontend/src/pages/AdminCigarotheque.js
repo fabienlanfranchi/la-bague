@@ -30,6 +30,7 @@ const AdminCigarotheque = () => {
   const [showIgnoredCigares, setShowIgnoredCigares] = useState(false);
   const [compareModal, setCompareModal] = useState(null); // {cigare1: {...}, cigare2: {...}}
   const [compareLoading, setCompareLoading] = useState(false);
+  const [editedCigares, setEditedCigares] = useState({ cigare1: null, cigare2: null }); // Pour les modifications en cours
   
   // État pour l'édition
   const [editingItem, setEditingItem] = useState(null);
@@ -196,10 +197,39 @@ const AdminCigarotheque = () => {
         axios.get(`${API}/api/cigares/${id2}`)
       ]);
       setCompareModal({ cigare1: res1.data, cigare2: res2.data });
+      setEditedCigares({ cigare1: { ...res1.data }, cigare2: { ...res2.data } });
     } catch (error) {
       toast.error('Erreur lors du chargement des détails');
     } finally {
       setCompareLoading(false);
+    }
+  };
+
+  // Transférer un champ d'un cigare vers l'autre
+  const handleTransferField = (field, fromCigare, toCigare) => {
+    const value = editedCigares[fromCigare][field];
+    setEditedCigares(prev => ({
+      ...prev,
+      [toCigare]: { ...prev[toCigare], [field]: value }
+    }));
+    toast.success(`${field} transféré !`);
+  };
+
+  // Sauvegarder les modifications des deux cigares
+  const handleSaveComparedCigares = async () => {
+    setLoading(true);
+    try {
+      await Promise.all([
+        axios.put(`${API}/api/cigares/${editedCigares.cigare1.id}`, editedCigares.cigare1),
+        axios.put(`${API}/api/cigares/${editedCigares.cigare2.id}`, editedCigares.cigare2)
+      ]);
+      toast.success('Les deux cigares ont été mis à jour !');
+      setCompareModal(null);
+      loadDoublonsCigares(searchCigares);
+    } catch (error) {
+      toast.error('Erreur lors de la sauvegarde');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -1123,16 +1153,19 @@ const AdminCigarotheque = () => {
         </Tabs>
       </div>
 
-      {/* Modale de comparaison détaillée */}
-      {compareModal && (
+      {/* Modale de comparaison détaillée avec champs transférables */}
+      {compareModal && editedCigares.cigare1 && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className="bg-[#1A1A1A] border border-red-600/30 rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-[#1A1A1A] border-b border-red-600/30 p-4 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-red-400">Comparaison détaillée</h2>
+            <div className="sticky top-0 bg-[#1A1A1A] border-b border-red-600/30 p-4 flex items-center justify-between z-10">
+              <div>
+                <h2 className="text-xl font-bold text-red-400">Comparaison détaillée</h2>
+                <p className="text-gray-500 text-xs mt-1">Cliquez sur une valeur pour la transférer vers l'autre cigare</p>
+              </div>
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setCompareModal(null)}
+                onClick={() => { setCompareModal(null); setEditedCigares({ cigare1: null, cigare2: null }); }}
                 className="text-gray-400 hover:text-white"
               >
                 <X className="w-5 h-5" />
@@ -1140,147 +1173,165 @@ const AdminCigarotheque = () => {
             </div>
             
             <div className="p-4">
-              <div className="grid grid-cols-2 gap-6">
-                {[compareModal.cigare1, compareModal.cigare2].map((cigare, idx) => {
+              {/* En-têtes des deux cigares */}
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                {['cigare1', 'cigare2'].map((cigareKey, idx) => {
+                  const cigare = editedCigares[cigareKey];
                   const score = getCompletionScore(cigare);
                   return (
-                    <div key={idx} className={`bg-black/30 rounded-lg p-4 border ${score.percent > 50 ? 'border-green-600/50' : 'border-orange-600/50'}`}>
-                      {/* En-tête avec score */}
-                      <div className="flex items-center justify-between mb-4">
+                    <div key={idx} className={`bg-black/30 rounded-lg p-3 border ${score.percent > 50 ? 'border-green-600/50' : 'border-orange-600/50'}`}>
+                      <div className="flex items-center justify-between">
                         <div>
                           <h3 className="text-lg font-bold text-white">{cigare.nom_cigare || '(Sans nom)'}</h3>
-                          <p className="text-gray-400">{cigare.marque}</p>
+                          <p className="text-gray-400 text-sm">{cigare.marque} • ID {cigare.id}</p>
                         </div>
-                        <div className="text-right">
-                          <div className={`text-2xl font-bold ${score.percent > 70 ? 'text-green-400' : score.percent > 40 ? 'text-yellow-400' : 'text-red-400'}`}>
-                            {score.percent}%
-                          </div>
-                          <p className="text-gray-500 text-xs">{score.filled}/{score.total} champs</p>
+                        <div className={`text-2xl font-bold ${score.percent > 70 ? 'text-green-400' : score.percent > 40 ? 'text-yellow-400' : 'text-red-400'}`}>
+                          {score.percent}%
                         </div>
                       </div>
-
-                      {/* Photo */}
                       {cigare.photo_url && (
-                        <div className="mb-4">
-                          <img src={cigare.photo_url} alt={cigare.nom_cigare} className="w-full h-32 object-contain rounded" />
-                        </div>
+                        <img src={cigare.photo_url} alt={cigare.nom_cigare} className="w-full h-24 object-contain rounded mt-2" />
                       )}
-                      
-                      {/* Détails */}
-                      <div className="space-y-2 text-sm">
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <span className="text-gray-500">ID:</span>
-                            <span className="text-gray-300 ml-2">{cigare.id}</span>
-                          </div>
-                          <div>
-                            <span className="text-gray-500">Gamme:</span>
-                            <span className={`ml-2 ${cigare.gamme ? 'text-purple-400' : 'text-gray-600'}`}>{cigare.gamme || '-'}</span>
-                          </div>
-                          <div>
-                            <span className="text-gray-500">Module:</span>
-                            <span className={`ml-2 ${cigare.module ? 'text-white' : 'text-gray-600'}`}>{cigare.module || '-'}</span>
-                          </div>
-                          <div>
-                            <span className="text-gray-500">Terroir:</span>
-                            <span className={`ml-2 ${cigare.terroir ? 'text-white' : 'text-gray-600'}`}>{cigare.terroir || '-'}</span>
-                          </div>
-                          <div>
-                            <span className="text-gray-500">Dimensions:</span>
-                            <span className={`ml-2 ${cigare.dimensions ? 'text-white' : 'text-gray-600'}`}>{cigare.dimensions || '-'}</span>
-                          </div>
-                          <div>
-                            <span className="text-gray-500">Puissance:</span>
-                            <span className={`ml-2 ${cigare.puissance ? 'text-white' : 'text-gray-600'}`}>{cigare.puissance || '-'}</span>
-                          </div>
-                          <div>
-                            <span className="text-gray-500">Prix:</span>
-                            <span className={`ml-2 ${cigare.prix ? 'text-green-400' : 'text-gray-600'}`}>{cigare.prix ? `${cigare.prix}€` : '-'}</span>
-                          </div>
-                          <div>
-                            <span className="text-gray-500">Note:</span>
-                            <span className={`ml-2 ${cigare.note_bagues ? 'text-yellow-400' : 'text-gray-600'}`}>
-                              {cigare.note_bagues ? `${cigare.note_bagues}⭐` : '-'}
-                            </span>
-                          </div>
-                        </div>
-                        
-                        {/* Notes de dégustation */}
-                        <div className="mt-4 pt-4 border-t border-gray-700">
-                          <p className="text-gray-500 mb-2">Notes de dégustation:</p>
-                          <div className="space-y-2">
-                            <div>
-                              <span className="text-gray-600 text-xs">1er tiers:</span>
-                              <p className={`text-xs ${cigare.premier_tiers ? 'text-gray-300' : 'text-gray-600 italic'}`}>
-                                {cigare.premier_tiers ? cigare.premier_tiers.substring(0, 150) + (cigare.premier_tiers.length > 150 ? '...' : '') : 'Non renseigné'}
-                              </p>
-                            </div>
-                            <div>
-                              <span className="text-gray-600 text-xs">2ème tiers:</span>
-                              <p className={`text-xs ${cigare.deuxieme_tiers ? 'text-gray-300' : 'text-gray-600 italic'}`}>
-                                {cigare.deuxieme_tiers ? cigare.deuxieme_tiers.substring(0, 150) + (cigare.deuxieme_tiers.length > 150 ? '...' : '') : 'Non renseigné'}
-                              </p>
-                            </div>
-                            <div>
-                              <span className="text-gray-600 text-xs">3ème tiers:</span>
-                              <p className={`text-xs ${cigare.troisieme_tiers ? 'text-gray-300' : 'text-gray-600 italic'}`}>
-                                {cigare.troisieme_tiers ? cigare.troisieme_tiers.substring(0, 150) + (cigare.troisieme_tiers.length > 150 ? '...' : '') : 'Non renseigné'}
-                              </p>
-                            </div>
-                            <div>
-                              <span className="text-gray-600 text-xs">Conclusion:</span>
-                              <p className={`text-xs ${cigare.conclusion ? 'text-gray-300' : 'text-gray-600 italic'}`}>
-                                {cigare.conclusion ? cigare.conclusion.substring(0, 150) + (cigare.conclusion.length > 150 ? '...' : '') : 'Non renseigné'}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
                     </div>
                   );
                 })}
               </div>
 
+              {/* Tableau comparatif avec champs cliquables */}
+              <div className="bg-black/20 rounded-lg overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-700">
+                      <th className="text-left p-3 text-gray-400 w-1/3">Cigare 1 (ID {editedCigares.cigare1.id})</th>
+                      <th className="text-center p-3 text-gray-500 w-1/6">Champ</th>
+                      <th className="text-right p-3 text-gray-400 w-1/3">Cigare 2 (ID {editedCigares.cigare2.id})</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      { key: 'nom_cigare', label: 'Nom' },
+                      { key: 'marque', label: 'Marque' },
+                      { key: 'gamme', label: 'Gamme' },
+                      { key: 'module', label: 'Module' },
+                      { key: 'terroir', label: 'Terroir' },
+                      { key: 'dimensions', label: 'Dimensions' },
+                      { key: 'puissance', label: 'Puissance' },
+                      { key: 'prix', label: 'Prix' },
+                      { key: 'note_bagues', label: 'Note' },
+                      { key: 'premier_tiers', label: '1er tiers' },
+                      { key: 'deuxieme_tiers', label: '2ème tiers' },
+                      { key: 'troisieme_tiers', label: '3ème tiers' },
+                      { key: 'conclusion', label: 'Conclusion' },
+                    ].map(({ key, label }) => {
+                      const val1 = editedCigares.cigare1[key];
+                      const val2 = editedCigares.cigare2[key];
+                      const hasVal1 = val1 !== null && val1 !== '' && val1 !== undefined;
+                      const hasVal2 = val2 !== null && val2 !== '' && val2 !== undefined;
+                      const isLongText = ['premier_tiers', 'deuxieme_tiers', 'troisieme_tiers', 'conclusion'].includes(key);
+                      
+                      const displayVal = (val) => {
+                        if (!val) return '-';
+                        if (key === 'prix') return `${val}€`;
+                        if (key === 'note_bagues') return `${val}⭐`;
+                        if (isLongText) return val.length > 80 ? val.substring(0, 80) + '...' : val;
+                        return val;
+                      };
+
+                      return (
+                        <tr key={key} className="border-b border-gray-800 hover:bg-gray-800/30">
+                          {/* Valeur cigare 1 - cliquable pour transférer vers cigare 2 */}
+                          <td className="p-2">
+                            <button
+                              onClick={() => hasVal1 && handleTransferField(key, 'cigare1', 'cigare2')}
+                              disabled={!hasVal1}
+                              className={`w-full text-left p-2 rounded transition-all ${
+                                hasVal1 
+                                  ? 'hover:bg-blue-600/30 hover:border-blue-500 cursor-pointer border border-transparent' 
+                                  : 'cursor-not-allowed opacity-50'
+                              } ${hasVal1 ? 'text-white' : 'text-gray-600 italic'}`}
+                              title={hasVal1 ? `Cliquer pour copier vers Cigare 2` : ''}
+                            >
+                              <span className={isLongText ? 'text-xs' : ''}>{displayVal(val1)}</span>
+                              {hasVal1 && <ArrowRight className="w-3 h-3 inline ml-2 text-blue-400 opacity-50" />}
+                            </button>
+                          </td>
+                          
+                          {/* Label du champ */}
+                          <td className="p-2 text-center">
+                            <span className="text-gray-500 text-xs font-medium">{label}</span>
+                          </td>
+                          
+                          {/* Valeur cigare 2 - cliquable pour transférer vers cigare 1 */}
+                          <td className="p-2">
+                            <button
+                              onClick={() => hasVal2 && handleTransferField(key, 'cigare2', 'cigare1')}
+                              disabled={!hasVal2}
+                              className={`w-full text-right p-2 rounded transition-all ${
+                                hasVal2 
+                                  ? 'hover:bg-green-600/30 hover:border-green-500 cursor-pointer border border-transparent' 
+                                  : 'cursor-not-allowed opacity-50'
+                              } ${hasVal2 ? 'text-white' : 'text-gray-600 italic'}`}
+                              title={hasVal2 ? `Cliquer pour copier vers Cigare 1` : ''}
+                            >
+                              {hasVal2 && <ArrowRight className="w-3 h-3 inline mr-2 text-green-400 opacity-50 rotate-180" />}
+                              <span className={isLongText ? 'text-xs' : ''}>{displayVal(val2)}</span>
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
               {/* Boutons d'action */}
-              <div className="mt-6 flex justify-center gap-4">
+              <div className="mt-6 flex flex-wrap justify-center gap-3">
+                <Button
+                  className="bg-blue-600 hover:bg-blue-500 text-white"
+                  onClick={handleSaveComparedCigares}
+                  disabled={loading}
+                >
+                  <Check className="w-4 h-4 mr-1" />
+                  Sauvegarder les modifications
+                </Button>
                 <Button
                   className="bg-green-600 hover:bg-green-500 text-white"
                   onClick={() => {
-                    handleFusionnerCigares(compareModal.cigare1.id, compareModal.cigare2.id);
+                    handleFusionnerCigares(editedCigares.cigare1.id, editedCigares.cigare2.id);
                     setCompareModal(null);
                   }}
                   disabled={loading}
                 >
                   <ArrowRight className="w-4 h-4 mr-1 rotate-180" />
-                  Garder gauche (ID {compareModal.cigare1.id})
+                  Garder ID {editedCigares.cigare1.id}
                 </Button>
                 <Button
                   className="bg-purple-600 hover:bg-purple-500 text-white"
                   onClick={() => {
-                    handleFusionIntelligente(compareModal.cigare1.id, compareModal.cigare2.id);
+                    handleFusionIntelligente(editedCigares.cigare1.id, editedCigares.cigare2.id);
                     setCompareModal(null);
                   }}
                   disabled={loading}
                 >
                   <GitMerge className="w-4 h-4 mr-1" />
-                  Fusionner les deux
+                  Fusion auto
                 </Button>
                 <Button
                   className="bg-green-600 hover:bg-green-500 text-white"
                   onClick={() => {
-                    handleFusionnerCigares(compareModal.cigare2.id, compareModal.cigare1.id);
+                    handleFusionnerCigares(editedCigares.cigare2.id, editedCigares.cigare1.id);
                     setCompareModal(null);
                   }}
                   disabled={loading}
                 >
-                  Garder droite (ID {compareModal.cigare2.id})
+                  Garder ID {editedCigares.cigare2.id}
                   <ArrowRight className="w-4 h-4 ml-1" />
                 </Button>
                 <Button
                   variant="outline"
                   className="border-gray-600 text-gray-400 hover:bg-gray-800"
                   onClick={() => {
-                    handleIgnorerDoublonCigare(compareModal.cigare1.id, compareModal.cigare2.id);
+                    handleIgnorerDoublonCigare(editedCigares.cigare1.id, editedCigares.cigare2.id);
                     setCompareModal(null);
                   }}
                   disabled={loading}
