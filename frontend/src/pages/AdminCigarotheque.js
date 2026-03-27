@@ -212,22 +212,33 @@ const AdminCigarotheque = () => {
       ...prev,
       [toCigare]: { ...prev[toCigare], [field]: value }
     }));
-    toast.success(`${field} transféré !`);
+    toast.success(`${field} transféré`);
   };
 
-  // Sauvegarder les modifications des deux cigares
-  const handleSaveComparedCigares = async () => {
+  // Valider : sauvegarder le cigare le plus complet et supprimer l'autre
+  const handleValiderComparaison = async () => {
     setLoading(true);
     try {
-      await Promise.all([
-        axios.put(`${API}/api/cigares/${editedCigares.cigare1.id}`, editedCigares.cigare1),
-        axios.put(`${API}/api/cigares/${editedCigares.cigare2.id}`, editedCigares.cigare2)
-      ]);
-      toast.success('Les deux cigares ont été mis à jour !');
+      const score1 = getCompletionScore(editedCigares.cigare1);
+      const score2 = getCompletionScore(editedCigares.cigare2);
+      
+      // Déterminer quel cigare garder (le plus complet)
+      const cigareGarde = score1.filled >= score2.filled ? editedCigares.cigare1 : editedCigares.cigare2;
+      const cigareSupprime = score1.filled >= score2.filled ? editedCigares.cigare2 : editedCigares.cigare1;
+      
+      // Sauvegarder le cigare le plus complet
+      await axios.put(`${API}/api/cigares/${cigareGarde.id}`, cigareGarde);
+      
+      // Supprimer l'autre
+      await axios.delete(`${API}/api/cigares/${cigareSupprime.id}`);
+      
+      toast.success(`Cigare ID ${cigareGarde.id} conservé (${score1.filled >= score2.filled ? score1.percent : score2.percent}% complet). ID ${cigareSupprime.id} supprimé.`);
       setCompareModal(null);
+      setEditedCigares({ cigare1: null, cigare2: null });
       loadDoublonsCigares(searchCigares);
     } catch (error) {
-      toast.error('Erreur lors de la sauvegarde');
+      toast.error(error.response?.data?.detail || 'Erreur lors de la validation');
+      console.error(error);
     } finally {
       setLoading(false);
     }
@@ -1284,48 +1295,15 @@ const AdminCigarotheque = () => {
                 </table>
               </div>
 
-              {/* Boutons d'action */}
-              <div className="mt-6 flex flex-wrap justify-center gap-3">
+              {/* Boutons d'action simplifiés */}
+              <div className="mt-6 flex justify-center gap-4">
                 <Button
-                  className="bg-blue-600 hover:bg-blue-500 text-white"
-                  onClick={handleSaveComparedCigares}
+                  className="bg-green-600 hover:bg-green-500 text-white px-8"
+                  onClick={handleValiderComparaison}
                   disabled={loading}
                 >
-                  <Check className="w-4 h-4 mr-1" />
-                  Sauvegarder les modifications
-                </Button>
-                <Button
-                  className="bg-green-600 hover:bg-green-500 text-white"
-                  onClick={() => {
-                    handleFusionnerCigares(editedCigares.cigare1.id, editedCigares.cigare2.id);
-                    setCompareModal(null);
-                  }}
-                  disabled={loading}
-                >
-                  <ArrowRight className="w-4 h-4 mr-1 rotate-180" />
-                  Garder ID {editedCigares.cigare1.id}
-                </Button>
-                <Button
-                  className="bg-purple-600 hover:bg-purple-500 text-white"
-                  onClick={() => {
-                    handleFusionIntelligente(editedCigares.cigare1.id, editedCigares.cigare2.id);
-                    setCompareModal(null);
-                  }}
-                  disabled={loading}
-                >
-                  <GitMerge className="w-4 h-4 mr-1" />
-                  Fusion auto
-                </Button>
-                <Button
-                  className="bg-green-600 hover:bg-green-500 text-white"
-                  onClick={() => {
-                    handleFusionnerCigares(editedCigares.cigare2.id, editedCigares.cigare1.id);
-                    setCompareModal(null);
-                  }}
-                  disabled={loading}
-                >
-                  Garder ID {editedCigares.cigare2.id}
-                  <ArrowRight className="w-4 h-4 ml-1" />
+                  <Check className="w-4 h-4 mr-2" />
+                  Valider (garde le plus complet)
                 </Button>
                 <Button
                   variant="outline"
@@ -1333,6 +1311,7 @@ const AdminCigarotheque = () => {
                   onClick={() => {
                     handleIgnorerDoublonCigare(editedCigares.cigare1.id, editedCigares.cigare2.id);
                     setCompareModal(null);
+                    setEditedCigares({ cigare1: null, cigare2: null });
                   }}
                   disabled={loading}
                 >
