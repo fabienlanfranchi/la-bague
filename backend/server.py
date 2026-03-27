@@ -4153,6 +4153,48 @@ async def get_cigares(
         raise HTTPException(status_code=500, detail=f"Erreur base cigares: {str(e)}")
 
 
+# Liste des IDs de cigares sans correspondance Excel (identifiés lors de la mise à jour)
+CIGARES_SANS_CORRESPONDANCE = [62, 73, 113, 123, 191, 192, 258, 290, 326, 327, 328, 335, 336, 347, 352, 397, 413, 556, 635, 636, 637, 638, 639, 815]
+
+@api_router.get("/cigares/sans-correspondance")
+async def get_cigares_sans_correspondance():
+    """Récupérer les cigares qui n'ont pas de correspondance dans les fichiers Excel source"""
+    try:
+        with get_mysql_connection() as conn:
+            cursor = conn.cursor(pymysql.cursors.DictCursor)
+            
+            if CIGARES_SANS_CORRESPONDANCE:
+                placeholders = ','.join(['%s'] * len(CIGARES_SANS_CORRESPONDANCE))
+                cursor.execute(f'''
+                    SELECT id, nom_cigare, marque, gamme, module, note_bagues,
+                           premier_tiers IS NOT NULL AND premier_tiers != '' as has_notes
+                    FROM cigares 
+                    WHERE id IN ({placeholders})
+                    ORDER BY marque, nom_cigare
+                ''', CIGARES_SANS_CORRESPONDANCE)
+            else:
+                return {"cigares": [], "total": 0}
+            
+            cigares = cursor.fetchall()
+            
+            return {
+                "cigares": cigares,
+                "total": len(cigares)
+            }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
+
+
+@api_router.delete("/cigares/sans-correspondance/{cigare_id}")
+async def remove_from_sans_correspondance(cigare_id: int):
+    """Retirer un cigare de la liste sans correspondance (quand on l'a vérifié manuellement)"""
+    global CIGARES_SANS_CORRESPONDANCE
+    if cigare_id in CIGARES_SANS_CORRESPONDANCE:
+        CIGARES_SANS_CORRESPONDANCE.remove(cigare_id)
+        return {"message": f"Cigare {cigare_id} retiré de la liste", "success": True}
+    return {"message": f"Cigare {cigare_id} n'était pas dans la liste", "success": False}
+
+
 @api_router.get("/cigares/doublons-potentiels")
 async def detect_doublons_cigares(
     search: str = Query(None, description="Rechercher des doublons par nom")

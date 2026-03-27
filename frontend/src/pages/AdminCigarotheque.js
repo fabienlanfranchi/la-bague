@@ -23,6 +23,7 @@ const AdminCigarotheque = () => {
   const [doublonsIgnores, setDoublonsIgnores] = useState([]);
   const [doublonsCigares, setDoublonsCigares] = useState([]);
   const [doublonsCigaresIgnores, setDoublonsCigaresIgnores] = useState([]);
+  const [cigaresSansCorrespondance, setCigaresSansCorrespondance] = useState([]);
   const [searchCigares, setSearchCigares] = useState('');
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -112,6 +113,16 @@ const AdminCigarotheque = () => {
       setDoublonsCigaresIgnores(res.data.doublons_ignores);
     } catch (error) {
       console.error('Erreur chargement doublons cigares ignorés:', error);
+    }
+  };
+
+  // Charger les cigares sans correspondance Excel
+  const loadCigaresSansCorrespondance = async () => {
+    try {
+      const res = await axios.get(`${API}/api/cigares/sans-correspondance`);
+      setCigaresSansCorrespondance(res.data.cigares);
+    } catch (error) {
+      console.error('Erreur chargement cigares sans correspondance:', error);
     }
   };
 
@@ -694,12 +705,12 @@ const AdminCigarotheque = () => {
               Doublons Marques ({doublons.length})
             </TabsTrigger>
             <TabsTrigger 
-              value="doublons-cigares" 
-              className="data-[state=active]:bg-red-600/20 data-[state=active]:text-red-400"
-              onClick={() => { if (doublonsCigares.length === 0) loadDoublonsCigares(); }}
+              value="sans-correspondance" 
+              className="data-[state=active]:bg-purple-600/20 data-[state=active]:text-purple-400"
+              onClick={() => { if (cigaresSansCorrespondance.length === 0) loadCigaresSansCorrespondance(); }}
             >
               <FileText className="w-4 h-4 mr-2" />
-              Doublons Cigares
+              Sans correspondance Excel
             </TabsTrigger>
           </TabsList>
 
@@ -954,215 +965,72 @@ const AdminCigarotheque = () => {
             </Card>
           </TabsContent>
 
-          {/* Onglet Doublons Cigares */}
-          <TabsContent value="doublons-cigares">
-            <Card className="bg-black/40 border-2 border-red-600/30">
+          {/* Onglet Sans correspondance Excel */}
+          <TabsContent value="sans-correspondance">
+            <Card className="bg-black/40 border-2 border-purple-600/30">
               <CardHeader>
-                <CardTitle className="text-red-400 flex items-center justify-between">
+                <CardTitle className="text-purple-400 flex items-center justify-between">
                   <div className="flex items-center">
                     <FileText className="w-5 h-5 mr-2" />
-                    Doublons de cigares
+                    Cigares sans correspondance Excel ({cigaresSansCorrespondance.length})
                   </div>
                   <Button
                     variant="outline"
                     size="sm"
-                    className={`${showIgnoredCigares ? 'bg-gray-600 text-white' : 'border-gray-600 text-gray-400'}`}
-                    onClick={() => { setShowIgnoredCigares(!showIgnoredCigares); if (!showIgnoredCigares) loadDoublonsCigaresIgnores(); }}
+                    className="border-purple-600 text-purple-400 hover:bg-purple-600/20"
+                    onClick={loadCigaresSansCorrespondance}
+                    disabled={loading}
                   >
-                    {showIgnoredCigares ? 'Voir doublons' : `Ignorés (${doublonsCigaresIgnores.length})`}
+                    <RefreshCw className={`w-4 h-4 mr-1 ${loading ? 'animate-spin' : ''}`} />
+                    Actualiser
                   </Button>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {!showIgnoredCigares ? (
-                  <>
-                    <p className="text-gray-400 text-sm mb-4">
-                      Recherchez des cigares similaires pour les fusionner ou marquez comme "Pas un doublon".
-                    </p>
-                    
-                    {/* Recherche */}
-                    <div className="flex gap-2 mb-4">
-                      <Input
-                        value={searchCigares}
-                        onChange={(e) => setSearchCigares(e.target.value)}
-                        placeholder="Rechercher un cigare (ex: Red Caiman, Horacio...)"
-                        className="bg-black/50 border-red-600/30 text-white"
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            loadDoublonsCigares(searchCigares);
-                          }
-                        }}
-                      />
-                      <Button
-                        onClick={() => loadDoublonsCigares(searchCigares)}
-                        className="bg-red-600 hover:bg-red-500"
-                      >
-                        <Search className="w-4 h-4 mr-2" />
-                        Chercher
-                      </Button>
-                    </div>
-
-                    <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-                      {doublonsCigares.map((doublon, idx) => (
-                        <div 
-                          key={idx}
-                          className="bg-red-900/20 border border-red-600/30 rounded-lg p-4"
-                        >
-                          <div className="flex items-center justify-between mb-3">
-                            <Badge className="bg-red-600/30 text-red-300">
-                              {doublon.similarite}% similaire
-                            </Badge>
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="text-blue-400 hover:text-blue-300 hover:bg-blue-900/30"
-                                onClick={() => handleComparer(doublon.cigare1.id, doublon.cigare2.id)}
-                                disabled={compareLoading}
-                              >
-                                <Eye className="w-4 h-4 mr-1" />
-                                Comparer
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="text-gray-400 hover:text-gray-200 hover:bg-gray-700/50"
-                                onClick={() => handleIgnorerDoublonCigare(doublon.cigare1.id, doublon.cigare2.id)}
-                                disabled={loading}
-                              >
-                                <Ban className="w-4 h-4 mr-1" />
-                                Pas un doublon
-                              </Button>
-                            </div>
-                          </div>
-                          
-                          <div className="grid grid-cols-2 gap-4">
-                            {/* Cigare 1 */}
-                            <div className="bg-black/30 rounded-lg p-3">
-                              <p className="text-white font-medium">{doublon.cigare1.nom || '(Sans nom)'}</p>
-                              <p className="text-gray-400 text-sm">{doublon.cigare1.marque}</p>
-                          {doublon.cigare1.gamme && (
-                            <p className="text-purple-400 text-xs">Gamme: {doublon.cigare1.gamme}</p>
-                          )}
-                          {doublon.cigare1.module && (
-                            <p className="text-gray-500 text-xs">Module: {doublon.cigare1.module}</p>
-                          )}
-                          <div className="mt-2 flex gap-2">
-                            {doublon.cigare1.has_nom && (
-                              <Badge className="bg-green-600/30 text-green-300 text-xs">Fiche OK</Badge>
-                            )}
-                            {doublon.cigare1.has_notes && (
-                              <Badge className="bg-blue-600/30 text-blue-300 text-xs">Notes OK</Badge>
-                            )}
-                            {!doublon.cigare1.has_nom && (
-                              <Badge className="bg-orange-600/30 text-orange-300 text-xs">Fiche incomplète</Badge>
-                            )}
-                            {!doublon.cigare1.has_notes && (
-                              <Badge className="bg-gray-600/30 text-gray-300 text-xs">Sans notes</Badge>
-                            )}
-                          </div>
-                          <p className="text-gray-600 text-xs mt-1">ID: {doublon.cigare1.id}</p>
+                <p className="text-gray-400 text-sm mb-4">
+                  Ces cigares n'ont pas été trouvés dans les fichiers Excel source (Cigaroscope/Havanoscope). 
+                  Ils peuvent être des ajouts manuels ou avoir des noms différents.
+                </p>
+                
+                <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-2">
+                  {cigaresSansCorrespondance.map((cigare) => (
+                    <div 
+                      key={cigare.id}
+                      className="bg-purple-900/20 border border-purple-600/30 rounded-lg p-3"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-purple-300 font-medium">{cigare.marque}</span>
+                          <span className="text-gray-500 mx-2">-</span>
+                          <span className="text-white">{cigare.nom_cigare}</span>
+                          <span className="text-gray-500 text-sm ml-2">(ID {cigare.id})</span>
                         </div>
-
-                        {/* Cigare 2 */}
-                        <div className="bg-black/30 rounded-lg p-3">
-                          <p className="text-white font-medium">{doublon.cigare2.nom || '(Sans nom)'}</p>
-                          <p className="text-gray-400 text-sm">{doublon.cigare2.marque}</p>
-                          {doublon.cigare2.gamme && (
-                            <p className="text-purple-400 text-xs">Gamme: {doublon.cigare2.gamme}</p>
+                        <div className="flex items-center gap-2">
+                          {cigare.note_bagues && (
+                            <span className="text-yellow-400 text-sm">{cigare.note_bagues}⭐</span>
                           )}
-                          {doublon.cigare2.module && (
-                            <p className="text-gray-500 text-xs">Module: {doublon.cigare2.module}</p>
+                          {cigare.has_notes ? (
+                            <Badge className="bg-green-600/30 text-green-300">Dégust. ✓</Badge>
+                          ) : (
+                            <Badge className="bg-red-600/30 text-red-300">Dégust. ✗</Badge>
                           )}
-                          <div className="mt-2 flex gap-2">
-                            {doublon.cigare2.has_nom && (
-                              <Badge className="bg-green-600/30 text-green-300 text-xs">Fiche OK</Badge>
-                            )}
-                            {doublon.cigare2.has_notes && (
-                              <Badge className="bg-blue-600/30 text-blue-300 text-xs">Notes OK</Badge>
-                            )}
-                            {!doublon.cigare2.has_nom && (
-                              <Badge className="bg-orange-600/30 text-orange-300 text-xs">Fiche incomplète</Badge>
-                            )}
-                            {!doublon.cigare2.has_notes && (
-                              <Badge className="bg-gray-600/30 text-gray-300 text-xs">Sans notes</Badge>
-                            )}
-                          </div>
-                          <p className="text-gray-600 text-xs mt-1">ID: {doublon.cigare2.id}</p>
                         </div>
                       </div>
-
-                      {/* Boutons de fusion */}
-                      <div className="flex justify-center gap-4 mt-3">
-                        <Button
-                          size="sm"
-                          className="bg-green-600 hover:bg-green-500 text-white"
-                          onClick={() => handleFusionnerCigares(doublon.cigare1.id, doublon.cigare2.id)}
-                          disabled={loading}
-                          title="Garder le cigare 1 et récupérer les infos du cigare 2"
-                        >
-                          <ArrowRight className="w-4 h-4 mr-1 rotate-180" />
-                          Garder gauche
-                        </Button>
-                        <Button
-                          size="sm"
-                          className="bg-green-600 hover:bg-green-500 text-white"
-                          onClick={() => handleFusionnerCigares(doublon.cigare2.id, doublon.cigare1.id)}
-                          disabled={loading}
-                          title="Garder le cigare 2 et récupérer les infos du cigare 1"
-                        >
-                          Garder droite
-                          <ArrowRight className="w-4 h-4 ml-1" />
-                        </Button>
-                      </div>
+                      {(cigare.gamme || cigare.module) && (
+                        <div className="text-gray-500 text-xs mt-1">
+                          {cigare.gamme && <span>Gamme: {cigare.gamme}</span>}
+                          {cigare.gamme && cigare.module && <span className="mx-2">|</span>}
+                          {cigare.module && <span>Module: {cigare.module}</span>}
+                        </div>
+                      )}
                     </div>
                   ))}
-                  {doublonsCigares.length === 0 && (
+                  {cigaresSansCorrespondance.length === 0 && (
                     <p className="text-gray-500 text-center py-8">
-                      Recherchez un cigare pour trouver des doublons potentiels
+                      Cliquez sur "Actualiser" pour charger la liste
                     </p>
                   )}
                 </div>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-gray-400 text-sm mb-4">
-                      Ces paires de cigares ont été marquées comme "Pas un doublon" et ne s'afficheront plus dans la recherche.
-                    </p>
-                    <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-2">
-                      {doublonsCigaresIgnores.map((item, idx) => (
-                        <div 
-                          key={idx}
-                          className="bg-gray-800/50 border border-gray-700 rounded-lg p-3 flex items-center justify-between"
-                        >
-                          <div className="flex-1">
-                            <span className="text-white">{item.cigare1_nom || `ID ${item.cigare1_id}`}</span>
-                            <span className="text-gray-500 mx-2">↔</span>
-                            <span className="text-white">{item.cigare2_nom || `ID ${item.cigare2_id}`}</span>
-                            <span className="text-gray-500 text-xs ml-2">
-                              ({item.cigare1_marque} / {item.cigare2_marque})
-                            </span>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="text-red-400 hover:text-red-300 hover:bg-red-900/30"
-                            onClick={() => handleRestaurerDoublonCigare(item.cigare1_id, item.cigare2_id)}
-                            disabled={loading}
-                          >
-                            <RotateCcw className="w-4 h-4 mr-1" />
-                            Restaurer
-                          </Button>
-                        </div>
-                      ))}
-                      {doublonsCigaresIgnores.length === 0 && (
-                        <p className="text-gray-500 text-center py-8">
-                          Aucun doublon de cigares ignoré
-                        </p>
-                      )}
-                    </div>
-                  </>
-                )}
               </CardContent>
             </Card>
           </TabsContent>
