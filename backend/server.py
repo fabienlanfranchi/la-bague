@@ -4407,6 +4407,34 @@ async def get_cigare_detail(cigare_id: int):
         raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
 
 
+@api_router.delete("/cigares/{cigare_id}")
+async def delete_cigare(cigare_id: int):
+    """Supprimer un cigare"""
+    try:
+        with get_mysql_connection() as conn:
+            cursor = conn.cursor()
+            
+            # Vérifier que le cigare existe
+            cursor.execute("SELECT id, nom_cigare, marque FROM cigares WHERE id = %s", (cigare_id,))
+            cigare = cursor.fetchone()
+            
+            if not cigare:
+                raise HTTPException(status_code=404, detail="Cigare non trouvé")
+            
+            # Supprimer le cigare
+            cursor.execute("DELETE FROM cigares WHERE id = %s", (cigare_id,))
+            conn.commit()
+            
+            return {
+                "message": f"Cigare ID {cigare_id} supprimé avec succès",
+                "deleted_id": cigare_id
+            }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
+
+
 @api_router.get("/cigares-incomplets")
 async def get_cigares_incomplets(
     limit: int = Query(50, le=500),
