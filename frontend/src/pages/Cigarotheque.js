@@ -742,6 +742,10 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
   };
 
   const handleSaveEdit = async () => {
+    if (!editData.id) {
+      toast.error('Erreur: ID du cigare manquant');
+      return;
+    }
     setEditLoading(true);
     try {
       await axios.put(`${API}/cigares/${editData.id}`, {
@@ -766,8 +770,9 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
       setShowEditModal(false);
       loadCigares();
     } catch (error) {
-      toast.error('Erreur lors de la modification');
-      console.error(error);
+      const errorMsg = error.response?.data?.detail || error.message || 'Erreur inconnue';
+      toast.error(`Erreur: ${errorMsg}`);
+      console.error('Erreur sauvegarde cigare:', error);
     } finally {
       setEditLoading(false);
     }
