@@ -410,6 +410,129 @@ Un expert n'a plus besoin qu'on lui explique la cape, la sous-cape et la tripe. 
 # CONNAISSANCES INTERNES DE WINSTON (non visibles dans le sommaire public)
 # ============================================================================
 
+WINSTON_BEGINNER_PROFILES = """
+## Profils de débutants et recommandations Winston
+
+### 1. Débutant prudent
+Pour quelqu'un qui découvre totalement le cigare et qu'il ne faut pas saturer.
+**Profil recherché** : Force légère, lecture facile, fumée souple, style élégant ou délicat, pas trop long.
+**Ce que Winston doit privilégier** : Petits ou moyens modules, marques classées light, profils aromatiques fins, pas de montée trop brutale. Habanos classe notamment Quai d'Orsay, Hoyo de Monterrey et Fonseca en light.
+**Objectif** : Faire découvrir sans dégoûter.
+
+### 2. Débutant curieux
+Pour quelqu'un qui débute, mais veut déjà sentir un vrai cigare avec un peu plus de relief.
+**Profil recherché** : Léger à léger-moyen, aromatique, un peu plus de matière, mais sans violence.
+**Ce que Winston doit privilégier** : Marques classées medium to light ou light lisibles, formats simples, bonne accessibilité. Habanos classe H. Upmann, El Rey del Mundo, Por Larrañaga et San Cristóbal de la Habana en medium to light.
+**Objectif** : Passer du "cigare facile" au "cigare déjà intéressant".
+
+### 3. Débutant après-repas
+Pour quelqu'un qui découvre dans un cadre club, après un bon repas, avec un digestif ou un café.
+**Profil recherché** : Moyen, rond, accessible, pas trop sec, pas trop agressif.
+**Ce que Winston doit privilégier** : Cigares classés medium mais réputés équilibrés, de préférence dans des formats confortables. Habanos classe Romeo y Julieta, Punch, Quintero, La Flor de Cano et Sancho Panza en medium ; la Línea Open de Montecristo est aussi classée medium.
+**Objectif** : Donner plus de présence, sans basculer dans le corsé.
+
+### 4. Débutant "bon vivant"
+Pour quelqu'un qui vient surtout pour le moment, le cognac, le rhum, les copains, et pas encore pour la technique.
+**Profil recherché** : Cigare consensuel, agréable, sans lecture compliquée, qui accompagne bien la convivialité.
+**Ce que Winston doit privilégier** : Profils ronds, peu intimidants, intensité légère à moyenne, formats courts à moyens. Éviter les profils trop secs, trop puissants, trop démonstratifs.
+**Objectif** : Faire aimer le moment avant de faire aimer l'analyse.
+
+### 5. Débutant déjà amateur de spiritueux
+Pour quelqu'un qui ne connaît pas encore bien le cigare, mais boit déjà whisky, rhum, cognac ou armagnac.
+**Profil recherché** : Cigare lisible, mais avec assez de présence pour ne pas disparaître face au verre.
+**Ce que Winston doit privilégier** : Léger-moyen à moyen, texture ronde, bonne tenue après repas. H. Upmann, Romeo y Julieta, Montecristo Línea Open ou certains Punch peuvent servir de passerelle.
+**Objectif** : Créer un accord rassurant, pas un duel.
+
+### 6. Débutant qui veut "un vrai cigare"
+Pour celui qui rejette d'avance l'idée d'un cigare trop léger et veut sentir qu'il fume quelque chose de sérieux.
+**Profil recherché** : Moyen, structuré, mais encore contrôlable.
+**Ce que Winston doit privilégier** : Profils medium, éventuellement medium to light un peu plus construits, mais pas encore medium to full ou full.
+**Objectif** : Lui donner de la matière sans l'envoyer au casse-pipe.
+
+### 7. Débutant peu disponible
+Pour quelqu'un qui a peu de temps ou qui ne veut pas s'engager sur une longue dégustation.
+**Profil recherché** : Court ou moyen, facile, combustion simple, pas trop évolutif.
+**Ce que Winston doit privilégier** : Petites vitoles ou modules moyens des marques light à medium. Le guide Habanos recommande aux nouveaux venus de commencer par des vitoles plus petites.
+**Objectif** : Éviter qu'un débutant abandonne un cigare en cours de route.
+
+### 8. Débutant sensible à la force
+Pour quelqu'un qui craint d'être vite écœuré ou "retourné".
+**Profil recherché** : Très léger à léger, aromatique, fumée souple, aucune brutalité.
+**Ce que Winston doit privilégier** : Quai d'Orsay, Hoyo de Monterrey, Fonseca, Rafael González selon disponibilité, car Habanos les classe dans les niveaux les plus doux.
+**Objectif** : Zéro saturation, zéro dégoût.
+
+### 9. Débutant à faire progresser
+Pour un membre qui a déjà fumé quelques cigares et doit passer au cran supérieur.
+**Profil recherché** : Du léger vers le moyen, avec un peu plus de structure, mais encore très lisible.
+**Ce que Winston doit privilégier** : Progression en trois marches : 1. light, 2. medium to light, 3. medium.
+**Objectif** : Construire une montée logique, pas brûler les étapes.
+
+### RÈGLE GÉNÉRALE POUR WINSTON - DÉBUTANTS
+Pour un débutant, Winston doit privilégier en premier :
+- force légère
+- puis légère à moyenne
+- puis moyenne
+
+Il doit ÉVITER en recommandation par défaut :
+- medium to full
+- full
+
+Sauf si le membre demande explicitement quelque chose de plus appuyé ou a déjà un peu d'expérience.
+
+## Cigares recommandés pour débutants
+
+### CUBAINS - Les plus sûrs pour commencer
+- **Quai d'Orsay** — classé light par Habanos
+- **Hoyo de Monterrey** — classé light par Habanos
+- **H. Upmann** — classé medium to light ; force légère à moyenne
+- **El Rey del Mundo** — light to medium, réputé pour sa constance
+- **San Cristóbal de la Habana** — light to medium / mild to medium
+
+### CUBAINS - Pour débutant qui veut plus de présence
+- **Romeo y Julieta** — classé medium ; bon palier après les marques douces
+- **Montecristo Línea Open** — classée medium, plus accessible que le classique
+- **Por Larrañaga** — famille medium to light
+
+### CUBAINS - À ÉVITER pour débutant pur
+- **Montecristo classique** — medium to full
+- **Partagás Línea Series** — full
+- **Cohiba Behike** — full
+
+### NON CUBAINS - Les plus sûrs pour commencer
+- **Davidoff Signature 2000** — arômes smooth, creamy avec orge, crème et cèdre
+- **Davidoff Signature Ambassadrice** — petit format, profil floral et finale élégante
+- **Davidoff Signature Exquisitos** — floral, court, élégant
+- **Davidoff Grand Cru No. 3** — mild yet complex
+- **Davidoff Grand Cru Robusto** — tabacs dominicains mild, idéal pour novices
+
+### NON CUBAINS - Débutant +
+- **Oliva Connecticut Reserve** — mellow, smooth, silky smoke, parfait any time
+- **Arturo Fuente Gran Reserva Connecticut Shade** — bonne porte d'entrée dans Fuente
+
+### RÉSUMÉ RAPIDE - TOP 5 de chaque
+
+**5 cubains débutant :**
+1. Quai d'Orsay
+2. Hoyo de Monterrey
+3. H. Upmann
+4. El Rey del Mundo
+5. Romeo y Julieta
+
+**5 non cubains débutant :**
+1. Davidoff Signature 2000
+2. Davidoff Signature Ambassadrice
+3. Davidoff Grand Cru No. 3
+4. Davidoff Grand Cru Robusto
+5. Oliva Connecticut Reserve
+
+### RÈGLE WINSTON POUR RECOMMANDATION DÉBUTANT
+Pour un vrai débutant, Winston devrait d'abord proposer :
+1. cubain light
+2. cubain medium to light
+3. non cubain smooth / mild / creamy / Connecticut
+4. puis seulement des profils medium si le membre veut déjà "un vrai cigare" plus présent
+"""
+
 WINSTON_INTERNAL_KNOWLEDGE = """
 ## Accords Cigare & Alcool / Conseils d'Association
 ### Principes généraux d'accord
@@ -607,10 +730,14 @@ def get_parcours_sujets():
     """Retourne les sujets de parcours proposés par Winston"""
     return PARCOURS_SUJETS
 
+def get_beginner_profiles():
+    """Retourne les profils de débutants et recommandations"""
+    return WINSTON_BEGINNER_PROFILES
+
 def get_winston_internal_knowledge():
     """Retourne les connaissances internes de Winston (accords, carte du bar)"""
     return WINSTON_INTERNAL_KNOWLEDGE
 
 def get_full_winston_knowledge():
-    """Retourne toutes les connaissances de Winston (guide + connaissances internes)"""
-    return CIGAR_GUIDE + "\n\n" + WINSTON_INTERNAL_KNOWLEDGE
+    """Retourne toutes les connaissances de Winston (guide + profils débutants + connaissances internes)"""
+    return CIGAR_GUIDE + "\n\n" + WINSTON_BEGINNER_PROFILES + "\n\n" + WINSTON_INTERNAL_KNOWLEDGE

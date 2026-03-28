@@ -15,7 +15,8 @@ import {
   Heart,
   GlassWater,
   Award,
-  ChevronRight
+  ChevronRight,
+  GraduationCap
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -63,11 +64,11 @@ const AssistantIA = () => {
 
   // Capacités de Winston
   const winstonCapabilities = [
+    { icon: GraduationCap, text: "Discuter selon votre niveau", description: "Débutant ? Amateur ? Confirmé ? Expert ? Je m'adapte !" },
     { icon: BookOpen, text: "Guide du Cigare", description: "Expert en terroirs, formats, marques et dégustation" },
     { icon: Heart, text: "Recommandations personnalisées", description: "Basées sur vos goûts, ceux de chaque membre" },
     { icon: GlassWater, text: "Conseil & Association", description: "Quel accord ? Quel moment ? Vais-je aimer ce cigare ?" },
     { icon: Award, text: "Certifié Bague Specialist", description: "Connaissance approfondie des 35 membres et du Club" },
-    { icon: Award, text: "Certifié Conca Specialist", description: "Siège du club - Carte Bar à Whisky & Rhumerie" },
   ];
 
   // Scroll automatique vers le bas
