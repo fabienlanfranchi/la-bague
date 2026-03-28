@@ -6032,6 +6032,18 @@ Tu t'adresses à lui/elle directement par son prénom : {appellation}.
     all_members = await db.members.find({}).to_list(100)
     if all_members:
         members_text = f"\n--- LES {len(all_members)} MEMBRES DU CLUB ---\n"
+        
+        # Classement par assiduité
+        members_with_presence = [m for m in all_members if m.get('pourcentage_presences')]
+        if members_with_presence:
+            sorted_by_presence = sorted(members_with_presence, key=lambda x: float(str(x.get('pourcentage_presences', 0)).replace('%', '') or 0), reverse=True)
+            members_text += "\n🏆 TOP 5 LES PLUS ASSIDUS :\n"
+            for i, m in enumerate(sorted_by_presence[:5], 1):
+                nom = m.get('nom_complet', f"{m.get('prenom', '')} {m.get('nom', '')}")
+                pres = m.get('pourcentage_presences', 'N/A')
+                members_text += f"  {i}. {nom} : {pres}% de présence\n"
+        
+        members_text += "\n📋 LISTE COMPLÈTE :\n"
         for m in all_members:
             nom_complet = m.get('nom_complet', f"{m.get('prenom', '')} {m.get('nom', '')}")
             numero = m.get('numero_membre', '?')
@@ -6070,11 +6082,21 @@ Tu t'adresses à lui/elle directement par son prénom : {appellation}.
             if member:
                 name = member.get('nom_complet', f"{member.get('prenom', '')} {member.get('nom', '')}")
                 # Trouver les cigares les mieux notés
-                top_cigars = sorted(cigars, key=lambda x: float(x.get('note_globale', 0) or 0), reverse=True)[:3]
+                top_cigars = sorted(cigars, key=lambda x: float(x.get('note_globale', 0) or 0), reverse=True)[:5]
                 if top_cigars:
-                    collections_text += f"- {name} aime particulièrement : "
-                    collections_text += ", ".join([f"{c.get('marque', '')} {c.get('gamme', '')} ({c.get('note_globale', '?')}/5)" for c in top_cigars])
-                    collections_text += "\n"
+                    # Séparer cubains et non-cubains
+                    cubains = [c for c in top_cigars if c.get('terroir', '').lower() == 'cuba']
+                    non_cubains = [c for c in top_cigars if c.get('terroir', '').lower() != 'cuba' and c.get('terroir')]
+                    
+                    collections_text += f"\n{name} :\n"
+                    if cubains:
+                        collections_text += f"  Cubains préférés : "
+                        collections_text += ", ".join([f"{c.get('marque', '')} {c.get('gamme', '')} ({c.get('note_globale', '?')}/5)" for c in cubains[:3]])
+                        collections_text += "\n"
+                    if non_cubains:
+                        collections_text += f"  Non-cubains préférés : "
+                        collections_text += ", ".join([f"{c.get('marque', '')} {c.get('gamme', '')} - {c.get('terroir', '')} ({c.get('note_globale', '?')}/5)" for c in non_cubains[:3]])
+                        collections_text += "\n"
         context_parts.append(collections_text)
     
     # 6. L'Apéro du Club
@@ -6167,6 +6189,8 @@ INSTRUCTIONS IMPORTANTES :
    - "Conseille-moi un cigare que je n'ai pas encore fumé"
    - "Quel whisky irait bien avec mon Cohiba ?"
    - "C'est l'après-midi, que me conseilles-tu ?"
+   - "Où puis-je voir mes cotisations ?"
+   - "Qui est le plus assidu au club ?"
 11. Quand on te demande "Vais-je aimer ce cigare ?", analyse la Cigarthèque du membre pour identifier ses préférences
 12. Réponds toujours en français avec un ton élégant et professionnel
 13. SOIS CONCIS ET RAPIDE : Réponds en 2-4 phrases maximum sauf si on te demande explicitement plus de détails. Évite les longs paragraphes.
@@ -6200,6 +6224,25 @@ INSTRUCTIONS IMPORTANTES :
    c) Demander si on connaît ses PRÉFÉRENCES
    d) Recommander en expliquant le choix
    e) Toujours proposer une valeur sûre ET une option originale
+21. NAVIGATION DANS L'APPLICATION - Tu connais parfaitement l'application :
+   - "Où voir mes cotisations ?" → Onglet COMPTABILITÉ, section "Mon compte" ou "Cotisations"
+   - "Où voir mes stats de présence ?" → Onglet STATISTIQUES, ou dans ton PROFIL
+   - "Où modifier mon profil ?" → Onglet PROFIL dans le menu
+   - "Où voir les événements ?" → Onglet ÉVÉNEMENTS
+   - "Où trouver la Cigarthèque ?" → Onglet CIGARTHÈQUE
+   - "Où voir les messages du club ?" → Onglet MESSAGES (admin seulement)
+   - "Comment contacter le club ?" → Via les MESSAGES ou contacter le Président
+22. QUESTIONS SUR LE CLUB - Tu peux répondre grâce aux données membres :
+   - "Qui est le plus assidu ?" → Consulter les présences aux événements
+   - "J'ai été plus présent que X ?" → Comparer les présences
+   - "Combien de membres actifs ?" → Tu connais les 35 membres
+   - "Qui a le plus de cigares dans sa Cigarthèque ?" → Consulter les collections
+   - "Quel cigare non cubain aime Fred ?" → Aller dans la Cigarthèque de Fred, filtrer par terroir non-Cuba
+23. CIGARTHÈQUE DES MEMBRES - Quand on te demande les préférences d'un membre :
+   - Tu consultes sa Cigarthèque personnelle
+   - Tu regardes ses notes (étoiles)
+   - Tu identifies ses terroirs préférés (Cuba, Nicaragua, etc.)
+   - Tu peux recommander des cadeaux basés sur ses goûts
 """
             
             # Créer une nouvelle instance de chat

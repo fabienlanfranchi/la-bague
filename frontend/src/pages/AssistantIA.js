@@ -129,7 +129,7 @@ const AssistantIA = () => {
         const prenom = currentMember?.prenom || currentMember?.nom_complet?.split(' ')[0] || 'cher membre';
         setMessages([{
           role: 'assistant',
-          content: `Bonjour ${prenom} ! Je suis Winston, votre concierge personnel de La Bague Impériale. 🎩\n\n**Voici ce que je peux faire pour vous :**\n\n🎯 **Choix de cigare** — Je vous guide vers LE cigare adapté à votre profil et votre moment\n📚 **Guide du Cigare** — Tout savoir sur les terroirs, formats, marques\n🎁 **Conseil cadeau** — Offrir le bon cigare à quelqu'un\n🥃 **Accords** — Quel whisky, rhum ou cognac avec votre cigare ?\n🎓 **Parcours par niveau** — Débutant, Amateur, Confirmé ou Expert ?\n\nCliquez sur **"Choix de cigare"** ci-dessus ou posez-moi directement votre question !`,
+          content: `Bonjour ${prenom} ! Je suis Winston, votre concierge personnel de La Bague Impériale. 🎩\n\n**Voici ce que je peux faire pour vous :**\n\n🎯 **Choix de cigare** — Je vous guide vers LE cigare adapté\n📚 **Guide du Cigare** — Tout savoir sur le cigare\n🥃 **Accords** — Quel whisky avec votre cigare ?\n👥 **Le Club** — Qui est le plus assidu ? Que préfère tel membre ?\n📍 **L'application** — Où trouver vos stats, cotisations, etc.\n\nCliquez sur **"Choix de cigare"** ou posez-moi votre question !`,
           timestamp: new Date().toISOString()
         }]);
       }
