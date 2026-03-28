@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Cigares Cubains - Prix à compléter</title>
+    <style>
+        body { font-family: Arial; background: #1a1a1a; color: white; padding: 20px; }
+        h1 { color: #D4A024; }
+        table { border-collapse: collapse; width: 100%; background: #2a2a2a; }
+        th, td { border: 1px solid #444; padding: 10px; text-align: left; }
+        th { background: #D4A024; color: black; }
+        tr:hover { background: #3a3a3a; }
+        .prix { background: #333; min-width: 80px; }
+        button { background: #D4A024; color: black; padding: 10px 20px; border: none; cursor: pointer; margin: 10px 0; font-size: 16px; }
+        button:hover { background: #b8912a; }
+        textarea { width: 100%; height: 200px; margin-top: 20px; background: #2a2a2a; color: white; border: 1px solid #444; padding: 10px; }
+    </style>
+</head>
+<body>
+    <h1>🇨🇺 Cigares Cubains sans prix (88)</h1>
+    <button onclick="copyTable()">📋 Copier le tableau</button>
+    <button onclick="downloadCSV()">⬇️ Télécharger CSV</button>
+    
+    <table id="cigares">
+        <tr>
+            <th>ID</th>
+            <th>MARQUE</th>
+            <th>NOM</th>
+            <th>PRIX €</th>
+        </tr>
+        <tr>
+            <td>477</td>
+            <td>Cohiba</td>
+            <td>BHK 58</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>471</td>
+            <td>Cohiba</td>
+            <td>Genios</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>472</td>
+            <td>Cohiba</td>
+            <td>Mágicos</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>464</td>
+            <td>Cohiba</td>
+            <td>Medio Siglo</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>461</td>
+            <td>Cohiba</td>
+            <td>Panetelas</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>462</td>
+            <td>Cohiba</td>
+            <td>Pirámides Extra</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>463</td>
+            <td>Cohiba</td>
+            <td>Robustos</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>473</td>
+            <td>Cohiba</td>
+            <td>Secretos</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>465</td>
+            <td>Cohiba</td>
+            <td>Siglo I</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>466</td>
+            <td>Cohiba</td>
+            <td>Siglo II</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>467</td>
+            <td>Cohiba</td>
+            <td>Siglo III</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>468</td>
+            <td>Cohiba</td>
+            <td>Siglo IV</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>469</td>
+            <td>Cohiba</td>
+            <td>Siglo V</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>470</td>
+            <td>Cohiba</td>
+            <td>Siglo VI</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>478</td>
+            <td>Cuaba</td>
+            <td>Distinguidos</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>479</td>
+            <td>Cuaba</td>
+            <td>Divinos</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>480</td>
+            <td>Cuaba</td>
+            <td>Exclusivos</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>481</td>
+            <td>Cuaba</td>
+            <td>Salomón</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>665</td>
+            <td>Diplomáticos</td>
+            <td>N° 2</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>667</td>
+            <td>Fonseca</td>
+            <td>N° 1</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>490</td>
+            <td>H. Upmann</td>
+            <td>Connossieur A</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>491</td>
+            <td>H. Upmann</td>
+            <td>Connossieur B</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>501</td>
+            <td>H. Upmann</td>
+            <td>Magnum 46</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>502</td>
+            <td>H. Upmann</td>
+            <td>Magnum 50</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>673</td>
+            <td>H. Upmann</td>
+            <td>Magnum Finite</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>670</td>
+            <td>H. Upmann</td>
+            <td>Sir Winston</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>669</td>
+            <td>H. Upmann</td>
+            <td>Upmann N° 2</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>684</td>
+            <td>Hoyo de Monterrey</td>
+            <td>Epicure N° 1</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>516</td>
+            <td>Hoyo de Monterrey</td>
+            <td>Epicure N°2</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>514</td>
+            <td>Hoyo de Monterrey</td>
+            <td>Le Hoyo Río Seco</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>520</td>
+            <td>José L. Piedra</td>
+            <td>Conservas</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>522</td>
+            <td>José L. Piedra</td>
+            <td>Petit Cazadores</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>523</td>
+            <td>Juan López</td>
+            <td>Dom Juan 1622</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>524</td>
+            <td>Juan López</td>
+            <td>Selección Especial</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>531</td>
+            <td>La Gloria Cubana</td>
+            <td>Podium</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>691</td>
+            <td>Montecristo</td>
+            <td>Brillantes</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>544</td>
+            <td>Montecristo</td>
+            <td>Double Edmundo</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>548</td>
+            <td>Montecristo</td>
+            <td>Dumas</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>551</td>
+            <td>Montecristo</td>
+            <td>Eagle</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>545</td>
+            <td>Montecristo</td>
+            <td>Edmundo</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>533</td>
+            <td>Montecristo</td>
+            <td>Especial</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>549</td>
+            <td>Montecristo</td>
+            <td>Leyenda</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>550</td>
+            <td>Montecristo</td>
+            <td>Maltés</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>692</td>
+            <td>Montecristo</td>
+            <td>N° 1</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>694</td>
+            <td>Montecristo</td>
+            <td>N° 2</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>695</td>
+            <td>Montecristo</td>
+            <td>N° 3</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>693</td>
+            <td>Montecristo</td>
+            <td>N° 4</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>696</td>
+            <td>Montecristo</td>
+            <td>N° 5</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>554</td>
+            <td>Montecristo</td>
+            <td>Regata</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>555</td>
+            <td>Montecristo</td>
+            <td>Slam</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>547</td>
+            <td>Montecristo</td>
+            <td>Wide Edmundo</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>557</td>
+            <td>Partagás</td>
+            <td>8-9-8</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>558</td>
+            <td>Partagás</td>
+            <td>Aliados</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>701</td>
+            <td>Partagás</td>
+            <td>Cedros</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>572</td>
+            <td>Partagás</td>
+            <td>Línea Maduro N° 2</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>563</td>
+            <td>Partagás</td>
+            <td>Lusitanias</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>575</td>
+            <td>Partagás</td>
+            <td>Origen</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>576</td>
+            <td>Partagás</td>
+            <td>Rito</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>568</td>
+            <td>Partagás</td>
+            <td>Salomones</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>585</td>
+            <td>Por Larrañaga</td>
+            <td>Prometidos</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>710</td>
+            <td>Quai d'Orsay</td>
+            <td>Coronas Claro</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>712</td>
+            <td>Quai d'Orsay</td>
+            <td>Especial d'Orsay</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>711</td>
+            <td>Quai d'Orsay</td>
+            <td>N° 50</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>713</td>
+            <td>Quai d'Orsay</td>
+            <td>N° 52</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>714</td>
+            <td>Quai d'Orsay</td>
+            <td>N° 54</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>602</td>
+            <td>Rafael González</td>
+            <td>Panetelas Extra</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>606</td>
+            <td>Ramón Allones</td>
+            <td>Allones N° 3</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>717</td>
+            <td>Ramón Allones</td>
+            <td>Allones Specially Selected</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>718</td>
+            <td>Romeo y Julieta</td>
+            <td>Amantes</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>610</td>
+            <td>Romeo y Julieta</td>
+            <td>Belicosos</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>627</td>
+            <td>Romeo y Julieta</td>
+            <td>Churchills</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>616</td>
+            <td>Romeo y Julieta</td>
+            <td>Cupidos</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>631</td>
+            <td>Romeo y Julieta</td>
+            <td>Dianas</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>632</td>
+            <td>Romeo y Julieta</td>
+            <td>Hidalgos</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>633</td>
+            <td>Romeo y Julieta</td>
+            <td>Nobles</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>634</td>
+            <td>Saint Luis Rey</td>
+            <td>Regios</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>639</td>
+            <td>San Cristóbal</td>
+            <td>Reinas</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>642</td>
+            <td>Trinidad</td>
+            <td>Cabildos</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>643</td>
+            <td>Trinidad</td>
+            <td>Coloniales</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>724</td>
+            <td>Trinidad</td>
+            <td>Esmeralda</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>644</td>
+            <td>Trinidad</td>
+            <td>Fundadores</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>645</td>
+            <td>Trinidad</td>
+            <td>La Trova</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>646</td>
+            <td>Trinidad</td>
+            <td>Media Luna</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>647</td>
+            <td>Trinidad</td>
+            <td>Reyes</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>648</td>
+            <td>Trinidad</td>
+            <td>Robustos Extra</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>649</td>
+            <td>Trinidad</td>
+            <td>Topes</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>650</td>
+            <td>Trinidad</td>
+            <td>Vigia</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+        <tr>
+            <td>657</td>
+            <td>Vegueros</td>
+            <td>Tapados</td>
+            <td class="prix" contenteditable="true"></td>
+        </tr>
+    </table>
+    
+    <h3>Texte à copier :</h3>
+    <textarea id="textToCopy" readonly>ID;MARQUE;NOM;PRIX
+477;Cohiba;BHK 58;
+471;Cohiba;Genios;
+472;Cohiba;Mágicos;
+464;Cohiba;Medio Siglo;
+461;Cohiba;Panetelas;
+462;Cohiba;Pirámides Extra;
+463;Cohiba;Robustos;
+473;Cohiba;Secretos;
+465;Cohiba;Siglo I;
+466;Cohiba;Siglo II;
+467;Cohiba;Siglo III;
+468;Cohiba;Siglo IV;
+469;Cohiba;Siglo V;
+470;Cohiba;Siglo VI;
+478;Cuaba;Distinguidos;
+479;Cuaba;Divinos;
+480;Cuaba;Exclusivos;
+481;Cuaba;Salomón;
+665;Diplomáticos;N° 2;
+667;Fonseca;N° 1;
+490;H. Upmann;Connossieur A;
+491;H. Upmann;Connossieur B;
+501;H. Upmann;Magnum 46;
+502;H. Upmann;Magnum 50;
+673;H. Upmann;Magnum Finite;
+670;H. Upmann;Sir Winston;
+669;H. Upmann;Upmann N° 2;
+684;Hoyo de Monterrey;Epicure N° 1;
+516;Hoyo de Monterrey;Epicure N°2;
+514;Hoyo de Monterrey;Le Hoyo Río Seco;
+520;José L. Piedra;Conservas;
+522;José L. Piedra;Petit Cazadores;
+523;Juan López;Dom Juan 1622;
+524;Juan López;Selección Especial;
+531;La Gloria Cubana;Podium;
+691;Montecristo;Brillantes;
+544;Montecristo;Double Edmundo;
+548;Montecristo;Dumas;
+551;Montecristo;Eagle;
+545;Montecristo;Edmundo;
+533;Montecristo;Especial;
+549;Montecristo;Leyenda;
+550;Montecristo;Maltés;
+692;Montecristo;N° 1;
+694;Montecristo;N° 2;
+695;Montecristo;N° 3;
+693;Montecristo;N° 4;
+696;Montecristo;N° 5;
+554;Montecristo;Regata;
+555;Montecristo;Slam;
+547;Montecristo;Wide Edmundo;
+557;Partagás;8-9-8;
+558;Partagás;Aliados;
+701;Partagás;Cedros;
+572;Partagás;Línea Maduro N° 2;
+563;Partagás;Lusitanias;
+575;Partagás;Origen;
+576;Partagás;Rito;
+568;Partagás;Salomones;
+585;Por Larrañaga;Prometidos;
+710;Quai d'Orsay;Coronas Claro;
+712;Quai d'Orsay;Especial d'Orsay;
+711;Quai d'Orsay;N° 50;
+713;Quai d'Orsay;N° 52;
+714;Quai d'Orsay;N° 54;
+602;Rafael González;Panetelas Extra;
+606;Ramón Allones;Allones N° 3;
+717;Ramón Allones;Allones Specially Selected;
+718;Romeo y Julieta;Amantes;
+610;Romeo y Julieta;Belicosos;
+627;Romeo y Julieta;Churchills;
+616;Romeo y Julieta;Cupidos;
+631;Romeo y Julieta;Dianas;
+632;Romeo y Julieta;Hidalgos;
+633;Romeo y Julieta;Nobles;
+634;Saint Luis Rey;Regios;
+639;San Cristóbal;Reinas;
+642;Trinidad;Cabildos;
+643;Trinidad;Coloniales;
+724;Trinidad;Esmeralda;
+644;Trinidad;Fundadores;
+645;Trinidad;La Trova;
+646;Trinidad;Media Luna;
+647;Trinidad;Reyes;
+648;Trinidad;Robustos Extra;
+649;Trinidad;Topes;
+650;Trinidad;Vigia;
+657;Vegueros;Tapados;
+</textarea>
+
+    <script>
+        function copyTable() {
+            var text = document.getElementById('textToCopy').value;
+            navigator.clipboard.writeText(text);
+            alert('Tableau copié !');
+        }
+        
+        function downloadCSV() {
+            var text = document.getElementById('textToCopy').value;
+            var blob = new Blob([text], {type: 'text/csv;charset=utf-8;'});
+            var link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'cigares_cubains_prix.csv';
+            link.click();
+        }
+    </script>
+</body>
+</html>
