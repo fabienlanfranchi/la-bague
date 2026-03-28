@@ -325,15 +325,6 @@ const AssistantIA = () => {
             <Target className="w-4 h-4 mr-2" />
             Choix de cigare
           </Button>
-          <Button
-            onClick={startGiftAdvice}
-            variant="outline"
-            className="border-[#D4A024]/50 text-[#D4A024] hover:bg-[#D4A024]/20 text-sm"
-            size="sm"
-          >
-            <Gift className="w-4 h-4 mr-2" />
-            Conseil cadeau
-          </Button>
         </div>
 
         {/* Panneau sommaire du guide */}
