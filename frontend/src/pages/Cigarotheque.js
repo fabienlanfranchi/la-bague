@@ -1389,10 +1389,10 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
                       </div>
 
                       <div className="flex flex-wrap gap-2 mb-3">
-                        {cigare.pays_fabrication && (
+                        {(cigare.terroir || cigare.pays_fabrication) && (
                           <Badge variant="outline" className="border-[#D4A024]/50 text-gray-300">
                             <MapPin className="w-3 h-3 mr-1" />
-                            {cigare.pays_fabrication}
+                            {cigare.terroir || cigare.pays_fabrication}
                           </Badge>
                         )}
                         {cigare.puissance && (
