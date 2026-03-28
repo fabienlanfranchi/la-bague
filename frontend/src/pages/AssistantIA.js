@@ -14,7 +14,11 @@ import {
   Heart,
   Calendar,
   GlassWater,
-  Award
+  Award,
+  ChevronRight,
+  X,
+  BookMarked,
+  GraduationCap
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -27,11 +31,35 @@ const AssistantIA = () => {
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [showGuideSommaire, setShowGuideSommaire] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
   // ID utilisateur pour l'API
   const userId = currentMember?.id || 'default-user';
+
+  // Sommaire du guide "Tout sur le cigare"
+  const guideSommaire = [
+    { numero: 1, titre: "Bases, structure, vocabulaire fondamental et histoire" },
+    { numero: 2, titre: "Choisir un cigare en pratique" },
+    { numero: 3, titre: "Lexique utile du cigare" },
+    { numero: 4, titre: "Parler cigare correctement" },
+    { numero: 5, titre: "Les grandes marques et leur réputation" },
+    { numero: 6, titre: "Les pays du cigare et leurs terroirs" },
+    { numero: 7, titre: "Fabrication du cigare" },
+    { numero: 8, titre: "Les modules et origine de leurs noms" },
+    { numero: 9, titre: "Défauts du cigare, causes et corrections" },
+    { numero: 10, titre: "Les accessoires" },
+    { numero: 11, titre: "Parcours cigare : débutant, amateur, confirmé, expert" }
+  ];
+
+  // Parcours proposés par Winston
+  const parcoursWinston = [
+    { id: 1, titre: "Débuter sans se tromper", niveau: "Débutant", color: "bg-green-600" },
+    { id: 2, titre: "Progresser comme amateur", niveau: "Amateur", color: "bg-blue-600" },
+    { id: 3, titre: "Affiner son palais de confirmé", niveau: "Confirmé", color: "bg-purple-600" },
+    { id: 4, titre: "Ce qui peut surprendre un expert", niveau: "Expert", color: "bg-red-600" }
+  ];
 
   // Capacités de Winston
   const winstonCapabilities = [
@@ -41,6 +69,22 @@ const AssistantIA = () => {
     { icon: Award, text: "Certifié Bague Specialist", description: "Connaissance approfondie des 35 membres et du Club" },
     { icon: Award, text: "Certifié Conca Specialist", description: "Siège du club - Carte Bar à Whisky & Rhumerie" },
   ];
+
+  // Demander une partie du guide
+  const askForPartie = (numero, titre) => {
+    setShowGuideSommaire(false);
+    const question = `Montre-moi la Partie ${numero} : ${titre}`;
+    setInputMessage(question);
+    sendMessage(question);
+  };
+
+  // Demander un parcours
+  const askForParcours = (parcours) => {
+    setShowGuideSommaire(false);
+    const question = `Parle-moi du parcours : ${parcours.titre}`;
+    setInputMessage(question);
+    sendMessage(question);
+  };
 
   // Scroll automatique vers le bas
   const scrollToBottom = () => {
@@ -197,7 +241,67 @@ const AssistantIA = () => {
       )}
 
       {/* Zone de chat */}
-      <Card className="flex-1 bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm flex flex-col overflow-hidden">
+      <Card className="flex-1 bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm flex flex-col overflow-hidden relative">
+        {/* Bouton "Tout sur le cigare" - toujours visible */}
+        <Button
+          onClick={() => setShowGuideSommaire(!showGuideSommaire)}
+          className={`absolute top-20 right-4 z-20 ${showGuideSommaire ? 'bg-[#7A2020]' : 'bg-[#D4A024]'} hover:bg-[#7A2020] text-white shadow-lg`}
+          size="sm"
+        >
+          <BookMarked className="w-4 h-4 mr-2" />
+          Tout sur le cigare
+        </Button>
+
+        {/* Panneau Sommaire "Tout sur le cigare" */}
+        {showGuideSommaire && (
+          <div className="absolute top-16 right-4 z-30 w-80 max-h-[70vh] bg-black/95 border-2 border-[#D4A024]/50 rounded-lg shadow-2xl overflow-hidden">
+            <div className="p-4 border-b border-[#D4A024]/30 flex items-center justify-between bg-gradient-to-r from-[#7A2020]/50 to-[#D4A024]/30">
+              <h3 className="text-[#D4A024] font-serif font-bold text-lg flex items-center gap-2">
+                <BookMarked className="w-5 h-5" />
+                Tout sur le cigare
+              </h3>
+              <Button variant="ghost" size="sm" onClick={() => setShowGuideSommaire(false)} className="text-gray-400 hover:text-white">
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+            
+            {/* Sommaire des parties */}
+            <div className="p-3 max-h-[40vh] overflow-y-auto">
+              <p className="text-gray-400 text-xs mb-2 uppercase tracking-wider">Sommaire</p>
+              {guideSommaire.map((partie) => (
+                <button
+                  key={partie.numero}
+                  onClick={() => askForPartie(partie.numero, partie.titre)}
+                  className="w-full text-left p-2 hover:bg-[#D4A024]/20 rounded transition-colors flex items-center gap-2 group"
+                >
+                  <span className="text-[#D4A024] font-bold text-sm w-6">{partie.numero}.</span>
+                  <span className="text-gray-300 text-sm group-hover:text-white flex-1">{partie.titre}</span>
+                  <ChevronRight className="w-4 h-4 text-gray-600 group-hover:text-[#D4A024]" />
+                </button>
+              ))}
+            </div>
+
+            {/* Parcours Winston */}
+            <div className="p-3 border-t border-[#D4A024]/30">
+              <p className="text-gray-400 text-xs mb-2 uppercase tracking-wider flex items-center gap-2">
+                <GraduationCap className="w-4 h-4" />
+                Parcours initiatiques
+              </p>
+              {parcoursWinston.map((parcours) => (
+                <button
+                  key={parcours.id}
+                  onClick={() => askForParcours(parcours)}
+                  className="w-full text-left p-2 hover:bg-[#D4A024]/20 rounded transition-colors flex items-center gap-2 group mb-1"
+                >
+                  <Badge className={`${parcours.color} text-white text-xs`}>{parcours.niveau}</Badge>
+                  <span className="text-gray-300 text-sm group-hover:text-white flex-1">{parcours.titre}</span>
+                  <ChevronRight className="w-4 h-4 text-gray-600 group-hover:text-[#D4A024]" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Header du chat */}
         <div className="flex items-center justify-between p-5 border-b border-[#D4A024]/20">
           <div className="flex items-center gap-4">

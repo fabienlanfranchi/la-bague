@@ -1,4 +1,44 @@
-# Base de connaissances sur le cigare - Guide complet en 10 parties
+# Base de connaissances sur le cigare - Guide complet en 11 parties + connaissances internes Winston
+
+# Sommaire du guide "Tout sur le cigare" (accessible aux membres)
+CIGAR_GUIDE_SOMMAIRE = """
+# TOUT SUR LE CIGARE - SOMMAIRE
+
+| N° | Titre |
+|----|-------|
+| 1 | Bases, structure, vocabulaire fondamental et histoire |
+| 2 | Choisir un cigare en pratique |
+| 3 | Lexique utile du cigare |
+| 4 | Parler cigare correctement |
+| 5 | Les grandes marques et leur réputation |
+| 6 | Les pays du cigare et leurs terroirs |
+| 7 | Fabrication du cigare |
+| 8 | Les modules et origine de leurs noms |
+| 9 | Défauts du cigare, causes et corrections |
+| 10 | Les accessoires |
+| 11 | Parcours cigare : débutant, amateur, confirmé, expert |
+
+Pour consulter une partie en particulier, demandez simplement : "Winston, montre-moi la partie X" ou "Parle-moi de [sujet]".
+"""
+
+# Sujets de parcours que Winston propose
+PARCOURS_SUJETS = """
+## PARCOURS INITIATIQUES PROPOSÉS PAR WINSTON
+
+Winston peut guider les membres selon leur niveau avec ces 4 parcours :
+
+1. **Parcours initiatique - Débuter sans se tromper**
+   Pour les nouveaux venus qui veulent découvrir le cigare sans faux pas.
+   
+2. **Progresser comme amateur**
+   Pour ceux qui ont déjà les bases et veulent affiner leur culture.
+   
+3. **Affiner son palais de confirmé**
+   Pour les amateurs expérimentés qui veulent maîtriser les subtilités.
+   
+4. **Ce qui peut encore surprendre un expert**
+   Pour les connaisseurs qui cherchent de nouveaux angles et perspectives.
+"""
 
 CIGAR_GUIDE = """
 # GUIDE DU CIGARE - Tout ce qu'il faut savoir
@@ -270,8 +310,108 @@ La plupart des problèmes viennent de : stockage, coupe, allumage, construction
 ### Règle simple
 Pour bien fumer : bonne coupe, bonne flamme, bonne conservation. Le reste = confort et goût personnel.
 
-## Partie 11 - Accords Cigare & Alcool / Conseils d'Association
+## Partie 11 - Parcours cigare : débutant, amateur, confirmé, expert
 
+### 1. Débuter sans se tromper
+
+Un débutant ne doit pas commencer par ce qui impressionne le plus, mais par ce qui pardonne, ce qui parle vite, et ce qui n'écrase pas le palais. Le vrai risque, au départ, ce n'est pas de "fumer trop léger", c'est au contraire de choisir trop fort, trop long, trop serré, ou trop compliqué, et de se dégoûter. Habanos recommande d'ailleurs aux nouveaux venus de commencer par des marques plus légères et des vitoles plus petites, afin de mieux lire le cigare et de ne pas devoir écourter une dégustation trop ambitieuse.
+
+Le débutant doit d'abord apprendre quatre choses simples : tenir le rythme, faire une coupe correcte, allumer proprement, et reconnaître les grandes sensations. Il ne doit pas chercher à "tout sentir", encore moins à réciter un catalogue d'arômes. Au début, il suffit de savoir dire : c'est plutôt boisé, crémeux, sec, épicé, rond ou un peu fort. Le palais vient avec la répétition.
+
+Le bon parcours de départ repose sur trois règles. D'abord, choisir des cigares plutôt légers à moyens. Ensuite, choisir des formats courts ou moyens, pour ne pas imposer une heure et demie de fumage à quelqu'un qui découvre. Enfin, choisir des cigares lisibles, c'est-à-dire des cigares qui ne demandent pas déjà un palais formé pour être appréciés.
+
+**Marques recommandées pour débuter :**
+- **Quai d'Orsay** : Officiellement classée light strength. Porte d'entrée délicate, lisible, pas agressive.
+- **Hoyo de Monterrey** : Light flavour, délicate, aromatique et élégante. Très bon socle pour découvrir.
+- **H. Upmann** : Light to medium. Idéal pour un débutant qui veut un peu plus de matière sans tomber dans le corsé.
+- **Romeo y Julieta** : Medium, équilibré et aromatique. Pour un débutant qui a déjà fumé quelques cigares légers.
+- **Montecristo Línea Open** : Medium (contrairement à la ligne classique medium to full). Bonne marche intermédiaire.
+
+**Ce qu'un débutant doit savoir tout de suite :**
+Un bon cigare ne se fume pas comme une cigarette. Il faut tirer lentement, sans inhaler, en laissant la fumée se poser en bouche. Un cigare trop humide fumera mal, un cigare trop sec sera plus rude, et un mauvais allumage peut fausser toute la dégustation.
+
+**Les erreurs classiques du débutant :**
+1. Choisir un cigare uniquement parce qu'il est célèbre
+2. Prendre trop gros, trop fort, ou trop long
+3. Tirer trop vite
+4. Croire qu'il faut déjà savoir parler comme un vieux connaisseur
+
+### 2. Progresser comme amateur
+
+L'amateur n'est plus dans la découverte brute. Il a déjà compris la coupe, le rythme, le tirage, l'allumage et quelques familles aromatiques. À ce stade, son enjeu n'est plus de simplement aimer ou ne pas aimer, mais de commencer à comparer.
+
+L'amateur doit apprendre à comparer un cigare léger et un cigare moyen, un petit module et un module plus large, un cigare plus boisé et un autre plus crémeux, un cigare linéaire et un autre plus évolutif. Il doit aussi commencer à distinguer force, corps, texture de fumée et richesse aromatique.
+
+**Les quatre axes de raisonnement :**
+1. La marque et son style général
+2. Le module
+3. Le moment de consommation
+4. Le contexte (notamment ce qu'on boit avec)
+
+L'amateur doit aussi commencer à tenir une fiche mentale ou écrite :
+- Avant allumage : aspect, odeur, construction
+- Premier tiers : tirage, combustion, notes dominantes
+- Deuxième tiers : évolution, texture, stabilité
+- Dernier tiers : montée, équilibre, fatigue ou non
+
+**Le piège à éviter :** Croire qu'on progresse uniquement en fumant plus fort. On progresse surtout quand on devient capable de mieux lire ce qu'on fume.
+
+### 3. Affiner son palais de confirmé
+
+Le confirmé doit maintenant maîtriser le cigare comme un ensemble cohérent. Il ne s'agit plus seulement de reconnaître un style global, mais de comprendre pourquoi un cigare donne telle sensation.
+
+**Ce que le confirmé doit savoir distinguer :**
+- Un cigare qui paraît fort parce qu'il chauffe vs un cigare réellement plus puissant par blend
+- Un module court peut donner une impression plus concentrée
+- Un cigare trop serré peut fausser toute lecture
+- Un gros module n'est pas forcément plus fort
+- Un cigare plus léger peut être plus subtil qu'il n'y paraît
+
+**Hiérarchies d'intensité Habanos :**
+- Hoyo de Monterrey : light
+- H. Upmann : light to medium
+- Quai d'Orsay : light
+- Romeo y Julieta : medium
+- Montecristo classique : medium to full
+- Montecristo Open : medium
+
+Le confirmé doit aussi savoir analyser un cigare par tiers sans se raconter d'histoires : montée logique, ouverture, évolution vers sec/boisé/épicé/crémeux, ou durcissement.
+
+**Les accords deviennent sérieux :** Un alcool ne s'accorde pas à un nom de cigare, mais à un style de cigare. Chercher la cohérence entre densité aromatique, texture et finale.
+
+**Le confirmé doit être capable de transmettre** : expliquer à un débutant pourquoi commencer léger, pourquoi tel module est plus lisible, pourquoi tel cigare très réputé n'est pas forcément le meilleur choix pour une première fois.
+
+### 4. Ce qui peut encore surprendre un expert
+
+Un expert n'a plus besoin qu'on lui explique la cape, la sous-cape et la tripe. Ce qui peut encore l'intéresser, ce sont les angles plus fins, les nuances, les contre-pieds, et les méthodes intelligentes de recommandation.
+
+**Les limites des idées reçues :**
+- Plus foncé ≠ automatiquement plus fort
+- Plus gros ≠ forcément meilleur
+- Plus célèbre ≠ plus adapté
+- Plus cher ≠ plus pertinent pour un contexte donné
+
+**Une approche systémique :** Au lieu de raisonner "j'aime / j'aime pas", raisonner selon :
+- Le type de dégustateur
+- L'intensité recherchée
+- La durée disponible
+- La texture de fumée souhaitée
+- Le moment
+- L'alcool disponible
+- Le niveau de lisibilité du cigare
+- L'objectif : découverte, confort, comparaison, prestige, challenge
+
+**Ce qui peut surprendre un expert :** Un assistant comme Winston devient intéressant non comme perroquet de luxe, mais comme système de recommandation cohérent, capable de relier correctement le style de cigare, le style d'alcool, le profil du dégustateur, et le contexte.
+
+**La sobriété juste :** Un vrai connaisseur n'a pas besoin qu'on lui serve vingt mots compliqués. Il sera souvent plus sensible à une lecture propre, précise, sans folklore, qu'à un verbiage pseudo-savant.
+"""
+
+# ============================================================================
+# CONNAISSANCES INTERNES DE WINSTON (non visibles dans le sommaire public)
+# ============================================================================
+
+WINSTON_INTERNAL_KNOWLEDGE = """
+## Accords Cigare & Alcool / Conseils d'Association
 ### Principes généraux d'accord
 - **Équilibre** : Un cigare léger avec un alcool léger, un cigare puissant avec un alcool plus charpenté
 - **Complémentarité** : Chercher des saveurs qui se complètent (boisé avec boisé, épicé avec épicé)
@@ -312,7 +452,7 @@ Pour bien fumer : bonne coupe, bonne flamme, bonne conservation. Le reste = conf
 - La température de l'alcool compte : whisky légèrement frais, rhum à température
 - Un cigare dure 45min à 2h : prévoir plusieurs verres
 
-## Partie 12 - Carte du Bar A Conca & Système d'Accords Winston
+## Carte du Bar A Conca & Système d'Accords Winston
 
 ### Méthode de conseil Winston (3 étages)
 1. **Produit disponible au club** - Stock réel de la carte A Conca
@@ -456,5 +596,21 @@ Faire remonter en priorité les références P&M (corses) et signatures lorsque 
 """
 
 def get_cigar_knowledge():
-    """Retourne la base de connaissances sur le cigare"""
+    """Retourne la base de connaissances complète sur le cigare (guide public)"""
     return CIGAR_GUIDE
+
+def get_cigar_guide_sommaire():
+    """Retourne le sommaire du guide 'Tout sur le cigare'"""
+    return CIGAR_GUIDE_SOMMAIRE
+
+def get_parcours_sujets():
+    """Retourne les sujets de parcours proposés par Winston"""
+    return PARCOURS_SUJETS
+
+def get_winston_internal_knowledge():
+    """Retourne les connaissances internes de Winston (accords, carte du bar)"""
+    return WINSTON_INTERNAL_KNOWLEDGE
+
+def get_full_winston_knowledge():
+    """Retourne toutes les connaissances de Winston (guide + connaissances internes)"""
+    return CIGAR_GUIDE + "\n\n" + WINSTON_INTERNAL_KNOWLEDGE

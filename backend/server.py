@@ -5953,7 +5953,7 @@ async def shutdown_db_client():
 # ==================== ASSISTANT IA ====================
 
 from emergentintegrations.llm.chat import LlmChat, UserMessage
-from cigar_knowledge import get_cigar_knowledge
+from cigar_knowledge import get_cigar_knowledge, get_cigar_guide_sommaire, get_parcours_sujets, get_winston_internal_knowledge, get_full_winston_knowledge
 
 # Stockage des sessions de chat en mémoire (pour les conversations actives)
 chat_sessions = {}
@@ -6103,9 +6103,9 @@ Tu t'adresses à lui/elle directement par son prénom.
     except Exception as e:
         logger.error(f"Erreur accès catalogue: {e}")
     
-    # 10. Guide du cigare (base de connaissances)
-    cigar_guide = get_cigar_knowledge()
-    context_parts.append(f"\n--- GUIDE DU CIGARE (ta base de connaissances) ---\n{cigar_guide}")
+    # 10. Guide du cigare (base de connaissances complète pour Winston)
+    full_knowledge = get_full_winston_knowledge()
+    context_parts.append(f"\n--- GUIDE DU CIGARE ET CONNAISSANCES INTERNES ---\n{full_knowledge}")
     
     return "\n".join(context_parts)
 
@@ -6157,6 +6157,26 @@ INSTRUCTIONS IMPORTANTES :
 11. Quand on te demande "Vais-je aimer ce cigare ?", analyse la Cigarthèque du membre pour identifier ses préférences (puissance, terroir, profil aromatique) et compare avec le cigare demandé
 12. Réponds toujours en français avec un ton élégant et professionnel
 13. Sois concis mais informatif
+14. Tu proposes toujours les 4 PARCOURS INITIATIQUES selon le niveau du membre :
+   - "Parcours initiatique - Débuter sans se tromper" pour les débutants
+   - "Progresser comme amateur" pour ceux qui ont les bases
+   - "Affiner son palais de confirmé" pour les expérimentés
+   - "Ce qui peut encore surprendre un expert" pour les connaisseurs
+15. Tu connais le sommaire complet "TOUT SUR LE CIGARE" en 11 parties :
+   1. Bases, structure, vocabulaire fondamental et histoire
+   2. Choisir un cigare en pratique
+   3. Lexique utile du cigare
+   4. Parler cigare correctement
+   5. Les grandes marques et leur réputation
+   6. Les pays du cigare et leurs terroirs
+   7. Fabrication du cigare
+   8. Les modules et origine de leurs noms
+   9. Défauts du cigare, causes et corrections
+   10. Les accessoires
+   11. Parcours cigare : débutant, amateur, confirmé, expert
+16. Quand on te demande le sommaire ou "Tout sur le cigare", tu affiches ce sommaire complet
+17. Quand on te demande une partie spécifique (ex: "Partie 5", "Parle-moi des marques"), tu donnes le contenu de cette partie
+18. Tu es INTRAITABLE sur tes connaissances : tu maîtrises parfaitement chaque partie du guide et les accords cigare-alcool
 """
             
             # Créer une nouvelle instance de chat
@@ -6229,3 +6249,81 @@ async def save_chat_message(user_id: str, role: str, content: str):
         logger.error(f"Erreur sauvegarde message: {e}")
         return {"success": False}
 
+
+
+@app.get("/api/guide-cigare/sommaire")
+async def get_guide_sommaire():
+    """Retourne le sommaire du guide 'Tout sur le cigare'"""
+    return {
+        "sommaire": get_cigar_guide_sommaire(),
+        "parties": [
+            {"numero": 1, "titre": "Bases, structure, vocabulaire fondamental et histoire"},
+            {"numero": 2, "titre": "Choisir un cigare en pratique"},
+            {"numero": 3, "titre": "Lexique utile du cigare"},
+            {"numero": 4, "titre": "Parler cigare correctement"},
+            {"numero": 5, "titre": "Les grandes marques et leur réputation"},
+            {"numero": 6, "titre": "Les pays du cigare et leurs terroirs"},
+            {"numero": 7, "titre": "Fabrication du cigare"},
+            {"numero": 8, "titre": "Les modules et origine de leurs noms"},
+            {"numero": 9, "titre": "Défauts du cigare, causes et corrections"},
+            {"numero": 10, "titre": "Les accessoires"},
+            {"numero": 11, "titre": "Parcours cigare : débutant, amateur, confirmé, expert"}
+        ],
+        "parcours": [
+            {"id": 1, "titre": "Parcours initiatique - Débuter sans se tromper", "niveau": "débutant"},
+            {"id": 2, "titre": "Progresser comme amateur", "niveau": "amateur"},
+            {"id": 3, "titre": "Affiner son palais de confirmé", "niveau": "confirmé"},
+            {"id": 4, "titre": "Ce qui peut encore surprendre un expert", "niveau": "expert"}
+        ]
+    }
+
+@app.get("/api/guide-cigare/partie/{numero}")
+async def get_guide_partie(numero: int):
+    """Retourne une partie spécifique du guide"""
+    guide = get_cigar_knowledge()
+    
+    # Chercher la partie demandée
+    import re
+    pattern = rf"## Partie {numero} - (.+?)(?=## Partie {numero + 1}|$)"
+    match = re.search(pattern, guide, re.DOTALL)
+    
+    if match:
+        return {
+            "numero": numero,
+            "contenu": match.group(0).strip()
+        }
+    else:
+        raise HTTPException(status_code=404, detail=f"Partie {numero} non trouvée")
+
+@app.get("/api/guide-cigare/parcours")
+async def get_parcours_cigare():
+    """Retourne les sujets de parcours proposés par Winston"""
+    return {
+        "parcours": get_parcours_sujets(),
+        "sujets": [
+            {
+                "id": 1, 
+                "titre": "Parcours initiatique - Débuter sans se tromper",
+                "description": "Pour les nouveaux venus qui veulent découvrir le cigare sans faux pas.",
+                "niveau": "débutant"
+            },
+            {
+                "id": 2, 
+                "titre": "Progresser comme amateur",
+                "description": "Pour ceux qui ont déjà les bases et veulent affiner leur culture.",
+                "niveau": "amateur"
+            },
+            {
+                "id": 3, 
+                "titre": "Affiner son palais de confirmé",
+                "description": "Pour les amateurs expérimentés qui veulent maîtriser les subtilités.",
+                "niveau": "confirmé"
+            },
+            {
+                "id": 4, 
+                "titre": "Ce qui peut encore surprendre un expert",
+                "description": "Pour les connaisseurs qui cherchent de nouveaux angles et perspectives.",
+                "niveau": "expert"
+            }
+        ]
+    }
