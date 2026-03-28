@@ -26,7 +26,8 @@ import {
 const Sidebar = () => {
   const { isAdmin, toggleMode, currentMember, logout } = useUser();
   const location = useLocation();
-  const [isOpen, setIsOpen] = useState(true);
+  // Fermé par défaut sur mobile, ouvert sur desktop
+  const [isOpen, setIsOpen] = useState(window.innerWidth >= 1024);
   
   // Le toggle mode n'est disponible que pour le Président
   const canToggleMode = currentMember?.is_president === true;

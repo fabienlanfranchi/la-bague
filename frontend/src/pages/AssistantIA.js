@@ -16,7 +16,9 @@ import {
   GlassWater,
   Award,
   ChevronRight,
-  GraduationCap
+  GraduationCap,
+  Target,
+  Gift
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -31,6 +33,7 @@ const AssistantIA = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [showGuideSommaire, setShowGuideSommaire] = useState(false);
+  const [showCigarChoice, setShowCigarChoice] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const hasInitializedFromGuide = useRef(false);
@@ -126,13 +129,35 @@ const AssistantIA = () => {
         const prenom = currentMember?.prenom || currentMember?.nom_complet?.split(' ')[0] || 'cher membre';
         setMessages([{
           role: 'assistant',
-          content: `Bonjour ${prenom} ! Je suis Winston, votre concierge personnel de La Bague Impériale.\n\nDouble certifié "Bague Specialist" et "Conca Specialist", je connais parfaitement les 35 membres du club et la carte du Bar à Whisky & Rhumerie.\n\nVoici ce que je peux faire pour vous :\n\n📚 Guide du Cigare - Tout savoir sur les terroirs, formats, marques\n💝 Recommandations personnalisées - Basées sur vos goûts et ceux de chaque membre\n🥃 Conseil & Association - Quel whisky avec mon cigare ? Quel moment de la journée ?\n🎯 Prédiction - "Vais-je aimer tel cigare ?" Selon votre Cigarthèque, je peux vous le dire !\n👥 Expertise membres - "Quel cigare non cubain Jacques aime-t-il ?"\n\nComment puis-je vous être utile ?`,
+          content: `Bonjour ${prenom} ! Je suis Winston, votre concierge personnel de La Bague Impériale. 🎩\n\n**Voici ce que je peux faire pour vous :**\n\n🎯 **Choix de cigare** — Je vous guide vers LE cigare adapté à votre profil et votre moment\n📚 **Guide du Cigare** — Tout savoir sur les terroirs, formats, marques\n🎁 **Conseil cadeau** — Offrir le bon cigare à quelqu'un\n🥃 **Accords** — Quel whisky, rhum ou cognac avec votre cigare ?\n🎓 **Parcours par niveau** — Débutant, Amateur, Confirmé ou Expert ?\n\nCliquez sur **"Choix de cigare"** ci-dessus ou posez-moi directement votre question !`,
           timestamp: new Date().toISOString()
         }]);
       }
     } catch (error) {
       console.error('Erreur chargement historique:', error);
     }
+  };
+
+  // Lancer le flow "Choix de cigare"
+  const startCigarChoice = () => {
+    const prenom = currentMember?.prenom || currentMember?.nom_complet?.split(' ')[0] || 'cher membre';
+    const choixMessage = {
+      role: 'assistant',
+      content: `${prenom}, je vais vous aider à choisir le cigare parfait pour votre situation ! 🎯\n\n**Première question : Quel est votre profil de fumeur ?**\n\n1️⃣ **Débutant** — Je découvre le cigare\n2️⃣ **Amateur** — J'ai déjà quelques repères\n3️⃣ **Confirmé** — Je maîtrise bien mon sujet\n4️⃣ **Expert** — Grande expérience du cigare\n\nRépondez par le numéro ou le mot (ex: "débutant" ou "1")`,
+      timestamp: new Date().toISOString()
+    };
+    setMessages(prev => [...prev, choixMessage]);
+    setShowCigarChoice(true);
+  };
+
+  // Lancer le flow "Conseil cadeau"
+  const startGiftAdvice = () => {
+    const cadeauMessage = {
+      role: 'assistant',
+      content: `Vous souhaitez offrir un cigare ? Excellente idée ! 🎁\n\n**Parlons d'abord de la personne qui va le recevoir :**\n\n1️⃣ Quel est son **niveau** ? (Débutant, Amateur, Confirmé, Expert)\n2️⃣ Dans quelle **situation** va-t-il/elle le fumer ? (Apéro, Digestif, Journée détente...)\n3️⃣ A-t-il/elle des **préférences** connues ? (Cubain, Non-cubain, Puissant, Léger...)\n\nDites-moi ce que vous savez sur cette personne !`,
+      timestamp: new Date().toISOString()
+    };
+    setMessages(prev => [...prev, cadeauMessage]);
   };
 
   const sendMessage = async (messageText = inputMessage) => {
@@ -288,6 +313,27 @@ const AssistantIA = () => {
               <RefreshCw className="w-5 h-5" />
             </Button>
           </div>
+        </div>
+
+        {/* Boutons d'action rapide */}
+        <div className="flex flex-wrap gap-2 px-4 py-2 border-b border-[#D4A024]/20 bg-black/30">
+          <Button
+            onClick={startCigarChoice}
+            className="bg-gradient-to-r from-[#D4A024] to-[#7A2020] hover:from-[#E4B034] hover:to-[#8A3030] text-white text-sm"
+            size="sm"
+          >
+            <Target className="w-4 h-4 mr-2" />
+            Choix de cigare
+          </Button>
+          <Button
+            onClick={startGiftAdvice}
+            variant="outline"
+            className="border-[#D4A024]/50 text-[#D4A024] hover:bg-[#D4A024]/20 text-sm"
+            size="sm"
+          >
+            <Gift className="w-4 h-4 mr-2" />
+            Conseil cadeau
+          </Button>
         </div>
 
         {/* Panneau sommaire du guide */}
