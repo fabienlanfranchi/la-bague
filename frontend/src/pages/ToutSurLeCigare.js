@@ -92,10 +92,13 @@ const ToutSurLeCigare = () => {
 
   const scrollToSection = (numero) => {
     setActiveSection(numero);
-    const element = sectionRefs.current[numero];
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    // Petit délai pour s'assurer que le contenu est rendu
+    setTimeout(() => {
+      const element = sectionRefs.current[numero];
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
   };
 
   const scrollToTop = () => {
@@ -359,27 +362,6 @@ const ToutSurLeCigare = () => {
 
           {/* Contenu du guide */}
           <div ref={contentRef} className="flex-1 overflow-y-auto p-6 scroll-smooth">
-            {/* Introduction */}
-            <div className="mb-8 p-6 bg-gradient-to-r from-[#7A2020]/20 to-[#D4A024]/20 rounded-lg border border-[#D4A024]/30">
-              <h2 className="text-2xl font-serif font-bold text-white mb-3">Bienvenue dans le Guide du Cigare</h2>
-              <p className="text-gray-300 leading-relaxed">
-                Ce guide complet en 11 parties vous accompagne dans votre découverte et perfectionnement de l'art du cigare. 
-                Du vocabulaire fondamental aux conseils d'expert, explorez chaque aspect de cet univers fascinant.
-              </p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {sommaire.slice(0, 5).map((partie) => (
-                  <Badge 
-                    key={partie.numero}
-                    className="bg-[#D4A024]/20 text-[#D4A024] border border-[#D4A024]/30 cursor-pointer hover:bg-[#D4A024]/30"
-                    onClick={() => scrollToSection(partie.numero)}
-                  >
-                    {partie.numero}. {partie.titre}
-                  </Badge>
-                ))}
-                <Badge className="bg-gray-700/50 text-gray-400">+{sommaire.length - 5} autres</Badge>
-              </div>
-            </div>
-
             {/* Contenu des parties */}
             <div className="prose prose-invert max-w-none">
               {renderMarkdown(guideContent)}
