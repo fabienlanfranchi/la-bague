@@ -1013,25 +1013,39 @@ const AdminCigarotheque = () => {
                       key={index}
                       className="bg-red-900/20 border border-red-600/30 rounded-lg p-4"
                     >
-                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
+                      <div className="flex flex-col gap-3">
+                        {/* Cigare 1 */}
+                        <div className="flex items-center justify-between bg-black/30 rounded p-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-gray-500 text-xs">ID {doublon.cigare1.id}</span>
                             <span className="text-red-300 font-medium">{doublon.cigare1.marque}</span>
                             <span className="text-gray-500">-</span>
-                            <span className="text-white">{doublon.cigare1.nom_cigare}</span>
-                            <span className="text-gray-500 text-sm">(ID {doublon.cigare1.id})</span>
+                            <span className="text-white">{doublon.cigare1.nom}</span>
+                            {doublon.cigare1.gamme && <span className="text-purple-400 text-xs">({doublon.cigare1.gamme})</span>}
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="text-red-300 font-medium">{doublon.cigare2.marque}</span>
-                            <span className="text-gray-500">-</span>
-                            <span className="text-white">{doublon.cigare2.nom_cigare}</span>
-                            <span className="text-gray-500 text-sm">(ID {doublon.cigare2.id})</span>
-                          </div>
-                          <div className="text-yellow-400 text-xs mt-1">
-                            Similarité: {Math.round(doublon.similarite * 100)}%
+                            {doublon.cigare1.has_photo ? <span className="text-green-400" title="Photo">📷</span> : <span className="text-gray-600" title="Pas de photo">📷</span>}
+                            {doublon.cigare1.has_notes ? <span className="text-green-400" title="Notes">📝</span> : <span className="text-gray-600" title="Pas de notes">📝</span>}
+                            {doublon.cigare1.prix ? <span className="text-yellow-400 text-sm">{doublon.cigare1.prix}€</span> : <span className="text-gray-600 text-sm">-€</span>}
                           </div>
                         </div>
-                        <div className="flex items-center gap-2 flex-wrap">
+                        {/* Cigare 2 */}
+                        <div className="flex items-center justify-between bg-black/30 rounded p-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-gray-500 text-xs">ID {doublon.cigare2.id}</span>
+                            <span className="text-red-300 font-medium">{doublon.cigare2.marque}</span>
+                            <span className="text-gray-500">-</span>
+                            <span className="text-white">{doublon.cigare2.nom}</span>
+                            {doublon.cigare2.gamme && <span className="text-purple-400 text-xs">({doublon.cigare2.gamme})</span>}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {doublon.cigare2.has_photo ? <span className="text-green-400" title="Photo">📷</span> : <span className="text-gray-600" title="Pas de photo">📷</span>}
+                            {doublon.cigare2.has_notes ? <span className="text-green-400" title="Notes">📝</span> : <span className="text-gray-600" title="Pas de notes">📝</span>}
+                            {doublon.cigare2.prix ? <span className="text-yellow-400 text-sm">{doublon.cigare2.prix}€</span> : <span className="text-gray-600 text-sm">-€</span>}
+                          </div>
+                        </div>
+                        {/* Actions */}
+                        <div className="flex items-center justify-end gap-2 flex-wrap">
                           <Button
                             size="sm"
                             variant="outline"

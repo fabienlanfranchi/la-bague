@@ -4201,67 +4201,67 @@ async def detect_doublons_cigares(
 ):
     """Détecter les doublons potentiels de cigares (même nom ou nom similaire)"""
     try:
-        import difflib
+        from collections import defaultdict
         
         # Récupérer les doublons de cigares ignorés depuis MongoDB
         doublons_ignores = await db.doublons_cigares_ignores.find({}).to_list(length=1000)
         ignores_set = set()
         for d in doublons_ignores:
-            # Créer une clé unique pour la paire (ordre par ID)
             pair = tuple(sorted([d.get('cigare1_id', 0), d.get('cigare2_id', 0)]))
             ignores_set.add(pair)
         
         with get_mysql_connection() as conn:
             cursor = conn.cursor(pymysql.cursors.DictCursor)
             
+            # Récupérer TOUS les cigares pour trouver les vrais doublons
             if search:
-                # Rechercher les cigares correspondants
                 cursor.execute('''
-                    SELECT id, nom_cigare, marque, gamme, module,
+                    SELECT id, nom_cigare, marque, gamme, module, terroir, prix, photo,
                            premier_tiers IS NOT NULL AND premier_tiers != '' as has_notes,
                            (nom_cigare IS NOT NULL AND nom_cigare != '' AND nom_cigare NOT LIKE '%%MODIFIER%%') as has_nom
                     FROM cigares 
                     WHERE nom_cigare LIKE %s OR marque LIKE %s
-                    ORDER BY nom_cigare
+                    ORDER BY marque, nom_cigare
                 ''', (f'%{search}%', f'%{search}%'))
             else:
-                # Récupérer tous les cigares
                 cursor.execute('''
-                    SELECT id, nom_cigare, marque, gamme, module,
+                    SELECT id, nom_cigare, marque, gamme, module, terroir, prix, photo,
                            premier_tiers IS NOT NULL AND premier_tiers != '' as has_notes,
                            (nom_cigare IS NOT NULL AND nom_cigare != '' AND nom_cigare NOT LIKE '%%MODIFIER%%') as has_nom
                     FROM cigares 
-                    ORDER BY nom_cigare
-                    LIMIT 500
+                    ORDER BY marque, nom_cigare
                 ''')
             
             cigares = cursor.fetchall()
             
-            # Chercher les doublons (même nom+marque ou très similaires)
-            doublons = []
-            seen = set()
+            # Fonction pour normaliser les noms (minuscules, espaces normalisés)
+            def normalize(s):
+                if not s:
+                    return ""
+                s = s.lower().strip()
+                s = ' '.join(s.split())
+                return s
             
-            for i, c1 in enumerate(cigares):
-                for c2 in cigares[i+1:]:
-                    # Créer une clé unique pour éviter les doublons
-                    pair_key = tuple(sorted([c1['id'], c2['id']]))
-                    if pair_key in seen:
-                        continue
-                    
-                    # Vérifier si cette paire est ignorée
-                    if pair_key in ignores_set:
-                        continue
-                    
-                    nom1 = (c1.get('nom_cigare') or '').lower()
-                    nom2 = (c2.get('nom_cigare') or '').lower()
-                    marque1 = (c1.get('marque') or '').lower()
-                    marque2 = (c2.get('marque') or '').lower()
-                    
-                    # Même marque et noms similaires
-                    if marque1 == marque2 and nom1 and nom2:
-                        ratio = difflib.SequenceMatcher(None, nom1, nom2).ratio()
-                        if ratio > 0.7:
-                            seen.add(pair_key)
+            # Grouper par marque + nom normalisé
+            groups = defaultdict(list)
+            for c in cigares:
+                key = (normalize(c['marque']), normalize(c['nom_cigare']))
+                groups[key].append(c)
+            
+            # Trouver les doublons (groupes avec plus d'un cigare)
+            doublons = []
+            
+            for key, cigares_list in groups.items():
+                if len(cigares_list) > 1:
+                    # Créer des paires de doublons
+                    for i, c1 in enumerate(cigares_list):
+                        for c2 in cigares_list[i+1:]:
+                            pair_key = tuple(sorted([c1['id'], c2['id']]))
+                            
+                            # Vérifier si cette paire est ignorée
+                            if pair_key in ignores_set:
+                                continue
+                            
                             doublons.append({
                                 "cigare1": {
                                     "id": c1['id'],
@@ -4269,6 +4269,9 @@ async def detect_doublons_cigares(
                                     "marque": c1['marque'],
                                     "gamme": c1['gamme'],
                                     "module": c1['module'],
+                                    "terroir": c1['terroir'],
+                                    "prix": float(c1['prix']) if c1['prix'] else None,
+                                    "has_photo": bool(c1['photo']),
                                     "has_notes": bool(c1['has_notes']),
                                     "has_nom": bool(c1['has_nom'])
                                 },
@@ -4278,16 +4281,19 @@ async def detect_doublons_cigares(
                                     "marque": c2['marque'],
                                     "gamme": c2['gamme'],
                                     "module": c2['module'],
+                                    "terroir": c2['terroir'],
+                                    "prix": float(c2['prix']) if c2['prix'] else None,
+                                    "has_photo": bool(c2['photo']),
                                     "has_notes": bool(c2['has_notes']),
                                     "has_nom": bool(c2['has_nom'])
                                 },
-                                "similarite": round(ratio * 100)
+                                "similarite": 100  # Même nom exact
                             })
             
-            # Trier par similarité décroissante
-            doublons.sort(key=lambda x: -x['similarite'])
+            # Trier par marque puis nom
+            doublons.sort(key=lambda x: (x['cigare1']['marque'] or '', x['cigare1']['nom'] or ''))
             
-            return {"doublons": doublons[:50], "total": len(doublons)}
+            return {"doublons": doublons, "total": len(doublons)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur doublons cigares: {str(e)}")
 
