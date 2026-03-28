@@ -12,12 +12,12 @@ import {
   MessageCircle, 
   Plus,
   Save,
-  Trash2,
-  Edit3,
   X,
   BookMarked,
   GraduationCap,
-  ArrowUp
+  ArrowUp,
+  Menu,
+  ChevronDown
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -33,6 +33,7 @@ const ToutSurLeCigare = () => {
   const [loading, setLoading] = useState(true);
   const [activeSection, setActiveSection] = useState(null);
   const [showBackToTop, setShowBackToTop] = useState(false);
+  const [showMobileSommaire, setShowMobileSommaire] = useState(false);
   
   // États pour l'édition admin
   const [editMode, setEditMode] = useState(false);
@@ -92,6 +93,7 @@ const ToutSurLeCigare = () => {
 
   const scrollToSection = (numero) => {
     setActiveSection(numero);
+    setShowMobileSommaire(false); // Fermer le menu mobile
     // Utiliser un ID HTML pour une navigation plus fiable
     setTimeout(() => {
       const element = document.getElementById(`partie-${numero}`);
@@ -207,19 +209,88 @@ const ToutSurLeCigare = () => {
   return (
     <div className="h-[calc(100vh-120px)] flex flex-col">
       {/* Header */}
-      <div className="text-center md:text-left mb-4">
-        <h1 className="text-4xl md:text-5xl font-serif font-bold text-white mb-2 flex items-center gap-3">
-          <BookOpen className="w-10 h-10 text-[#D4A024]" />
+      <div className="text-center md:text-left mb-2 md:mb-4">
+        <h1 className="text-2xl md:text-4xl lg:text-5xl font-serif font-bold text-white mb-1 md:mb-2 flex items-center justify-center md:justify-start gap-2 md:gap-3">
+          <BookOpen className="w-6 h-6 md:w-10 md:h-10 text-[#D4A024]" />
           Tout sur le cigare
         </h1>
-        <p className="text-[#D4A024] text-lg font-serif">
+        <p className="text-[#D4A024] text-sm md:text-lg font-serif">
           Le guide complet du club La Bague Impériale
         </p>
       </div>
 
+      {/* Mobile: Bouton sommaire + Bouton Winston */}
+      <div className="flex md:hidden gap-2 mb-2">
+        <Button
+          onClick={() => setShowMobileSommaire(!showMobileSommaire)}
+          variant="outline"
+          className="flex-1 border-[#D4A024]/50 text-[#D4A024]"
+          size="sm"
+        >
+          <Menu className="w-4 h-4 mr-2" />
+          Sommaire
+          <ChevronDown className={`w-4 h-4 ml-2 transition-transform ${showMobileSommaire ? 'rotate-180' : ''}`} />
+        </Button>
+        <Button
+          onClick={discussWithWinston}
+          className="flex-1 bg-gradient-to-r from-[#7A2020] to-[#D4A024] text-white"
+          size="sm"
+        >
+          <MessageCircle className="w-4 h-4 mr-2" />
+          Discuter avec Winston
+        </Button>
+      </div>
+
+      {/* Mobile: Sommaire dépliable */}
+      {showMobileSommaire && (
+        <Card className="md:hidden mb-2 bg-black/90 border-2 border-[#D4A024]/30 max-h-[50vh] overflow-y-auto">
+          <CardContent className="p-3">
+            <p className="text-[#D4A024] text-sm font-semibold mb-2">Parties du guide</p>
+            <div className="grid grid-cols-1 gap-1">
+              {sommaire.map((partie) => (
+                <button
+                  key={partie.numero}
+                  onClick={() => scrollToSection(partie.numero)}
+                  className={`w-full text-left p-2 rounded transition-colors flex items-center gap-2 ${
+                    activeSection === partie.numero 
+                      ? 'bg-[#D4A024]/30 text-[#D4A024]' 
+                      : 'bg-black/30 text-gray-300'
+                  }`}
+                >
+                  <span className="font-bold text-sm w-6 text-[#D4A024]">{partie.numero}.</span>
+                  <span className="text-sm flex-1">{partie.titre}</span>
+                </button>
+              ))}
+            </div>
+            
+            <div className="mt-3 pt-3 border-t border-[#D4A024]/20">
+              <p className="text-gray-500 text-xs mb-2 flex items-center gap-2">
+                <GraduationCap className="w-4 h-4" />
+                Parcours
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {parcours.map((p) => (
+                  <Badge 
+                    key={p.id}
+                    onClick={() => scrollToSection(11)}
+                    className={`cursor-pointer ${
+                      p.niveau === 'débutant' ? 'bg-green-600' :
+                      p.niveau === 'amateur' ? 'bg-blue-600' :
+                      p.niveau === 'confirmé' ? 'bg-purple-600' : 'bg-red-600'
+                    } text-white text-xs`}
+                  >
+                    {p.niveau}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="flex-1 flex gap-4 overflow-hidden">
-        {/* Sidebar - Sommaire */}
-        <Card className="w-72 bg-black/40 border-2 border-[#D4A024]/30 overflow-hidden flex flex-col shrink-0">
+        {/* Desktop: Sidebar - Sommaire */}
+        <Card className="hidden md:flex w-72 bg-black/40 border-2 border-[#D4A024]/30 overflow-hidden flex-col shrink-0">
           <CardHeader className="py-3 border-b border-[#D4A024]/20">
             <CardTitle className="text-[#D4A024] text-lg flex items-center gap-2">
               <BookMarked className="w-5 h-5" />

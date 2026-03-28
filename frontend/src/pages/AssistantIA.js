@@ -329,21 +329,21 @@ const AssistantIA = () => {
 
         {/* Panneau sommaire du guide */}
         {showGuideSommaire && (
-          <div className="border-b border-[#D4A024]/20 p-3 bg-black/50">
-            <p className="text-[#D4A024] text-sm font-semibold mb-2 flex items-center gap-2">
+          <div className="border-b border-[#D4A024]/20 p-2 md:p-3 bg-black/50 max-h-[40vh] md:max-h-none overflow-y-auto">
+            <p className="text-[#D4A024] text-xs md:text-sm font-semibold mb-2 flex items-center gap-2">
               <BookOpen className="w-4 h-4" />
               Tout sur le cigare - Choisissez une partie :
             </p>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-1 md:gap-2">
               {guideSommaire.map((partie) => (
                 <button
                   key={partie.numero}
                   onClick={() => askForPartie(partie.numero, partie.titre)}
-                  className="text-left p-2 hover:bg-[#D4A024]/20 rounded transition-colors flex items-center gap-2 group text-sm"
+                  className="text-left p-2 hover:bg-[#D4A024]/20 bg-black/30 md:bg-transparent rounded transition-colors flex items-center gap-2 group text-xs md:text-sm"
                 >
                   <span className="text-[#D4A024] font-bold w-5">{partie.numero}.</span>
-                  <span className="text-gray-400 group-hover:text-white flex-1 truncate">{partie.titre}</span>
-                  <ChevronRight className="w-3 h-3 text-gray-600 group-hover:text-[#D4A024] shrink-0" />
+                  <span className="text-gray-300 md:text-gray-400 group-hover:text-white flex-1">{partie.titre}</span>
+                  <ChevronRight className="w-3 h-3 text-gray-600 group-hover:text-[#D4A024] shrink-0 hidden md:block" />
                 </button>
               ))}
             </div>
