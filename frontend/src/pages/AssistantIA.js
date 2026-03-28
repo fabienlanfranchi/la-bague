@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useUser } from '../context/UserContext';
+import { useLocation } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,7 +14,8 @@ import {
   BookOpen,
   Heart,
   GlassWater,
-  Award
+  Award,
+  ChevronRight
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -22,15 +24,42 @@ const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
 const AssistantIA = () => {
   const { currentMember, isAdmin } = useUser();
+  const location = useLocation();
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [showGuideSommaire, setShowGuideSommaire] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const hasInitializedFromGuide = useRef(false);
 
-  // ID utilisateur pour l'API
-  const userId = currentMember?.id || 'default-user';
+  // ID utilisateur pour l'API - différencie membre vs admin pour Fabien
+  const getUserId = () => {
+    if (!currentMember) return 'default-user';
+    // Si c'est Fabien en mode admin, utiliser un ID différent
+    if (currentMember.is_president && isAdmin) {
+      return `${currentMember.id}_president`;
+    }
+    return currentMember.id;
+  };
+  
+  const userId = getUserId();
+
+  // Sommaire du guide pour le menu contextuel
+  const guideSommaire = [
+    { numero: 1, titre: "Bases, structure, vocabulaire fondamental et histoire" },
+    { numero: 2, titre: "Choisir un cigare en pratique" },
+    { numero: 3, titre: "Lexique utile du cigare" },
+    { numero: 4, titre: "Parler cigare correctement" },
+    { numero: 5, titre: "Les grandes marques et leur réputation" },
+    { numero: 6, titre: "Les pays du cigare et leurs terroirs" },
+    { numero: 7, titre: "Fabrication du cigare" },
+    { numero: 8, titre: "Les modules et origine de leurs noms" },
+    { numero: 9, titre: "Défauts du cigare, causes et corrections" },
+    { numero: 10, titre: "Les accessoires" },
+    { numero: 11, titre: "Parcours cigare : débutant, amateur, confirmé, expert" }
+  ];
 
   // Capacités de Winston
   const winstonCapabilities = [
@@ -54,6 +83,33 @@ const AssistantIA = () => {
   useEffect(() => {
     loadChatHistory();
   }, [userId]);
+
+  // Gérer l'arrivée depuis le guide "Tout sur le cigare"
+  useEffect(() => {
+    if (location.state?.fromGuide && !hasInitializedFromGuide.current) {
+      hasInitializedFromGuide.current = true;
+      setShowGuideSommaire(true);
+      
+      // Ajouter le message de Winston proposant les parties
+      const prenom = currentMember?.prenom || currentMember?.nom_complet?.split(' ')[0] || 'cher membre';
+      const guideWelcome = {
+        role: 'assistant',
+        content: `${prenom}, je vois que vous consultez le guide "Tout sur le cigare" ! 📚\n\nQuelle partie souhaitez-vous approfondir ensemble ?\n\nCliquez sur l'une des parties ci-dessus ou posez-moi directement votre question !`,
+        timestamp: new Date().toISOString()
+      };
+      
+      // Ajouter après un court délai pour s'assurer que l'historique est chargé
+      setTimeout(() => {
+        setMessages(prev => [...prev, guideWelcome]);
+      }, 500);
+    }
+  }, [location.state, currentMember]);
+
+  // Demander une partie du guide
+  const askForPartie = (numero, titre) => {
+    setShowGuideSommaire(false);
+    sendMessage(`Parle-moi de la Partie ${numero} : ${titre}`);
+  };
 
   const loadChatHistory = async () => {
     try {
@@ -211,16 +267,50 @@ const AssistantIA = () => {
               </div>
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="default"
-            onClick={resetConversation}
-            className="text-gray-400 hover:text-white"
-            title="Nouvelle conversation"
-          >
-            <RefreshCw className="w-5 h-5" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowGuideSommaire(!showGuideSommaire)}
+              className={`text-gray-400 hover:text-white ${showGuideSommaire ? 'bg-[#D4A024]/20' : ''}`}
+              title="Guide du cigare"
+            >
+              <BookOpen className="w-5 h-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="default"
+              onClick={resetConversation}
+              className="text-gray-400 hover:text-white"
+              title="Nouvelle conversation"
+            >
+              <RefreshCw className="w-5 h-5" />
+            </Button>
+          </div>
         </div>
+
+        {/* Panneau sommaire du guide */}
+        {showGuideSommaire && (
+          <div className="border-b border-[#D4A024]/20 p-3 bg-black/50">
+            <p className="text-[#D4A024] text-sm font-semibold mb-2 flex items-center gap-2">
+              <BookOpen className="w-4 h-4" />
+              Tout sur le cigare - Choisissez une partie :
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+              {guideSommaire.map((partie) => (
+                <button
+                  key={partie.numero}
+                  onClick={() => askForPartie(partie.numero, partie.titre)}
+                  className="text-left p-2 hover:bg-[#D4A024]/20 rounded transition-colors flex items-center gap-2 group text-sm"
+                >
+                  <span className="text-[#D4A024] font-bold w-5">{partie.numero}.</span>
+                  <span className="text-gray-400 group-hover:text-white flex-1 truncate">{partie.titre}</span>
+                  <ChevronRight className="w-3 h-3 text-gray-600 group-hover:text-[#D4A024] shrink-0" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">

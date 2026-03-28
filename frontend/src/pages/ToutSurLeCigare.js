@@ -92,13 +92,13 @@ const ToutSurLeCigare = () => {
 
   const scrollToSection = (numero) => {
     setActiveSection(numero);
-    // Petit délai pour s'assurer que le contenu est rendu
+    // Utiliser un ID HTML pour une navigation plus fiable
     setTimeout(() => {
-      const element = sectionRefs.current[numero];
+      const element = document.getElementById(`partie-${numero}`);
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
-    }, 100);
+    }, 200);
   };
 
   const scrollToTop = () => {
@@ -107,9 +107,14 @@ const ToutSurLeCigare = () => {
     }
   };
 
-  const discussWithWinston = (sujet) => {
-    // Naviguer vers Winston avec le sujet pré-rempli
-    navigate('/assistant', { state: { initialMessage: `Parle-moi de : ${sujet}` } });
+  const discussWithWinston = () => {
+    // Naviguer vers Winston avec le contexte du guide
+    navigate('/assistant-ia', { 
+      state: { 
+        fromGuide: true,
+        guideSommaire: sommaire 
+      } 
+    });
   };
 
   // Rendu du contenu Markdown simplifié
@@ -130,7 +135,8 @@ const ToutSurLeCigare = () => {
       if (line.startsWith('## Partie')) {
         elements.push(
           <h2 
-            key={index} 
+            key={index}
+            id={`partie-${currentPartie}`}
             ref={el => sectionRefs.current[currentPartie] = el}
             className="text-2xl font-serif font-bold text-[#D4A024] mt-8 mb-4 pb-2 border-b border-[#D4A024]/30 scroll-mt-4"
           >
@@ -266,7 +272,7 @@ const ToutSurLeCigare = () => {
             {/* Bouton Discuter avec Winston */}
             <div className="mt-4 pt-4 border-t border-[#D4A024]/20">
               <Button
-                onClick={() => discussWithWinston('le guide du cigare')}
+                onClick={discussWithWinston}
                 className="w-full bg-gradient-to-r from-[#7A2020] to-[#D4A024] hover:from-[#8A3030] hover:to-[#E4B034] text-white"
               >
                 <MessageCircle className="w-4 h-4 mr-2" />
@@ -372,7 +378,7 @@ const ToutSurLeCigare = () => {
               <h3 className="text-xl font-serif text-white mb-3">Des questions sur ce guide ?</h3>
               <p className="text-gray-400 mb-4">Winston est là pour approfondir n'importe quel sujet avec vous.</p>
               <Button
-                onClick={() => discussWithWinston('le guide du cigare')}
+                onClick={discussWithWinston}
                 className="bg-gradient-to-r from-[#7A2020] to-[#D4A024] hover:from-[#8A3030] hover:to-[#E4B034] text-white text-lg px-8 py-3"
               >
                 <MessageCircle className="w-5 h-5 mr-2" />

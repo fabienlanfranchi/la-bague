@@ -5971,6 +5971,10 @@ async def build_assistant_context(user_id: str) -> str:
     
     context_parts = []
     
+    # Détecter si c'est le mode président (user_id finit par _president)
+    is_president_mode = user_id.endswith('_president')
+    actual_user_id = user_id.replace('_president', '') if is_president_mode else user_id
+    
     # 1. Informations sur le club
     club_info = """
 Tu es Winston, le concierge personnel et assistant IA du club de cigares "La Bague Impériale", présidé par Fabien Lanfranchi.
@@ -5980,14 +5984,26 @@ Tu dois être élégant, professionnel et utiliser le vouvoiement digne d'un clu
     context_parts.append(club_info)
     
     # 2. Identifier le membre qui parle
-    user_data = await db.members.find_one({"id": user_id})
+    user_data = await db.members.find_one({"id": actual_user_id})
     if not user_data:
         # Essayer de trouver par nom si pas par ID
         user_data = await db.members.find_one({})  # Prendre le premier membre par défaut
     
     if user_data:
         nom_complet = user_data.get('nom_complet', f"{user_data.get('prenom', '')} {user_data.get('nom', '')}")
-        membre_info = f"""
+        prenom = user_data.get('prenom', nom_complet.split(' ')[0])
+        
+        # En mode président, on l'appelle "Président" ou "Monsieur le Président"
+        if is_president_mode:
+            appellation = "Président"
+            membre_info = f"""
+Le Président du club (Fabien Lanfranchi) te parle en tant qu'ADMINISTRATEUR.
+Tu dois l'appeler "Président" ou "Monsieur le Président", jamais par son prénom.
+C'est une conversation professionnelle d'administration du club.
+"""
+        else:
+            appellation = prenom
+            membre_info = f"""
 Le membre qui te parle est : {nom_complet}
 - Numéro de membre : {user_data.get('numero_membre', 'N/A')}
 - Email : {user_data.get('email', 'N/A')}
@@ -5995,7 +6011,7 @@ Le membre qui te parle est : {nom_complet}
 - Date d'adhésion : {user_data.get('date_adhesion', 'N/A')}
 - Statut : {user_data.get('statut', 'actif')}
 
-Tu t'adresses à lui/elle directement par son prénom.
+Tu t'adresses à lui/elle directement par son prénom : {appellation}.
 """
         context_parts.append(membre_info)
     
