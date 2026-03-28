@@ -531,6 +531,74 @@ Pour un vrai débutant, Winston devrait d'abord proposer :
 2. cubain medium to light
 3. non cubain smooth / mild / creamy / Connecticut
 4. puis seulement des profils medium si le membre veut déjà "un vrai cigare" plus présent
+
+## LOGIQUE GÉNÉRALE DE RECOMMANDATION WINSTON
+
+### Classement de force Habanos (référence officielle)
+Habanos précise que son classement de force va de light à full et sert de premier guide pour orienter le choix :
+- **Light** : Hoyo de Monterrey, Quai d'Orsay, Fonseca
+- **Light to medium** : H. Upmann, El Rey del Mundo, Por Larrañaga, San Cristóbal de la Habana
+- **Medium** : Romeo y Julieta, Punch, Quintero, La Flor de Cano, Sancho Panza, Montecristo Línea Open
+- **Medium to full** : Montecristo classique, Bolívar
+- **Full** : Partagás Línea Series, Cohiba Behike
+
+### Classement Davidoff (non cubains)
+Davidoff décrit sa ligne Signature comme idéale pour les novices, avec une intensité douce et des saveurs souples :
+- **Signature 2000** : lisse et crémeux
+- **Grand Cru Robusto** : explicitement adapté aux novices et à ceux qui recherchent un blend cultivé
+
+## RÈGLES SIMPLES PAR NIVEAU
+
+### DÉBUTANT
+**À privilégier :**
+- Force : léger, léger-moyen
+- Module : petit ou moyen
+- Profil : délicat, aromatique, équilibré, crémeux
+
+**À éviter par défaut :**
+- Force : full
+- Module : grands modules
+- Profil : trop épicé ou trop sec
+
+### AMATEUR
+**À privilégier :**
+- Force : léger-moyen, moyen
+- Module : moyen
+- Profil : équilibré, rond, aromatique, boisé léger
+
+### CONFIRMÉ
+**À privilégier :**
+- Force : moyen, moyen-plus
+- Module : plus de liberté sur la taille
+- Profil : évolutif, charpenté, boisé, cacao, épicé
+
+### EXPERT
+Pas d'interdiction de principe. Winston doit surtout raisonner par :
+- Moment de la journée
+- Objectif (découverte, confort, comparaison, prestige, challenge)
+- Alcool associé
+- Durée disponible
+- Envie de confort ou d'exercice
+
+## MATRICE RAPIDE PAR MOMENT ET NIVEAU
+
+| Contexte | Débutant | Amateur | Confirmé | Expert |
+|----------|----------|---------|----------|--------|
+| Matin | léger, petit module, délicat | léger-moyen, équilibré | moyen selon envie | tout le spectre |
+| Café | léger, petit module, crémeux | léger-moyen, équilibré | moyen selon envie | accord réfléchi |
+| Apéro | léger à moyen, rond | léger-moyen à moyen | moyen à medium-plus | tout le spectre |
+| Digestif | moyen, lisible | moyen, plus structuré | medium-plus selon contexte | accord réfléchi |
+
+## VERSION ULTRA COURTE POUR WINSTON
+
+- **Débutant matin** : léger, petit module, délicat
+- **Débutant café** : léger, petit module, crémeux
+- **Débutant apéro** : léger à moyen, rond
+- **Débutant digestif** : moyen, lisible
+- **Amateur journée** : léger-moyen à moyen, équilibré
+- **Amateur digestif** : moyen, plus structuré
+- **Confirmé** : moyen à medium-plus selon contexte
+- **Expert** : tout le spectre, mais accord réfléchi
 """
 
 WINSTON_INTERNAL_KNOWLEDGE = """
