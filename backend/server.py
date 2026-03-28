@@ -6107,12 +6107,45 @@ Tu t'adresses à lui/elle directement par son prénom : {appellation}.
             apero_text += f"- {c.get('marque', '')} {c.get('gamme', '')} (ajouté le {c.get('date_apero', 'N/A')})\n"
         context_parts.append(apero_text)
     
-    # 7. Événements récents
-    events = await db.events.find({}).sort("date", -1).to_list(20)
+    # 7. Événements récents avec participants
+    events = await db.evenements.find({}).sort("date", -1).to_list(20)
     if events:
-        events_text = "\n--- ÉVÉNEMENTS DU CLUB ---\n"
+        events_text = "\n--- ÉVÉNEMENTS DU CLUB (avec participants) ---\n"
         for e in events:
-            events_text += f"- {e.get('titre', e.get('nom', 'Événement'))} ({e.get('type', '')}) - {e.get('date', 'N/A')} - {e.get('lieu', '')}\n"
+            titre = e.get('objet', e.get('titre', e.get('nom', 'Événement')))
+            date = e.get('date', 'N/A')
+            lieu = e.get('lieu', '')
+            type_evt = e.get('type_sondage', e.get('type', ''))
+            event_id = e.get('id', '')
+            
+            events_text += f"\n📅 {titre}"
+            if type_evt:
+                events_text += f" ({type_evt})"
+            events_text += f"\n   Date: {date}"
+            if lieu:
+                events_text += f" | Lieu: {lieu}"
+            
+            # Chercher les participants via reponses_evenements
+            if event_id:
+                reponses = await db.reponses_evenements.find({
+                    "evenement_id": event_id,
+                    "present": True
+                }).to_list(100)
+                
+                if reponses:
+                    # Récupérer les noms des participants
+                    noms_presents = []
+                    for r in reponses:
+                        membre_id = r.get('membre_id')
+                        if membre_id:
+                            membre = await db.members.find_one({"id": membre_id})
+                            if membre:
+                                nom = membre.get('nom_complet', f"{membre.get('prenom', '')} {membre.get('nom', '')}")
+                                noms_presents.append(nom)
+                    
+                    if noms_presents:
+                        events_text += f"\n   ✅ Présents ({len(noms_presents)}): {', '.join(noms_presents)}"
+            events_text += "\n"
         context_parts.append(events_text)
     
     # 8. Statistiques du club
@@ -6243,6 +6276,11 @@ INSTRUCTIONS IMPORTANTES :
    - Tu regardes ses notes (étoiles)
    - Tu identifies ses terroirs préférés (Cuba, Nicaragua, etc.)
    - Tu peux recommander des cadeaux basés sur ses goûts
+24. PRÉSENCE AUX ÉVÉNEMENTS - Tu sais qui était présent à chaque événement :
+   - "Maël était-il au dernier repas ?" → Tu regardes la liste des participants
+   - "Qui était à l'Auberge St Georges ?" → Tu listes les présents
+   - "Combien de personnes au dernier apéro ?" → Tu comptes les participants
+   - Tu peux comparer les présences entre membres
 """
             
             # Créer une nouvelle instance de chat
