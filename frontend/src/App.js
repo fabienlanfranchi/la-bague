@@ -19,6 +19,7 @@ import Sondages from './pages/Sondages';
 import Statistiques from './pages/Statistiques';
 import Sauvegarde from './pages/Sauvegarde';
 import LoginPage from './pages/LoginPage';
+import ToutSurLeCigare from './pages/ToutSurLeCigare';
 
 // Composant de chargement global
 const LoadingScreen = () => {
@@ -266,6 +267,16 @@ function App() {
                 <ProtectedRoute>
                   <AppLayout>
                     <AssistantIA />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/guide-cigare"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <ToutSurLeCigare />
                   </AppLayout>
                 </ProtectedRoute>
               }

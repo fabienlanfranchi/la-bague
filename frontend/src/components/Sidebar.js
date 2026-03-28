@@ -19,7 +19,8 @@ import {
   ShoppingBag,
   BarChart3,
   PieChart,
-  Save
+  Save,
+  BookOpen
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -44,6 +45,7 @@ const Sidebar = () => {
     { path: '/statistiques', label: 'Statistiques', icon: PieChart, adminOnly: true },
     { path: '/sauvegarde', label: 'Sauvegarde', icon: Save, adminOnly: true },
     { path: '/cigarotheque', label: 'Cigarothèque', icon: Book, adminOnly: false },
+    { path: '/guide-cigare', label: 'Tout sur le cigare', icon: BookOpen, adminOnly: false },
     { path: '/assistant-ia', label: 'Winston', icon: Sparkles, adminOnly: false },
     { path: '/instagram', label: 'Instagram', icon: InstagramIcon, adminOnly: false, external: true },
     { path: '/profile', label: 'Profil', icon: User, adminOnly: false, memberOnly: true },
