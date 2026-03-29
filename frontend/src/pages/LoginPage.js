@@ -155,15 +155,8 @@ const LoginPage = () => {
 
       const { member } = response.data;
 
-      // Connecter l'utilisateur
-      setCurrentMember(member);
-
-      if (loginData.stayLoggedIn) {
-        localStorage.setItem('rememberedMember', JSON.stringify({
-          id: member.id,
-          email: loginData.email
-        }));
-      }
+      // Connecter l'utilisateur (avec ou sans persistence selon "Rester connecté")
+      setCurrentMember(member, loginData.stayLoggedIn);
 
       toast.success(`Bienvenue ${member.nom_complet?.split(' ')[0] || 'membre'} !`);
       navigate('/dashboard');
@@ -442,7 +435,9 @@ const LoginPage = () => {
                         <Mail className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
                         <Input
                           id="email"
+                          name="email"
                           type="email"
+                          autoComplete="email"
                           value={loginData.email}
                           onChange={(e) => setLoginData({...loginData, email: e.target.value})}
                           placeholder="votre@email.com"
@@ -458,7 +453,9 @@ const LoginPage = () => {
                         <Lock className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
                         <Input
                           id="password"
+                          name="password"
                           type="password"
+                          autoComplete="current-password"
                           value={loginData.password}
                           onChange={(e) => setLoginData({...loginData, password: e.target.value})}
                           placeholder="Votre mot de passe"

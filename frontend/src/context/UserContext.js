@@ -28,19 +28,30 @@ export const UserProvider = ({ children }) => {
   const hasManualLogin = useRef(false);
 
   // Fonction pour définir le membre courant et persister en localStorage
-  const updateCurrentMember = useCallback((member) => {
+  const updateCurrentMember = useCallback((member, stayLoggedIn = true) => {
     hasManualLogin.current = true; // Marquer qu'un login manuel a eu lieu
     setCurrentMember(member);
     setLoading(false); // S'assurer que loading est false après login
     if (member) {
-      // Toujours sauvegarder la session
-      localStorage.setItem('currentMemberId', member.id);
-      localStorage.setItem('currentMemberData', JSON.stringify(member));
+      // Sauvegarder la session SEULEMENT si "Rester connecté" est coché
+      if (stayLoggedIn) {
+        localStorage.setItem('currentMemberId', member.id);
+        localStorage.setItem('currentMemberData', JSON.stringify(member));
+      } else {
+        // Session temporaire - utiliser sessionStorage (disparaît à la fermeture du navigateur)
+        sessionStorage.setItem('currentMemberId', member.id);
+        sessionStorage.setItem('currentMemberData', JSON.stringify(member));
+        // Nettoyer localStorage pour ne pas persister
+        localStorage.removeItem('currentMemberId');
+        localStorage.removeItem('currentMemberData');
+      }
       // Définir automatiquement le mode selon le membre
       setMode(member.is_president ? 'admin' : 'member');
     } else {
       localStorage.removeItem('currentMemberId');
       localStorage.removeItem('currentMemberData');
+      sessionStorage.removeItem('currentMemberId');
+      sessionStorage.removeItem('currentMemberData');
     }
   }, []);
 
@@ -56,9 +67,9 @@ export const UserProvider = ({ children }) => {
       setLoading(true);
       setError(null);
       
-      // Vérifier localStorage AVANT l'appel async
-      const savedMemberId = localStorage.getItem('currentMemberId');
-      const savedMemberData = localStorage.getItem('currentMemberData');
+      // Vérifier localStorage ET sessionStorage AVANT l'appel async
+      const savedMemberId = localStorage.getItem('currentMemberId') || sessionStorage.getItem('currentMemberId');
+      const savedMemberData = localStorage.getItem('currentMemberData') || sessionStorage.getItem('currentMemberData');
       
       // Si on a les données du membre en cache, les utiliser immédiatement
       if (savedMemberId && savedMemberData) {
