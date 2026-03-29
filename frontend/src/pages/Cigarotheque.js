@@ -741,9 +741,16 @@ ${cigare.conclusion ? `📝 "${cigare.conclusion}"` : ''}
     // Encoder le message pour l'URL WhatsApp
     const encodedMessage = encodeURIComponent(message);
     
-    // Ouvrir WhatsApp (fonctionne sur mobile et desktop)
-    const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
-    window.open(whatsappUrl, '_blank');
+    // Détecter si on est sur mobile
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    
+    if (isMobile) {
+      // Sur mobile, utiliser le protocole natif WhatsApp
+      window.location.href = `whatsapp://send?text=${encodedMessage}`;
+    } else {
+      // Sur desktop, ouvrir WhatsApp Web
+      window.open(`https://web.whatsapp.com/send?text=${encodedMessage}`, '_blank');
+    }
     
     toast.success('Ouverture de WhatsApp...');
   };
