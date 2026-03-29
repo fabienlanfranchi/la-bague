@@ -33,11 +33,14 @@ export const UserProvider = ({ children }) => {
     setCurrentMember(member);
     setLoading(false); // S'assurer que loading est false après login
     if (member) {
+      // Toujours sauvegarder la session
       localStorage.setItem('currentMemberId', member.id);
+      localStorage.setItem('currentMemberData', JSON.stringify(member));
       // Définir automatiquement le mode selon le membre
       setMode(member.is_president ? 'admin' : 'member');
     } else {
       localStorage.removeItem('currentMemberId');
+      localStorage.removeItem('currentMemberData');
     }
   }, []);
 
@@ -55,6 +58,35 @@ export const UserProvider = ({ children }) => {
       
       // Vérifier localStorage AVANT l'appel async
       const savedMemberId = localStorage.getItem('currentMemberId');
+      const savedMemberData = localStorage.getItem('currentMemberData');
+      
+      // Si on a les données du membre en cache, les utiliser immédiatement
+      if (savedMemberId && savedMemberData) {
+        try {
+          const cachedMember = JSON.parse(savedMemberData);
+          setCurrentMember(cachedMember);
+          setMode(cachedMember.is_president ? 'admin' : 'member');
+          hasManualLogin.current = true;
+          setLoading(false);
+          
+          // Rafraîchir les données en arrière-plan
+          axios.get(`${API}/members`, { timeout: 10000 }).then(response => {
+            const membersData = response.data || [];
+            setMembers(membersData);
+            // Mettre à jour les données du membre si elles ont changé
+            const updatedMember = membersData.find(m => m.id === savedMemberId);
+            if (updatedMember) {
+              setCurrentMember(updatedMember);
+              localStorage.setItem('currentMemberData', JSON.stringify(updatedMember));
+            }
+          }).catch(err => console.error('Erreur rafraîchissement membres:', err));
+          
+          return;
+        } catch (e) {
+          // Si les données en cache sont corrompues, continuer normalement
+          localStorage.removeItem('currentMemberData');
+        }
+      }
       
       try {
         // Ajouter un timeout de 10 secondes
@@ -74,9 +106,11 @@ export const UserProvider = ({ children }) => {
           if (savedMember) {
             setCurrentMember(savedMember);
             setMode(savedMember.is_president ? 'admin' : 'member');
+            localStorage.setItem('currentMemberData', JSON.stringify(savedMember));
           } else {
             // Membre non trouvé, charger Fabien par défaut
             localStorage.removeItem('currentMemberId');
+            localStorage.removeItem('currentMemberData');
             const fabien = membersData.find(m => m.nom_complet?.includes('Fabien Lanfranchi'));
             if (fabien) {
               setCurrentMember(fabien);
@@ -110,6 +144,7 @@ export const UserProvider = ({ children }) => {
   const logout = useCallback(() => {
     hasManualLogin.current = false;
     localStorage.removeItem('currentMemberId');
+    localStorage.removeItem('currentMemberData');
     localStorage.removeItem('rememberedMember');
     setCurrentMember(null);
     setMode('admin');
