@@ -1,126 +1,132 @@
-# La Bague Impériale - Club de Cigares - PRD
+# La Bague Impériale - PRD
 
-## Original Problem Statement
-Application de gestion complète pour le club de cigares "La Bague Impériale" avec gestion des membres, événements, statistiques, comptabilité, catalogue cigares et assistant IA.
+## Application Overview
+Application de gestion complète pour le club de cigares "La Bague Impériale". Full-stack React + FastAPI app using MongoDB for state/users and external OVH MySQL database for cigar catalog.
 
-## What's Been Implemented
+## Core Features
 
-### Session 26 Mars 2026 - Corrections Cigarothèque & Authentification
+### Authentication & Users
+- Member login with activation codes
+- President (Fabien) admin mode with enhanced privileges
+- "Accès direct (Président)" bypass button (to be removed for production)
 
-**Restauration des notes de dégustation (TERMINÉ) :**
-- Récupération des notes originales depuis les fichiers Excel source
-- 474 cigares restaurés avec des notes de dégustation complètes
-- Colonnes `premier_tiers`, `deuxieme_tiers`, `troisieme_tiers` réparées
+### Winston AI Assistant
+- Expert cigar sommelier (Concierge) powered by OpenAI via Emergent LLM Key
+- 11-part comprehensive cigar guide ("Tout sur le cigare")
+- Strict recommendation matrices based on User Level (Beginner to Expert) + Time of Day
+- Knows all 35 club members' tastes and event attendances
+- Separate chat histories per user
+- Guided "Choix de cigare" flow
 
-**Activation de l'authentification membre (TERMINÉ) :**
-- Suppression du bypass auto-login de Fabien dans `UserContext.js`
-- Activation des routes protégées `ProtectedRoute` et `AdminRoute` dans `App.js`
-- Suppression du lien "Mode développement (accès libre)" sur toutes les pages
-- Redirection automatique vers `/login` pour les utilisateurs non connectés
-- Test de connexion email/mot de passe fonctionnel
+### Cigar Database (MySQL OVH)
+- Complete catalog with prices, terroir, puissance, module, etc.
+- Admin duplicate scanner tool
+- Price management
 
-**Page Statistiques vérifiée (TERMINÉ) :**
-- L'API `/api/saisons-config/{saison}/manual-stats` fonctionne correctement
-- La gestion d'erreur frontend est en place
-- Pas de crash observé lors des tests
+### Club Management
+- Event tracking and attendance (reponses_evenements)
+- Member statistics and presence rates
+- Comptabilité (accounting)
+- Messaging system
 
-### Session 22 Mars 2026 - Refonte Cigarothèque
+---
 
-**Refonte complète de la Cigarothèque (TERMINÉ) :**
-- Importation des deux fichiers Excel fournis par l'utilisateur :
-  - `habanoscope_cigares_2026.xlsx` : 210 cigares cubains
-  - `cigaroscope_cigares_2025.xlsx` : 452 cigares non-cubains
-- **Total : 798 cigares** dans le catalogue (après déduplications)
+## Completed Work (March 2025)
 
-**Nouveau schéma de données cigares :**
-- `nom_cigare` : Nom commercial du cigare
-- `marque` : Marque (Cohiba, Davidoff, Padrón, etc.)
-- `gamme` : Gamme/Ligne (Behike, Linea 1492, etc.)
-- `module` : Format générique (Robusto, Churchill, Corona, etc.)
-- `vitole` : Spécification précise (robustos, marevas, etc.)
-- `dimensions` : Dimensions exactes (ex: "124 mm x 50 (19,84 mm)")
-- `terroir` : Pays d'origine (Cuba, Nicaragua, Honduras, etc.)
-- `is_cubain` : Boolean pour filtrage rapide
-- `bagues_etoiles` : Notation en étoiles (⭐ à ⭐⭐⭐⭐⭐)
-- Notes de dégustation : `premier_tiers`, `deuxieme_tiers`, `troisieme_tiers`
+### Session 1-4
+- Initial app setup with React + FastAPI + MongoDB
+- Member authentication system
+- Cigar catalog integration with OVH MySQL
+- Event management system
+- Basic Winston AI chat
 
-### Session 14 Mars 2026
+### Session 5 (March 29, 2025)
+- **Bulk Price Updates**: Updated 84 Cuban cigar prices and 29 non-Cuban prices via SQL scripts
+- **Duplicate Cigar Tool Upgrade**: Restored "Doublons Cigares" tab in AdminCigarotheque.js, scanning entire DB for exact name/brand matches (49 pairs found)
+- **Database Cleanup**: Deleted fake/duplicate cigars (Aliados Original, Horacio 10 Anniversario, La Estancia 60), fixed Vegafina casing bug
+- **Terroir UI Fix**: Fixed Cigarotheque.js to display terroir field properly
+- **"Tout sur le cigare" Page**: Built responsive React page with 11-part markdown guide, anchor scrolling, collapsible mobile menus
+- **Winston AI Brain Upgrade**: Expanded cigar_knowledge.py with strict recommendation matrices
+- **Winston Context Injection**: Dynamic injection of top 5 active members, events + attendees, member cigar collections
+- **Chat History Separation**: Separate histories per user, distinct Fabien Admin vs Member modes
+- **Guided Chat Buttons**: "Choix de cigare" action button
 
-**Logique inverse de suppression de transactions (TERMINÉ)**
-**Nouvelle stratégie d'authentification sans email (TERMINÉ)**
+### Session 6 (March 29, 2025)
+- **Mobile Layout Fix**: Refactored AssistantIA.js for mobile-first design
+  - Horizontal scrollable carousel for capabilities badges on mobile
+  - Compact header (reduced from 4xl to 2xl)
+  - Reduced chat header with smaller avatars and buttons
+  - Optimized input area height
+  - "Choix de cigare" button immediately visible without scrolling
 
-### Sessions précédentes
+---
 
-**Système de paiements membres (TERMINÉ)**
-**Sondages et événements (TERMINÉ)**
-**Assistant IA "Winston" (TERMINÉ)**
+## In Progress / Blocked
 
-## Prioritized Backlog
+### P1 - Missing Cigar Prices
+- ~4 cigars still missing prices (Cohiba Behike, Quai d'Orsay 50e, Romeo y Julieta 150e, San Cristóbal Reinas)
+- **Status**: BLOCKED - Waiting for user data
 
-### P0 - Terminé ✅
-- [x] Refonte Cigarothèque avec fichiers Excel utilisateur
-- [x] Filtres Cubain/Non-Cubain/Terroir
-- [x] Logique inverse suppression transactions
-- [x] Nouvelle stratégie d'authentification sans email
-- [x] **Restauration notes de dégustation corrompues**
-- [x] **Activation authentification membre** 
+### P1 - Missing Puissance Data
+- 38 cigars missing puissance values
+- **Status**: Waiting for user data
 
-### P1 - À faire
-- [x] **Ignorer doublons cigares** - Fonctionnalité terminée (26 Mars 2026)
-- [ ] Vérifier que tous les membres peuvent se connecter correctement
+---
 
-### P2 - Backlog
-- [ ] Supprimer le bouton "Accès direct (Président)" sur la page d'accueil
-- [ ] Bouton "Copier" depuis Apéro du Club vers messages événements
-- [ ] Corriger le nombre de repas Saison 13 (config en DB)
+## Backlog
 
-### P3 - Future
-- [ ] Refactoring `server.py` en routers FastAPI (5000+ lignes)
-- [ ] Refactoring `Cigarotheque.js` (2600+ lignes)
-- [ ] Refactoring `Dashboard.js` en composants
+### P2 - Security
+- Remove "Accès direct (Président)" bypass button for production
 
-## Technical Details
+### P2 - Code Refactoring
+- `backend/server.py` is 6300+ lines - needs to be split into modular FastAPI routers:
+  - /routes/auth.py
+  - /routes/cigares.py
+  - /routes/ai.py
+  - /routes/events.py
+  - /routes/members.py
 
-### Base de données Cigares (MySQL OVH)
-- Host: gb60402-001.eu.clouddb.ovh.net
-- Port: 35741
-- User: cigare20
-- Database: CIGARE
-- **Table cigares** : 798 enregistrements
-  - 747 avec notes de dégustation
-  - 474 notes restaurées depuis Excel
+### P3 - Features
+- Implement "Copier" from "Apéro du Club" to event messages
 
-### Comptes Admin
-- Fabien Lanfranchi (n°1): fabien.lanfranchi@yahoo.fr
-- ID: d6b30499-2c9b-43e4-9402-7234da4c9855
-- Mot de passe test: test123 (défini pour les tests)
+---
 
-### Codes d'activation membres
-Format: labagueimperialeXX (XX = numéro membre)
+## Technical Architecture
 
-## Key API Endpoints
-- `POST /api/auth/login` - Connexion (email+mdp ou nom+prénom+code temporaire)
-- `POST /api/auth/validate-account` - Activation avec option use_temp_password
-- `POST /api/auth/forgot-password` - Crée demande récupération
-- `GET /api/admin/membres-mots-de-passe` - Liste mots de passe
-- `GET /api/cigares` - Catalogue avec filtres (is_cubain, terroir, module)
+```
+/app/
+├── backend/
+│   ├── server.py             # ALL FastAPI routes (6300+ lines - needs refactor)
+│   ├── cigar_knowledge.py    # Winston's brain: guides + recommendation matrices
+│   └── .env                  # MONGO_URL, EMERGENT_LLM_KEY
+├── frontend/
+│   ├── src/
+│   │   ├── pages/
+│   │   │   ├── AssistantIA.js         # Winston Chat UI (mobile-optimized)
+│   │   │   ├── ToutSurLeCigare.js     # Cigar guide page
+│   │   │   ├── AdminCigarotheque.js   # Admin tools (Duplicates)
+│   │   │   ├── Cigarotheque.js        # Catalog UI
+│   │   └── components/
+│   │       └── Sidebar.js
+│   └── .env                  # REACT_APP_BACKEND_URL
+```
 
-## Files Modified This Session (26 Mars 2026)
-- `/app/frontend/src/context/UserContext.js` - Suppression bypass auto-login
-- `/app/frontend/src/App.js` - Activation ProtectedRoute/AdminRoute
-- `/app/frontend/src/pages/LoginPage.js` - Suppression lien "Mode développement", fix toast
-- `/app/frontend/src/pages/AdminCigarotheque.js` - Ajout section "Ignorés" pour doublons cigares
-- `/app/backend/server.py` - Endpoints pour ignorer/restaurer doublons cigares
+## Database Schema
 
-## Tests Effectués
-- ✅ Restauration notes MySQL depuis Excel (474 cigares)
-- ✅ Page Statistiques fonctionnelle (API manual-stats OK)
-- ✅ Connexion email/mot de passe
-- ✅ Redirection vers /login si non connecté
-- ✅ Dashboard accessible après connexion
-- ✅ Ignorer doublons cigares (API + UI testés)
-- ✅ Restaurer doublons cigares ignorés
-- ✅ Liste des doublons ignorés avec bouton Restaurer
+### MongoDB
+- `comptes` - Member profiles
+- `evenements` - Club events
+- `reponses_evenements` - Event attendance
+- `chat_history` - Winston chat logs (separated by user_id)
 
-## Prochaine étape
-Vérifier avec l'utilisateur que tous les membres peuvent se connecter et que l'application fonctionne correctement en mode production.
+### MySQL (OVH CloudDB)
+- `cigares` - External cigar catalog
+  - Key fields: marque, gamme, vitole_nom, prix, terroir, puissance, module
+
+## 3rd Party Integrations
+- **OpenAI** via Emergent LLM Key (Winston chat)
+- **OVH CloudDB MySQL** - External cigar database
+
+## Test Credentials
+- Login: `fabien.lanfranchi@yahoo.fr` / `fabienlabague1`
+- Or use "Accès direct (Président)" bypass button
