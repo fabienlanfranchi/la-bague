@@ -47,7 +47,9 @@ import {
   CircleOff,
   Scale,
   AlertTriangle,
-  Settings
+  Settings,
+  Share2,
+  MessageCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -700,7 +702,7 @@ const Cigarotheque = () => {
   const copyFicheCigare = (cigare) => {
     const fiche = `🚬 ${cigare.marque || 'Cigare'} ${cigare.gamme || ''} ${cigare.vitole_nom || cigare.vitole || ''}
 
-📍 Origine: ${cigare.pays_fabrication || cigare.pays || '-'}
+📍 Origine: ${cigare.pays_fabrication || cigare.terroir || '-'}
 💪 Puissance: ${getPuissanceLabel(cigare.puissance)}
 ⭐ Note: ${cigare.note_bagues || cigare.note_globale || '-'}/5
 💰 Prix: ${cigare.prix || '-'}€
@@ -714,7 +716,36 @@ const Cigarotheque = () => {
 ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
 
     navigator.clipboard.writeText(fiche);
-    toast.success('Fiche copiée ! Prête à coller dans un événement Apéro');
+    toast.success('Fiche copiée ! Prête à coller dans WhatsApp');
+  };
+
+  // Partager directement sur WhatsApp
+  const shareToWhatsApp = (cigare) => {
+    const puissanceEmoji = cigare.puissance === 'A' ? '🔥🔥🔥' : cigare.puissance === 'B' ? '🔥🔥' : '🔥';
+    
+    const message = `🎩 *La Bague Impériale* - Prochain Apéro
+
+🚬 *${cigare.marque || 'Cigare'}*
+${cigare.gamme ? `📦 Gamme: ${cigare.gamme}` : ''}
+${cigare.vitole_nom || cigare.vitole ? `✨ Vitole: ${cigare.vitole_nom || cigare.vitole}` : ''}
+
+📍 Terroir: ${cigare.terroir || cigare.pays_fabrication || 'N/A'}
+💪 Puissance: ${getPuissanceLabel(cigare.puissance)} ${puissanceEmoji}
+💰 Prix: ${cigare.prix ? cigare.prix + '€' : 'N/A'}
+${cigare.module ? `📐 Module: ${cigare.module}` : ''}
+
+${cigare.conclusion ? `📝 "${cigare.conclusion}"` : ''}
+
+À très vite ! 🥃`.trim();
+
+    // Encoder le message pour l'URL WhatsApp
+    const encodedMessage = encodeURIComponent(message);
+    
+    // Ouvrir WhatsApp (fonctionne sur mobile et desktop)
+    const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
+    window.open(whatsappUrl, '_blank');
+    
+    toast.success('Ouverture de WhatsApp...');
   };
 
   // ===== MODAL ÉDITION ADMIN =====
@@ -1411,8 +1442,19 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
                           <Button 
                             size="sm" 
                             variant="outline"
+                            onClick={() => shareToWhatsApp(cigare)}
+                            className="border-green-500/50 text-green-500 hover:bg-green-500/20"
+                            title="Partager sur WhatsApp"
+                            data-testid={`whatsapp-btn-${cigare.id}`}
+                          >
+                            <MessageCircle className="w-4 h-4" />
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
                             onClick={() => copyFicheCigare(cigare)}
                             className="border-[#D4A024]/50 text-[#D4A024]"
+                            title="Copier la fiche"
                             data-testid={`copy-btn-${cigare.id}`}
                           >
                             <Copy className="w-4 h-4" />
@@ -1551,9 +1593,19 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
                         <Button
                           variant="ghost"
                           size="sm"
+                          onClick={() => shareToWhatsApp(cigare)}
+                          className="text-green-500 hover:text-green-400 hover:bg-green-900/20"
+                          title="Partager sur WhatsApp"
+                          data-testid={`whatsapp-apero-btn-${cigare.id}`}
+                        >
+                          <MessageCircle className="w-5 h-5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={() => copyFicheCigare(cigare)}
                           className="text-[#D4A024]"
-                          title="Copier la fiche (pour événement Apéro)"
+                          title="Copier la fiche"
                           data-testid={`copy-apero-btn-${cigare.id}`}
                         >
                           <Copy className="w-5 h-5" />
@@ -1760,6 +1812,16 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
                                 <Button
                                   variant="ghost"
                                   size="sm"
+                                  onClick={() => shareToWhatsApp(cigare)}
+                                  className="text-green-500 hover:text-green-400"
+                                  title="Partager sur WhatsApp"
+                                  data-testid={`whatsapp-collection-btn-${cigare.id}`}
+                                >
+                                  <MessageCircle className="w-5 h-5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
                                   onClick={() => copyFicheCigare(cigare)}
                                   className="text-[#D4A024]"
                                   title="Copier la fiche"
@@ -1917,6 +1979,10 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
 
                 {/* Actions */}
                 <div className="flex flex-wrap gap-3 pt-4">
+                  <Button onClick={() => shareToWhatsApp(selectedCigare)} className="bg-green-600 hover:bg-green-700 text-white">
+                    <MessageCircle className="w-4 h-4 mr-2" />
+                    WhatsApp
+                  </Button>
                   <Button onClick={() => copyFicheCigare(selectedCigare)} className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020]">
                     <Copy className="w-4 h-4 mr-2" />
                     Copier la fiche
