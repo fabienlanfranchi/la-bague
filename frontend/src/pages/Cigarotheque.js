@@ -719,8 +719,8 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
     toast.success('Fiche copiée ! Prête à coller dans WhatsApp');
   };
 
-  // Partager directement sur WhatsApp
-  const shareToWhatsApp = (cigare) => {
+  // Partager directement sur WhatsApp ou via partage natif
+  const shareToWhatsApp = async (cigare) => {
     const puissanceEmoji = cigare.puissance === 'A' ? '🔥🔥🔥' : cigare.puissance === 'B' ? '🔥🔥' : '🔥';
     
     const message = `🎩 *La Bague Impériale* - Prochain Apéro
@@ -738,21 +738,30 @@ ${cigare.conclusion ? `📝 "${cigare.conclusion}"` : ''}
 
 À très vite ! 🥃`.trim();
 
-    // Encoder le message pour l'URL WhatsApp
-    const encodedMessage = encodeURIComponent(message);
-    
-    // Détecter si on est sur mobile
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    
-    if (isMobile) {
-      // Sur mobile, utiliser le protocole natif WhatsApp
-      window.location.href = `whatsapp://send?text=${encodedMessage}`;
-    } else {
-      // Sur desktop, ouvrir WhatsApp Web
-      window.open(`https://web.whatsapp.com/send?text=${encodedMessage}`, '_blank');
+    // Essayer l'API Web Share native (meilleur support iOS/Android)
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `${cigare.marque} - La Bague Impériale`,
+          text: message,
+        });
+        toast.success('Partagé !');
+        return;
+      } catch (err) {
+        // L'utilisateur a annulé ou erreur - on continue avec le fallback
+        if (err.name === 'AbortError') {
+          return; // L'utilisateur a annulé, pas d'erreur
+        }
+      }
     }
     
-    toast.success('Ouverture de WhatsApp...');
+    // Fallback: copier dans le presse-papier
+    try {
+      await navigator.clipboard.writeText(message);
+      toast.success('Message copié ! Collez-le dans WhatsApp');
+    } catch (err) {
+      toast.error('Erreur de partage');
+    }
   };
 
   // ===== MODAL ÉDITION ADMIN =====
