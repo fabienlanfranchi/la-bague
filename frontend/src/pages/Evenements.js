@@ -188,12 +188,13 @@ const Evenements = () => {
 
   // ==================== FONCTIONS WHATSAPP ====================
   
-  // Formater la date en JJ/MM
-  const formatDateJJMM = (dateStr) => {
+  // Formater la date en "Lundi 15 Avril"
+  const formatDateComplete = (dateStr) => {
     const date = new Date(dateStr);
-    const jour = date.getDate().toString().padStart(2, '0');
-    const mois = (date.getMonth() + 1).toString().padStart(2, '0');
-    return `${jour}/${mois}`;
+    const options = { weekday: 'long', day: 'numeric', month: 'long' };
+    let formatted = date.toLocaleDateString('fr-FR', options);
+    // Mettre la première lettre en majuscule
+    return formatted.charAt(0).toUpperCase() + formatted.slice(1);
   };
 
   // Formater l'heure
@@ -204,7 +205,7 @@ const Evenements = () => {
 
   // Construire le message WhatsApp pour un événement
   const buildEventWhatsAppMessage = (event) => {
-    const dateFormatted = formatDateJJMM(event.date);
+    const dateFormatted = formatDateComplete(event.date);
     const heure = formatHeure(event.date);
     
     let objetText = '';
@@ -832,10 +833,10 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                       <Button
                         onClick={() => shareEventToWhatsApp(prochainEvenement)}
                         className="bg-green-600 hover:bg-green-700 text-white"
-                        data-testid="whatsapp-event-btn"
+                        data-testid="share-event-btn"
                       >
-                        <MessageCircle className="w-4 h-4 mr-2" />
-                        WhatsApp
+                        <Send className="w-4 h-4 mr-2" />
+                        Partager
                       </Button>
                       <Button
                         onClick={() => relancerNonRepondants(prochainEvenement)}
