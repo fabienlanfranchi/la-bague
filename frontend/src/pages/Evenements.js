@@ -19,7 +19,10 @@ import {
   List,
   Download,
   Upload,
-  Image
+  Image,
+  MessageCircle,
+  Send,
+  RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -180,6 +183,114 @@ const Evenements = () => {
       toast.error('Erreur lors du chargement des répondants');
     } finally {
       setLoadingRepondants(false);
+    }
+  };
+
+  // ==================== FONCTIONS WHATSAPP ====================
+  
+  // Formater la date en JJ/MM
+  const formatDateJJMM = (dateStr) => {
+    const date = new Date(dateStr);
+    const jour = date.getDate().toString().padStart(2, '0');
+    const mois = (date.getMonth() + 1).toString().padStart(2, '0');
+    return `${jour}/${mois}`;
+  };
+
+  // Formater l'heure
+  const formatHeure = (dateStr) => {
+    const date = new Date(dateStr);
+    return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  // Construire le message WhatsApp pour un événement
+  const buildEventWhatsAppMessage = (event) => {
+    const dateFormatted = formatDateJJMM(event.date);
+    const heure = formatHeure(event.date);
+    
+    let objetText = '';
+    const objet = event.objet?.toLowerCase() || '';
+    const lieu = event.lieu || '';
+    
+    if (objet.includes('repas') || event.type_sondage === 'repas') {
+      objetText = `🍽️ *Repas du Club* au ${lieu}`;
+    } else if (objet.includes('apéro') || objet.includes('apero')) {
+      objetText = `🥃 *Apéro du Club* à ${lieu} de ${heure} à 21h`;
+    } else if (objet.includes('anniversaire')) {
+      objetText = `🎂 *Anniversaire du Club* à ${lieu}`;
+    } else {
+      objetText = `🎩 *${event.objet || 'Événement'}* à ${lieu}`;
+    }
+    
+    // URL de l'app avec l'événement
+    const appUrl = `${window.location.origin}/evenements`;
+    
+    const message = `🎩 *La Bague Impériale*
+
+📅 *${dateFormatted}* à ${heure}
+
+${objetText}
+
+👉 Répondre : ${appUrl}
+
+_Merci de confirmer votre présence !_`;
+
+    return message;
+  };
+
+  // Partager un événement sur WhatsApp
+  const shareEventToWhatsApp = async (event) => {
+    const message = buildEventWhatsAppMessage(event);
+    
+    // Utiliser l'API Web Share native si disponible
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `La Bague Impériale - ${event.objet}`,
+          text: message,
+        });
+        toast.success('Partagé !');
+        return;
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+      }
+    }
+    
+    // Fallback: copier dans le presse-papier
+    try {
+      await navigator.clipboard.writeText(message);
+      toast.success('Message copié ! Collez-le dans WhatsApp');
+    } catch (err) {
+      toast.error('Erreur de partage');
+    }
+  };
+
+  // Relancer les non-répondants
+  const relancerNonRepondants = async (event) => {
+    const message = buildEventWhatsAppMessage(event);
+    const relanceMessage = `⚠️ *RELANCE* ⚠️
+
+${message}
+
+_Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `RELANCE - La Bague Impériale`,
+          text: relanceMessage,
+        });
+        toast.success('Relance partagée !');
+        return;
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+      }
+    }
+    
+    try {
+      await navigator.clipboard.writeText(relanceMessage);
+      toast.success('Message de relance copié ! Collez-le dans WhatsApp');
+    } catch (err) {
+      toast.error('Erreur de partage');
     }
   };
 
@@ -707,7 +818,7 @@ const Evenements = () => {
                   )}
                 </div>
 
-                <div className="flex space-x-3 pt-4 border-t border-[#D4A024]/20">
+                <div className="flex flex-wrap gap-3 pt-4 border-t border-[#D4A024]/20">
                   <Button 
                     onClick={() => loadRepondants(prochainEvenement)}
                     className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif"
@@ -718,6 +829,23 @@ const Evenements = () => {
                   </Button>
                   {isAdmin && (
                     <>
+                      <Button
+                        onClick={() => shareEventToWhatsApp(prochainEvenement)}
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                        data-testid="whatsapp-event-btn"
+                      >
+                        <MessageCircle className="w-4 h-4 mr-2" />
+                        WhatsApp
+                      </Button>
+                      <Button
+                        onClick={() => relancerNonRepondants(prochainEvenement)}
+                        variant="outline"
+                        className="border-orange-500 text-orange-400 hover:bg-orange-900/20"
+                        data-testid="relance-event-btn"
+                      >
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Relance
+                      </Button>
                       <Button
                         onClick={() => openEditModal(prochainEvenement)}
                         variant="outline"
@@ -1605,23 +1733,50 @@ const Evenements = () => {
               )}
             </CardContent>
             
-            <div className="flex-shrink-0 p-4 border-t border-[#D4A024]/30 flex space-x-3">
-              <Button
-                onClick={handleCreateEvent}
-                type="button"
-                className="flex-1 bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif font-bold"
-                data-testid="submit-create-event"
-              >
-                Créer l'événement
-              </Button>
-              <Button
-                onClick={() => setShowCreateModal(false)}
-                type="button"
-                variant="outline"
-                className="flex-1 border-[#D4A024] text-[#D4A024] hover:bg-[#D4A024]/10"
-              >
-                Annuler
-              </Button>
+            <div className="flex-shrink-0 p-4 border-t border-[#D4A024]/30 space-y-3">
+              <div className="flex space-x-3">
+                <Button
+                  onClick={handleCreateEvent}
+                  type="button"
+                  className="flex-1 bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif font-bold"
+                  data-testid="submit-create-event"
+                >
+                  Créer l'événement
+                </Button>
+                <Button
+                  onClick={() => setShowCreateModal(false)}
+                  type="button"
+                  variant="outline"
+                  className="flex-1 border-[#D4A024] text-[#D4A024] hover:bg-[#D4A024]/10"
+                >
+                  Annuler
+                </Button>
+              </div>
+              
+              {/* Bouton WhatsApp - visible seulement si les champs obligatoires sont remplis */}
+              {newEvent.date && newEvent.lieu && (
+                <Button
+                  onClick={() => {
+                    // Créer un objet événement temporaire pour le partage
+                    let objet = newEvent.objet_type === 'autre' ? newEvent.objet_texte : newEvent.objet_type;
+                    objet = objet.charAt(0).toUpperCase() + objet.slice(1);
+                    
+                    const tempEvent = {
+                      date: newEvent.date,
+                      objet: objet,
+                      lieu: newEvent.lieu,
+                      type_sondage: newEvent.objet_type === 'repas' ? 'repas' : 'simple'
+                    };
+                    shareEventToWhatsApp(tempEvent);
+                  }}
+                  type="button"
+                  className="w-full bg-green-600 hover:bg-green-700 text-white font-bold"
+                  data-testid="whatsapp-create-event"
+                >
+                  <MessageCircle className="w-5 h-5 mr-2" />
+                  Partager sur WhatsApp Bague Impériale
+                </Button>
+              )}
             </div>
           </Card>
         </div>
