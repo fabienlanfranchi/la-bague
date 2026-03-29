@@ -8,7 +8,7 @@ Application de gestion complète pour le club de cigares "La Bague Impériale". 
 ### Authentication & Users
 - Member login with activation codes
 - President (Fabien) admin mode with enhanced privileges
-- "Accès direct (Président)" bypass button (to be removed for production)
+- "Accès direct (Président)" bypass button (à supprimer pour production)
 
 ### Winston AI Assistant
 - Expert cigar sommelier (Concierge) powered by OpenAI via Emergent LLM Key
@@ -19,114 +19,90 @@ Application de gestion complète pour le club de cigares "La Bague Impériale". 
 - Guided "Choix de cigare" flow
 
 ### Cigar Database (MySQL OVH)
-- Complete catalog with prices, terroir, puissance, module, etc.
+- Complete catalog: 651 cigars
+- 100% with prices, puissance (A/B/C), terroir
 - Admin duplicate scanner tool
-- Price management
 
 ### Club Management
-- Event tracking and attendance (reponses_evenements)
+- Event tracking and attendance
 - Member statistics and presence rates
 - Comptabilité (accounting)
 - Messaging system
 
 ---
 
-## Completed Work (March 2025)
-
-### Session 1-4
-- Initial app setup with React + FastAPI + MongoDB
-- Member authentication system
-- Cigar catalog integration with OVH MySQL
-- Event management system
-- Basic Winston AI chat
-
-### Session 5 (March 29, 2025)
-- **Bulk Price Updates**: Updated 84 Cuban cigar prices and 29 non-Cuban prices via SQL scripts
-- **Duplicate Cigar Tool Upgrade**: Restored "Doublons Cigares" tab in AdminCigarotheque.js, scanning entire DB for exact name/brand matches (49 pairs found)
-- **Database Cleanup**: Deleted fake/duplicate cigars (Aliados Original, Horacio 10 Anniversario, La Estancia 60), fixed Vegafina casing bug
-- **Terroir UI Fix**: Fixed Cigarotheque.js to display terroir field properly
-- **"Tout sur le cigare" Page**: Built responsive React page with 11-part markdown guide, anchor scrolling, collapsible mobile menus
-- **Winston AI Brain Upgrade**: Expanded cigar_knowledge.py with strict recommendation matrices
-- **Winston Context Injection**: Dynamic injection of top 5 active members, events + attendees, member cigar collections
-- **Chat History Separation**: Separate histories per user, distinct Fabien Admin vs Member modes
-- **Guided Chat Buttons**: "Choix de cigare" action button
+## ✅ COMPLETED WORK
 
 ### Session 6 (March 29, 2025)
 - **Mobile Layout Fix**: Refactored AssistantIA.js for mobile-first design
   - Horizontal scrollable carousel for capabilities badges on mobile
-  - Compact header (reduced from 4xl to 2xl)
-  - Reduced chat header with smaller avatars and buttons
-  - Optimized input area height
-  - "Choix de cigare" button immediately visible without scrolling
+  - Compact header, reduced chat elements
+  - "Choix de cigare" button immediately visible
+  
+- **Winston Flow Improved**: 
+  - Fixed "Choix de cigare" guided flow (no re-introduction after user answers)
+  - Removed "à jeun" terminology
+  - Added member differentiation (Fabien vs Président mode)
+
+- **Database Complete**:
+  - Updated 39 cigars with puissance and terroir
+  - Database now 100% complete: 651 cigars with all fields
+
+- **Code Refactoring**:
+  - Created `/backend/routes/winston.py` module
+  - Extracted ~512 lines from server.py
+  - server.py reduced from 6472 → 5960 lines (-8%)
+  - Created `/backend/database.py` for DB connections
+  - Created `/backend/models.py` for Pydantic models
+  - Created `/backend/REFACTORING_PLAN.md`
 
 ---
 
-## In Progress / Blocked
+## 🚀 READY FOR PUBLICATION
 
-### P1 - Missing Cigar Prices
-- ~4 cigars still missing prices (Cohiba Behike, Quai d'Orsay 50e, Romeo y Julieta 150e, San Cristóbal Reinas)
-- **Status**: BLOCKED - Waiting for user data
+L'application est prête à être publiée. Tous les tests passent :
+- ✅ Login fonctionne
+- ✅ 651 cigares avec données complètes
+- ✅ 35 membres chargés
+- ✅ Winston IA fonctionne
+- ✅ Guide 11 parties accessible
+- ✅ Interface mobile optimisée
 
-### P1 - Missing Puissance Data
-- 38 cigars missing puissance values
-- **Status**: Waiting for user data
-
----
-
-## Backlog
-
-### P2 - Security
-- Remove "Accès direct (Président)" bypass button for production
-
-### P2 - Code Refactoring
-- `backend/server.py` is 6300+ lines - needs to be split into modular FastAPI routers:
-  - /routes/auth.py
-  - /routes/cigares.py
-  - /routes/ai.py
-  - /routes/events.py
-  - /routes/members.py
-
-### P3 - Features
-- Implement "Copier" from "Apéro du Club" to event messages
+### Avant invitation des membres :
+1. Supprimer le bouton "Accès direct (Président)" (sécurité)
 
 ---
 
 ## Technical Architecture
 
 ```
-/app/
-├── backend/
-│   ├── server.py             # ALL FastAPI routes (6300+ lines - needs refactor)
-│   ├── cigar_knowledge.py    # Winston's brain: guides + recommendation matrices
-│   └── .env                  # MONGO_URL, EMERGENT_LLM_KEY
-├── frontend/
-│   ├── src/
-│   │   ├── pages/
-│   │   │   ├── AssistantIA.js         # Winston Chat UI (mobile-optimized)
-│   │   │   ├── ToutSurLeCigare.js     # Cigar guide page
-│   │   │   ├── AdminCigarotheque.js   # Admin tools (Duplicates)
-│   │   │   ├── Cigarotheque.js        # Catalog UI
-│   │   └── components/
-│   │       └── Sidebar.js
-│   └── .env                  # REACT_APP_BACKEND_URL
+/backend/
+├── server.py              # Main app (5960 lines)
+├── database.py            # DB connections
+├── models.py              # Pydantic models
+├── cigar_knowledge.py     # Winston's brain
+├── routes/
+│   ├── __init__.py
+│   └── winston.py         # AI Assistant routes
+├── REFACTORING_PLAN.md
+
+/frontend/
+├── src/
+│   ├── pages/
+│   │   ├── AssistantIA.js      # Winston UI (mobile-optimized)
+│   │   ├── ToutSurLeCigare.js  # Guide
+│   │   ├── Cigarotheque.js     # Catalog
+│   │   └── ...
 ```
 
-## Database Schema
-
-### MongoDB
-- `comptes` - Member profiles
-- `evenements` - Club events
-- `reponses_evenements` - Event attendance
-- `chat_history` - Winston chat logs (separated by user_id)
-
-### MySQL (OVH CloudDB)
-- `cigares` - External cigar catalog
-  - Key fields: marque, gamme, vitole_nom, prix, terroir, puissance, module
+## Database Stats
+- **MongoDB**: comptes, evenements, reponses_evenements, chat_history
+- **MySQL OVH**: 651 cigares (100% complete)
 
 ## 3rd Party Integrations
-- **OpenAI** via Emergent LLM Key (Winston chat)
-- **OVH CloudDB MySQL** - External cigar database
+- **OpenAI** via Emergent LLM Key (Winston)
+- **OVH CloudDB MySQL** - Cigar database
 
 ## Test Credentials
-- Login: `fabien.lanfranchi@yahoo.fr` / `fabienlabague1`
-- Or use "Accès direct (Président)" bypass button
+- Email: `fabien.lanfranchi@yahoo.fr`
+- Password: `fabienlabague1`
