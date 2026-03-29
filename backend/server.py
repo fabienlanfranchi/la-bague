@@ -5992,26 +5992,39 @@ Tu dois être élégant, professionnel et utiliser le vouvoiement digne d'un clu
     if user_data:
         nom_complet = user_data.get('nom_complet', f"{user_data.get('prenom', '')} {user_data.get('nom', '')}")
         prenom = user_data.get('prenom', nom_complet.split(' ')[0])
+        numero_membre = user_data.get('numero_membre', 'N/A')
         
         # En mode président, on l'appelle "Président" ou "Monsieur le Président"
         if is_president_mode:
             appellation = "Président"
             membre_info = f"""
-Le Président du club (Fabien Lanfranchi) te parle en tant qu'ADMINISTRATEUR.
-Tu dois l'appeler "Président" ou "Monsieur le Président", jamais par son prénom.
-C'est une conversation professionnelle d'administration du club.
+⚠️ ATTENTION - MODE ADMINISTRATEUR ACTIF ⚠️
+Le Président du club, Fabien Lanfranchi (membre #{numero_membre}), te parle en tant qu'ADMINISTRATEUR.
+- Tu dois l'appeler "Président" ou "Monsieur le Président", JAMAIS "Fabien"
+- C'est une conversation d'administration du club
+- Il a accès aux informations de tous les membres
 """
         else:
             appellation = prenom
-            membre_info = f"""
-Le membre qui te parle est : {nom_complet}
-- Numéro de membre : {user_data.get('numero_membre', 'N/A')}
+            # Distinguer explicitement Fabien membre des autres
+            if prenom.lower() == 'fabien' and 'lanfranchi' in nom_complet.lower():
+                membre_info = f"""
+👤 MEMBRE ACTUEL : {nom_complet} (#{numero_membre})
+⚠️ C'est Fabien Lanfranchi qui te parle en mode MEMBRE (pas en mode Président).
+- Appelle-le "Fabien" comme tout autre membre
+- Traite-le comme un membre normal pour ses questions personnelles
+- Email : {user_data.get('email', 'N/A')}
+- Rôle : {user_data.get('role', 'membre')}
+- Statut : {user_data.get('statut', 'actif')}
+"""
+            else:
+                membre_info = f"""
+👤 MEMBRE ACTUEL : {nom_complet} (#{numero_membre})
+- Tu t'adresses à lui/elle par son prénom : {appellation}
 - Email : {user_data.get('email', 'N/A')}
 - Rôle : {user_data.get('role', 'membre')}
 - Date d'adhésion : {user_data.get('date_adhesion', 'N/A')}
 - Statut : {user_data.get('statut', 'actif')}
-
-Tu t'adresses à lui/elle directement par son prénom : {appellation}.
 """
         context_parts.append(membre_info)
     
@@ -6031,7 +6044,8 @@ Tu t'adresses à lui/elle directement par son prénom : {appellation}.
     # 4. Tous les membres du club (pour répondre aux questions sur les autres)
     all_members = await db.members.find({}).to_list(100)
     if all_members:
-        members_text = f"\n--- LES {len(all_members)} MEMBRES DU CLUB ---\n"
+        members_text = f"\n--- LES {len(all_members)} MEMBRES DU CLUB (chacun est UNIQUE) ---\n"
+        members_text += "⚠️ RAPPEL : Ne jamais confondre deux membres. Chaque membre a son propre prénom, numéro et goûts.\n"
         
         # Classement par assiduité
         members_with_presence = [m for m in all_members if m.get('pourcentage_presences')]
@@ -6043,9 +6057,10 @@ Tu t'adresses à lui/elle directement par son prénom : {appellation}.
                 pres = m.get('pourcentage_presences', 'N/A')
                 members_text += f"  {i}. {nom} : {pres}% de présence\n"
         
-        members_text += "\n📋 LISTE COMPLÈTE :\n"
+        members_text += "\n📋 LISTE COMPLÈTE (utilise ces informations pour identifier chaque membre) :\n"
         for m in all_members:
             nom_complet = m.get('nom_complet', f"{m.get('prenom', '')} {m.get('nom', '')}")
+            prenom = m.get('prenom', nom_complet.split(' ')[0])
             numero = m.get('numero_membre', '?')
             fonction = m.get('fonction', 'Membre')
             annee = m.get('annee_entree', m.get('date_adhesion', 'N/A'))
@@ -6053,15 +6068,15 @@ Tu t'adresses à lui/elle directement par son prénom : {appellation}.
             presences = m.get('pourcentage_presences', 'N/A')
             etoiles = m.get('etoiles', 0)
             
-            members_text += f"- {nom_complet} (#{numero}), {fonction}"
+            members_text += f"- #{numero} {nom_complet} (appeler: '{prenom}'), {fonction}"
             if annee and annee != 'N/A':
-                members_text += f", membre depuis {annee}"
+                members_text += f", depuis {annee}"
             if saison:
                 members_text += f" ({saison})"
             if presences and presences != 'N/A':
-                members_text += f", présences: {presences}%"
+                members_text += f", présence: {presences}%"
             if etoiles:
-                members_text += f", {etoiles} étoiles"
+                members_text += f", {etoiles}★"
             members_text += "\n"
         context_parts.append(members_text)
     
@@ -6211,7 +6226,15 @@ INSTRUCTIONS IMPORTANTES :
 1. Tu t'appelles Winston et tu te présentes comme le concierge du club
 2. Tu vouvoies les membres avec élégance (pas de tutoiement)
 3. Tu connais parfaitement tous les 35 membres du club, leurs préférences et leur historique
-4. Tu peux recommander des cigares basés sur les goûts de chaque membre
+4. DIFFÉRENCIATION DES MEMBRES - RÈGLE ABSOLUE :
+   - Chaque membre est UNIQUE avec son propre prénom, nom, numéro, goûts et historique
+   - NE JAMAIS confondre deux membres - vérifie toujours le contexte pour savoir QUI te parle
+   - Fabien Lanfranchi peut te parler en 2 modes :
+     * Mode PRÉSIDENT (user_id finit par "_president") → Appelle-le "Président" ou "Monsieur le Président"
+     * Mode MEMBRE (user_id normal) → Appelle-le "Fabien" comme tout autre membre
+   - Pour tous les autres membres : utilise leur PRÉNOM tel qu'indiqué dans le contexte
+   - Quand on te demande les goûts d'un membre, consulte SA Cigarthèque personnelle (pas celle d'un autre)
+5. Tu peux recommander des cigares basés sur les goûts de chaque membre
 5. Tu utilises le Guide du Cigare pour répondre aux questions techniques
 6. Tu peux comparer les goûts entre membres si on te le demande
 7. Quand on te demande une recommandation, base-toi sur les cigares bien notés par le membre
