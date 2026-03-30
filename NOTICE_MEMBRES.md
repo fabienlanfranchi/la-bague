@@ -11,24 +11,31 @@ Votre espace personnel La Bague Impériale est maintenant disponible ! Voici com
 
 ## 📱 PREMIÈRE CONNEXION (Activation)
 
-**Vous n'avez jamais utilisé l'application ?** Suivez ces étapes :
-
 1. Rendez-vous sur **[URL DE L'APPLICATION]**
 2. Cliquez sur **"CONNEXION MEMBRE"**
 3. Restez sur l'onglet **"Activation"**
 4. Remplissez :
-   - **Prénom** : Votre prénom (ex: Jean)
-   - **Nom** : Votre nom de famille (ex: Dupont)
-   - **Numéro de membre** : Le numéro fourni par le Président
+   - **Prénom** : Votre prénom
+   - **Nom** : Votre nom de famille
+   - **Numéro de membre** : Votre numéro (fourni par le Président)
 5. Cliquez sur **"Activer mon compte"**
-6. Créez votre **email** et **mot de passe** personnels
-7. C'est fait ! Vous pouvez maintenant accéder à votre espace.
+
+### 🔑 Votre mot de passe par défaut :
+```
+prénomlabaguenumerodemembre
+```
+**Exemple** : Si vous êtes Jean, membre n°5 → `jeanlabague5`
+
+*(prénom en minuscules, sans accent, collé à "labague" puis votre numéro)*
+
+6. Entrez votre **email** personnel
+7. Entrez votre **mot de passe par défaut** (voir ci-dessus)
+8. Confirmez le mot de passe
+9. C'est fait ! Vous pouvez maintenant accéder à votre espace.
 
 ---
 
 ## 🔑 CONNEXION HABITUELLE
-
-**Vous avez déjà activé votre compte ?**
 
 1. Rendez-vous sur **[URL DE L'APPLICATION]**
 2. Cliquez sur **"CONNEXION MEMBRE"**
@@ -43,7 +50,8 @@ Votre espace personnel La Bague Impériale est maintenant disponible ! Voici com
 
 1. Sur la page de connexion, cliquez sur **"Mot de passe oublié ?"**
 2. Entrez votre email
-3. Le Président sera notifié et vous contactera pour réinitialiser votre accès
+3. Votre mot de passe sera réinitialisé
+4. **Contactez le Président** qui vous redonnera votre mot de passe par défaut
 
 ---
 
