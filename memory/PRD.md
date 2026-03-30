@@ -3,73 +3,71 @@
 ## Application Overview
 Application de gestion complète pour le club de cigares "La Bague Impériale". Full-stack React + FastAPI app using MongoDB for state/users and external OVH MySQL database for cigar catalog.
 
-## Core Features
+## ✅ COMPLETED IN THIS SESSION
 
-### Authentication & Users
-- Member login with activation codes
-- President (Fabien) admin mode with enhanced privileges
-- "Accès direct (Président)" bypass button (à supprimer pour production)
+### 1. Bouton "Accès direct" supprimé
+- Sécurité renforcée pour la production
+- Seule la connexion email/mot de passe est disponible
 
-### Winston AI Assistant
-- Expert cigar sommelier (Concierge) powered by OpenAI via Emergent LLM Key
-- 11-part comprehensive cigar guide ("Tout sur le cigare")
-- Strict recommendation matrices based on User Level (Beginner to Expert) + Time of Day
-- Knows all 35 club members' tastes and event attendances
-- Separate chat histories per user
-- Guided "Choix de cigare" flow
+### 2. Fonctionnalités WhatsApp
+- **Cigarthèque** : Bouton partage sur chaque fiche cigare (API Web Share native)
+- **Événements** : Bouton "Partager" (vert) + "Relance" (orange)
+- Format de message : "Lundi 15 Avril" au lieu de "15/04"
 
-### Cigar Database (MySQL OVH)
-- Complete catalog: 651 cigars
-- 100% with prices, puissance (A/B/C), terroir
-- Admin duplicate scanner tool
+### 3. Session "Rester connecté"
+- Checkbox amélioré visuellement
+- localStorage pour session persistante
+- sessionStorage pour session temporaire
 
-### Club Management
-- Event tracking and attendance
-- Member statistics and presence rates
-- Comptabilité (accounting)
-- Messaging system
+### 4. Page Aide créée (/aide)
+- Guide d'utilisation complet
+- Sections dépliables avec détails
+- **Membres** : voient uniquement leurs onglets (jaune)
+- **Admin** : voit aussi les onglets admin (rouge avec badge ADMIN)
+- Profil ajouté dans la liste
 
----
+### 5. Suggestion mot de passe supprimée
+- Lors de l'activation, plus de suggestion "prénomlabaguenumero"
+- Le membre choisit librement son mot de passe
 
-## ✅ COMPLETED WORK
+### 6. Base de données cigares 100% complète
+- 651 cigares avec prix, puissance (A/B/C), terroir
 
-### Session 6 (March 29, 2025)
-- **Mobile Layout Fix**: Refactored AssistantIA.js for mobile-first design
-  - Horizontal scrollable carousel for capabilities badges on mobile
-  - Compact header, reduced chat elements
-  - "Choix de cigare" button immediately visible
-  
-- **Winston Flow Improved**: 
-  - Fixed "Choix de cigare" guided flow (no re-introduction after user answers)
-  - Removed "à jeun" terminology
-  - Added member differentiation (Fabien vs Président mode)
-
-- **Database Complete**:
-  - Updated 39 cigars with puissance and terroir
-  - Database now 100% complete: 651 cigars with all fields
-
-- **Code Refactoring**:
-  - Created `/backend/routes/winston.py` module
-  - Extracted ~512 lines from server.py
-  - server.py reduced from 6472 → 5960 lines (-8%)
-  - Created `/backend/database.py` for DB connections
-  - Created `/backend/models.py` for Pydantic models
-  - Created `/backend/REFACTORING_PLAN.md`
+### 7. Refactorisation backend
+- routes/winston.py extrait (512 lignes)
+- server.py réduit de 6472 à 5960 lignes
 
 ---
 
-## 🚀 READY FOR PUBLICATION
+## 🔄 EN COURS (à continuer dans prochaine session)
 
-L'application est prête à être publiée. Tous les tests passent :
-- ✅ Login fonctionne
-- ✅ 651 cigares avec données complètes
-- ✅ 35 membres chargés
-- ✅ Winston IA fonctionne
-- ✅ Guide 11 parties accessible
-- ✅ Interface mobile optimisée
+### Section Paramètres dans Profil
+- Ajouter un onglet "Paramètres" dans ProfilePage.js
+- Fonctionnalités à implémenter :
+  - Changer son mot de passe
+  - Modifier son email  
+  - Se déconnecter
+- Mettre à jour la page Aide pour refléter ces changements
 
-### Avant invitation des membres :
-1. Supprimer le bouton "Accès direct (Président)" (sécurité)
+---
+
+## 📄 Notice membres créée
+Fichier : /app/NOTICE_MEMBRES.md
+- Guide de première connexion (activation)
+- Guide de connexion habituelle
+- Mot de passe oublié
+- Liste des fonctionnalités
+
+---
+
+## 🚀 PRÊT POUR PUBLICATION
+
+L'application est fonctionnelle et prête à être déployée.
+- Bouton bypass supprimé ✅
+- Connexion sécurisée ✅
+- 651 cigares complets ✅
+- Winston IA opérationnel ✅
+- Interface mobile optimisée ✅
 
 ---
 
@@ -82,26 +80,18 @@ L'application est prête à être publiée. Tous les tests passent :
 ├── models.py              # Pydantic models
 ├── cigar_knowledge.py     # Winston's brain
 ├── routes/
-│   ├── __init__.py
 │   └── winston.py         # AI Assistant routes
 ├── REFACTORING_PLAN.md
 
 /frontend/
 ├── src/
 │   ├── pages/
-│   │   ├── AssistantIA.js      # Winston UI (mobile-optimized)
-│   │   ├── ToutSurLeCigare.js  # Guide
-│   │   ├── Cigarotheque.js     # Catalog
+│   │   ├── Aide.js            # NEW - Guide d'utilisation
+│   │   ├── ProfilePage.js     # À compléter avec Paramètres
+│   │   ├── AssistantIA.js     # Winston
+│   │   ├── Evenements.js      # Avec boutons Partager/Relance
 │   │   └── ...
 ```
-
-## Database Stats
-- **MongoDB**: comptes, evenements, reponses_evenements, chat_history
-- **MySQL OVH**: 651 cigares (100% complete)
-
-## 3rd Party Integrations
-- **OpenAI** via Emergent LLM Key (Winston)
-- **OVH CloudDB MySQL** - Cigar database
 
 ## Test Credentials
 - Email: `fabien.lanfranchi@yahoo.fr`

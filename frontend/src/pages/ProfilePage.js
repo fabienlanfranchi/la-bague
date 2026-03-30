@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { api } from '../services/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Star, Calendar, TrendingUp, User, BarChart3, RefreshCw, AlertTriangle, CreditCard, X, Check, ExternalLink } from 'lucide-react';
+import { Star, Calendar, TrendingUp, User, BarChart3, RefreshCw, AlertTriangle, CreditCard, X, Check, ExternalLink, Settings, Lock, Mail, LogOut, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import MemberCard from '../components/MemberCard';
 
