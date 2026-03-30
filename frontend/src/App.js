@@ -120,17 +120,10 @@ const Home = () => {
           </p>
           <Link
             to="/login"
-            className="block w-full bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-bold py-4 px-6 rounded-lg text-center transition duration-200 shadow-lg text-lg font-serif mb-3"
+            className="block w-full bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-bold py-4 px-6 rounded-lg text-center transition duration-200 shadow-lg text-lg font-serif"
             data-testid="login-button"
           >
             CONNEXION MEMBRE
-          </Link>
-          <Link
-            to="/dashboard"
-            className="block w-full bg-transparent hover:bg-[#D4A024]/10 text-[#D4A024] border-2 border-[#D4A024] font-bold py-3 px-6 rounded-lg text-center transition duration-200 text-sm font-serif"
-            data-testid="access-app-button"
-          >
-            Accès direct (Président)
           </Link>
         </div>
       </div>
