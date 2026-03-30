@@ -20,6 +20,7 @@ import Statistiques from './pages/Statistiques';
 import Sauvegarde from './pages/Sauvegarde';
 import LoginPage from './pages/LoginPage';
 import ToutSurLeCigare from './pages/ToutSurLeCigare';
+import Aide from './pages/Aide';
 
 // Composant de chargement global
 const LoadingScreen = () => {
@@ -280,6 +281,16 @@ function App() {
                 <ProtectedRoute>
                   <AppLayout>
                     <ProfilePage />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/aide"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Aide />
                   </AppLayout>
                 </ProtectedRoute>
               }

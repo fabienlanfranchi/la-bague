@@ -20,7 +20,8 @@ import {
   BarChart3,
   PieChart,
   Save,
-  BookOpen
+  BookOpen,
+  HelpCircle
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -48,6 +49,7 @@ const Sidebar = () => {
     { path: '/cigarotheque', label: 'Cigarothèque', icon: Book, adminOnly: false },
     { path: '/guide-cigare', label: 'Tout sur le cigare', icon: BookOpen, adminOnly: false },
     { path: '/assistant-ia', label: 'Winston', icon: Sparkles, adminOnly: false },
+    { path: '/aide', label: 'Aide', icon: HelpCircle, adminOnly: false },
     { path: '/instagram', label: 'Instagram', icon: InstagramIcon, adminOnly: false, external: true },
     { path: '/profile', label: 'Profil', icon: User, adminOnly: false, memberOnly: true },
   ];

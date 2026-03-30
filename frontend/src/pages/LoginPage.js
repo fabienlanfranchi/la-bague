@@ -263,19 +263,6 @@ const LoginPage = () => {
                   </div>
                 </div>
 
-                {/* Suggestion de mot de passe */}
-                <div className="bg-[#D4A024]/10 border border-[#D4A024]/30 rounded-lg p-3">
-                  <p className="text-sm text-gray-300">
-                    <span className="text-[#D4A024] font-semibold">Suggestion :</span> Utilisez 
-                    <span className="text-white font-mono ml-1">
-                      {getDefaultPassword(passwordCreationData.memberName?.split(' ')[0] || 'prenom', passwordCreationData.memberNumero)}
-                    </span>
-                  </p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    Format : prénomlabague + numéro membre
-                  </p>
-                </div>
-
                 <div>
                   <Label htmlFor="val-password" className="text-white">Mot de passe</Label>
                   <div className="relative">
@@ -466,14 +453,23 @@ const LoginPage = () => {
                     </div>
 
                     <div className="flex items-center justify-between">
-                      <label className="flex items-center space-x-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={loginData.stayLoggedIn}
-                          onChange={(e) => setLoginData({...loginData, stayLoggedIn: e.target.checked})}
-                          className="w-4 h-4 rounded border-gray-600 bg-black/50 text-[#D4A024] focus:ring-[#D4A024]"
-                        />
-                        <span className="text-sm text-gray-400">Rester connecté</span>
+                      <label className="flex items-center space-x-2 cursor-pointer group">
+                        <div className="relative">
+                          <input
+                            type="checkbox"
+                            checked={loginData.stayLoggedIn}
+                            onChange={(e) => setLoginData({...loginData, stayLoggedIn: e.target.checked})}
+                            className="sr-only peer"
+                          />
+                          <div className="w-5 h-5 rounded border-2 border-gray-500 bg-black/50 peer-checked:bg-[#D4A024] peer-checked:border-[#D4A024] transition-colors flex items-center justify-center">
+                            {loginData.stayLoggedIn && (
+                              <svg className="w-3 h-3 text-[#7A2020]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </div>
+                        </div>
+                        <span className="text-sm text-gray-400 group-hover:text-gray-300">Rester connecté</span>
                       </label>
 
                       <button

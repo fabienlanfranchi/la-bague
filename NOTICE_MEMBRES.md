@@ -44,19 +44,25 @@ Votre espace personnel La Bague Impériale est maintenant disponible ! Voici com
 
 ---
 
-## 📋 CE QUE VOUS POUVEZ FAIRE
+## 📋 CE QUE VOUS POURREZ FAIRE
 
-- 📊 **Dashboard** : Voir vos statistiques de présence et étoiles
-- 📅 **Événements** : Répondre aux invitations (Apéros, Repas...)
-- 🚬 **Cigarthèque** : Explorer le catalogue de cigares du club
-- 🤖 **Winston** : Poser vos questions à notre assistant IA spécialiste cigares
-- 📖 **Tout sur le cigare** : Guide complet en 11 parties
+| Onglet | Description |
+|--------|-------------|
+| 📊 **Dashboard** | Votre tableau de bord avec vos statistiques de présence et étoiles |
+| 📅 **Événements** | Consultez et répondez aux invitations (Apéros, Repas...) |
+| 🚬 **Cigarthèque** | Explorez notre catalogue de 651 cigares et notez vos dégustations |
+| 🤖 **Winston** | Posez vos questions à notre assistant IA spécialiste cigares |
+| 📖 **Tout sur le cigare** | Guide complet en 11 parties pour tout savoir |
+| 📊 **Sondages** | Participez aux votes du club |
+| ❓ **Aide** | Guide détaillé de toutes les fonctionnalités |
 
 ---
 
 ## ❓ BESOIN D'AIDE ?
 
-Contactez le Président : **Fabien Lanfranchi**
+Une fois connecté, cliquez sur **"Aide"** dans le menu pour un guide complet de l'application.
+
+Ou contactez le Président : **Fabien Lanfranchi**
 
 ---
 
