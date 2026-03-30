@@ -700,21 +700,46 @@ const Cigarotheque = () => {
   // ===== FONCTION COPIER FICHE (Format pour événement Apéro) =====
   
   const copyFicheCigare = (cigare) => {
-    const fiche = `🚬 ${cigare.marque || 'Cigare'} ${cigare.gamme || ''} ${cigare.vitole_nom || cigare.vitole || ''}
+    // Générer les étoiles visuelles
+    const noteValue = cigare.note_bagues || cigare.note_globale;
+    let noteDisplay = noteValue ? `${noteValue}/5` : '-';
+    
+    let fiche = `🚬 ${cigare.marque || 'Cigare'} ${cigare.gamme || ''} ${cigare.vitole_nom || cigare.vitole || ''}
 
 📍 Origine: ${cigare.pays_fabrication || cigare.terroir || '-'}
 💪 Puissance: ${getPuissanceLabel(cigare.puissance)}
-⭐ Note: ${cigare.note_bagues || cigare.note_globale || '-'}/5
+⭐ Note: ${noteDisplay}${cigare.bagues_etoiles ? ` (${cigare.bagues_etoiles})` : ''}
 💰 Prix: ${cigare.prix || '-'}€
 
 📏 Format: ${cigare.longueur_mm || '-'}mm x ${cigare.cepo || '-'}
 
 🍂 Cape: ${cigare.cape || '-'}
 🍂 Sous-cape: ${cigare.sous_cape || '-'}
-🍂 Tripe: ${cigare.tripe || '-'}
+🍂 Tripe: ${cigare.tripe || '-'}`;
 
-${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
+    // Ajouter les notes de dégustation si disponibles
+    const hasDegustation = cigare.degustation_cru || cigare.premier_tiers || cigare.deuxieme_tiers || cigare.troisieme_tiers;
+    if (hasDegustation) {
+      fiche += `\n\n🍷 Dégustation:`;
+      if (cigare.degustation_cru) fiche += `\n• À froid: ${cigare.degustation_cru}`;
+      if (cigare.premier_tiers) fiche += `\n• 1er tiers: ${cigare.premier_tiers}`;
+      if (cigare.deuxieme_tiers) fiche += `\n• 2ème tiers: ${cigare.deuxieme_tiers}`;
+      if (cigare.troisieme_tiers) fiche += `\n• 3ème tiers: ${cigare.troisieme_tiers}`;
+    }
 
+    // Ajouter la conclusion
+    if (cigare.conclusion) {
+      fiche += `\n\n📝 ${cigare.conclusion}`;
+    }
+
+    // Ajouter les notes personnelles si disponibles
+    if (cigare.note_personnelle || cigare.commentaire) {
+      fiche += `\n\n💭 Mon avis:`;
+      if (cigare.note_personnelle) fiche += ` ${cigare.note_personnelle}/5`;
+      if (cigare.commentaire) fiche += `\n${cigare.commentaire}`;
+    }
+
+    fiche = fiche.trim();
     navigator.clipboard.writeText(fiche);
     toast.success('Fiche copiée ! Prête à coller dans WhatsApp');
   };
@@ -723,7 +748,17 @@ ${cigare.conclusion ? `📝 ${cigare.conclusion}` : ''}`.trim();
   const shareToWhatsApp = async (cigare) => {
     const puissanceEmoji = cigare.puissance === 'A' ? '🔥🔥🔥' : cigare.puissance === 'B' ? '🔥🔥' : '🔥';
     
-    const message = `🎩 *La Bague Impériale* - Prochain Apéro
+    // Générer les étoiles visuelles pour la note
+    const noteValue = cigare.note_bagues || cigare.note_globale;
+    let noteStars = '';
+    if (noteValue) {
+      const fullStars = Math.floor(noteValue);
+      const hasHalf = noteValue % 1 >= 0.5;
+      noteStars = '⭐'.repeat(fullStars) + (hasHalf ? '½' : '');
+    }
+    
+    // Construire le message enrichi
+    let message = `🎩 *La Bague Impériale*
 
 🚬 *${cigare.marque || 'Cigare'}*
 ${cigare.gamme ? `📦 Gamme: ${cigare.gamme}` : ''}
@@ -732,11 +767,52 @@ ${cigare.vitole_nom || cigare.vitole ? `✨ Vitole: ${cigare.vitole_nom || cigar
 📍 Terroir: ${cigare.terroir || cigare.pays_fabrication || 'N/A'}
 💪 Puissance: ${getPuissanceLabel(cigare.puissance)} ${puissanceEmoji}
 💰 Prix: ${cigare.prix ? cigare.prix + '€' : 'N/A'}
-${cigare.module ? `📐 Module: ${cigare.module}` : ''}
+${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
 
-${cigare.conclusion ? `📝 "${cigare.conclusion}"` : ''}
+    // Ajouter la note si disponible
+    if (noteValue) {
+      message += `\n\n⭐ *Note: ${noteValue}/5* ${noteStars}`;
+      if (cigare.bagues_etoiles) {
+        message += `\n   ${cigare.bagues_etoiles}`;
+      }
+    }
 
-À très vite ! 🥃`.trim();
+    // Ajouter les notes de dégustation si disponibles
+    const hasDegustation = cigare.degustation_cru || cigare.premier_tiers || cigare.deuxieme_tiers || cigare.troisieme_tiers;
+    if (hasDegustation) {
+      message += `\n\n🍂 *Dégustation:*`;
+      if (cigare.degustation_cru) {
+        message += `\n• À froid: ${cigare.degustation_cru}`;
+      }
+      if (cigare.premier_tiers) {
+        message += `\n• 1er tiers: ${cigare.premier_tiers}`;
+      }
+      if (cigare.deuxieme_tiers) {
+        message += `\n• 2ème tiers: ${cigare.deuxieme_tiers}`;
+      }
+      if (cigare.troisieme_tiers) {
+        message += `\n• 3ème tiers: ${cigare.troisieme_tiers}`;
+      }
+    }
+
+    // Ajouter la conclusion
+    if (cigare.conclusion) {
+      message += `\n\n📝 *Conclusion:*\n"${cigare.conclusion}"`;
+    }
+
+    // Ajouter les notes personnelles du membre si disponibles
+    if (cigare.note_personnelle || cigare.commentaire) {
+      message += `\n\n💭 *Mon avis:*`;
+      if (cigare.note_personnelle) {
+        message += `\n• Ma note: ${cigare.note_personnelle}/5`;
+      }
+      if (cigare.commentaire) {
+        message += `\n• ${cigare.commentaire}`;
+      }
+    }
+
+    message += `\n\nÀ très vite ! 🥃`;
+    message = message.trim();
 
     // Essayer l'API Web Share native (meilleur support iOS/Android)
     if (navigator.share) {
