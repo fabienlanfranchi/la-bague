@@ -1,22 +1,32 @@
 import React from 'react';
+import { useUser } from '../context/UserContext';
 import { 
   Home, 
   Calendar, 
   BookOpen, 
   MessageCircle, 
   Users,
-  Settings,
   HelpCircle,
   Star,
   Wine,
   BarChart3,
   FileText,
-  ChevronRight
+  ChevronRight,
+  DollarSign,
+  PieChart,
+  Save,
+  ShoppingBag,
+  Gamepad2,
+  MessageSquare,
+  User
 } from 'lucide-react';
 import { Card, CardContent } from '../components/ui/card';
 
 const Aide = () => {
-  const sections = [
+  const { isAdmin } = useUser();
+
+  // Sections visibles par tous les membres
+  const memberSections = [
     {
       icon: Home,
       title: "Dashboard",
@@ -36,8 +46,35 @@ const Aide = () => {
         "Voir le prochain événement (Apéro, Repas, Anniversaire...)",
         "Confirmer ou décliner votre présence",
         "Consulter l'historique des saisons passées",
-        "Voir qui sera présent à chaque événement",
-        "Admin : Créer, modifier et partager les événements"
+        "Voir qui sera présent à chaque événement"
+      ]
+    },
+    {
+      icon: Gamepad2,
+      title: "Jeux",
+      shortDesc: "Participez aux jeux et animations du club.",
+      details: [
+        "Découvrir les jeux disponibles",
+        "Participer aux animations lors des événements"
+      ]
+    },
+    {
+      icon: ShoppingBag,
+      title: "Boutique",
+      shortDesc: "Accédez à la boutique du club.",
+      details: [
+        "Découvrir les produits disponibles",
+        "Consulter les accessoires cigares"
+      ]
+    },
+    {
+      icon: BarChart3,
+      title: "Sondages",
+      shortDesc: "Participez aux votes et décisions du club.",
+      details: [
+        "Répondre aux sondages en cours",
+        "Voir les résultats des votes passés",
+        "Donner votre avis sur les décisions du club"
       ]
     },
     {
@@ -50,21 +87,7 @@ const Aide = () => {
         "Consulter les fiches détaillées de chaque cigare",
         "Ajouter des cigares à votre collection personnelle",
         "Noter et commenter vos dégustations",
-        "Partager une fiche cigare sur WhatsApp",
-        "Admin : Gérer l'Apéro du Club"
-      ]
-    },
-    {
-      icon: MessageCircle,
-      title: "Winston",
-      shortDesc: "Votre assistant IA spécialiste des cigares.",
-      details: [
-        "Poser toutes vos questions sur les cigares",
-        "Obtenir des recommandations personnalisées",
-        "Choisir un cigare selon votre niveau et le moment",
-        "Découvrir les accords cigare & alcool",
-        "Accéder au guide complet 'Tout sur le cigare'",
-        "Winston connaît tous les membres du club !"
+        "Partager une fiche cigare"
       ]
     },
     {
@@ -86,47 +109,89 @@ const Aide = () => {
       ]
     },
     {
-      icon: Users,
-      title: "Membres",
-      shortDesc: "Voir tous les membres du club.",
+      icon: MessageCircle,
+      title: "Winston",
+      shortDesc: "Votre assistant IA spécialiste des cigares.",
       details: [
-        "Liste des 35 membres avec leur ancienneté",
-        "Consulter les statistiques de chaque membre",
-        "Voir les fonctions (Président, Trésorier...)",
-        "Admin : Gérer les membres et cotisations"
+        "Poser toutes vos questions sur les cigares",
+        "Obtenir des recommandations personnalisées",
+        "Choisir un cigare selon votre niveau et le moment",
+        "Découvrir les accords cigare & alcool",
+        "Accéder au guide complet 'Tout sur le cigare'",
+        "Winston connaît tous les membres du club !"
       ]
     },
     {
-      icon: FileText,
-      title: "Sondages",
-      shortDesc: "Participez aux votes et décisions du club.",
+      icon: User,
+      title: "Profil",
+      shortDesc: "Gérez votre compte membre.",
       details: [
-        "Répondre aux sondages en cours",
-        "Voir les résultats des votes passés",
-        "Admin : Créer de nouveaux sondages"
-      ]
-    },
-    {
-      icon: BarChart3,
-      title: "Comptabilité",
-      shortDesc: "Suivez les finances du club.",
-      details: [
-        "Consulter votre situation de cotisation",
-        "Voir l'historique de vos paiements",
-        "Admin : Gérer les comptes et encaissements"
-      ]
-    },
-    {
-      icon: Settings,
-      title: "Paramètres",
-      shortDesc: "Gérez votre compte.",
-      details: [
-        "Modifier vos informations personnelles",
-        "Changer votre mot de passe",
+        "Voir vos informations personnelles",
+        "Consulter votre numéro de membre",
+        "Voir votre ancienneté au club",
         "Se déconnecter"
       ]
     }
   ];
+
+  // Sections réservées aux admins
+  const adminSections = [
+    {
+      icon: DollarSign,
+      title: "Comptabilité",
+      shortDesc: "Gérez les finances du club.",
+      details: [
+        "Suivre les cotisations des membres",
+        "Enregistrer les paiements",
+        "Gérer les dettes et encaissements",
+        "Consulter l'historique financier"
+      ]
+    },
+    {
+      icon: Users,
+      title: "Membres",
+      shortDesc: "Gérez les 35 membres du club.",
+      details: [
+        "Voir la liste complète des membres",
+        "Modifier les informations d'un membre",
+        "Gérer les fonctions (Trésorier, etc.)",
+        "Suivre les statistiques de présence"
+      ]
+    },
+    {
+      icon: MessageSquare,
+      title: "Messages",
+      shortDesc: "Envoyez des messages aux membres.",
+      details: [
+        "Rédiger des messages pour le club",
+        "Envoyer des notifications",
+        "Gérer les communications"
+      ]
+    },
+    {
+      icon: PieChart,
+      title: "Statistiques",
+      shortDesc: "Consultez les statistiques détaillées.",
+      details: [
+        "Analyser les présences par saison",
+        "Voir les tendances du club",
+        "Exporter les données"
+      ]
+    },
+    {
+      icon: Save,
+      title: "Sauvegarde",
+      shortDesc: "Gérez les sauvegardes des données.",
+      details: [
+        "Exporter les données du club",
+        "Importer des données",
+        "Sauvegarder la base de données"
+      ]
+    }
+  ];
+
+  // Combiner les sections selon le rôle
+  const sections = isAdmin ? [...memberSections, ...adminSections] : memberSections;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#1a0a0a] to-[#2d1f1f] p-4 md:p-8">
@@ -140,13 +205,20 @@ const Aide = () => {
             </h1>
           </div>
           <p className="text-gray-400 text-lg">
-            Découvrez toutes les fonctionnalités de votre espace membre
+            Découvrez toutes les fonctionnalités de votre espace {isAdmin ? 'administrateur' : 'membre'}
           </p>
         </div>
 
-        {/* Sections */}
+        {/* Sections membres */}
         <div className="space-y-4">
-          {sections.map((section, index) => (
+          {!isAdmin && (
+            <h2 className="text-xl font-serif text-[#D4A024] mb-4">Vos fonctionnalités</h2>
+          )}
+          {isAdmin && (
+            <h2 className="text-xl font-serif text-[#D4A024] mb-4">Fonctionnalités membres</h2>
+          )}
+          
+          {memberSections.map((section, index) => (
             <Card key={index} className="bg-black/40 border-[#D4A024]/20 overflow-hidden">
               <CardContent className="p-0">
                 <details className="group">
@@ -155,7 +227,7 @@ const Aide = () => {
                       <section.icon className="w-6 h-6 text-[#D4A024]" />
                     </div>
                     <div className="flex-1">
-                      <h2 className="text-xl font-serif font-bold text-white">{section.title}</h2>
+                      <h3 className="text-xl font-serif font-bold text-white">{section.title}</h3>
                       <p className="text-gray-400 text-sm">{section.shortDesc}</p>
                     </div>
                     <ChevronRight className="w-5 h-5 text-[#D4A024] transition-transform group-open:rotate-90" />
@@ -176,6 +248,46 @@ const Aide = () => {
             </Card>
           ))}
         </div>
+
+        {/* Sections admin uniquement */}
+        {isAdmin && (
+          <div className="space-y-4 mt-8">
+            <h2 className="text-xl font-serif text-[#7A2020] mb-4 flex items-center gap-2">
+              <span className="bg-[#7A2020] text-white text-xs px-2 py-1 rounded">ADMIN</span>
+              Fonctionnalités administrateur
+            </h2>
+            
+            {adminSections.map((section, index) => (
+              <Card key={index} className="bg-black/40 border-[#7A2020]/30 overflow-hidden">
+                <CardContent className="p-0">
+                  <details className="group">
+                    <summary className="flex items-center gap-4 p-4 cursor-pointer list-none hover:bg-[#7A2020]/5 transition-colors">
+                      <div className="w-12 h-12 rounded-full bg-[#7A2020]/20 flex items-center justify-center shrink-0">
+                        <section.icon className="w-6 h-6 text-[#7A2020]" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-xl font-serif font-bold text-white">{section.title}</h3>
+                        <p className="text-gray-400 text-sm">{section.shortDesc}</p>
+                      </div>
+                      <ChevronRight className="w-5 h-5 text-[#7A2020] transition-transform group-open:rotate-90" />
+                    </summary>
+                    
+                    <div className="px-4 pb-4 pt-2 border-t border-[#7A2020]/10 bg-black/20">
+                      <ul className="space-y-2 ml-16">
+                        {section.details.map((detail, i) => (
+                          <li key={i} className="flex items-start gap-2 text-gray-300">
+                            <Star className="w-4 h-4 text-[#7A2020] mt-0.5 shrink-0" />
+                            <span>{detail}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </details>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
 
         {/* Contact */}
         <div className="mt-8 text-center">
