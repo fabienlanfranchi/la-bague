@@ -601,10 +601,28 @@ const Cigarotheque = () => {
         cigare_id: cigare.id,
         marque: cigare.marque_display || cigare.marque || 'Inconnu',
         gamme: cigare.gamme_display || cigare.gamme || '',
-        vitole: cigare.vitole_nom || '',
+        vitole: cigare.vitole_nom || cigare.vitole || '',
         pays: cigare.pays_fabrication || '',
+        terroir: cigare.terroir || cigare.pays_fabrication || '',
         puissance: cigare.puissance || '',
         prix: cigare.prix || null,
+        module: cigare.module || cigare.vitole_type || '',
+        // Notes et dégustation
+        note_bagues: cigare.note_bagues || null,
+        bagues_etoiles: cigare.bagues_etoiles || '',
+        degustation_cru: cigare.degustation_cru || '',
+        premier_tiers: cigare.premier_tiers || '',
+        deuxieme_tiers: cigare.deuxieme_tiers || '',
+        troisieme_tiers: cigare.troisieme_tiers || '',
+        conclusion: cigare.conclusion || '',
+        // Composition
+        cape: cigare.cape || '',
+        sous_cape: cigare.sous_cape || '',
+        tripe: cigare.tripe || '',
+        // Dimensions
+        longueur_mm: cigare.longueur_mm || null,
+        cepo: cigare.cepo || null,
+        // Date
         date_apero: new Date().toISOString().split('T')[0]
       });
       toast.success('Cigare ajouté à l\'Apéro du Club !');
@@ -1667,60 +1685,107 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
                   )}
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {aperoClub.map((cigare) => (
-                    <div key={cigare.id} className="flex items-center justify-between p-4 bg-black/40 rounded-lg border border-[#D4A024]/20" data-testid={`apero-item-${cigare.id}`}>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-white font-semibold text-lg">{cigare.marque} {cigare.gamme || ''}</h4>
-                        <p className="text-gray-400">{cigare.vitole || ''}</p>
-                        <p className="text-[#D4A024] text-sm mt-1">{cigare.date_apero}</p>
-                      </div>
-                      <div className="flex gap-2 ml-4">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => shareToWhatsApp(cigare)}
-                          className="text-green-500 hover:text-green-400 hover:bg-green-900/20"
-                          title="Partager sur WhatsApp"
-                          data-testid={`whatsapp-apero-btn-${cigare.id}`}
-                        >
-                          <MessageCircle className="w-5 h-5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => copyFicheCigare(cigare)}
-                          className="text-[#D4A024]"
-                          title="Copier la fiche"
-                          data-testid={`copy-apero-btn-${cigare.id}`}
-                        >
-                          <Copy className="w-5 h-5" />
-                        </Button>
-                        {!isAdmin && (
+                    <Card 
+                      key={cigare.id} 
+                      className="bg-black/60 border-[#D4A024]/30 hover:border-[#D4A024]/60 transition-all cursor-pointer"
+                      onClick={() => {
+                        setSelectedCigare(cigare);
+                        setShowDetail(true);
+                      }}
+                      data-testid={`apero-item-${cigare.id}`}
+                    >
+                      <CardContent className="p-4">
+                        {/* En-tête avec note */}
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-white font-bold text-lg truncate">{cigare.vitole || cigare.marque}</h4>
+                            <p className="text-[#D4A024] text-sm">{cigare.marque} {cigare.gamme || ''}</p>
+                          </div>
+                          {cigare.note_bagues && (
+                            <div className="flex items-center gap-1 bg-[#D4A024]/20 px-2 py-1 rounded">
+                              <Star className="w-4 h-4 text-[#D4A024] fill-[#D4A024]" />
+                              <span className="text-[#D4A024] font-bold">{cigare.note_bagues}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Infos principales */}
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          {cigare.terroir && (
+                            <span className="text-xs bg-blue-900/40 text-blue-300 px-2 py-1 rounded flex items-center gap-1">
+                              <MapPin className="w-3 h-3" />
+                              {cigare.terroir}
+                            </span>
+                          )}
+                          {cigare.puissance && (
+                            <span className={`text-xs px-2 py-1 rounded flex items-center gap-1 ${
+                              cigare.puissance === 'A' ? 'bg-red-900/40 text-red-300' :
+                              cigare.puissance === 'B' ? 'bg-orange-900/40 text-orange-300' :
+                              'bg-green-900/40 text-green-300'
+                            }`}>
+                              <Flame className="w-3 h-3" />
+                              {getPuissanceLabel(cigare.puissance)}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Prix et date */}
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-green-400 font-semibold">
+                            {cigare.prix ? `${cigare.prix}€` : '-'}
+                          </span>
+                          <span className="text-gray-500 text-xs">
+                            {cigare.date_apero}
+                          </span>
+                        </div>
+
+                        {/* Aperçu dégustation si disponible */}
+                        {cigare.conclusion && (
+                          <p className="text-gray-400 text-xs mt-2 line-clamp-2 italic">
+                            "{cigare.conclusion}"
+                          </p>
+                        )}
+
+                        {/* Boutons d'action */}
+                        <div className="flex gap-2 mt-3 pt-3 border-t border-[#D4A024]/20">
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => addToMaCigarotheque(cigare, true)}
-                            className="text-green-400 hover:text-green-300 hover:bg-green-900/20"
-                            title="Copier vers Ma Cigarthèque"
-                            data-testid={`import-apero-btn-${cigare.id}`}
+                            onClick={(e) => { e.stopPropagation(); shareToWhatsApp(cigare); }}
+                            className="flex-1 text-green-500 hover:text-green-400 hover:bg-green-900/20"
+                            title="Partager"
+                            data-testid={`whatsapp-apero-btn-${cigare.id}`}
                           >
-                            <Download className="w-5 h-5" />
+                            <MessageCircle className="w-4 h-4 mr-1" />
+                            Partager
                           </Button>
-                        )}
-                        {isAdmin && (
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => deleteFromAperoClub(cigare.id)}
-                            className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
-                            data-testid={`delete-apero-btn-${cigare.id}`}
+                            onClick={(e) => { e.stopPropagation(); copyFicheCigare(cigare); }}
+                            className="flex-1 text-[#D4A024] hover:bg-[#D4A024]/10"
+                            title="Copier la fiche"
+                            data-testid={`copy-apero-btn-${cigare.id}`}
                           >
-                            <Trash2 className="w-5 h-5" />
+                            <Copy className="w-4 h-4 mr-1" />
+                            Copier
                           </Button>
-                        )}
-                      </div>
-                    </div>
+                          {isAdmin && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => { e.stopPropagation(); deleteFromAperoClub(cigare.id); }}
+                              className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                              data-testid={`delete-apero-btn-${cigare.id}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
                   ))}
                 </div>
               )}

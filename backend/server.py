@@ -5724,8 +5724,26 @@ class AperoClubCigare(BaseModel):
     gamme: Optional[str] = None
     vitole: Optional[str] = None
     pays: Optional[str] = None  # Pays de fabrication
+    terroir: Optional[str] = None
     puissance: Optional[str] = None  # A, B, C
     prix: Optional[float] = None
+    module: Optional[str] = None
+    # Notes et dégustation
+    note_bagues: Optional[float] = None
+    bagues_etoiles: Optional[str] = None
+    degustation_cru: Optional[str] = None
+    premier_tiers: Optional[str] = None
+    deuxieme_tiers: Optional[str] = None
+    troisieme_tiers: Optional[str] = None
+    conclusion: Optional[str] = None
+    # Composition
+    cape: Optional[str] = None
+    sous_cape: Optional[str] = None
+    tripe: Optional[str] = None
+    # Dimensions
+    longueur_mm: Optional[float] = None
+    cepo: Optional[int] = None
+    # Métadonnées
     evenement_id: Optional[str] = None
     date_apero: str
     description: Optional[str] = None
