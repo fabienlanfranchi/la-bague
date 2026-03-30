@@ -748,21 +748,15 @@ const Cigarotheque = () => {
   const shareToWhatsApp = async (cigare) => {
     const puissanceEmoji = cigare.puissance === 'A' ? '🔥🔥🔥' : cigare.puissance === 'B' ? '🔥🔥' : '🔥';
     
-    // Générer les étoiles visuelles pour la note
+    // Note du cigare
     const noteValue = cigare.note_bagues || cigare.note_globale;
-    let noteStars = '';
-    if (noteValue) {
-      const fullStars = Math.floor(noteValue);
-      const hasHalf = noteValue % 1 >= 0.5;
-      noteStars = '⭐'.repeat(fullStars) + (hasHalf ? '½' : '');
-    }
     
     // Construire le message enrichi
     let message = `🎩 *La Bague Impériale*
 
 🚬 *${cigare.marque || 'Cigare'}*
 ${cigare.gamme ? `📦 Gamme: ${cigare.gamme}` : ''}
-${cigare.vitole_nom || cigare.vitole ? `✨ Vitole: ${cigare.vitole_nom || cigare.vitole}` : ''}
+${cigare.vitole_nom || cigare.vitole ? `✨ Nom: ${cigare.vitole_nom || cigare.vitole}` : ''}
 
 📍 Terroir: ${cigare.terroir || cigare.pays_fabrication || 'N/A'}
 💪 Puissance: ${getPuissanceLabel(cigare.puissance)} ${puissanceEmoji}
@@ -771,7 +765,7 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
 
     // Ajouter la note si disponible
     if (noteValue) {
-      message += `\n\n⭐ *Note: ${noteValue}/5* ${noteStars}`;
+      message += `\n\n⭐ *Note: ${noteValue}/5*`;
       if (cigare.bagues_etoiles) {
         message += `\n   ${cigare.bagues_etoiles}`;
       }
