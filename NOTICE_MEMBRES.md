@@ -19,17 +19,8 @@ Votre espace personnel La Bague Impériale est maintenant disponible ! Voici com
    - **Nom** : Votre nom de famille
    - **Numéro de membre** : Votre numéro (fourni par le Président)
 5. Cliquez sur **"Activer mon compte"**
-
-### 🔑 Votre mot de passe par défaut :
-```
-prénomlabaguenumerodemembre
-```
-**Exemple** : Si vous êtes Jean, membre n°5 → `jeanlabague5`
-
-*(prénom en minuscules, sans accent, collé à "labague" puis votre numéro)*
-
 6. Entrez votre **email** personnel
-7. Entrez votre **mot de passe par défaut** (voir ci-dessus)
+7. **Choisissez votre mot de passe** (celui que vous voulez)
 8. Confirmez le mot de passe
 9. C'est fait ! Vous pouvez maintenant accéder à votre espace.
 
@@ -48,10 +39,8 @@ prénomlabaguenumerodemembre
 
 ## 🔐 MOT DE PASSE OUBLIÉ ?
 
-1. Sur la page de connexion, cliquez sur **"Mot de passe oublié ?"**
-2. Entrez votre email
-3. Votre mot de passe sera réinitialisé
-4. **Contactez le Président** qui vous redonnera votre mot de passe par défaut
+1. Cliquez sur **"Mot de passe oublié ?"**
+2. Le Président vous enverra un mot de passe réinitialisé
 
 ---
 
