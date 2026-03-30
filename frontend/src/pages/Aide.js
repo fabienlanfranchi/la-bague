@@ -124,12 +124,15 @@ const Aide = () => {
     {
       icon: User,
       title: "Profil",
-      shortDesc: "Gérez votre compte membre.",
+      shortDesc: "Gérez votre compte membre et vos paramètres.",
       details: [
         "Voir vos informations personnelles",
-        "Consulter votre numéro de membre",
-        "Voir votre ancienneté au club",
-        "Se déconnecter"
+        "Consulter votre numéro de membre et votre ancienneté",
+        "Voir l'historique de vos cotisations",
+        "Suivre votre taux de présence aux événements",
+        "Signaler un paiement au président",
+        "Changer votre mot de passe",
+        "Se déconnecter de l'application"
       ]
     }
   ];

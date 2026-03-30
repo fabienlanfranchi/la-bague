@@ -14,15 +14,27 @@ import MemberCard from '../components/MemberCard';
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 const ProfilePage = () => {
-  const { currentMember, setCurrentMember } = useUser();
+  const { currentMember, setCurrentMember, logout } = useUser();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('infos'); // 'infos' ou 'presences'
+  const [activeTab, setActiveTab] = useState('infos'); // 'infos', 'presences' ou 'parametres'
   const [presencesStats, setPresencesStats] = useState(null);
   const [loadingPresences, setLoadingPresences] = useState(false);
   const [dettes, setDettes] = useState([]);
   
   // Modal signalement de paiement
   const [showPaiementModal, setShowPaiementModal] = useState(false);
+  
+  // États pour les paramètres
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
   const [paiementForm, setPaiementForm] = useState({
     date_paiement: new Date().toISOString().split('T')[0],
     type: 'recette',
@@ -84,6 +96,59 @@ const ProfilePage = () => {
     };
     loadMesPaiements();
   }, [currentMember]);
+
+  // Fonction de déconnexion
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+    toast.success('Vous avez été déconnecté');
+  };
+
+  // Fonction de changement de mot de passe
+  const handleChangePassword = async () => {
+    if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+      toast.error('Veuillez remplir tous les champs');
+      return;
+    }
+    
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      toast.error('Les nouveaux mots de passe ne correspondent pas');
+      return;
+    }
+    
+    if (passwordForm.newPassword.length < 6) {
+      toast.error('Le nouveau mot de passe doit contenir au moins 6 caractères');
+      return;
+    }
+    
+    setChangingPassword(true);
+    try {
+      const response = await fetch(`${API_URL}/api/auth/change-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          membre_id: currentMember.id,
+          ancien_mot_de_passe: passwordForm.currentPassword,
+          nouveau_mot_de_passe: passwordForm.newPassword,
+          confirmer_mot_de_passe: passwordForm.confirmPassword
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        toast.success('Mot de passe modifié avec succès !');
+        setShowPasswordModal(false);
+        setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      } else {
+        toast.error(data.detail || 'Erreur lors du changement de mot de passe');
+      }
+    } catch (error) {
+      console.error('Erreur:', error);
+      toast.error('Erreur de connexion au serveur');
+    }
+    setChangingPassword(false);
+  };
 
   // Soumettre un signalement de paiement
   const handleSubmitPaiement = async () => {
@@ -223,7 +288,7 @@ const ProfilePage = () => {
       </div>
 
       {/* Onglets */}
-      <div className="flex gap-2 border-b border-[#D4A024]/30 pb-2">
+      <div className="flex gap-2 border-b border-[#D4A024]/30 pb-2 overflow-x-auto">
         <Button
           variant={activeTab === 'infos' ? 'default' : 'ghost'}
           onClick={() => setActiveTab('infos')}
@@ -242,9 +307,18 @@ const ProfilePage = () => {
           <BarChart3 className="w-4 h-4 mr-2" />
           Présences
         </Button>
+        <Button
+          variant={activeTab === 'parametres' ? 'default' : 'ghost'}
+          onClick={() => setActiveTab('parametres')}
+          className={activeTab === 'parametres' ? 'bg-[#D4A024] text-[#7A2020]' : 'text-gray-400 hover:text-[#D4A024]'}
+          data-testid="tab-parametres"
+        >
+          <Settings className="w-4 h-4 mr-2" />
+          Paramètres
+        </Button>
       </div>
 
-      {activeTab === 'infos' ? (
+      {activeTab === 'infos' && (
         /* Onglet Informations */
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Informations générales */}
@@ -530,7 +604,9 @@ const ProfilePage = () => {
             )}
           </div>
         </div>
-      ) : (
+      )}
+
+      {activeTab === 'presences' && (
         /* Onglet Présences */
         <div className="space-y-6">
           {loadingPresences ? (
@@ -657,6 +733,87 @@ const ProfilePage = () => {
               Impossible de charger les statistiques de présence.
             </div>
           )}
+        </div>
+      )}
+
+      {/* Onglet Paramètres */}
+      {activeTab === 'parametres' && (
+        <div className="space-y-6" data-testid="settings-section">
+          {/* Informations du compte */}
+          <Card className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm">
+            <CardHeader>
+              <CardTitle className="text-xl font-serif text-white flex items-center">
+                <User className="w-5 h-5 mr-2 text-[#D4A024]" />
+                Informations du compte
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between p-3 bg-black/30 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <Mail className="w-5 h-5 text-[#D4A024]" />
+                  <div>
+                    <p className="text-sm text-gray-400">Adresse email</p>
+                    <p className="text-white font-medium">{currentMember?.email || 'Non défini'}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-black/30 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <User className="w-5 h-5 text-[#D4A024]" />
+                  <div>
+                    <p className="text-sm text-gray-400">Nom complet</p>
+                    <p className="text-white font-medium">{currentMember?.nom_complet}</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Sécurité */}
+          <Card className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm">
+            <CardHeader>
+              <CardTitle className="text-xl font-serif text-white flex items-center">
+                <Lock className="w-5 h-5 mr-2 text-[#D4A024]" />
+                Sécurité
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Button
+                onClick={() => setShowPasswordModal(true)}
+                className="w-full bg-[#7A2020] hover:bg-[#8A3030] text-white font-semibold py-4"
+                data-testid="btn-change-password"
+              >
+                <Lock className="w-5 h-5 mr-2" />
+                Changer mon mot de passe
+              </Button>
+              <p className="text-sm text-gray-400 text-center">
+                Nous vous recommandons de changer votre mot de passe régulièrement
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Déconnexion */}
+          <Card className="bg-black/40 border-2 border-red-600/30 backdrop-blur-sm">
+            <CardHeader>
+              <CardTitle className="text-xl font-serif text-white flex items-center">
+                <LogOut className="w-5 h-5 mr-2 text-red-400" />
+                Session
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Button
+                onClick={handleLogout}
+                className="w-full bg-red-700 hover:bg-red-600 text-white font-semibold py-4"
+                data-testid="btn-logout"
+              >
+                <LogOut className="w-5 h-5 mr-2" />
+                Se déconnecter
+              </Button>
+              <p className="text-sm text-gray-400 text-center mt-3">
+                Vous serez redirigé vers la page de connexion
+              </p>
+            </CardContent>
+          </Card>
         </div>
       )}
 
@@ -798,6 +955,118 @@ const ProfilePage = () => {
                     <Check className="w-4 h-4 mr-2" />
                   )}
                   Signaler
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Modal Changement de mot de passe */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <Card className="bg-[#7A2020] border-2 border-[#D4A024] max-w-md w-full">
+            <CardHeader className="border-b border-[#D4A024]/30">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xl font-serif text-[#D4A024] flex items-center">
+                  <Lock className="w-5 h-5 mr-2" />
+                  Changer le mot de passe
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setShowPasswordModal(false);
+                    setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                  }}
+                  className="text-[#D4A024] hover:bg-[#D4A024]/10"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-4 space-y-4">
+              {/* Mot de passe actuel */}
+              <div>
+                <Label className="text-gray-300 mb-2 block">Mot de passe actuel *</Label>
+                <div className="relative">
+                  <Input
+                    type={showCurrentPassword ? 'text' : 'password'}
+                    value={passwordForm.currentPassword}
+                    onChange={(e) => setPasswordForm(prev => ({ ...prev, currentPassword: e.target.value }))}
+                    className="bg-black/30 border-[#D4A024]/50 text-white pr-10"
+                    placeholder="Entrez votre mot de passe actuel"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#D4A024]"
+                  >
+                    {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Nouveau mot de passe */}
+              <div>
+                <Label className="text-gray-300 mb-2 block">Nouveau mot de passe *</Label>
+                <div className="relative">
+                  <Input
+                    type={showNewPassword ? 'text' : 'password'}
+                    value={passwordForm.newPassword}
+                    onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
+                    className="bg-black/30 border-[#D4A024]/50 text-white pr-10"
+                    placeholder="Minimum 6 caractères"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#D4A024]"
+                  >
+                    {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Confirmer mot de passe */}
+              <div>
+                <Label className="text-gray-300 mb-2 block">Confirmer le nouveau mot de passe *</Label>
+                <Input
+                  type="password"
+                  value={passwordForm.confirmPassword}
+                  onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                  className="bg-black/30 border-[#D4A024]/50 text-white"
+                  placeholder="Confirmez le nouveau mot de passe"
+                />
+                {passwordForm.confirmPassword && passwordForm.newPassword !== passwordForm.confirmPassword && (
+                  <p className="text-red-400 text-sm mt-1">Les mots de passe ne correspondent pas</p>
+                )}
+              </div>
+
+              {/* Boutons */}
+              <div className="flex gap-3 pt-4 border-t border-[#D4A024]/30">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowPasswordModal(false);
+                    setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                  }}
+                  className="flex-1 border-gray-600 text-gray-300 hover:bg-gray-800"
+                  disabled={changingPassword}
+                >
+                  Annuler
+                </Button>
+                <Button
+                  onClick={handleChangePassword}
+                  className="flex-1 bg-[#D4A024] hover:bg-[#c49020] text-[#7A2020] font-bold"
+                  disabled={changingPassword || !passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword || passwordForm.newPassword !== passwordForm.confirmPassword}
+                >
+                  {changingPassword ? (
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Check className="w-4 h-4 mr-2" />
+                  )}
+                  Confirmer
                 </Button>
               </div>
             </CardContent>
