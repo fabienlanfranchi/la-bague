@@ -14,13 +14,13 @@ mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
-# MySQL connection config for cigars database
+# MySQL connection config for cigars database - Read from environment variables
 MYSQL_CONFIG = {
-    'host': 'gb60402-001.eu.clouddb.ovh.net',
-    'port': 35741,
-    'user': 'cigare20',
-    'password': 'Barthe20167',
-    'database': 'CIGARE',
+    'host': os.environ.get('MYSQL_HOST', 'gb60402-001.eu.clouddb.ovh.net'),
+    'port': int(os.environ.get('MYSQL_PORT', 35741)),
+    'user': os.environ.get('MYSQL_USER', 'cigare20'),
+    'password': os.environ.get('MYSQL_PASSWORD', 'Barthe20167'),
+    'database': os.environ.get('MYSQL_DATABASE', 'CIGARE'),
     'charset': 'utf8mb4',
     'use_unicode': True
 }
