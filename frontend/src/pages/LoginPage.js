@@ -34,7 +34,7 @@ const LoginPage = () => {
   const [loginData, setLoginData] = useState({
     email: '',
     password: '',
-    stayLoggedIn: false
+    stayLoggedIn: true  // Par défaut coché pour une meilleure UX
   });
 
   // État pour la création de mot de passe (première connexion après activation)
@@ -130,8 +130,8 @@ const LoginPage = () => {
 
       const { member } = response.data;
 
-      // Connecter l'utilisateur
-      setCurrentMember(member);
+      // Connecter l'utilisateur (toujours persister lors de l'activation)
+      setCurrentMember(member, true);
 
       toast.success('Compte activé avec succès ! Bienvenue !');
       navigate('/dashboard');

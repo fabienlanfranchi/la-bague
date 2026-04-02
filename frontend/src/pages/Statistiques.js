@@ -398,43 +398,46 @@ export default function Statistiques() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 px-2 sm:px-0">
       {/* Header */}
-      <div className="flex justify-between items-center flex-wrap gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-stone-800">Statistiques de Présences</h1>
-          <p className="text-stone-500">Gérez les présences des membres par saison</p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-stone-800 truncate">Statistiques de Présences</h1>
+          <p className="text-sm sm:text-base text-stone-500">Gérez les présences des membres par saison</p>
         </div>
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2 flex-wrap w-full sm:w-auto">
           <Button
             variant={viewMode === 'saison' ? 'default' : 'outline'}
             onClick={() => setViewMode('saison')}
-            className={viewMode === 'saison' 
+            size="sm"
+            className={`flex-1 sm:flex-none ${viewMode === 'saison' 
               ? 'bg-amber-600 hover:bg-amber-700 text-white' 
-              : 'bg-stone-100 border-stone-300 text-stone-600 hover:bg-stone-200 hover:text-stone-800'}
+              : 'bg-stone-100 border-stone-300 text-stone-600 hover:bg-stone-200 hover:text-stone-800'}`}
           >
-            <Calendar className="h-4 w-4 mr-2" />
-            Saisie
+            <Calendar className="h-4 w-4 mr-1 sm:mr-2" />
+            <span className="text-xs sm:text-sm">Saisie</span>
           </Button>
           <Button
             variant={viewMode === 'global' ? 'default' : 'outline'}
             onClick={() => setViewMode('global')}
-            className={viewMode === 'global' 
+            size="sm"
+            className={`flex-1 sm:flex-none ${viewMode === 'global' 
               ? 'bg-amber-600 hover:bg-amber-700 text-white' 
-              : 'bg-stone-100 border-stone-300 text-stone-600 hover:bg-stone-200 hover:text-stone-800'}
+              : 'bg-stone-100 border-stone-300 text-stone-600 hover:bg-stone-200 hover:text-stone-800'}`}
           >
-            <Users className="h-4 w-4 mr-2" />
-            Stats Membres
+            <Users className="h-4 w-4 mr-1 sm:mr-2" />
+            <span className="text-xs sm:text-sm">Stats Membres</span>
           </Button>
           <Button
             variant={viewMode === 'stats_saison' ? 'default' : 'outline'}
             onClick={() => setViewMode('stats_saison')}
-            className={viewMode === 'stats_saison' 
+            size="sm"
+            className={`flex-1 sm:flex-none ${viewMode === 'stats_saison' 
               ? 'bg-amber-600 hover:bg-amber-700 text-white' 
-              : 'bg-stone-100 border-stone-300 text-stone-600 hover:bg-stone-200 hover:text-stone-800'}
+              : 'bg-stone-100 border-stone-300 text-stone-600 hover:bg-stone-200 hover:text-stone-800'}`}
           >
-            <TrendingUp className="h-4 w-4 mr-2" />
-            Stats Saisons
+            <TrendingUp className="h-4 w-4 mr-1 sm:mr-2" />
+            <span className="text-xs sm:text-sm">Stats Saisons</span>
           </Button>
         </div>
       </div>
@@ -444,19 +447,19 @@ export default function Statistiques() {
           {/* Sélecteur de saison */}
           <Card>
             <CardContent className="py-4">
-              <div className="flex items-center justify-between">
-                <Button variant="outline" onClick={goToPrevSaison} disabled={selectedSaison <= 1}>
+              <div className="flex items-center justify-between gap-2">
+                <Button variant="outline" size="sm" onClick={goToPrevSaison} disabled={selectedSaison <= 1} className="shrink-0">
                   <ChevronLeft className="h-5 w-5" />
                 </Button>
                 
-                <div className="flex items-center gap-4">
-                  <span className="text-2xl font-bold text-amber-700">Saison {selectedSaison}</span>
-                  <div className="flex gap-1">
+                <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 min-w-0 flex-1 justify-center">
+                  <span className="text-xl sm:text-2xl font-bold text-amber-700 whitespace-nowrap">Saison {selectedSaison}</span>
+                  <div className="flex gap-1 flex-wrap justify-center max-w-full overflow-x-auto pb-1">
                     {[...Array(Math.min(14, 14))].map((_, i) => (
                       <button
                         key={i + 1}
                         onClick={() => setSelectedSaison(i + 1)}
-                        className={`w-8 h-8 rounded text-sm font-medium transition-colors ${
+                        className={`w-7 h-7 sm:w-8 sm:h-8 rounded text-xs sm:text-sm font-medium transition-colors shrink-0 ${
                           selectedSaison === i + 1
                             ? 'bg-amber-600 text-white'
                             : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
@@ -468,7 +471,7 @@ export default function Statistiques() {
                   </div>
                 </div>
 
-                <Button variant="outline" onClick={goToNextSaison} disabled={selectedSaison >= 20}>
+                <Button variant="outline" size="sm" onClick={goToNextSaison} disabled={selectedSaison >= 20} className="shrink-0">
                   <ChevronRight className="h-5 w-5" />
                 </Button>
               </div>

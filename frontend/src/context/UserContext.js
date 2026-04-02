@@ -119,22 +119,16 @@ export const UserProvider = ({ children }) => {
             setMode(savedMember.is_president ? 'admin' : 'member');
             localStorage.setItem('currentMemberData', JSON.stringify(savedMember));
           } else {
-            // Membre non trouvé, charger Fabien par défaut
+            // Membre non trouvé, supprimer les données corrompues
             localStorage.removeItem('currentMemberId');
             localStorage.removeItem('currentMemberData');
-            const fabien = membersData.find(m => m.nom_complet?.includes('Fabien Lanfranchi'));
-            if (fabien) {
-              setCurrentMember(fabien);
-              setMode('admin');
-            }
+            // NE PAS charger de membre par défaut - rediriger vers login
+            setCurrentMember(null);
           }
         } else {
-          // Mode développement : charger Fabien par défaut
-          const fabien = membersData.find(m => m.nom_complet?.includes('Fabien Lanfranchi'));
-          if (fabien) {
-            setCurrentMember(fabien);
-            setMode('admin');
-          }
+          // Pas de session sauvegardée - NE PAS charger de membre par défaut
+          // L'utilisateur doit se connecter
+          setCurrentMember(null);
         }
         setLoading(false);
       } catch (err) {

@@ -945,7 +945,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
             {viewMode === 'table' && (
               <div className="mt-4 pt-4 border-t border-[#D4A024]/20">
                 {/* Titre de la saison bien visible */}
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
                   <div className="flex items-center space-x-4">
                     {/* Bouton précédent */}
                     <Button
@@ -960,10 +960,10 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                     
                     {/* Titre de la saison */}
                     <div className="text-center">
-                      <h3 className="text-2xl font-serif font-bold text-[#D4A024]">
+                      <h3 className="text-xl sm:text-2xl font-serif font-bold text-[#D4A024]">
                         Saison {selectedSeason}
                       </h3>
-                      <p className="text-gray-400 text-sm">
+                      <p className="text-gray-400 text-xs sm:text-sm">
                         {2012 + selectedSeason} - {2013 + selectedSeason}
                       </p>
                     </div>
@@ -981,14 +981,14 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                   </div>
                   
                   {/* Sélecteur rapide de saison */}
-                  <div className="flex items-center space-x-2">
-                    <span className="text-gray-400 text-sm">Aller à :</span>
-                    <div className="flex flex-wrap gap-1">
+                  <div className="flex items-center gap-2 flex-wrap justify-center">
+                    <span className="text-gray-400 text-xs sm:text-sm hidden sm:inline">Aller à :</span>
+                    <div className="flex flex-wrap gap-1 justify-center max-w-[280px] sm:max-w-none">
                       {[13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map(num => (
                         <button
                           key={num}
                           onClick={() => setSelectedSeason(num)}
-                          className={`w-8 h-8 rounded text-sm font-medium transition-colors ${
+                          className={`w-7 h-7 sm:w-8 sm:h-8 rounded text-xs sm:text-sm font-medium transition-colors ${
                             selectedSeason === num 
                               ? 'bg-[#D4A024] text-[#7A2020]' 
                               : 'bg-black/30 text-[#D4A024]/70 hover:bg-[#D4A024]/20 hover:text-[#D4A024]'
@@ -1347,35 +1347,52 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                               ) : (
                                 /* MODE AFFICHAGE */
                                 <div className="flex items-center justify-between p-3">
-                                  <div className="flex items-center space-x-4 flex-1">
+                                  <div className="flex items-center space-x-4 flex-1 min-w-0">
                                     {/* Numéro */}
-                                    <span className="text-gray-500 text-sm w-6">#{idx + 1}</span>
+                                    <span className="text-gray-500 text-sm w-6 shrink-0">#{idx + 1}</span>
                                     {/* Lieu */}
-                                    <h4 className="text-white font-serif font-semibold min-w-[150px]">
+                                    <h4 className="text-white font-serif font-semibold min-w-[100px] truncate">
                                       {evt.lieu}
                                     </h4>
                                     {/* Date */}
-                                    <span className="text-gray-400 text-sm min-w-[80px]">
+                                    <span className="text-gray-400 text-sm min-w-[70px] shrink-0">
                                       {formatDateShort(evt.date)}
                                     </span>
                                     {/* Type */}
                                     {getTypeBadge(evt.type_sondage)}
                                   </div>
                                   
-                                  {/* Nombre de présents (cliquable pour voir la liste) */}
-                                  <div 
-                                    className="flex items-center space-x-2 bg-[#D4A024]/20 px-4 py-2 rounded-lg cursor-pointer hover:bg-[#D4A024]/30 transition-all"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      loadRepondants(evt);
-                                    }}
-                                    title="Cliquer pour voir les répondants"
-                                    data-testid={`presents-count-${evt.id}`}
-                                  >
-                                    <Users className="w-5 h-5 text-[#D4A024]" />
-                                    <span className="text-[#D4A024] font-bold text-xl">
-                                      {evt.total_presents || 0}
-                                    </span>
+                                  {/* Actions */}
+                                  <div className="flex items-center space-x-2 shrink-0">
+                                    {/* Nombre de présents */}
+                                    <div 
+                                      className="flex items-center space-x-1 sm:space-x-2 bg-[#D4A024]/20 px-2 sm:px-4 py-2 rounded-lg cursor-pointer hover:bg-[#D4A024]/30 transition-all"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        loadRepondants(evt);
+                                      }}
+                                      title="Cliquer pour voir les répondants"
+                                      data-testid={`presents-count-${evt.id}`}
+                                    >
+                                      <Users className="w-4 h-4 sm:w-5 sm:h-5 text-[#D4A024]" />
+                                      <span className="text-[#D4A024] font-bold text-lg sm:text-xl">
+                                        {evt.total_presents || 0}
+                                      </span>
+                                    </div>
+                                    
+                                    {/* Bouton Modifier */}
+                                    {isAdmin && (
+                                      <Button
+                                        onClick={(e) => startEditing(evt, e)}
+                                        size="sm"
+                                        variant="ghost"
+                                        className="text-[#D4A024] hover:bg-[#D4A024]/20 h-8 w-8 p-0"
+                                        title="Modifier"
+                                        data-testid={`edit-btn-${evt.id}`}
+                                      >
+                                        <Edit3 className="w-4 h-4" />
+                                      </Button>
+                                    )}
                                   </div>
                                 </div>
                               )}
