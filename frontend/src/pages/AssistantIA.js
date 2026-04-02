@@ -38,11 +38,14 @@ const AssistantIA = () => {
   const inputRef = useRef(null);
   const hasInitializedFromGuide = useRef(false);
 
-  // ID utilisateur pour l'API - différencie membre vs admin pour Fabien
+  // ID utilisateur pour l'API - différencie membre vs admin pour le Président
   const getUserId = () => {
     if (!currentMember) return 'default-user';
-    // Si c'est Fabien en mode admin, utiliser un ID différent
-    if (currentMember.is_president && isAdmin) {
+    // Si c'est le Président (vérifie la fonction), utiliser un ID différent
+    const isPresident = currentMember.fonction?.toLowerCase() === 'président' || 
+                        currentMember.role === 'admin' ||
+                        currentMember.is_president;
+    if (isPresident && isAdmin) {
       return `${currentMember.id}_president`;
     }
     return currentMember.id;

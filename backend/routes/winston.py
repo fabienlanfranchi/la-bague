@@ -65,35 +65,28 @@ Tu dois être élégant, professionnel et utiliser le vouvoiement digne d'un clu
         nom_complet = user_data.get('nom_complet', f"{user_data.get('prenom', '')} {user_data.get('nom', '')}")
         prenom = user_data.get('prenom', nom_complet.split(' ')[0])
         numero_membre = user_data.get('numero_membre', 'N/A')
+        fonction = user_data.get('fonction', '').lower()
         
-        if is_president_mode:
+        # Détecter si c'est le Président (par fonction ou par mode)
+        is_president_user = fonction == 'président' or is_president_mode
+        
+        if is_president_user:
             appellation = "Président"
             membre_info = f"""
-⚠️ ATTENTION - MODE ADMINISTRATEUR ACTIF ⚠️
-Le Président du club, Fabien Lanfranchi (membre #{numero_membre}), te parle en tant qu'ADMINISTRATEUR.
-- Tu dois l'appeler "Président" ou "Monsieur le Président", JAMAIS "Fabien"
-- C'est une conversation d'administration du club
-- Il a accès aux informations de tous les membres
+⚠️ ATTENTION - PRÉSIDENT DU CLUB ⚠️
+Tu parles au Président du club (membre #{numero_membre}).
+- Tu dois TOUJOURS l'appeler "Président" ou "Monsieur le Président"
+- JAMAIS par son prénom
+- C'est le responsable du club, traite-le avec respect
 """
         else:
             appellation = prenom
-            if prenom.lower() == 'fabien' and 'lanfranchi' in nom_complet.lower():
-                membre_info = f"""
-👤 MEMBRE ACTUEL : {nom_complet} (#{numero_membre})
-⚠️ C'est Fabien Lanfranchi qui te parle en mode MEMBRE (pas en mode Président).
-- Appelle-le "Fabien" comme tout autre membre
-- Traite-le comme un membre normal pour ses questions personnelles
-- Email : {user_data.get('email', 'N/A')}
-- Rôle : {user_data.get('role', 'membre')}
-- Statut : {user_data.get('statut', 'actif')}
-"""
-            else:
-                membre_info = f"""
+            membre_info = f"""
 👤 MEMBRE ACTUEL : {nom_complet} (#{numero_membre})
 - Tu t'adresses à lui/elle par son prénom : {appellation}
 - Email : {user_data.get('email', 'N/A')}
 - Rôle : {user_data.get('role', 'membre')}
-- Date d'adhésion : {user_data.get('date_adhesion', 'N/A')}
+- Fonction : {user_data.get('fonction', 'Membre')}
 - Statut : {user_data.get('statut', 'actif')}
 """
         context_parts.append(membre_info)
@@ -293,9 +286,7 @@ INSTRUCTIONS IMPORTANTES :
 4. DIFFÉRENCIATION DES MEMBRES - RÈGLE ABSOLUE :
    - Chaque membre est UNIQUE avec son propre prénom, nom, numéro, goûts et historique
    - NE JAMAIS confondre deux membres - vérifie toujours le contexte pour savoir QUI te parle
-   - Fabien Lanfranchi peut te parler en 2 modes :
-     * Mode PRÉSIDENT (user_id finit par "_president") → Appelle-le "Président" ou "Monsieur le Président"
-     * Mode MEMBRE (user_id normal) → Appelle-le "Fabien" comme tout autre membre
+   - Si la fonction du membre est "Président" → Appelle-le TOUJOURS "Président" ou "Monsieur le Président", JAMAIS par son prénom
    - Pour tous les autres membres : utilise leur PRÉNOM tel qu'indiqué dans le contexte
    - Quand on te demande les goûts d'un membre, consulte SA Cigarthèque personnelle (pas celle d'un autre)
 5. Tu peux recommander des cigares basés sur les goûts de chaque membre
