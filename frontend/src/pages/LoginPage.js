@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { LogIn, UserPlus, KeyRound, Mail, Lock, User, Hash } from 'lucide-react';
+import { LogIn, UserPlus, KeyRound, Mail, Lock, User, Hash, Eye, EyeOff } from 'lucide-react';
 import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -17,6 +17,11 @@ const LoginPage = () => {
   const { setCurrentMember } = useUser();
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('activation');
+  
+  // État pour afficher/masquer les mots de passe
+  const [showPassword, setShowPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // État pour l'activation de compte (Prénom + Nom + Numéro membre)
   const [activationData, setActivationData] = useState({
@@ -269,13 +274,20 @@ const LoginPage = () => {
                     <Lock className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
                     <Input
                       id="val-password"
-                      type="password"
+                      type={showNewPassword ? "text" : "password"}
                       value={passwordCreationData.password}
                       onChange={(e) => setPasswordCreationData({...passwordCreationData, password: e.target.value})}
                       placeholder="Votre mot de passe"
-                      className="pl-10 bg-black/50 border-[#D4A024]/30 text-white"
+                      className="pl-10 pr-10 bg-black/50 border-[#D4A024]/30 text-white"
                       required
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute right-3 top-3 text-gray-400 hover:text-[#D4A024] transition-colors"
+                    >
+                      {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                   </div>
                 </div>
 
@@ -285,13 +297,20 @@ const LoginPage = () => {
                     <Lock className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
                     <Input
                       id="val-confirm"
-                      type="password"
+                      type={showConfirmPassword ? "text" : "password"}
                       value={passwordCreationData.confirmPassword}
                       onChange={(e) => setPasswordCreationData({...passwordCreationData, confirmPassword: e.target.value})}
                       placeholder="Confirmer le mot de passe"
-                      className="pl-10 bg-black/50 border-[#D4A024]/30 text-white"
+                      className="pl-10 pr-10 bg-black/50 border-[#D4A024]/30 text-white"
                       required
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-3 text-gray-400 hover:text-[#D4A024] transition-colors"
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                   </div>
                 </div>
 
@@ -441,14 +460,21 @@ const LoginPage = () => {
                         <Input
                           id="password"
                           name="password"
-                          type="password"
+                          type={showPassword ? "text" : "password"}
                           autoComplete="current-password"
                           value={loginData.password}
                           onChange={(e) => setLoginData({...loginData, password: e.target.value})}
                           placeholder="Votre mot de passe"
-                          className="pl-10 bg-black/50 border-[#D4A024]/30 text-white"
+                          className="pl-10 pr-10 bg-black/50 border-[#D4A024]/30 text-white"
                           required
                         />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-3 text-gray-400 hover:text-[#D4A024] transition-colors"
+                        >
+                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
                       </div>
                     </div>
 
