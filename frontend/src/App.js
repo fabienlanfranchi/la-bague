@@ -67,12 +67,41 @@ const ErrorScreen = ({ message, onRetry }) => {
   );
 };
 
-// Accès libre - pas de protection requise
+// Protection des routes - redirige vers login si non connecté
 const ProtectedRoute = ({ children }) => {
+  const { currentMember, loading } = useUser();
+  
+  // Attendre la fin du chargement avant de décider
+  if (loading) {
+    return <LoadingScreen />;
+  }
+  
+  // Si pas de membre connecté, rediriger vers login
+  if (!currentMember) {
+    return <Navigate to="/login" replace />;
+  }
+  
   return children;
 };
 
 const AdminRoute = ({ children }) => {
+  const { currentMember, loading, isAdmin } = useUser();
+  
+  // Attendre la fin du chargement
+  if (loading) {
+    return <LoadingScreen />;
+  }
+  
+  // Si pas connecté, rediriger vers login
+  if (!currentMember) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  // Si pas admin, rediriger vers dashboard
+  if (!isAdmin) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  
   return children;
 };
 

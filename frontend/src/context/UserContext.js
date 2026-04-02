@@ -18,14 +18,26 @@ export const UserProvider = ({ children }) => {
   // Mode : 'admin' (Président) ou 'member' (Membre)
   const [mode, setMode] = useState('admin');
   
-  // Données du membre actuellement connecté
-  const [currentMember, setCurrentMember] = useState(null);
+  // Données du membre actuellement connecté - restaurer immédiatement depuis le cache
+  const getInitialMember = () => {
+    try {
+      const savedData = localStorage.getItem('currentMemberData') || sessionStorage.getItem('currentMemberData');
+      if (savedData) {
+        return JSON.parse(savedData);
+      }
+    } catch (e) {
+      console.error('Erreur lecture cache membre:', e);
+    }
+    return null;
+  };
+  
+  const [currentMember, setCurrentMember] = useState(getInitialMember);
   const [members, setMembers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!getInitialMember()); // Pas de loading si déjà en cache
   const [error, setError] = useState(null);
   
   // Ref pour savoir si un login manuel a eu lieu (évite d'écraser avec Fabien)
-  const hasManualLogin = useRef(false);
+  const hasManualLogin = useRef(!!getInitialMember());
 
   // Fonction pour définir le membre courant et persister en localStorage
   const updateCurrentMember = useCallback((member, stayLoggedIn = true) => {
