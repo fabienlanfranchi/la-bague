@@ -122,8 +122,8 @@ Application de gestion complète pour le club de cigares "La Bague Impériale". 
 ---
 
 ## URLs
-- Frontend: https://membres-portal.preview.emergentagent.com
-- API: https://membres-portal.preview.emergentagent.com/api
+- Frontend: https://evento-cigars.preview.emergentagent.com
+- API: https://evento-cigars.preview.emergentagent.com/api
 
 ---
 
