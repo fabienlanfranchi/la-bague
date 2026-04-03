@@ -69,19 +69,36 @@ Tu dois être élégant, professionnel et utiliser le vouvoiement digne d'un clu
         nom_complet = user_data.get('nom_complet', f"{user_data.get('prenom', '')} {user_data.get('nom', '')}")
         prenom = user_data.get('prenom', nom_complet.split(' ')[0])
         numero_membre = user_data.get('numero_membre', 'N/A')
-        fonction = user_data.get('fonction', '').lower()
+        fonction = user_data.get('fonction', '').lower() if user_data.get('fonction') else ''
+        is_pres_field = user_data.get('is_president', False)
+        role = user_data.get('role', '').lower() if user_data.get('role') else ''
         
-        # Détecter si c'est le Président (par fonction ou par mode)
-        is_president_user = fonction == 'président' or is_president_mode
+        # Détecter si c'est le Président (plusieurs méthodes)
+        is_president_user = (
+            'président' in fonction or 
+            fonction == 'president' or
+            is_president_mode or 
+            is_pres_field == True or
+            role == 'admin' or
+            numero_membre == 1 or
+            numero_membre == '1'
+        )
         
         if is_president_user:
             appellation = "Président"
             membre_info = f"""
-⚠️ ATTENTION - PRÉSIDENT DU CLUB ⚠️
-Tu parles au Président du club (membre #{numero_membre}).
+⚠️⚠️⚠️ RÈGLE ABSOLUE - PRÉSIDENT DU CLUB ⚠️⚠️⚠️
+Tu parles au PRÉSIDENT du club "La Bague Impériale" (membre #{numero_membre}).
+
+INSTRUCTIONS STRICTES :
 - Tu dois TOUJOURS l'appeler "Président" ou "Monsieur le Président"
-- JAMAIS par son prénom
-- C'est le responsable du club, traite-le avec respect
+- Tu ne dois JAMAIS utiliser son prénom ({prenom})
+- Tu ne dois JAMAIS dire "Fabien"
+- C'est le responsable et fondateur du club
+- Traite-le avec le plus grand respect
+
+Exemples corrects: "Bien sûr Président", "Monsieur le Président, voici...", "Président, je vous recommande..."
+Exemples INCORRECTS à ne JAMAIS utiliser: "Fabien", "Cher Fabien", "{prenom}"
 """
         else:
             appellation = prenom

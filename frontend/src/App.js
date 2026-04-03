@@ -17,7 +17,6 @@ import AssistantIA from './pages/AssistantIA';
 import Boutique from './pages/Boutique';
 import Sondages from './pages/Sondages';
 import Statistiques from './pages/Statistiques';
-import Sauvegarde from './pages/Sauvegarde';
 import LoginPage from './pages/LoginPage';
 import ToutSurLeCigare from './pages/ToutSurLeCigare';
 import Aide from './pages/Aide';
@@ -362,16 +361,6 @@ function App() {
                 <AdminRoute>
                   <AppLayout>
                     <Statistiques />
-                  </AppLayout>
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="/sauvegarde"
-              element={
-                <AdminRoute>
-                  <AppLayout>
-                    <Sauvegarde />
                   </AppLayout>
                 </AdminRoute>
               }

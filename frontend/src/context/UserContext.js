@@ -31,7 +31,7 @@ export const UserProvider = ({ children }) => {
     return null;
   };
   
-  const [currentMember, setCurrentMember] = useState(getInitialMember);
+  const [currentMemberState, setCurrentMemberState] = useState(getInitialMember);
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(!getInitialMember()); // Pas de loading si déjà en cache
   const [error, setError] = useState(null);
@@ -40,9 +40,9 @@ export const UserProvider = ({ children }) => {
   const hasManualLogin = useRef(!!getInitialMember());
 
   // Fonction pour définir le membre courant et persister en localStorage
-  const updateCurrentMember = useCallback((member, stayLoggedIn = true) => {
+  const setCurrentMember = useCallback((member, stayLoggedIn = true) => {
     hasManualLogin.current = true; // Marquer qu'un login manuel a eu lieu
-    setCurrentMember(member);
+    setCurrentMemberState(member);
     setLoading(false); // S'assurer que loading est false après login
     if (member) {
       // Sauvegarder la session SEULEMENT si "Rester connecté" est coché
@@ -87,7 +87,8 @@ export const UserProvider = ({ children }) => {
       if (savedMemberId && savedMemberData) {
         try {
           const cachedMember = JSON.parse(savedMemberData);
-          setCurrentMember(cachedMember);
+          // IMPORTANT: utiliser setCurrentMemberState directement pour ne pas déclencher updateCurrentMember
+          setCurrentMemberState(cachedMember);
           setMode(cachedMember.is_president ? 'admin' : 'member');
           hasManualLogin.current = true;
           setLoading(false);
@@ -163,7 +164,9 @@ export const UserProvider = ({ children }) => {
     localStorage.removeItem('currentMemberId');
     localStorage.removeItem('currentMemberData');
     localStorage.removeItem('rememberedMember');
-    setCurrentMember(null);
+    sessionStorage.removeItem('currentMemberId');
+    sessionStorage.removeItem('currentMemberData');
+    setCurrentMemberState(null);
     setMode('admin');
   }, []);
 
@@ -176,8 +179,8 @@ export const UserProvider = ({ children }) => {
         setMode,
         toggleMode,
         isAdmin,
-        currentMember,
-        setCurrentMember: updateCurrentMember,
+        currentMember: currentMemberState,
+        setCurrentMember,
         members,
         loading,
         error,

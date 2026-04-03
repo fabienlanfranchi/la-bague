@@ -180,16 +180,6 @@ const Aide = () => {
         "Voir les tendances du club",
         "Exporter les données"
       ]
-    },
-    {
-      icon: Save,
-      title: "Sauvegarde",
-      shortDesc: "Gérez les sauvegardes des données.",
-      details: [
-        "Exporter les données du club",
-        "Importer des données",
-        "Sauvegarder la base de données"
-      ]
     }
   ];
 
