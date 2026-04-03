@@ -45,6 +45,7 @@ const Evenements = () => {
   
   // État pour l'édition en mode tableau
   const [tableEditData, setTableEditData] = useState({});
+  const [savingAll, setSavingAll] = useState(false);
   
   // État pour afficher la liste des répondants
   const [showRepondantsModal, setShowRepondantsModal] = useState(false);
@@ -562,6 +563,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
       return;
     }
 
+    setSavingAll(true);
     let successCount = 0;
     for (const [eventId, changes] of modifiedEvents) {
       try {
@@ -581,9 +583,42 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
       }
     }
 
+    // Nettoyer les modifications sans recharger toute la page
     setTableEditData({});
-    toast.success(`${successCount} événement(s) modifié(s)`);
-    loadEvenements();
+    
+    // Mettre à jour localement les événements modifiés
+    setEvenements(prev => prev.map(evt => {
+      const changes = modifiedEvents.find(([id]) => id === evt.id);
+      if (changes) {
+        const [_, data] = changes;
+        return {
+          ...evt,
+          lieu: data.lieu !== undefined ? data.lieu : evt.lieu,
+          date: data.date !== undefined ? new Date(data.date + 'T12:00:00').toISOString() : evt.date,
+          type_sondage: data.type_sondage !== undefined ? data.type_sondage : evt.type_sondage,
+          total_presents: data.total_presents !== undefined ? parseInt(data.total_presents) || 0 : evt.total_presents,
+        };
+      }
+      return evt;
+    }));
+    
+    setSavingAll(false);
+    toast.success(`✅ ${successCount} événement(s) modifié(s) pour la saison ${selectedSeason}`);
+  };
+
+  // Compter les modifications en attente
+  const pendingChangesCount = Object.values(tableEditData).filter(d => d.modified).length;
+
+  // Changer de saison avec confirmation si modifications non sauvegardées
+  const changeSeason = (newSeason) => {
+    if (pendingChangesCount > 0) {
+      if (!window.confirm(`⚠️ Vous avez ${pendingChangesCount} modification(s) non sauvegardée(s).\n\nVoulez-vous vraiment changer de saison ?\nLes modifications seront perdues.`)) {
+        return;
+      }
+      // Annuler les modifications
+      setTableEditData({});
+    }
+    setSelectedSeason(newSeason);
   };
 
   const getTableValue = (evt, field) => {
@@ -951,7 +986,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => setSelectedSeason(s => Math.max(1, s - 1))}
+                      onClick={() => changeSeason(Math.max(1, selectedSeason - 1))}
                       disabled={selectedSeason <= 1}
                       className="border-[#D4A024]/50 text-[#D4A024] hover:bg-[#D4A024]/20 disabled:opacity-30"
                     >
@@ -972,7 +1007,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => setSelectedSeason(s => Math.min(13, s + 1))}
+                      onClick={() => changeSeason(Math.min(13, selectedSeason + 1))}
                       disabled={selectedSeason >= 13}
                       className="border-[#D4A024]/50 text-[#D4A024] hover:bg-[#D4A024]/20 disabled:opacity-30"
                     >
@@ -987,7 +1022,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                       {[13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map(num => (
                         <button
                           key={num}
-                          onClick={() => setSelectedSeason(num)}
+                          onClick={() => changeSeason(num)}
                           className={`w-7 h-7 sm:w-8 sm:h-8 rounded text-xs sm:text-sm font-medium transition-colors ${
                             selectedSeason === num 
                               ? 'bg-[#D4A024] text-[#7A2020]' 
@@ -1018,17 +1053,34 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                     </span>
                   </div>
                   
-                  {/* Bouton sauvegarder toutes les modifications */}
-                  {Object.values(tableEditData).some(d => d.modified) && (
+                  {/* Bouton sauvegarder toutes les modifications - TOUJOURS VISIBLE */}
+                  <div className="flex items-center gap-3">
+                    {pendingChangesCount > 0 && (
+                      <span className="text-yellow-400 text-sm animate-pulse">
+                        ⚠️ {pendingChangesCount} modification(s) non sauvegardée(s)
+                      </span>
+                    )}
                     <Button
                       onClick={saveAllTableChanges}
-                      className="bg-green-600 hover:bg-green-700 text-white"
+                      disabled={pendingChangesCount === 0 || savingAll}
+                      className={`${pendingChangesCount > 0 
+                        ? 'bg-green-600 hover:bg-green-700 animate-pulse' 
+                        : 'bg-gray-600'} text-white font-bold px-6`}
                       data-testid="save-all-changes"
                     >
-                      <Save className="w-4 h-4 mr-2" />
-                      Enregistrer tout ({Object.values(tableEditData).filter(d => d.modified).length})
+                      {savingAll ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                          Sauvegarde...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-4 h-4 mr-2" />
+                          Sauvegarder la saison {pendingChangesCount > 0 && `(${pendingChangesCount})`}
+                        </>
+                      )}
                     </Button>
-                  )}
+                  </div>
                 </div>
               </div>
             )}
@@ -1102,14 +1154,9 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                           <td className="px-3 py-2 text-center">
                             <div className="flex items-center justify-center space-x-1">
                               {isRowModified(evt.id) && (
-                                <Button
-                                  onClick={() => saveTableRow(evt.id)}
-                                  size="sm"
-                                  className="h-7 w-7 p-0 bg-green-600 hover:bg-green-700"
-                                  title="Enregistrer"
-                                >
-                                  <Save className="w-3 h-3" />
-                                </Button>
+                                <span className="text-yellow-400 text-xs" title="Modification en attente">
+                                  ✏️
+                                </span>
                               )}
                               {isAdmin && (
                                 <Button
