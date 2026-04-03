@@ -93,15 +93,22 @@ export const UserProvider = ({ children }) => {
           hasManualLogin.current = true;
           setLoading(false);
           
-          // Rafraîchir les données en arrière-plan
+          // Rafraîchir les données en arrière-plan SANS toucher à la session
           axios.get(`${API}/members`, { timeout: 10000 }).then(response => {
             const membersData = response.data || [];
             setMembers(membersData);
             // Mettre à jour les données du membre si elles ont changé
+            // IMPORTANT: Ne pas appeler setCurrentMember ici pour éviter d'écraser la session
             const updatedMember = membersData.find(m => m.id === savedMemberId);
             if (updatedMember) {
-              setCurrentMember(updatedMember);
-              localStorage.setItem('currentMemberData', JSON.stringify(updatedMember));
+              // Mise à jour silencieuse de l'état et du cache sans déclencher la logique de persistance
+              setCurrentMemberState(updatedMember);
+              // Préserver le stockage existant (localStorage ou sessionStorage)
+              if (localStorage.getItem('currentMemberId')) {
+                localStorage.setItem('currentMemberData', JSON.stringify(updatedMember));
+              } else if (sessionStorage.getItem('currentMemberId')) {
+                sessionStorage.setItem('currentMemberData', JSON.stringify(updatedMember));
+              }
             }
           }).catch(err => console.error('Erreur rafraîchissement membres:', err));
           

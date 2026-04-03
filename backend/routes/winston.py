@@ -283,6 +283,13 @@ async def chat_with_assistant(request: ChatMessageRequest):
         user_id = request.user_id
         session_id = f"chat_{user_id}"
         
+        # IMPORTANT: Toujours reconstruire le contexte pour le Président 
+        # pour s'assurer que les instructions d'appellation sont respectées
+        is_president_mode = user_id.endswith('_president')
+        if is_president_mode and session_id in chat_sessions:
+            # Supprimer la session pour forcer la reconstruction du contexte
+            del chat_sessions[session_id]
+        
         if session_id not in chat_sessions:
             context = await build_assistant_context(user_id)
             
