@@ -1507,12 +1507,12 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex-1 min-w-0">
                           <h3 className="text-lg font-serif font-bold text-white truncate uppercase">
-                            {cigare.nom_cigare || cigare.vitole_nom || 'Sans nom'}
+                            {cigare.nom_cigare || cigare.vitole_nom || cigare.vitole || 'Sans nom'}
                           </h3>
                           <p className="text-[#D4A024] truncate">{cigare.marque_display || cigare.marque || ''}</p>
                           <p className="text-gray-400 text-sm truncate">{cigare.gamme_display || cigare.gamme || ''}</p>
                           {cigare.module && (
-                            <p className="text-gray-500 text-xs truncate">{cigare.module}{cigare.vitole ? ` (${cigare.vitole})` : ''}</p>
+                            <p className="text-gray-500 text-xs truncate">{cigare.module}</p>
                           )}
                         </div>
                         {cigare.note_bagues && (
@@ -1764,19 +1764,19 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
                               Ma Cigarthèque
                             </Button>
                           )}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => { e.stopPropagation(); copyFicheCigare(cigare); }}
-                            className="flex-1 text-[#D4A024] hover:bg-[#D4A024]/10"
-                            title="Copier la fiche"
-                            data-testid={`copy-apero-btn-${cigare.id}`}
-                          >
-                            <Copy className="w-4 h-4 mr-1" />
-                            Copier
-                          </Button>
                           {isAdmin && (
                             <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => { e.stopPropagation(); copyFicheCigare(cigare); }}
+                                className="flex-1 text-[#D4A024] hover:bg-[#D4A024]/10"
+                                title="Copier la fiche"
+                                data-testid={`copy-apero-btn-${cigare.id}`}
+                              >
+                                <Copy className="w-4 h-4 mr-1" />
+                                Copier
+                              </Button>
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -2027,12 +2027,12 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
               <DialogHeader>
                 <div>
                   <DialogTitle className="text-2xl font-serif text-white uppercase">
-                    {selectedCigare.nom_cigare || selectedCigare.vitole_nom || 'Sans nom'}
+                    {selectedCigare.nom_cigare || selectedCigare.vitole_nom || selectedCigare.vitole || 'Sans nom'}
                   </DialogTitle>
                   <p className="text-[#D4A024] text-lg">{selectedCigare.marque_display || selectedCigare.marque || ''}</p>
                   <p className="text-gray-400">{selectedCigare.gamme_display || selectedCigare.gamme || ''}</p>
                   {selectedCigare.module && (
-                    <p className="text-gray-500 text-sm">{selectedCigare.module}{selectedCigare.vitole ? ` (${selectedCigare.vitole})` : ''}</p>
+                    <p className="text-gray-500 text-sm">{selectedCigare.module}</p>
                   )}
                 </div>
               </DialogHeader>
@@ -2823,12 +2823,12 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
                             Cigare {idx + 1}
                           </Badge>
                           <CardTitle className="text-xl font-serif text-white mt-2 uppercase">
-                            {cigare.nom_cigare || cigare.vitole_nom || 'Sans nom'}
+                            {cigare.nom_cigare || cigare.vitole_nom || cigare.vitole || 'Sans nom'}
                           </CardTitle>
                           <p className="text-[#D4A024]">{cigare.marque_display || cigare.marque || ''}</p>
                           <p className="text-gray-400 text-sm">{cigare.gamme_display || cigare.gamme || ''}</p>
                           {cigare.module && (
-                            <p className="text-gray-500 text-xs">{cigare.module}{cigare.vitole ? ` (${cigare.vitole})` : ''}</p>
+                            <p className="text-gray-500 text-xs">{cigare.module}</p>
                           )}
                         </div>
                         <Button
