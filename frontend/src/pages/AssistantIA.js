@@ -38,14 +38,13 @@ const AssistantIA = () => {
   const inputRef = useRef(null);
   const hasInitializedFromGuide = useRef(false);
 
-  // ID utilisateur pour l'API - différencie membre vs admin pour le Président
+  // ID utilisateur pour l'API - différencie le Président des autres membres
   const getUserId = () => {
     if (!currentMember) return 'default-user';
-    // Si c'est le Président (vérifie la fonction), utiliser un ID différent
+    // UNIQUEMENT si la fonction est "Président" (pas juste admin)
     const isPresident = currentMember.fonction?.toLowerCase() === 'président' || 
-                        currentMember.role === 'admin' ||
-                        currentMember.is_president;
-    if (isPresident && isAdmin) {
+                        currentMember.is_president === true;
+    if (isPresident) {
       return `${currentMember.id}_president`;
     }
     return currentMember.id;
@@ -128,11 +127,16 @@ const AssistantIA = () => {
           timestamp: m.timestamp
         })));
       } else {
-        // Message de bienvenue si pas d'historique
-        const prenom = currentMember?.prenom || currentMember?.nom_complet?.split(' ')[0] || 'cher membre';
+        // Message de bienvenue personnalisé si pas d'historique
+        const isPresident = currentMember?.fonction?.toLowerCase() === 'président' || 
+                           currentMember?.is_president === true;
+        const appellation = isPresident 
+          ? 'Monsieur le Président' 
+          : (currentMember?.prenom || currentMember?.nom_complet?.split(' ')[0] || 'cher membre');
+        
         setMessages([{
           role: 'assistant',
-          content: `Bonjour ${prenom} ! Je suis Winston, votre concierge personnel de La Bague Impériale. 🎩\n\n**Voici ce que je peux faire pour vous :**\n\n🎯 **Choix de cigare** — Je vous guide vers LE cigare adapté\n📚 **Guide du Cigare** — Tout savoir sur le cigare\n🥃 **Accords** — Quel whisky avec votre cigare ?\n👥 **Le Club** — Qui est le plus assidu ? Que préfère tel membre ?\n📍 **L'application** — Où trouver vos stats, cotisations, etc.\n\nCliquez sur **"Choix de cigare"** ou posez-moi votre question !`,
+          content: `Bonjour ${appellation} ! 🎩\n\nJe suis **Winston**, votre concierge personnel et assistant certifié du club **La Bague Impériale**.\n\nJe possède deux certifications :\n• **Bague Specialist** — Je connais parfaitement les 35 membres du club, vos goûts, vos préférences et tout l'historique du club.\n• **Conca Specialist** — Je maîtrise la Carte du Bar pour vous conseiller les meilleurs accords cigare & alcool.\n\n**Comment puis-je vous aider ?**\n\n🎯 **Choix de cigare** — Je vous guide vers LE cigare adapté à votre moment\n📚 **Guide du Cigare** — Terroirs, formats, marques, vocabulaire...\n🥃 **Accords** — Quel whisky, rhum ou cognac avec votre cigare ?\n👥 **Le Club** — Statistiques, préférences des membres, événements\n\nCliquez sur un bouton ci-dessous ou posez-moi directement votre question !`,
           timestamp: new Date().toISOString()
         }]);
       }
@@ -143,10 +147,15 @@ const AssistantIA = () => {
 
   // Lancer le flow "Choix de cigare"
   const startCigarChoice = () => {
-    const prenom = currentMember?.prenom || currentMember?.nom_complet?.split(' ')[0] || 'cher membre';
+    const isPresident = currentMember?.fonction?.toLowerCase() === 'président' || 
+                       currentMember?.is_president === true;
+    const appellation = isPresident 
+      ? 'Président' 
+      : (currentMember?.prenom || currentMember?.nom_complet?.split(' ')[0] || 'cher membre');
+    
     const choixMessage = {
       role: 'assistant',
-      content: `${prenom}, je vais vous aider à choisir le cigare parfait pour votre situation ! 🎯\n\n**Première question : Quel est votre profil de fumeur ?**\n\n1️⃣ **Débutant** — Je découvre le cigare\n2️⃣ **Amateur** — J'ai déjà quelques repères\n3️⃣ **Confirmé** — Je maîtrise bien mon sujet\n4️⃣ **Expert** — Grande expérience du cigare\n\nRépondez par le numéro ou le mot (ex: "débutant" ou "1")`,
+      content: `${appellation}, je vais vous aider à choisir le cigare parfait pour votre situation ! 🎯\n\n**Première question : Quel est votre profil de fumeur ?**\n\n1️⃣ **Débutant** — Je découvre le cigare\n2️⃣ **Amateur** — J'ai déjà quelques repères\n3️⃣ **Confirmé** — Je maîtrise bien mon sujet\n4️⃣ **Expert** — Grande expérience du cigare\n\nRépondez par le numéro ou le mot (ex: "débutant" ou "1")`,
       timestamp: new Date().toISOString()
     };
     setMessages(prev => [...prev, choixMessage]);

@@ -73,15 +73,12 @@ Tu dois être élégant, professionnel et utiliser le vouvoiement digne d'un clu
         is_pres_field = user_data.get('is_president', False)
         role = user_data.get('role', '').lower() if user_data.get('role') else ''
         
-        # Détecter si c'est le Président (plusieurs méthodes)
+        # Détecter si c'est le Président (uniquement sur la FONCTION ou le flag is_president)
+        # IMPORTANT: Ne PAS utiliser le role 'admin' car d'autres admins ne sont pas le Président
         is_president_user = (
             'président' in fonction or 
             fonction == 'president' or
-            is_president_mode or 
-            is_pres_field == True or
-            role == 'admin' or
-            numero_membre == 1 or
-            numero_membre == '1'
+            is_pres_field == True
         )
         
         if is_president_user:
