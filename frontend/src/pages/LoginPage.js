@@ -80,8 +80,9 @@ const LoginPage = () => {
           memberName: member.nom_complet,
           memberNumero: activationData.numeroMembre,
           email: member.email || '',
-          password: suggestedPassword,
-          confirmPassword: suggestedPassword
+          password: '',
+          confirmPassword: '',
+          suggestedPassword: suggestedPassword  // Stocker la suggestion séparément
         });
         setShowPasswordCreation(true);
         toast.info('Compte trouvé ! Créez votre mot de passe.');
@@ -270,6 +271,23 @@ const LoginPage = () => {
 
                 <div>
                   <Label htmlFor="val-password" className="text-white">Mot de passe</Label>
+                  {/* Suggestion de mot de passe */}
+                  {passwordCreationData.suggestedPassword && (
+                    <div className="mb-2 p-2 bg-[#D4A024]/10 border border-[#D4A024]/30 rounded-md">
+                      <p className="text-xs text-gray-400 mb-1">Suggestion (cliquez pour utiliser) :</p>
+                      <button
+                        type="button"
+                        onClick={() => setPasswordCreationData({
+                          ...passwordCreationData, 
+                          password: passwordCreationData.suggestedPassword,
+                          confirmPassword: passwordCreationData.suggestedPassword
+                        })}
+                        className="text-[#D4A024] font-mono text-sm hover:underline"
+                      >
+                        {passwordCreationData.suggestedPassword}
+                      </button>
+                    </div>
+                  )}
                   <div className="relative">
                     <Lock className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
                     <Input
@@ -277,9 +295,10 @@ const LoginPage = () => {
                       type={showNewPassword ? "text" : "password"}
                       value={passwordCreationData.password}
                       onChange={(e) => setPasswordCreationData({...passwordCreationData, password: e.target.value})}
-                      placeholder="Votre mot de passe"
+                      placeholder="Choisissez votre mot de passe"
                       className="pl-10 pr-10 bg-black/50 border-[#D4A024]/30 text-white"
                       required
+                      autoComplete="new-password"
                     />
                     <button
                       type="button"
@@ -303,6 +322,7 @@ const LoginPage = () => {
                       placeholder="Confirmer le mot de passe"
                       className="pl-10 pr-10 bg-black/50 border-[#D4A024]/30 text-white"
                       required
+                      autoComplete="new-password"
                     />
                     <button
                       type="button"
