@@ -39,8 +39,9 @@ const Evenements = () => {
   const [showHistorique, setShowHistorique] = useState(false);
   const [expandedSeasons, setExpandedSeasons] = useState({});
   
-  // Mode d'affichage : 'list' (accordéon) ou 'table' (tableau)
-  const [viewMode, setViewMode] = useState('list');
+  // Mode d'affichage : 'list' (accordéon) ou 'table' (tableau éditable)
+  // Tableau par défaut pour permettre l'édition facile des présences
+  const [viewMode, setViewMode] = useState('table');
   const [selectedSeason, setSelectedSeason] = useState(13);
   
   // État pour l'édition en mode tableau
@@ -1303,148 +1304,102 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                           {evtsTermines.map((evt, idx) => (
                             <div 
                               key={evt.id}
-                              className="bg-black/20 border border-[#D4A024]/10 rounded hover:border-[#D4A024]/30 transition-all"
+                              className={`border rounded transition-all ${
+                                isRowModified(evt.id) 
+                                  ? 'bg-yellow-900/20 border-yellow-500/50' 
+                                  : 'bg-black/20 border-[#D4A024]/10 hover:border-[#D4A024]/30'
+                              }`}
                               data-testid={`event-${evt.id}`}
                             >
-                              {editingEvent === evt.id ? (
-                                /* MODE ÉDITION */
-                                <div className="p-4 space-y-3" onClick={(e) => e.stopPropagation()}>
-                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                    {/* Lieu */}
-                                    <div>
-                                      <label className="block text-base text-gray-400 mb-1">Lieu</label>
-                                      <input
-                                        type="text"
-                                        value={editForm.lieu}
-                                        onChange={(e) => setEditForm({...editForm, lieu: e.target.value})}
-                                        className="w-full px-2 py-1 bg-black/40 border border-[#D4A024]/30 rounded text-white text-sm"
-                                        data-testid={`edit-lieu-${evt.id}`}
-                                      />
-                                    </div>
-                                    {/* Date */}
-                                    <div>
-                                      <label className="block text-base text-gray-400 mb-1">Date (jj/mm/aa)</label>
-                                      <input
-                                        type="date"
-                                        value={editForm.date}
-                                        onChange={(e) => setEditForm({...editForm, date: e.target.value})}
-                                        className="w-full px-2 py-1 bg-black/40 border border-[#D4A024]/30 rounded text-white text-sm"
-                                        data-testid={`edit-date-${evt.id}`}
-                                      />
-                                    </div>
-                                    {/* Type */}
-                                    <div>
-                                      <label className="block text-base text-gray-400 mb-1">Type</label>
-                                      <select
-                                        value={editForm.type_sondage}
-                                        onChange={(e) => setEditForm({...editForm, type_sondage: e.target.value})}
-                                        className="w-full px-2 py-1 bg-black/40 border border-[#D4A024]/30 rounded text-white text-sm"
-                                        data-testid={`edit-type-${evt.id}`}
-                                      >
-                                        <option value="repas">Repas</option>
-                                        <option value="apero">Apéro</option>
-                                        <option value="anniversaire">Anniversaire</option>
-                                      </select>
-                                    </div>
-                                    {/* Nombre de présences */}
-                                    <div>
-                                      <label className="block text-base text-gray-400 mb-1">Présences</label>
-                                      <input
-                                        type="number"
-                                        min="0"
-                                        value={editForm.total_presents}
-                                        onChange={(e) => setEditForm({...editForm, total_presents: e.target.value})}
-                                        className="w-full px-2 py-1 bg-black/40 border border-[#D4A024]/30 rounded text-white text-sm"
-                                        data-testid={`edit-presents-${evt.id}`}
-                                      />
-                                    </div>
-                                  </div>
-                                  {/* Boutons */}
-                                  <div className="flex space-x-2 pt-2">
-                                    <Button
-                                      onClick={(e) => saveEdit(evt.id, e)}
-                                      size="sm"
-                                      className="bg-green-600 hover:bg-green-700 text-white"
-                                      data-testid={`save-edit-${evt.id}`}
-                                    >
-                                      <Save className="w-4 h-4 mr-1" />
-                                      Enregistrer
-                                    </Button>
-                                    <Button
-                                      onClick={cancelEditing}
-                                      size="sm"
-                                      variant="outline"
-                                      className="border-gray-500 text-gray-300 hover:bg-gray-800"
-                                    >
-                                      Annuler
-                                    </Button>
-                                    {isAdmin && (
-                                      <Button
-                                        onClick={(e) => handleDeleteEvent(evt.id, e)}
-                                        size="sm"
-                                        variant="outline"
-                                        className="border-red-600 text-red-400 hover:bg-red-900/20 ml-auto"
-                                        data-testid={`delete-event-${evt.id}`}
-                                      >
-                                        <Trash2 className="w-4 h-4" />
-                                      </Button>
-                                    )}
-                                  </div>
+                              {/* MODE ÉDITION DIRECT - Tous les champs éditables */}
+                              <div className="flex items-center justify-between p-2 sm:p-3 gap-2">
+                                <div className="flex items-center gap-1 sm:gap-3 flex-1 min-w-0">
+                                  {/* Numéro */}
+                                  <span className="text-gray-500 text-xs w-5 shrink-0">#{idx + 1}</span>
+                                  
+                                  {/* Lieu - éditable */}
+                                  <input
+                                    type="text"
+                                    value={getTableValue(evt.id, 'lieu', evt.lieu)}
+                                    onChange={(e) => handleTableCellChange(evt.id, 'lieu', e.target.value)}
+                                    className="font-serif font-semibold w-16 sm:w-24 px-1 py-0.5 rounded text-xs sm:text-sm bg-transparent text-white border border-transparent hover:border-[#D4A024]/30 focus:border-[#D4A024] focus:bg-black/30"
+                                    data-testid={`list-lieu-${evt.id}`}
+                                  />
+                                  
+                                  {/* Date - éditable */}
+                                  <input
+                                    type="date"
+                                    value={getTableValue(evt.id, 'date', evt.date?.split('T')[0] || '')}
+                                    onChange={(e) => handleTableCellChange(evt.id, 'date', e.target.value)}
+                                    className="w-24 sm:w-28 px-1 py-0.5 rounded text-xs bg-transparent text-gray-400 border border-transparent hover:border-[#D4A024]/30 focus:border-[#D4A024] focus:bg-black/30"
+                                    data-testid={`list-date-${evt.id}`}
+                                  />
+                                  
+                                  {/* Type - éditable (caché sur mobile) */}
+                                  <select
+                                    value={getTableValue(evt.id, 'type_sondage', evt.type_sondage)}
+                                    onChange={(e) => handleTableCellChange(evt.id, 'type_sondage', e.target.value)}
+                                    className="hidden sm:block w-20 px-1 py-0.5 rounded text-xs bg-transparent text-gray-400 border border-transparent hover:border-[#D4A024]/30 focus:border-[#D4A024] focus:bg-black/30"
+                                    data-testid={`list-type-${evt.id}`}
+                                  >
+                                    <option value="repas">Repas</option>
+                                    <option value="apero">Apéro</option>
+                                    <option value="anniversaire">Anniv.</option>
+                                  </select>
                                 </div>
-                              ) : (
-                                /* MODE AFFICHAGE */
-                                <div className="flex items-center justify-between p-3">
-                                  <div className="flex items-center space-x-4 flex-1 min-w-0">
-                                    {/* Numéro */}
-                                    <span className="text-gray-500 text-sm w-6 shrink-0">#{idx + 1}</span>
-                                    {/* Lieu */}
-                                    <h4 className="text-white font-serif font-semibold min-w-[100px] truncate">
-                                      {evt.lieu}
-                                    </h4>
-                                    {/* Date */}
-                                    <span className="text-gray-400 text-sm min-w-[70px] shrink-0">
-                                      {formatDateShort(evt.date)}
-                                    </span>
-                                    {/* Type */}
-                                    {getTypeBadge(evt.type_sondage)}
+                                
+                                {/* Actions */}
+                                <div className="flex items-center gap-1 shrink-0">
+                                  {/* Présences - éditable directement */}
+                                  <div className="flex items-center bg-[#D4A024]/20 px-2 py-1 rounded">
+                                    <Users className="w-3 h-3 sm:w-4 sm:h-4 text-[#D4A024] mr-1" />
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      value={getTableValue(evt.id, 'total_presents', evt.total_presents || 0)}
+                                      onChange={(e) => handleTableCellChange(evt.id, 'total_presents', e.target.value)}
+                                      className="w-8 sm:w-10 text-center font-bold text-base sm:text-lg bg-transparent text-[#D4A024] border-none focus:outline-none"
+                                      data-testid={`list-presents-${evt.id}`}
+                                    />
                                   </div>
                                   
-                                  {/* Actions */}
-                                  <div className="flex items-center space-x-2 shrink-0">
-                                    {/* Nombre de présents */}
-                                    <div 
-                                      className="flex items-center space-x-1 sm:space-x-2 bg-[#D4A024]/20 px-2 sm:px-4 py-2 rounded-lg cursor-pointer hover:bg-[#D4A024]/30 transition-all"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        loadRepondants(evt);
-                                      }}
-                                      title="Cliquer pour voir les répondants"
-                                      data-testid={`presents-count-${evt.id}`}
+                                  {/* Indicateur modifié */}
+                                  {isRowModified(evt.id) && (
+                                    <span className="text-yellow-400 text-xs">✏️</span>
+                                  )}
+                                  
+                                  {/* Supprimer */}
+                                  {isAdmin && (
+                                    <Button
+                                      onClick={(e) => handleDeleteEvent(evt.id, e)}
+                                      size="sm"
+                                      variant="ghost"
+                                      className="text-red-400 hover:text-red-300 hover:bg-red-900/20 h-6 w-6 p-0"
                                     >
-                                      <Users className="w-4 h-4 sm:w-5 sm:h-5 text-[#D4A024]" />
-                                      <span className="text-[#D4A024] font-bold text-lg sm:text-xl">
-                                        {evt.total_presents || 0}
-                                      </span>
-                                    </div>
-                                    
-                                    {/* Bouton Modifier */}
-                                    {isAdmin && (
-                                      <Button
-                                        onClick={(e) => startEditing(evt, e)}
-                                        size="sm"
-                                        variant="ghost"
-                                        className="text-[#D4A024] hover:bg-[#D4A024]/20 h-8 w-8 p-0"
-                                        title="Modifier"
-                                        data-testid={`edit-btn-${evt.id}`}
-                                      >
-                                        <Edit3 className="w-4 h-4" />
-                                      </Button>
-                                    )}
-                                  </div>
+                                      <Trash2 className="w-3 h-3" />
+                                    </Button>
+                                  )}
                                 </div>
-                              )}
+                              </div>
                             </div>
                           ))}
+
+                          {/* Bouton Sauvegarder la saison (vue liste) */}
+                          {pendingChangesCount > 0 && (
+                            <div className="flex justify-end mt-3">
+                              <Button
+                                onClick={saveAllTableChanges}
+                                disabled={savingAll}
+                                className="bg-green-600 hover:bg-green-700 text-white animate-pulse"
+                              >
+                                {savingAll ? (
+                                  <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Sauvegarde...</>
+                                ) : (
+                                  <><Save className="w-4 h-4 mr-2" />Sauvegarder ({pendingChangesCount})</>
+                                )}
+                              </Button>
+                            </div>
+                          )}
 
                           {/* FORMULAIRE AJOUT D'ÉVÉNEMENT */}
                           {addingToSeason === saisonNum ? (
