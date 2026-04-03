@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ExternalLink } from 'lucide-react';
 
-const GAMELAB_URL = "https://game-lab-play.base44.app/PublicProfile?pseudo=La%20Table%20Haute";
+const GAMELAB_URL = "https://game-lab-play.base44.app/PublicProfile?pseudo=La%20Bague%20Imp%C3%A9riale";
 const GAMELAB_LOGO = "https://customer-assets.emergentagent.com/job_2ea98acc-c005-45ff-88c6-bad96e87658c/artifacts/cpf3kwf0_IMG_7702.jpeg";
 
 const Jeux = () => {
