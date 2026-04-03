@@ -1750,17 +1750,20 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
 
                         {/* Boutons d'action */}
                         <div className="flex gap-2 mt-3 pt-3 border-t border-[#D4A024]/20">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => { e.stopPropagation(); shareToWhatsApp(cigare); }}
-                            className="flex-1 text-green-500 hover:text-green-400 hover:bg-green-900/20"
-                            title="Partager"
-                            data-testid={`whatsapp-apero-btn-${cigare.id}`}
-                          >
-                            <MessageCircle className="w-4 h-4 mr-1" />
-                            Partager
-                          </Button>
+                          {/* Bouton Ajouter à Ma Cigarthèque - Membres seulement */}
+                          {!isAdmin && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => { e.stopPropagation(); addToMaCigarotheque(cigare, true); }}
+                              className="flex-1 text-[#D4A024] hover:bg-[#D4A024]/10"
+                              title="Ajouter à Ma Cigarthèque"
+                              data-testid={`add-to-collection-apero-btn-${cigare.id}`}
+                            >
+                              <Plus className="w-4 h-4 mr-1" />
+                              Ma Cigarthèque
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="sm"
@@ -1773,15 +1776,28 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
                             Copier
                           </Button>
                           {isAdmin && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => { e.stopPropagation(); deleteFromAperoClub(cigare.id); }}
-                              className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
-                              data-testid={`delete-apero-btn-${cigare.id}`}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => { e.stopPropagation(); shareToWhatsApp(cigare); }}
+                                className="flex-1 text-green-500 hover:text-green-400 hover:bg-green-900/20"
+                                title="Partager"
+                                data-testid={`share-apero-btn-${cigare.id}`}
+                              >
+                                <Share2 className="w-4 h-4 mr-1" />
+                                Partager
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => { e.stopPropagation(); deleteFromAperoClub(cigare.id); }}
+                                className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                                data-testid={`delete-apero-btn-${cigare.id}`}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </>
                           )}
                         </div>
                       </CardContent>
@@ -2130,10 +2146,13 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
 
                 {/* Actions */}
                 <div className="flex flex-wrap gap-3 pt-4">
-                  <Button onClick={() => shareToWhatsApp(selectedCigare)} className="bg-green-600 hover:bg-green-700 text-white">
-                    <MessageCircle className="w-4 h-4 mr-2" />
-                    WhatsApp
-                  </Button>
+                  {/* Bouton Partager - Admin seulement */}
+                  {isAdmin && (
+                    <Button onClick={() => shareToWhatsApp(selectedCigare)} className="bg-green-600 hover:bg-green-700 text-white">
+                      <Share2 className="w-4 h-4 mr-2" />
+                      Partager
+                    </Button>
+                  )}
                   <Button onClick={() => copyFicheCigare(selectedCigare)} className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020]">
                     <Copy className="w-4 h-4 mr-2" />
                     Copier la fiche
