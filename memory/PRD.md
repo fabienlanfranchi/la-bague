@@ -6,10 +6,26 @@ Application de gestion complète pour le club de cigares "La Bague Impériale". 
 ## Core Features
 - Gestion des 35 membres du club
 - Catalogue de 651 cigares (MySQL externe OVH CloudDB)
-- Winston - Assistant IA spécialiste des cigares (OpenAI via Emergent LLM Key)
+- Winston - Assistant IA spécialiste des cigares (Claude via Emergent LLM Key)
 - Événements et présences
 - Comptabilité et cotisations
 - Sondages et votes
+
+---
+
+## COMPLETED (Session 3 Avril 2026)
+
+### Corrections Bugs Critiques (P0) - DONE
+1. **"Rester connecté" persistant** — Corrigé dans `UserContext.js`
+   - Le rafraîchissement des données en arrière-plan n'écrase plus la session
+   - Mise à jour silencieuse de l'état sans déclencher la logique de persistance
+   
+2. **Winston appelle "Président"** — Corrigé dans `routes/winston.py`
+   - Force la reconstruction du contexte pour le Président à chaque message
+   - Winston utilise maintenant "Président" ou "Monsieur le Président", jamais "Fabien"
+   
+3. **Lien GameLab mis à jour** — Corrigé dans `pages/Jeux.js`
+   - Nouvelle URL: `https://game-lab-play.base44.app/PublicProfile?pseudo=La%20Table%20Haute`
 
 ---
 
