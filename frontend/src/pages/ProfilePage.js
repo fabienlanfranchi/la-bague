@@ -7,9 +7,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Star, Calendar, TrendingUp, User, BarChart3, RefreshCw, AlertTriangle, CreditCard, X, Check, ExternalLink, Settings, Lock, Mail, LogOut, Eye, EyeOff } from 'lucide-react';
+import { Star, Calendar, TrendingUp, User, BarChart3, RefreshCw, AlertTriangle, CreditCard, X, Check, ExternalLink, Settings, Lock, Mail, LogOut, Eye, EyeOff, Fingerprint, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import MemberCard from '../components/MemberCard';
+import { startRegistration, browserSupportsWebAuthn } from '@simplewebauthn/browser';
+import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -35,6 +37,13 @@ const ProfilePage = () => {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
+  
+  // États pour Face ID / Touch ID
+  const [webAuthnSupported, setWebAuthnSupported] = useState(false);
+  const [passkeys, setPasskeys] = useState([]);
+  const [loadingPasskeys, setLoadingPasskeys] = useState(false);
+  const [registeringPasskey, setRegisteringPasskey] = useState(false);
+  
   const [paiementForm, setPaiementForm] = useState({
     date_paiement: new Date().toISOString().split('T')[0],
     type: 'recette',
@@ -61,7 +70,29 @@ const ProfilePage = () => {
     };
 
     loadProfile();
+    
+    // Vérifier si WebAuthn est supporté
+    setWebAuthnSupported(browserSupportsWebAuthn());
   }, [setCurrentMember]);
+
+  // Charger les passkeys du membre
+  useEffect(() => {
+    const loadPasskeys = async () => {
+      if (currentMember?.id && webAuthnSupported) {
+        setLoadingPasskeys(true);
+        try {
+          const response = await axios.get(`${API_URL}/api/webauthn/passkeys/${currentMember.id}`);
+          setPasskeys(response.data.passkeys || []);
+        } catch (error) {
+          console.error('Erreur chargement passkeys:', error);
+          setPasskeys([]);
+        } finally {
+          setLoadingPasskeys(false);
+        }
+      }
+    };
+    loadPasskeys();
+  }, [currentMember, webAuthnSupported]);
 
   // Charger les dettes du membre
   useEffect(() => {
@@ -148,6 +179,67 @@ const ProfilePage = () => {
       toast.error('Erreur de connexion au serveur');
     }
     setChangingPassword(false);
+  };
+
+  // Enregistrer un nouveau passkey (Face ID / Touch ID)
+  const handleRegisterPasskey = async () => {
+    if (!webAuthnSupported) {
+      toast.error('Face ID / Touch ID non supporté sur cet appareil');
+      return;
+    }
+
+    setRegisteringPasskey(true);
+    try {
+      // 1. Récupérer les options d'enregistrement
+      const optionsResponse = await axios.post(`${API_URL}/api/webauthn/register/options`, {
+        member_id: currentMember.id
+      });
+
+      if (!optionsResponse.data.success) {
+        throw new Error('Impossible de démarrer l\'enregistrement');
+      }
+
+      // 2. Lancer l'enregistrement biométrique
+      const options = JSON.parse(optionsResponse.data.options);
+      const credential = await startRegistration({ optionsJSON: options });
+
+      // 3. Vérifier avec le serveur
+      const verifyResponse = await axios.post(`${API_URL}/api/webauthn/register/verify`, {
+        member_id: currentMember.id,
+        credential: credential
+      });
+
+      if (verifyResponse.data.success) {
+        toast.success('Face ID / Touch ID activé !');
+        // Recharger les passkeys
+        const passkeysRes = await axios.get(`${API_URL}/api/webauthn/passkeys/${currentMember.id}`);
+        setPasskeys(passkeysRes.data.passkeys || []);
+      }
+    } catch (error) {
+      console.error('Erreur enregistrement passkey:', error);
+      if (error.name === 'NotAllowedError') {
+        toast.error('Enregistrement annulé');
+      } else if (error.name === 'InvalidStateError') {
+        toast.error('Ce passkey est déjà enregistré');
+      } else {
+        toast.error(error.response?.data?.detail || 'Erreur lors de l\'enregistrement');
+      }
+    } finally {
+      setRegisteringPasskey(false);
+    }
+  };
+
+  // Supprimer un passkey
+  const handleDeletePasskey = async (passkeyId) => {
+    if (!window.confirm('Voulez-vous vraiment supprimer ce passkey ?')) return;
+
+    try {
+      await axios.delete(`${API_URL}/api/webauthn/passkeys/${currentMember.id}/${passkeyId}`);
+      toast.success('Passkey supprimé');
+      setPasskeys(passkeys.filter(p => p.id !== passkeyId));
+    } catch (error) {
+      toast.error('Erreur lors de la suppression');
+    }
   };
 
   // Soumettre un signalement de paiement
@@ -791,6 +883,72 @@ const ProfilePage = () => {
               </p>
             </CardContent>
           </Card>
+
+          {/* Face ID / Touch ID */}
+          {webAuthnSupported && (
+            <Card className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-xl font-serif text-white flex items-center">
+                  <Fingerprint className="w-5 h-5 mr-2 text-[#D4A024]" />
+                  Face ID / Touch ID
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {loadingPasskeys ? (
+                  <p className="text-gray-400 text-center">Chargement...</p>
+                ) : passkeys.length > 0 ? (
+                  <div className="space-y-3">
+                    {passkeys.map((pk) => (
+                      <div key={pk.id} className="flex items-center justify-between p-3 bg-black/30 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <Fingerprint className="w-5 h-5 text-green-400" />
+                          <div>
+                            <p className="text-white font-medium">{pk.nickname}</p>
+                            <p className="text-xs text-gray-400">
+                              Ajouté le {new Date(pk.created_at).toLocaleDateString('fr-FR')}
+                              {pk.last_used && ` • Dernière utilisation : ${new Date(pk.last_used).toLocaleDateString('fr-FR')}`}
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeletePasskey(pk.id)}
+                          className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    <Button
+                      onClick={handleRegisterPasskey}
+                      disabled={registeringPasskey}
+                      variant="outline"
+                      className="w-full border-[#D4A024]/50 text-[#D4A024] hover:bg-[#D4A024]/10"
+                    >
+                      <Fingerprint className="w-5 h-5 mr-2" />
+                      {registeringPasskey ? 'Enregistrement...' : 'Ajouter un autre appareil'}
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-gray-400 text-center text-sm">
+                      Connectez-vous plus rapidement avec Face ID ou Touch ID
+                    </p>
+                    <Button
+                      onClick={handleRegisterPasskey}
+                      disabled={registeringPasskey}
+                      className="w-full bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-semibold py-4"
+                      data-testid="btn-register-passkey"
+                    >
+                      <Fingerprint className="w-5 h-5 mr-2" />
+                      {registeringPasskey ? 'Enregistrement...' : 'Activer Face ID / Touch ID'}
+                    </Button>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Déconnexion */}
           <Card className="bg-black/40 border-2 border-red-600/30 backdrop-blur-sm">

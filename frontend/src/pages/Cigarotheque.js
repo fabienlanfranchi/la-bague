@@ -28,6 +28,7 @@ import {
   MapPin, 
   Flame, 
   Euro,
+  DollarSign,
   BookOpen,
   Plus,
   ChevronLeft,
@@ -137,6 +138,7 @@ const Cigarotheque = () => {
     // Fiche Basique
     note_globale: '',
     note_puissance: '',
+    note_qualite_prix: '',
     evolution: 'lineaire',
     note_libre: '',
     // Fiche Poussée - Avant allumage
@@ -992,12 +994,17 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
     
     // Essayer de parser le commentaire structuré
     let notePuissance = '';
+    let noteQualitePrix = '';
     let evolution = 'lineaire';
     let noteLibre = existingComment;
     
     if (existingComment.includes('Puissance:')) {
       const match = existingComment.match(/Puissance:\s*(\d+(?:\.\d+)?)/);
       if (match) notePuissance = match[1];
+    }
+    if (existingComment.includes('Qualité/Prix:')) {
+      const match = existingComment.match(/Qualité\/Prix:\s*(\d+(?:\.\d+)?)/);
+      if (match) noteQualitePrix = match[1];
     }
     if (existingComment.includes('Évolution')) {
       evolution = 'evolution';
@@ -1012,8 +1019,9 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
     setNoteData({
       note_globale: existingNote ? String(existingNote) : '',
       note_puissance: notePuissance,
+      note_qualite_prix: noteQualitePrix,
       evolution: evolution,
-      note_libre: noteLibre.replace(/Puissance:.*?(\d+(?:\.\d+)?\/5)?/g, '').replace(/Évolution|Linéaire/g, '').trim(),
+      note_libre: noteLibre.replace(/Puissance:.*?(\d+(?:\.\d+)?\/5)?/g, '').replace(/Qualité\/Prix:.*?(\d+(?:\.\d+)?\/5)?/g, '').replace(/Évolution|Linéaire/g, '').trim(),
       // Réinitialiser les champs de la fiche poussée
       cape: '',
       construction: '',
@@ -1046,6 +1054,9 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
         const commentParts = [];
         if (noteData.note_puissance) {
           commentParts.push(`Puissance: ${noteData.note_puissance}/5`);
+        }
+        if (noteData.note_qualite_prix) {
+          commentParts.push(`Qualité/Prix: ${noteData.note_qualite_prix}/5`);
         }
         commentParts.push(noteData.evolution === 'evolution' ? 'Évolution' : 'Linéaire');
         if (noteData.note_libre) {
@@ -1946,6 +1957,12 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
                                         {cigare.commentaire.match(/Puissance:\s*(\d+(?:\.\d+)?)/)?.[1]}/5
                                       </Badge>
                                     )}
+                                    {cigare.commentaire && cigare.commentaire.includes('Qualité/Prix:') && (
+                                      <Badge variant="outline" className="border-green-500/50 text-green-400">
+                                        <DollarSign className="w-3 h-3 mr-1" />
+                                        {cigare.commentaire.match(/Qualité\/Prix:\s*(\d+(?:\.\d+)?)/)?.[1]}/5
+                                      </Badge>
+                                    )}
                                     {cigare.commentaire && cigare.commentaire.includes('Évolution') && (
                                       <Badge variant="outline" className="border-blue-500/50 text-blue-400">Évolution</Badge>
                                     )}
@@ -2456,6 +2473,25 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
                   className="bg-black/60 border-[#D4A024]/30 text-white mt-1 text-lg h-12"
                   placeholder="Ex: 3"
                   data-testid="note-puissance-input"
+                />
+              </div>
+
+              {/* Rapport Qualité/Prix */}
+              <div>
+                <Label className="text-gray-300 flex items-center gap-2">
+                  <DollarSign className="w-4 h-4 text-green-400" />
+                  Rapport Qualité/Prix (sur 5)
+                </Label>
+                <Input
+                  type="number"
+                  step="0.5"
+                  min="0"
+                  max="5"
+                  value={noteData.note_qualite_prix || ''}
+                  onChange={(e) => setNoteData({...noteData, note_qualite_prix: e.target.value})}
+                  className="bg-black/60 border-[#D4A024]/30 text-white mt-1 text-lg h-12"
+                  placeholder="Ex: 4"
+                  data-testid="note-qualite-prix-input"
                 />
               </div>
 

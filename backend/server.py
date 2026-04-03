@@ -5973,6 +5973,10 @@ async def shutdown_db_client():
 from routes.winston import winston_router
 app.include_router(winston_router)
 
+# ==================== WEBAUTHN / PASSKEYS (Face ID / Touch ID) ====================
+from routes.webauthn import webauthn_router
+app.include_router(webauthn_router)
+
 # Garder la compatibilité avec les anciennes routes @app directes
 # Les routes /api/assistant/* et /api/guide-cigare/* sont maintenant gérées par winston_router
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -7,8 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { LogIn, UserPlus, KeyRound, Mail, Lock, User, Hash, Eye, EyeOff } from 'lucide-react';
+import { LogIn, UserPlus, KeyRound, Mail, Lock, User, Hash, Eye, EyeOff, Fingerprint } from 'lucide-react';
 import axios from 'axios';
+import { startAuthentication, browserSupportsWebAuthn } from '@simplewebauthn/browser';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -17,6 +18,13 @@ const LoginPage = () => {
   const { setCurrentMember } = useUser();
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('activation');
+  const [webAuthnSupported, setWebAuthnSupported] = useState(false);
+  const [faceIdLoading, setFaceIdLoading] = useState(false);
+  
+  // Vérifier si WebAuthn est supporté
+  useEffect(() => {
+    setWebAuthnSupported(browserSupportsWebAuthn());
+  }, []);
   
   // État pour afficher/masquer les mots de passe
   const [showPassword, setShowPassword] = useState(false);
@@ -51,6 +59,51 @@ const LoginPage = () => {
   // État pour mot de passe oublié
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
+
+  // Connexion par Face ID / Touch ID
+  const handleFaceIdLogin = async () => {
+    if (!webAuthnSupported) {
+      toast.error('Face ID / Touch ID non supporté sur cet appareil');
+      return;
+    }
+
+    setFaceIdLoading(true);
+    try {
+      // 1. Récupérer les options d'authentification
+      const optionsResponse = await axios.post(`${API_URL}/api/webauthn/authenticate/options`, {});
+      
+      if (!optionsResponse.data.success) {
+        throw new Error('Impossible de démarrer l\'authentification');
+      }
+
+      // 2. Lancer l'authentification biométrique
+      const options = JSON.parse(optionsResponse.data.options);
+      const assertion = await startAuthentication({ optionsJSON: options });
+
+      // 3. Vérifier avec le serveur
+      const verifyResponse = await axios.post(`${API_URL}/api/webauthn/authenticate/verify`, {
+        credential: assertion
+      });
+
+      if (verifyResponse.data.success) {
+        const member = verifyResponse.data.member;
+        setCurrentMember(member, true); // Rester connecté
+        toast.success(`Bienvenue ${member.prenom || member.nom_complet} !`);
+        navigate('/dashboard');
+      }
+    } catch (error) {
+      console.error('Erreur Face ID:', error);
+      if (error.name === 'NotAllowedError') {
+        toast.error('Authentification annulée');
+      } else if (error.name === 'InvalidStateError') {
+        toast.error('Aucun passkey enregistré');
+      } else {
+        toast.error(error.response?.data?.detail || 'Erreur d\'authentification');
+      }
+    } finally {
+      setFaceIdLoading(false);
+    }
+  };
 
   // Générer le mot de passe par défaut suggéré
   const getDefaultPassword = (prenom, numero) => {
@@ -534,6 +587,33 @@ const LoginPage = () => {
                     >
                       {loading ? 'Connexion...' : 'Se connecter'}
                     </Button>
+
+                    {/* Séparateur */}
+                    {webAuthnSupported && (
+                      <>
+                        <div className="relative my-4">
+                          <div className="absolute inset-0 flex items-center">
+                            <span className="w-full border-t border-[#D4A024]/30" />
+                          </div>
+                          <div className="relative flex justify-center text-xs uppercase">
+                            <span className="bg-[#1a1a1a] px-2 text-gray-500">ou</span>
+                          </div>
+                        </div>
+
+                        {/* Bouton Face ID / Touch ID */}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={faceIdLoading}
+                          onClick={handleFaceIdLogin}
+                          className="w-full border-[#D4A024]/50 text-[#D4A024] hover:bg-[#D4A024]/10 font-serif"
+                          data-testid="face-id-login-btn"
+                        >
+                          <Fingerprint className="w-5 h-5 mr-2" />
+                          {faceIdLoading ? 'Authentification...' : 'Face ID / Touch ID'}
+                        </Button>
+                      </>
+                    )}
                   </form>
                 </CardContent>
               </TabsContent>
