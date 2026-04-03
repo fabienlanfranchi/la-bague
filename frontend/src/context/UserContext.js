@@ -21,9 +21,18 @@ export const UserProvider = ({ children }) => {
   // Données du membre actuellement connecté - restaurer immédiatement depuis le cache
   const getInitialMember = () => {
     try {
+      const savedId = localStorage.getItem('currentMemberId') || sessionStorage.getItem('currentMemberId');
       const savedData = localStorage.getItem('currentMemberData') || sessionStorage.getItem('currentMemberData');
-      if (savedData) {
-        return JSON.parse(savedData);
+      if (savedData && savedId) {
+        const parsed = JSON.parse(savedData);
+        // VÉRIFICATION: L'ID dans les données doit correspondre à l'ID sauvegardé
+        if (parsed.id === savedId) {
+          return parsed;
+        } else {
+          // Incohérence - ne pas charger
+          console.warn('Incohérence initiale détectée, ignoré');
+          return null;
+        }
       }
     } catch (e) {
       console.error('Erreur lecture cache membre:', e);
@@ -87,35 +96,50 @@ export const UserProvider = ({ children }) => {
       if (savedMemberId && savedMemberData) {
         try {
           const cachedMember = JSON.parse(savedMemberData);
-          // IMPORTANT: utiliser setCurrentMemberState directement pour ne pas déclencher updateCurrentMember
-          setCurrentMemberState(cachedMember);
-          setMode(cachedMember.is_president ? 'admin' : 'member');
-          hasManualLogin.current = true;
-          setLoading(false);
           
-          // Rafraîchir les données en arrière-plan SANS toucher à la session
-          axios.get(`${API}/members`, { timeout: 10000 }).then(response => {
-            const membersData = response.data || [];
-            setMembers(membersData);
-            // Mettre à jour les données du membre si elles ont changé
-            // IMPORTANT: Ne pas appeler setCurrentMember ici pour éviter d'écraser la session
-            const updatedMember = membersData.find(m => m.id === savedMemberId);
-            if (updatedMember) {
-              // Mise à jour silencieuse de l'état et du cache sans déclencher la logique de persistance
-              setCurrentMemberState(updatedMember);
-              // Préserver le stockage existant (localStorage ou sessionStorage)
-              if (localStorage.getItem('currentMemberId')) {
-                localStorage.setItem('currentMemberData', JSON.stringify(updatedMember));
-              } else if (sessionStorage.getItem('currentMemberId')) {
-                sessionStorage.setItem('currentMemberData', JSON.stringify(updatedMember));
+          // VÉRIFICATION DE COHÉRENCE: L'ID dans le cache doit correspondre à l'ID sauvegardé
+          if (cachedMember.id !== savedMemberId) {
+            console.warn('Incohérence détectée: ID cache != ID sauvegardé. Nettoyage...');
+            localStorage.removeItem('currentMemberId');
+            localStorage.removeItem('currentMemberData');
+            sessionStorage.removeItem('currentMemberId');
+            sessionStorage.removeItem('currentMemberData');
+            // Ne pas charger le cache corrompu, continuer vers le flow normal
+          } else {
+            // IMPORTANT: utiliser setCurrentMemberState directement pour ne pas déclencher updateCurrentMember
+            setCurrentMemberState(cachedMember);
+            setMode(cachedMember.is_president ? 'admin' : 'member');
+            hasManualLogin.current = true;
+            setLoading(false);
+            
+            // Rafraîchir les données en arrière-plan SANS toucher à la session
+            axios.get(`${API}/members`, { timeout: 10000 }).then(response => {
+              const membersData = response.data || [];
+              setMembers(membersData);
+              // Mettre à jour les données du membre si elles ont changé
+              // IMPORTANT: Ne pas appeler setCurrentMember ici pour éviter d'écraser la session
+              const updatedMember = membersData.find(m => m.id === savedMemberId);
+              if (updatedMember) {
+                // Mise à jour silencieuse de l'état et du cache sans déclencher la logique de persistance
+                setCurrentMemberState(updatedMember);
+                // Préserver le stockage existant (localStorage ou sessionStorage)
+                if (localStorage.getItem('currentMemberId')) {
+                  localStorage.setItem('currentMemberData', JSON.stringify(updatedMember));
+                } else if (sessionStorage.getItem('currentMemberId')) {
+                  sessionStorage.setItem('currentMemberData', JSON.stringify(updatedMember));
+                }
               }
-            }
-          }).catch(err => console.error('Erreur rafraîchissement membres:', err));
-          
-          return;
+            }).catch(err => console.error('Erreur rafraîchissement membres:', err));
+            
+            return;
+          }
         } catch (e) {
           // Si les données en cache sont corrompues, continuer normalement
+          console.error('Cache corrompu, nettoyage...', e);
           localStorage.removeItem('currentMemberData');
+          localStorage.removeItem('currentMemberId');
+          sessionStorage.removeItem('currentMemberData');
+          sessionStorage.removeItem('currentMemberId');
         }
       }
       
