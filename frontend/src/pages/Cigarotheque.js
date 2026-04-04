@@ -1986,32 +1986,22 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
                                 <Button
                                   variant="ghost"
                                   size="sm"
+                                  onClick={() => { setSelectedCigare(cigare); setShowDetail(true); }}
+                                  className="text-blue-400 hover:text-blue-300"
+                                  title="Voir la fiche détaillée"
+                                  data-testid={`view-btn-${cigare.id}`}
+                                >
+                                  <BookOpen className="w-5 h-5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
                                   onClick={() => openNoteModal(cigare)}
                                   className="text-[#D4A024]"
                                   title="Noter ce cigare"
                                   data-testid={`note-btn-${cigare.id}`}
                                 >
                                   <Edit3 className="w-5 h-5" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => shareToWhatsApp(cigare)}
-                                  className="text-green-500 hover:text-green-400"
-                                  title="Partager sur WhatsApp"
-                                  data-testid={`whatsapp-collection-btn-${cigare.id}`}
-                                >
-                                  <MessageCircle className="w-5 h-5" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => copyFicheCigare(cigare)}
-                                  className="text-[#D4A024]"
-                                  title="Copier la fiche"
-                                  data-testid={`copy-collection-btn-${cigare.id}`}
-                                >
-                                  <Copy className="w-5 h-5" />
                                 </Button>
                                 <Button
                                   variant="ghost"

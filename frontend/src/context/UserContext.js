@@ -50,25 +50,32 @@ export const UserProvider = ({ children }) => {
 
   // Fonction pour définir le membre courant et persister en localStorage
   const setCurrentMember = useCallback((member, stayLoggedIn = true) => {
+    console.log('[AUTH] setCurrentMember appelé:', member?.nom_complet, 'stayLoggedIn:', stayLoggedIn);
     hasManualLogin.current = true; // Marquer qu'un login manuel a eu lieu
     setCurrentMemberState(member);
     setLoading(false); // S'assurer que loading est false après login
     if (member) {
+      // TOUJOURS nettoyer les deux storages avant de sauvegarder
+      localStorage.removeItem('currentMemberId');
+      localStorage.removeItem('currentMemberData');
+      sessionStorage.removeItem('currentMemberId');
+      sessionStorage.removeItem('currentMemberData');
+      
       // Sauvegarder la session SEULEMENT si "Rester connecté" est coché
       if (stayLoggedIn) {
+        console.log('[AUTH] Sauvegarde localStorage pour:', member.id);
         localStorage.setItem('currentMemberId', member.id);
         localStorage.setItem('currentMemberData', JSON.stringify(member));
       } else {
         // Session temporaire - utiliser sessionStorage (disparaît à la fermeture du navigateur)
+        console.log('[AUTH] Sauvegarde sessionStorage pour:', member.id);
         sessionStorage.setItem('currentMemberId', member.id);
         sessionStorage.setItem('currentMemberData', JSON.stringify(member));
-        // Nettoyer localStorage pour ne pas persister
-        localStorage.removeItem('currentMemberId');
-        localStorage.removeItem('currentMemberData');
       }
       // Définir automatiquement le mode selon le membre
       setMode(member.is_president ? 'admin' : 'member');
     } else {
+      console.log('[AUTH] Déconnexion via setCurrentMember(null)');
       localStorage.removeItem('currentMemberId');
       localStorage.removeItem('currentMemberData');
       sessionStorage.removeItem('currentMemberId');
@@ -191,12 +198,19 @@ export const UserProvider = ({ children }) => {
 
   // Fonction de déconnexion
   const logout = useCallback(() => {
+    console.log('[AUTH] Déconnexion - nettoyage complet du cache');
     hasManualLogin.current = false;
+    // Nettoyage COMPLET de tous les stockages possibles
     localStorage.removeItem('currentMemberId');
     localStorage.removeItem('currentMemberData');
     localStorage.removeItem('rememberedMember');
     sessionStorage.removeItem('currentMemberId');
     sessionStorage.removeItem('currentMemberData');
+    // Aussi nettoyer d'éventuelles clés parasites
+    localStorage.removeItem('member');
+    localStorage.removeItem('user');
+    sessionStorage.removeItem('member');
+    sessionStorage.removeItem('user');
     setCurrentMemberState(null);
     setMode('admin');
   }, []);
