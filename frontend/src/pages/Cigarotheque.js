@@ -441,6 +441,36 @@ const Cigarotheque = () => {
     }
   };
 
+  // Fonction pour ouvrir la fiche détaillée avec données complètes du catalogue
+  const openFullCigarDetail = async (cigarePartiel) => {
+    try {
+      // Chercher le cigare complet dans le catalogue via son ID original (cigare_id)
+      const cigareId = cigarePartiel.cigare_id || cigarePartiel.id;
+      const response = await axios.get(`${API}/cigares/${cigareId}`);
+      
+      if (response.data) {
+        // Fusionner les données du catalogue avec les notes personnelles
+        const cigareComplet = {
+          ...response.data,
+          // Garder les notes personnelles du membre
+          note_personnelle: cigarePartiel.note_personnelle,
+          commentaire: cigarePartiel.commentaire
+        };
+        setSelectedCigare(cigareComplet);
+        setShowDetail(true);
+      } else {
+        // Si le cigare n'est plus dans le catalogue, afficher les données partielles
+        setSelectedCigare(cigarePartiel);
+        setShowDetail(true);
+      }
+    } catch (error) {
+      console.error('Erreur chargement fiche complète:', error);
+      // En cas d'erreur, afficher les données partielles
+      setSelectedCigare(cigarePartiel);
+      setShowDetail(true);
+    }
+  };
+
   // ===== FILTRAGE ET TRI MA CIGARTHÈQUE =====
   
   const filteredMaCigarotheque = useMemo(() => {
@@ -1701,10 +1731,7 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
                     <Card 
                       key={cigare.id} 
                       className="bg-black/60 border-[#D4A024]/30 hover:border-[#D4A024]/60 transition-all cursor-pointer"
-                      onClick={() => {
-                        setSelectedCigare(cigare);
-                        setShowDetail(true);
-                      }}
+                      onClick={() => openFullCigarDetail(cigare)}
                       data-testid={`apero-item-${cigare.id}`}
                     >
                       <CardContent className="p-4">
@@ -1986,7 +2013,7 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => { setSelectedCigare(cigare); setShowDetail(true); }}
+                                  onClick={() => openFullCigarDetail(cigare)}
                                   className="text-blue-400 hover:text-blue-300"
                                   title="Voir la fiche détaillée"
                                   data-testid={`view-btn-${cigare.id}`}
