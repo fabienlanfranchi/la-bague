@@ -92,7 +92,8 @@ const Sidebar = () => {
                 {currentMember?.nom_complet || 'Utilisateur'}
               </h3>
               <p className="text-[#D4A024] text-sm font-semibold tracking-wider">
-                {isAdmin ? 'PRÉSIDENT' : 'MEMBRE'}
+                {/* SÉCURITÉ: Afficher PRÉSIDENT seulement si is_president est true */}
+                {currentMember?.is_president === true && isAdmin ? 'PRÉSIDENT' : 'MEMBRE'}
               </p>
             </div>
           </div>
@@ -100,8 +101,10 @@ const Sidebar = () => {
           {/* Navigation */}
           <nav className="flex-1 space-y-2">
             {menuItems.map((item) => {
-              if (item.adminOnly && !isAdmin) return null;
-              if (item.memberOnly && isAdmin) return null;
+              // SÉCURITÉ: Vérifier à la fois isAdmin ET currentMember.is_president
+              const hasAdminAccess = isAdmin && currentMember?.is_president === true;
+              if (item.adminOnly && !hasAdminAccess) return null;
+              if (item.memberOnly && hasAdminAccess) return null;
               
               const Icon = item.icon;
               

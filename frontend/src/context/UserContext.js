@@ -16,7 +16,7 @@ export const useUser = () => {
 
 export const UserProvider = ({ children }) => {
   // Mode : 'admin' (Président) ou 'member' (Membre)
-  const [mode, setMode] = useState('admin');
+  const [mode, setMode] = useState('member'); // Par défaut: mode membre (plus sécurisé)
   
   // Données du membre actuellement connecté - restaurer immédiatement depuis le cache
   const getInitialMember = () => {
@@ -229,7 +229,7 @@ export const UserProvider = ({ children }) => {
     sessionStorage.removeItem('member');
     sessionStorage.removeItem('user');
     setCurrentMemberState(null);
-    setMode('admin');
+    setMode('member'); // Revenir au mode membre après déconnexion
   }, []);
 
   const isAdmin = mode === 'admin';
