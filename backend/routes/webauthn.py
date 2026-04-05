@@ -33,10 +33,28 @@ logger = logging.getLogger(__name__)
 
 webauthn_router = APIRouter(prefix="/api/webauthn", tags=["WebAuthn"])
 
-# Configuration - utiliser le domaine de production
-RP_ID = os.environ.get('WEBAUTHN_RP_ID', 'evento-cigars.vercel.app')
+# Configuration dynamique - détecte l'environnement automatiquement
+def get_webauthn_config(origin: str = None):
+    """Retourne RP_ID et ORIGIN basés sur l'environnement"""
+    # Si on a une origine dans la requête, l'utiliser
+    if origin:
+        # Extraire le domaine de l'origine
+        from urllib.parse import urlparse
+        parsed = urlparse(origin)
+        return {
+            'rp_id': parsed.netloc,
+            'origin': origin
+        }
+    
+    # Sinon, utiliser les valeurs par défaut
+    rp_id = os.environ.get('WEBAUTHN_RP_ID', 'evento-cigars.vercel.app')
+    origin_url = os.environ.get('WEBAUTHN_ORIGIN', 'https://evento-cigars.vercel.app')
+    return {
+        'rp_id': rp_id,
+        'origin': origin_url
+    }
+
 RP_NAME = "La Bague Impériale"
-ORIGIN = os.environ.get('WEBAUTHN_ORIGIN', 'https://evento-cigars.vercel.app')
 
 # Stockage temporaire des challenges (en mémoire, expire après 5 minutes)
 challenges_store = {}

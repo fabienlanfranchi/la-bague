@@ -106,37 +106,54 @@ export const UserProvider = ({ children }) => {
           
           // VÉRIFICATION DE COHÉRENCE: L'ID dans le cache doit correspondre à l'ID sauvegardé
           if (cachedMember.id !== savedMemberId) {
-            console.warn('Incohérence détectée: ID cache != ID sauvegardé. Nettoyage...');
+            console.warn('[AUTH] Incohérence détectée: ID cache != ID sauvegardé. Nettoyage...');
             localStorage.removeItem('currentMemberId');
             localStorage.removeItem('currentMemberData');
             sessionStorage.removeItem('currentMemberId');
             sessionStorage.removeItem('currentMemberData');
             // Ne pas charger le cache corrompu, continuer vers le flow normal
           } else {
-            // IMPORTANT: utiliser setCurrentMemberState directement pour ne pas déclencher updateCurrentMember
-            setCurrentMemberState(cachedMember);
-            setMode(cachedMember.is_president ? 'admin' : 'member');
+            // NE PAS utiliser le cache pour l'affichage initial
+            // TOUJOURS valider avec le serveur d'abord pour des raisons de sécurité
             hasManualLogin.current = true;
-            setLoading(false);
             
-            // Rafraîchir les données en arrière-plan SANS toucher à la session
+            // Rafraîchir les données depuis le serveur ET valider les droits
             axios.get(`${API}/members`, { timeout: 10000 }).then(response => {
               const membersData = response.data || [];
               setMembers(membersData);
-              // Mettre à jour les données du membre si elles ont changé
-              // IMPORTANT: Ne pas appeler setCurrentMember ici pour éviter d'écraser la session
-              const updatedMember = membersData.find(m => m.id === savedMemberId);
-              if (updatedMember) {
-                // Mise à jour silencieuse de l'état et du cache sans déclencher la logique de persistance
-                setCurrentMemberState(updatedMember);
-                // Préserver le stockage existant (localStorage ou sessionStorage)
+              
+              // Trouver le membre correspondant à l'ID sauvegardé
+              const serverMember = membersData.find(m => m.id === savedMemberId);
+              
+              if (serverMember) {
+                console.log('[AUTH] Membre validé depuis serveur:', serverMember.nom_complet, 'is_president:', serverMember.is_president);
+                // Utiliser les données du SERVEUR (pas du cache) pour les droits
+                setCurrentMemberState(serverMember);
+                setMode(serverMember.is_president ? 'admin' : 'member');
+                // Mettre à jour le cache avec les données du serveur
                 if (localStorage.getItem('currentMemberId')) {
-                  localStorage.setItem('currentMemberData', JSON.stringify(updatedMember));
+                  localStorage.setItem('currentMemberData', JSON.stringify(serverMember));
                 } else if (sessionStorage.getItem('currentMemberId')) {
-                  sessionStorage.setItem('currentMemberData', JSON.stringify(updatedMember));
+                  sessionStorage.setItem('currentMemberData', JSON.stringify(serverMember));
                 }
+              } else {
+                // Le membre n'existe plus - déconnexion
+                console.warn('[AUTH] Membre non trouvé sur le serveur, déconnexion');
+                localStorage.removeItem('currentMemberId');
+                localStorage.removeItem('currentMemberData');
+                sessionStorage.removeItem('currentMemberId');
+                sessionStorage.removeItem('currentMemberData');
+                setCurrentMemberState(null);
               }
-            }).catch(err => console.error('Erreur rafraîchissement membres:', err));
+              setLoading(false);
+            }).catch(err => {
+              console.error('Erreur rafraîchissement membres:', err);
+              // En cas d'erreur réseau, utiliser le cache mais avec les droits du cache
+              // (moins sécurisé mais permet de fonctionner hors ligne)
+              setCurrentMemberState(cachedMember);
+              setMode(cachedMember.is_president ? 'admin' : 'member');
+              setLoading(false);
+            });
             
             return;
           }
