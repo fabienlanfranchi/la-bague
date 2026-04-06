@@ -21,6 +21,19 @@ export const UserProvider = ({ children }) => {
   // Données du membre actuellement connecté - restaurer immédiatement depuis le cache
   const getInitialMember = () => {
     try {
+      // VERSION DU CACHE - Incrémenter pour forcer le nettoyage chez tous les utilisateurs
+      const CACHE_VERSION = '2.0';
+      const cachedVersion = localStorage.getItem('cacheVersion');
+      
+      // Si version différente, NETTOYER TOUT le cache
+      if (cachedVersion !== CACHE_VERSION) {
+        console.log('[AUTH] Nouvelle version détectée, nettoyage du cache...');
+        localStorage.clear();
+        sessionStorage.clear();
+        localStorage.setItem('cacheVersion', CACHE_VERSION);
+        return null;
+      }
+      
       const savedId = localStorage.getItem('currentMemberId') || sessionStorage.getItem('currentMemberId');
       const savedData = localStorage.getItem('currentMemberData') || sessionStorage.getItem('currentMemberData');
       if (savedData && savedId) {
@@ -30,7 +43,11 @@ export const UserProvider = ({ children }) => {
           return parsed;
         } else {
           // Incohérence - ne pas charger
-          console.warn('Incohérence initiale détectée, ignoré');
+          console.warn('[AUTH] Incohérence initiale détectée, nettoyage');
+          localStorage.removeItem('currentMemberId');
+          localStorage.removeItem('currentMemberData');
+          sessionStorage.removeItem('currentMemberId');
+          sessionStorage.removeItem('currentMemberData');
           return null;
         }
       }
@@ -88,6 +105,16 @@ export const UserProvider = ({ children }) => {
     const loadMembers = async () => {
       // Si un login manuel a déjà eu lieu, ne pas recharger
       if (hasManualLogin.current) {
+        setLoading(false);
+        return;
+      }
+      
+      // Petit délai pour laisser un login en cours se terminer
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Revérifier si un login a eu lieu pendant le délai
+      if (hasManualLogin.current) {
+        console.log('[AUTH] Login récent détecté, skip du chargement cache');
         setLoading(false);
         return;
       }
