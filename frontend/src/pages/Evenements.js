@@ -1120,8 +1120,9 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                             <input
                               type="text"
                               value={getTableValue(evt, 'lieu')}
-                              onChange={(e) => handleTableCellChange(evt.id, 'lieu', e.target.value)}
-                              className="w-full px-2 py-1 bg-transparent border border-transparent hover:border-[#D4A024]/30 focus:border-[#D4A024] rounded text-white text-sm transition-colors"
+                              onChange={(e) => hasAdminAccess && handleTableCellChange(evt.id, 'lieu', e.target.value)}
+                              readOnly={!hasAdminAccess}
+                              className={`w-full px-2 py-1 bg-transparent border border-transparent ${hasAdminAccess ? 'hover:border-[#D4A024]/30 focus:border-[#D4A024]' : 'cursor-default'} rounded text-white text-sm transition-colors`}
                               data-testid={`table-lieu-${evt.id}`}
                             />
                           </td>
@@ -1129,16 +1130,18 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                             <input
                               type="date"
                               value={getTableValue(evt, 'date')}
-                              onChange={(e) => handleTableCellChange(evt.id, 'date', e.target.value)}
-                              className="w-full px-2 py-1 bg-transparent border border-transparent hover:border-[#D4A024]/30 focus:border-[#D4A024] rounded text-white text-sm transition-colors"
+                              onChange={(e) => hasAdminAccess && handleTableCellChange(evt.id, 'date', e.target.value)}
+                              readOnly={!hasAdminAccess}
+                              className={`w-full px-2 py-1 bg-transparent border border-transparent ${hasAdminAccess ? 'hover:border-[#D4A024]/30 focus:border-[#D4A024]' : 'cursor-default'} rounded text-white text-sm transition-colors`}
                               data-testid={`table-date-${evt.id}`}
                             />
                           </td>
                           <td className="px-3 py-2">
                             <select
                               value={getTableValue(evt, 'type_sondage')}
-                              onChange={(e) => handleTableCellChange(evt.id, 'type_sondage', e.target.value)}
-                              className="w-full px-2 py-1 bg-transparent border border-transparent hover:border-[#D4A024]/30 focus:border-[#D4A024] rounded text-white text-sm transition-colors"
+                              onChange={(e) => hasAdminAccess && handleTableCellChange(evt.id, 'type_sondage', e.target.value)}
+                              disabled={!hasAdminAccess}
+                              className={`w-full px-2 py-1 bg-transparent border border-transparent ${hasAdminAccess ? 'hover:border-[#D4A024]/30 focus:border-[#D4A024]' : 'cursor-default'} rounded text-white text-sm transition-colors`}
                               data-testid={`table-type-${evt.id}`}
                             >
                               <option value="repas" className="bg-[#7A2020]">Repas</option>
@@ -1151,8 +1154,9 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                               type="number"
                               min="0"
                               value={getTableValue(evt, 'total_presents')}
-                              onChange={(e) => handleTableCellChange(evt.id, 'total_presents', e.target.value)}
-                              className="w-full px-2 py-1 bg-transparent border border-transparent hover:border-[#D4A024]/30 focus:border-[#D4A024] rounded text-[#D4A024] text-sm text-center font-bold transition-colors"
+                              onChange={(e) => hasAdminAccess && handleTableCellChange(evt.id, 'total_presents', e.target.value)}
+                              readOnly={!hasAdminAccess}
+                              className={`w-full px-2 py-1 bg-transparent border border-transparent ${hasAdminAccess ? 'hover:border-[#D4A024]/30 focus:border-[#D4A024]' : 'cursor-default'} rounded text-[#D4A024] text-sm text-center font-bold transition-colors`}
                               data-testid={`table-presents-${evt.id}`}
                             />
                           </td>
@@ -1321,29 +1325,32 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                                   {/* Numéro */}
                                   <span className="text-gray-500 text-xs w-5 shrink-0">#{idx + 1}</span>
                                   
-                                  {/* Lieu - éditable */}
+                                  {/* Lieu - éditable seulement pour admin */}
                                   <input
                                     type="text"
                                     value={getTableValue(evt.id, 'lieu', evt.lieu)}
-                                    onChange={(e) => handleTableCellChange(evt.id, 'lieu', e.target.value)}
-                                    className="font-serif font-semibold w-16 sm:w-24 px-1 py-0.5 rounded text-xs sm:text-sm bg-transparent text-white border border-transparent hover:border-[#D4A024]/30 focus:border-[#D4A024] focus:bg-black/30"
+                                    onChange={(e) => hasAdminAccess && handleTableCellChange(evt.id, 'lieu', e.target.value)}
+                                    readOnly={!hasAdminAccess}
+                                    className={`font-serif font-semibold w-16 sm:w-24 px-1 py-0.5 rounded text-xs sm:text-sm bg-transparent text-white border border-transparent ${hasAdminAccess ? 'hover:border-[#D4A024]/30 focus:border-[#D4A024] focus:bg-black/30' : 'cursor-default'}`}
                                     data-testid={`list-lieu-${evt.id}`}
                                   />
                                   
-                                  {/* Date - éditable */}
+                                  {/* Date - éditable seulement pour admin */}
                                   <input
                                     type="date"
                                     value={getTableValue(evt.id, 'date', evt.date?.split('T')[0] || '')}
-                                    onChange={(e) => handleTableCellChange(evt.id, 'date', e.target.value)}
-                                    className="w-24 sm:w-28 px-1 py-0.5 rounded text-xs bg-transparent text-gray-400 border border-transparent hover:border-[#D4A024]/30 focus:border-[#D4A024] focus:bg-black/30"
+                                    onChange={(e) => hasAdminAccess && handleTableCellChange(evt.id, 'date', e.target.value)}
+                                    readOnly={!hasAdminAccess}
+                                    className={`w-24 sm:w-28 px-1 py-0.5 rounded text-xs bg-transparent text-gray-400 border border-transparent ${hasAdminAccess ? 'hover:border-[#D4A024]/30 focus:border-[#D4A024] focus:bg-black/30' : 'cursor-default'}`}
                                     data-testid={`list-date-${evt.id}`}
                                   />
                                   
-                                  {/* Type - éditable (caché sur mobile) */}
+                                  {/* Type - éditable seulement pour admin (caché sur mobile) */}
                                   <select
                                     value={getTableValue(evt.id, 'type_sondage', evt.type_sondage)}
-                                    onChange={(e) => handleTableCellChange(evt.id, 'type_sondage', e.target.value)}
-                                    className="hidden sm:block w-20 px-1 py-0.5 rounded text-xs bg-transparent text-gray-400 border border-transparent hover:border-[#D4A024]/30 focus:border-[#D4A024] focus:bg-black/30"
+                                    onChange={(e) => hasAdminAccess && handleTableCellChange(evt.id, 'type_sondage', e.target.value)}
+                                    disabled={!hasAdminAccess}
+                                    className={`hidden sm:block w-20 px-1 py-0.5 rounded text-xs bg-transparent text-gray-400 border border-transparent ${hasAdminAccess ? 'hover:border-[#D4A024]/30 focus:border-[#D4A024] focus:bg-black/30' : 'cursor-default'}`}
                                     data-testid={`list-type-${evt.id}`}
                                   >
                                     <option value="repas">Repas</option>
@@ -1354,15 +1361,16 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                                 
                                 {/* Actions */}
                                 <div className="flex items-center gap-1 shrink-0">
-                                  {/* Présences - éditable directement */}
+                                  {/* Présences - éditable seulement pour admin */}
                                   <div className="flex items-center bg-[#D4A024]/20 px-2 py-1 rounded">
                                     <Users className="w-3 h-3 sm:w-4 sm:h-4 text-[#D4A024] mr-1" />
                                     <input
                                       type="number"
                                       min="0"
                                       value={getTableValue(evt.id, 'total_presents', evt.total_presents || 0)}
-                                      onChange={(e) => handleTableCellChange(evt.id, 'total_presents', e.target.value)}
-                                      className="w-8 sm:w-10 text-center font-bold text-base sm:text-lg bg-transparent text-[#D4A024] border-none focus:outline-none"
+                                      onChange={(e) => hasAdminAccess && handleTableCellChange(evt.id, 'total_presents', e.target.value)}
+                                      readOnly={!hasAdminAccess}
+                                      className={`w-8 sm:w-10 text-center font-bold text-base sm:text-lg bg-transparent text-[#D4A024] border-none focus:outline-none ${!hasAdminAccess ? 'cursor-default' : ''}`}
                                       data-testid={`list-presents-${evt.id}`}
                                     />
                                   </div>
