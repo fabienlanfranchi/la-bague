@@ -32,7 +32,11 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const Evenements = () => {
-  const { isAdmin } = useUser();
+  const { isAdmin, currentMember } = useUser();
+  
+  // SÉCURITÉ: Vérifier à la fois isAdmin ET is_president pour les actions admin
+  const hasAdminAccess = isAdmin && currentMember?.is_president === true;
+  
   const [evenements, setEvenements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -729,7 +733,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
           <h2 className="text-2xl font-serif font-bold text-white">
             📅 Prochain événement
           </h2>
-          {isAdmin && (
+          {hasAdminAccess && (
             <Button
               onClick={() => setShowCreateModal(true)}
               className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif font-bold"
@@ -819,7 +823,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                         onClick={() => window.open(prochainEvenement.image_url, '_blank')}
                         title="Cliquer pour agrandir"
                       />
-                      {isAdmin && (
+                      {hasAdminAccess && (
                         <Button
                           onClick={() => handleDeleteImage(prochainEvenement.id)}
                           variant="destructive"
@@ -830,7 +834,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                         </Button>
                       )}
                     </div>
-                  ) : isAdmin ? (
+                  ) : hasAdminAccess ? (
                     <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-[#D4A024]/50 rounded-lg cursor-pointer hover:bg-[#D4A024]/10 transition-colors">
                       <div className="flex flex-col items-center justify-center pt-5 pb-6">
                         <Upload className="w-8 h-8 text-[#D4A024] mb-2" />
@@ -864,7 +868,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                     <Users className="w-4 h-4 mr-2" />
                     Voir les réponses
                   </Button>
-                  {isAdmin && (
+                  {hasAdminAccess && (
                     <>
                       <Button
                         onClick={() => shareEventToWhatsApp(prochainEvenement)}
@@ -913,7 +917,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
               <h3 className="text-2xl font-serif text-gray-400 mb-2">
                 Aucun événement à venir
               </h3>
-              {isAdmin ? (
+              {hasAdminAccess ? (
                 <>
                   <p className="text-gray-500 mb-6">
                     Créez un nouvel événement pour planifier le prochain repas du club
@@ -1159,7 +1163,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                                   ✏️
                                 </span>
                               )}
-                              {isAdmin && (
+                              {hasAdminAccess && (
                                 <Button
                                   onClick={(e) => handleDeleteEvent(evt.id, e)}
                                   size="sm"
@@ -1238,7 +1242,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                           </div>
                         </td>
                       </tr>
-                    ) : isAdmin ? (
+                    ) : hasAdminAccess ? (
                       <tr 
                         className="border-b border-[#D4A024]/10 hover:bg-[#D4A024]/5 cursor-pointer transition-colors"
                         onClick={() => startAddingToSeason(selectedSeason)}
@@ -1369,7 +1373,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                                   )}
                                   
                                   {/* Supprimer */}
-                                  {isAdmin && (
+                                  {hasAdminAccess && (
                                     <Button
                                       onClick={(e) => handleDeleteEvent(evt.id, e)}
                                       size="sm"
@@ -1480,7 +1484,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                                 </Button>
                               </div>
                             </div>
-                          ) : isAdmin ? (
+                          ) : hasAdminAccess ? (
                             /* BOUTON AJOUTER (Admin seulement) */
                             <Button
                               onClick={(e) => startAddingToSeason(saisonNum, e)}
