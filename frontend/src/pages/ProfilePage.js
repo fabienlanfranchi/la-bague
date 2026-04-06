@@ -56,24 +56,13 @@ const ProfilePage = () => {
   const [submittingPaiement, setSubmittingPaiement] = useState(false);
 
   useEffect(() => {
-    const loadProfile = async () => {
-      try {
-        const members = await api.getMembers();
-        if (members.length > 0) {
-          setCurrentMember(members[0]);
-        }
-      } catch (error) {
-        console.error('Erreur lors du chargement du profil:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadProfile();
+    // NE PAS recharger le membre - utiliser celui déjà connecté
+    // L'ancien code prenait members[0] ce qui écrasait le membre connecté !
+    setLoading(false);
     
     // Vérifier si WebAuthn est supporté
     setWebAuthnSupported(browserSupportsWebAuthn());
-  }, [setCurrentMember]);
+  }, []);
 
   // Charger les passkeys du membre
   useEffect(() => {
