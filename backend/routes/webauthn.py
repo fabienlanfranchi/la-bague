@@ -1,10 +1,10 @@
 # WebAuthn / Passkeys routes for Face ID / Touch ID authentication
 # La Bague Impériale
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from datetime import datetime, timezone, timedelta
-from typing import Optional, List
+from typing import Optional
 import base64
 import uuid
 import os
@@ -33,31 +33,44 @@ logger = logging.getLogger(__name__)
 
 webauthn_router = APIRouter(prefix="/api/webauthn", tags=["WebAuthn"])
 
-# Configuration dynamique - détecte l'environnement automatiquement
-def get_webauthn_config(origin: str = None):
-    """Retourne RP_ID et ORIGIN basés sur l'environnement"""
-    # Si on a une origine dans la requête, l'utiliser
-    if origin:
-        # Extraire le domaine de l'origine
-        from urllib.parse import urlparse
-        parsed = urlparse(origin)
-        return {
-            'rp_id': parsed.netloc,
-            'origin': origin
-        }
-    
-    # Sinon, utiliser les valeurs par défaut
-    rp_id = os.environ.get('WEBAUTHN_RP_ID', 'evento-cigars.vercel.app')
-    origin_url = os.environ.get('WEBAUTHN_ORIGIN', 'https://evento-cigars.vercel.app')
-    return {
-        'rp_id': rp_id,
-        'origin': origin_url
-    }
-
 RP_NAME = "La Bague Impériale"
 
 # Stockage temporaire des challenges (en mémoire, expire après 5 minutes)
 challenges_store = {}
+
+# ============ HELPERS ============
+
+def get_rp_id_and_origin(request: Request):
+    """Extrait le RP_ID et l'origine depuis les headers de la requête"""
+    # Essayer d'obtenir l'origine depuis le header Origin ou Referer
+    origin = request.headers.get('origin') or request.headers.get('referer', '')
+    
+    if origin:
+        from urllib.parse import urlparse
+        parsed = urlparse(origin)
+        rp_id = parsed.netloc.split(':')[0]  # Enlever le port si présent
+        # S'assurer que l'origin est bien formé
+        if not origin.startswith('http'):
+            origin = f"https://{parsed.netloc}"
+        else:
+            origin = f"{parsed.scheme}://{parsed.netloc}"
+        return rp_id, origin
+    
+    # Fallback sur les variables d'environnement
+    rp_id = os.environ.get('WEBAUTHN_RP_ID', 'evento-cigars.vercel.app')
+    origin = os.environ.get('WEBAUTHN_ORIGIN', 'https://evento-cigars.vercel.app')
+    return rp_id, origin
+
+def base64url_encode(data: bytes) -> str:
+    """Encode bytes to base64url string"""
+    return base64.urlsafe_b64encode(data).rstrip(b'=').decode('utf-8')
+
+def base64url_decode(data: str) -> bytes:
+    """Decode base64url string to bytes"""
+    padding = 4 - len(data) % 4
+    if padding != 4:
+        data += '=' * padding
+    return base64.urlsafe_b64decode(data)
 
 # ============ MODELS ============
 
@@ -74,26 +87,16 @@ class AuthenticateOptionsRequest(BaseModel):
 class AuthenticateVerifyRequest(BaseModel):
     credential: dict
 
-# ============ HELPERS ============
-
-def base64url_encode(data: bytes) -> str:
-    """Encode bytes to base64url string"""
-    return base64.urlsafe_b64encode(data).rstrip(b'=').decode('utf-8')
-
-def base64url_decode(data: str) -> bytes:
-    """Decode base64url string to bytes"""
-    padding = 4 - len(data) % 4
-    if padding != 4:
-        data += '=' * padding
-    return base64.urlsafe_b64decode(data)
-
 # ============ REGISTRATION ============
 
 @webauthn_router.post("/register/options")
-async def get_registration_options(request: RegisterOptionsRequest):
+async def get_registration_options(request: Request, data: RegisterOptionsRequest):
     """Génère les options d'enregistrement pour un nouveau passkey"""
     try:
-        member = await db.members.find_one({"id": request.member_id}, {"_id": 0})
+        rp_id, origin = get_rp_id_and_origin(request)
+        logger.info(f"WebAuthn register options - RP_ID: {rp_id}, Origin: {origin}")
+        
+        member = await db.members.find_one({"id": data.member_id}, {"_id": 0})
         if not member:
             raise HTTPException(status_code=404, detail="Membre non trouvé")
         
@@ -109,10 +112,10 @@ async def get_registration_options(request: RegisterOptionsRequest):
             )
         
         # Générer les options
-        user_id = request.member_id.encode('utf-8')
+        user_id = data.member_id.encode('utf-8')
         
         options = generate_registration_options(
-            rp_id=RP_ID,
+            rp_id=rp_id,
             rp_name=RP_NAME,
             user_id=user_id,
             user_name=member.get('email', member.get('nom_complet', 'Membre')),
@@ -130,11 +133,13 @@ async def get_registration_options(request: RegisterOptionsRequest):
             timeout=60000
         )
         
-        # Stocker le challenge
+        # Stocker le challenge avec le rp_id et origin pour la vérification
         challenge_b64 = base64url_encode(options.challenge)
-        challenges_store[request.member_id] = {
+        challenges_store[data.member_id] = {
             'challenge': challenge_b64,
             'type': 'registration',
+            'rp_id': rp_id,
+            'origin': origin,
             'expires': datetime.now(timezone.utc) + timedelta(minutes=5)
         }
         
@@ -152,30 +157,34 @@ async def get_registration_options(request: RegisterOptionsRequest):
 
 
 @webauthn_router.post("/register/verify")
-async def verify_registration(request: RegisterVerifyRequest):
+async def verify_registration(request: Request, data: RegisterVerifyRequest):
     """Vérifie et enregistre un nouveau passkey"""
     try:
-        member = await db.members.find_one({"id": request.member_id}, {"_id": 0})
+        member = await db.members.find_one({"id": data.member_id}, {"_id": 0})
         if not member:
             raise HTTPException(status_code=404, detail="Membre non trouvé")
         
         # Récupérer le challenge stocké
-        stored = challenges_store.get(request.member_id)
+        stored = challenges_store.get(data.member_id)
         if not stored or stored['type'] != 'registration':
             raise HTTPException(status_code=400, detail="Challenge non trouvé ou expiré")
         
         if stored['expires'] < datetime.now(timezone.utc):
-            del challenges_store[request.member_id]
+            del challenges_store[data.member_id]
             raise HTTPException(status_code=400, detail="Challenge expiré")
         
         expected_challenge = base64url_decode(stored['challenge'])
+        rp_id = stored['rp_id']
+        origin = stored['origin']
+        
+        logger.info(f"WebAuthn verify registration - RP_ID: {rp_id}, Origin: {origin}")
         
         # Vérifier la réponse
         verification = verify_registration_response(
-            credential=request.credential,
+            credential=data.credential,
             expected_challenge=expected_challenge,
-            expected_origin=ORIGIN,
-            expected_rp_id=RP_ID,
+            expected_origin=origin,
+            expected_rp_id=rp_id,
             require_user_verification=False
         )
         
@@ -187,22 +196,23 @@ async def verify_registration(request: RegisterVerifyRequest):
             "counter": verification.sign_count,
             "transports": ["internal"],
             "created_at": datetime.now(timezone.utc).isoformat(),
-            "nickname": f"Face ID / Touch ID",
-            "last_used": None
+            "nickname": "Face ID / Touch ID",
+            "last_used": None,
+            "rp_id": rp_id  # Stocker le rp_id pour la vérification ultérieure
         }
         
         # Ajouter au membre
         await db.members.update_one(
-            {"id": request.member_id},
+            {"id": data.member_id},
             {"$push": {"passkeys": passkey}}
         )
         
         # Nettoyer le challenge
-        del challenges_store[request.member_id]
+        del challenges_store[data.member_id]
         
         return {
             "success": True,
-            "message": "Passkey enregistré avec succès",
+            "message": "Face ID / Touch ID activé avec succès !",
             "passkey_id": passkey["id"]
         }
         
@@ -216,31 +226,43 @@ async def verify_registration(request: RegisterVerifyRequest):
 # ============ AUTHENTICATION ============
 
 @webauthn_router.post("/authenticate/options")
-async def get_authentication_options(request: AuthenticateOptionsRequest):
+async def get_authentication_options(request: Request, data: AuthenticateOptionsRequest = None):
     """Génère les options d'authentification pour un passkey"""
     try:
+        rp_id, origin = get_rp_id_and_origin(request)
+        logger.info(f"WebAuthn auth options - RP_ID: {rp_id}, Origin: {origin}")
+        
         allow_credentials = []
         
-        if request.member_id:
-            # Authentification pour un membre spécifique
-            member = await db.members.find_one({"id": request.member_id}, {"_id": 0})
-            if not member:
-                raise HTTPException(status_code=404, detail="Membre non trouvé")
-            
-            passkeys = member.get('passkeys', [])
-            if not passkeys:
-                raise HTTPException(status_code=400, detail="Aucun passkey enregistré")
-            
-            for pk in passkeys:
-                allow_credentials.append(
-                    PublicKeyCredentialDescriptor(
-                        id=base64url_decode(pk['credential_id']),
-                        transports=[AuthenticatorTransport.INTERNAL]
-                    )
-                )
+        # Si on a un member_id, chercher ses passkeys
+        if data and data.member_id:
+            member = await db.members.find_one({"id": data.member_id}, {"_id": 0})
+            if member:
+                passkeys = member.get('passkeys', [])
+                for pk in passkeys:
+                    # Vérifier que le passkey est pour ce domaine
+                    if pk.get('rp_id', rp_id) == rp_id:
+                        allow_credentials.append(
+                            PublicKeyCredentialDescriptor(
+                                id=base64url_decode(pk['credential_id']),
+                                transports=[AuthenticatorTransport.INTERNAL]
+                            )
+                        )
+        
+        # Si pas de credentials spécifiques, chercher tous les passkeys pour ce domaine
+        if not allow_credentials:
+            async for member in db.members.find({"passkeys": {"$exists": True, "$ne": []}}, {"_id": 0, "passkeys": 1, "id": 1}):
+                for pk in member.get('passkeys', []):
+                    if pk.get('rp_id', rp_id) == rp_id:
+                        allow_credentials.append(
+                            PublicKeyCredentialDescriptor(
+                                id=base64url_decode(pk['credential_id']),
+                                transports=[AuthenticatorTransport.INTERNAL]
+                            )
+                        )
         
         options = generate_authentication_options(
-            rp_id=RP_ID,
+            rp_id=rp_id,
             allow_credentials=allow_credentials if allow_credentials else None,
             user_verification=UserVerificationRequirement.PREFERRED,
             timeout=60000
@@ -248,10 +270,12 @@ async def get_authentication_options(request: AuthenticateOptionsRequest):
         
         # Stocker le challenge
         challenge_b64 = base64url_encode(options.challenge)
-        challenge_key = request.member_id or 'discoverable'
+        challenge_key = (data.member_id if data and data.member_id else 'discoverable') + f"_{rp_id}"
         challenges_store[challenge_key] = {
             'challenge': challenge_b64,
             'type': 'authentication',
+            'rp_id': rp_id,
+            'origin': origin,
             'expires': datetime.now(timezone.utc) + timedelta(minutes=5)
         }
         
@@ -262,19 +286,20 @@ async def get_authentication_options(request: AuthenticateOptionsRequest):
             "options": options_json
         }
         
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"Erreur génération options authentication: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @webauthn_router.post("/authenticate/verify")
-async def verify_authentication(request: AuthenticateVerifyRequest):
+async def verify_authentication(request: Request, data: AuthenticateVerifyRequest):
     """Vérifie l'authentification par passkey et retourne le membre"""
     try:
-        credential = request.credential
+        rp_id, origin = get_rp_id_and_origin(request)
+        credential = data.credential
         credential_id_b64 = credential.get('id', '')
+        
+        logger.info(f"WebAuthn verify auth - RP_ID: {rp_id}, Origin: {origin}")
         
         # Trouver le membre avec ce credential
         member = await db.members.find_one(
@@ -296,8 +321,8 @@ async def verify_authentication(request: AuthenticateVerifyRequest):
             raise HTTPException(status_code=404, detail="Passkey non trouvé")
         
         # Récupérer le challenge
-        challenge_key = member['id']
-        stored = challenges_store.get(challenge_key) or challenges_store.get('discoverable')
+        challenge_key = f"{member['id']}_{rp_id}"
+        stored = challenges_store.get(challenge_key) or challenges_store.get(f"discoverable_{rp_id}")
         
         if not stored or stored['type'] != 'authentication':
             raise HTTPException(status_code=400, detail="Challenge non trouvé")
@@ -311,10 +336,10 @@ async def verify_authentication(request: AuthenticateVerifyRequest):
         verification = verify_authentication_response(
             credential=credential,
             expected_challenge=expected_challenge,
-            expected_origin=ORIGIN,
-            expected_rp_id=RP_ID,
+            expected_origin=origin,
+            expected_rp_id=rp_id,
             credential_public_key=base64url_decode(passkey['public_key']),
-            credential_current_sign_count=passkey['counter'],
+            credential_current_sign_count=passkey.get('counter', 0),
             require_user_verification=False
         )
         
@@ -332,8 +357,8 @@ async def verify_authentication(request: AuthenticateVerifyRequest):
         # Nettoyer le challenge
         if challenge_key in challenges_store:
             del challenges_store[challenge_key]
-        if 'discoverable' in challenges_store:
-            del challenges_store['discoverable']
+        if f"discoverable_{rp_id}" in challenges_store:
+            del challenges_store[f"discoverable_{rp_id}"]
         
         return {
             "success": True,
