@@ -1806,6 +1806,48 @@ const Dashboard = () => {
               </div>
             </CardContent>
           </Card>
+        ) : prochainEvenementInfo ? (
+          // Afficher l'info du prochain événement (pas encore d'événement officiel)
+          <Card className="bg-gradient-to-br from-[#1a1a2e] to-[#0f0f1a] border-2 border-cyan-500/30 backdrop-blur-sm">
+            <CardHeader>
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <div>
+                  <CardTitle className="text-xl font-serif text-white mb-2 flex items-center">
+                    <span className="text-cyan-400 mr-2">ℹ️</span>
+                    Info - {prochainEvenementInfo.type_evenement === 'repas' ? 'Prochain Repas' : 'Prochain Apéro'}
+                  </CardTitle>
+                  <div className="flex items-center space-x-4 text-gray-300">
+                    <span>📅 {new Date(prochainEvenementInfo.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                    <span>📍 {prochainEvenementInfo.lieu}</span>
+                  </div>
+                </div>
+                <div className="flex space-x-2">
+                  {/* Bouton Partager WhatsApp */}
+                  <Button
+                    onClick={() => {
+                      const typeLabel = prochainEvenementInfo.type_evenement === 'repas' ? 'Prochain repas' : 'Prochain apéro';
+                      const dateStr = new Date(prochainEvenementInfo.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+                      const message = `🎩 *La Bague Impériale*\n\n*${typeLabel}*\n\n📅 ${dateStr}\n📍 ${prochainEvenementInfo.lieu}\n\nPlus d'informations à venir sur l'application.\n\n${window.location.origin}`;
+                      window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+                    }}
+                    className="bg-green-600 hover:bg-green-700 text-white font-serif"
+                    data-testid="share-info-whatsapp"
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Partager WhatsApp
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="bg-black/30 rounded-lg p-4 border border-cyan-500/20">
+                <p className="text-gray-400 text-sm italic">
+                  Cette info est affichée sur le Dashboard de tous les membres. 
+                  Créez l'événement officiel avec sondage depuis l'onglet "Événements" quand vous êtes prêt.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         ) : (
           <Card className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm">
             <CardContent className="py-8 text-center">
