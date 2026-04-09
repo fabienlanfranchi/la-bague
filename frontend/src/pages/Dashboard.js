@@ -14,6 +14,42 @@ import axios from 'axios';
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
+// Fonction pour extraire le mot-clé principal d'un plat
+// Utilisée pour le résumé après validation du choix
+const extractKeyword = (platComplet) => {
+  if (!platComplet) return '';
+  
+  // Mots-clés d'ingrédients principaux à rechercher
+  const ingredients = [
+    // Viandes
+    'agneau', 'veau', 'boeuf', 'bœuf', 'porc', 'échine', 'filet', 'côte', 'entrecôte',
+    'poulet', 'canard', 'magret', 'foie gras', 'volaille',
+    // Poissons & fruits de mer
+    'langoustine', 'langoustines', 'homard', 'langouste', 'crevette', 'crevettes',
+    'loup', 'bar', 'daurade', 'dorade', 'thon', 'saumon', 'cabillaud', 'maigre',
+    'moules', 'huîtres', 'saint-jacques', 'coquilles',
+    // Préparations
+    'risotto', 'ravioli', 'raviolis', 'tartare', 'carpaccio', 'crudo',
+    'salade', 'velouté', 'soupe', 'mousse', 'tarte', 'fondant', 'macaron',
+    // Autres
+    'truffe', 'fraises', 'chocolat', 'framboise', 'citron'
+  ];
+  
+  const platLower = platComplet.toLowerCase();
+  
+  // Chercher le premier ingrédient trouvé
+  for (const ingredient of ingredients) {
+    if (platLower.includes(ingredient)) {
+      // Capitaliser la première lettre
+      return ingredient.charAt(0).toUpperCase() + ingredient.slice(1);
+    }
+  }
+  
+  // Si aucun ingrédient trouvé, prendre les 2-3 premiers mots
+  const mots = platComplet.split(/[,\s]+/).filter(m => m.length > 2);
+  return mots.slice(0, 2).join(' ');
+};
+
 // ============ CHARTE DU CLUB ============
 const CHARTE_CLUB = {
   titre: "Il était une fois La Bague Impériale",
@@ -776,7 +812,29 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
                       <CheckCircle className="w-5 h-5 mr-2" />
                       Votre réponse "{reponse === 'oui' ? 'PRÉSENT' : 'ABSENT'}" a été enregistrée !
                     </p>
-                    <p className="text-green-400/70 text-center text-sm mt-1">
+                    {reponse === 'oui' && prochainEvenement?.type_sondage === 'repas' && (choixEntree || choixPlat || choixDessert) && (
+                      <div className="mt-3 pt-3 border-t border-green-500/30">
+                        <p className="text-green-300 text-center text-sm mb-2">Votre menu :</p>
+                        <div className="flex flex-wrap justify-center gap-2">
+                          {choixEntree && (
+                            <Badge className="bg-amber-600/80 text-white">
+                              🥗 {extractKeyword(choixEntree)}
+                            </Badge>
+                          )}
+                          {choixPlat && (
+                            <Badge className="bg-blue-600/80 text-white">
+                              🍖 {extractKeyword(choixPlat)}
+                            </Badge>
+                          )}
+                          {choixDessert && (
+                            <Badge className="bg-purple-600/80 text-white">
+                              🍰 {extractKeyword(choixDessert)}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    <p className="text-green-400/70 text-center text-sm mt-2">
                       Vous pouvez modifier votre réponse jusqu'à la date limite
                     </p>
                   </div>
