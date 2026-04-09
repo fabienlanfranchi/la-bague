@@ -130,6 +130,9 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
   const [choixPlat, setChoixPlat] = useState(null);
   const [choixDessert, setChoixDessert] = useState(null);
   
+  // Afficher le menu avant de répondre
+  const [showMenuPreview, setShowMenuPreview] = useState(false);
+  
   // Messages non lus
   const [messagesNonLus, setMessagesNonLus] = useState([]);
   const [messageOuvert, setMessageOuvert] = useState(null);
@@ -612,12 +615,79 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
                       NON, absent
                     </Button>
                   </div>
+                  
+                  {/* Bouton Voir Menu (avant de répondre) */}
+                  {prochainEvenement.type_sondage === 'repas' && !reponse && prochainEvenement.options_sondage && (
+                    <div className="mt-3">
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowMenuPreview(!showMenuPreview)}
+                        className="w-full border-[#D4A024]/50 text-[#D4A024] hover:bg-[#D4A024]/10"
+                        data-testid="voir-menu-btn"
+                      >
+                        <span className="mr-2">🍽️</span>
+                        {showMenuPreview ? 'Masquer le menu' : 'Voir le menu'}
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {/* Aperçu du menu (avant de répondre) */}
+                  {prochainEvenement.type_sondage === 'repas' && showMenuPreview && !reponse && prochainEvenement.options_sondage && (
+                    <div className="mt-4 p-4 bg-[#D4A024]/10 border border-[#D4A024]/30 rounded-lg space-y-3">
+                      <h5 className="text-[#D4A024] font-semibold flex items-center text-lg">
+                        <span className="mr-2">📋</span>
+                        Menu du repas
+                      </h5>
+                      
+                      {prochainEvenement.options_sondage.entrees && prochainEvenement.options_sondage.entrees.length > 0 && (
+                        <div>
+                          <p className="text-base text-gray-400 font-medium">Entrées :</p>
+                          <p className="text-white text-lg">
+                            {prochainEvenement.options_sondage.entrees.map((e, i) => (
+                              <span key={i}>
+                                {i > 0 && <span className="text-[#D4A024] font-bold mx-2">OU</span>}
+                                {e}
+                              </span>
+                            ))}
+                          </p>
+                        </div>
+                      )}
+                      
+                      {prochainEvenement.options_sondage.plats && prochainEvenement.options_sondage.plats.length > 0 && (
+                        <div>
+                          <p className="text-base text-gray-400 font-medium">Plats :</p>
+                          <p className="text-white text-lg">
+                            {prochainEvenement.options_sondage.plats.map((p, i) => (
+                              <span key={i}>
+                                {i > 0 && <span className="text-[#D4A024] font-bold mx-2">OU</span>}
+                                {p}
+                              </span>
+                            ))}
+                          </p>
+                        </div>
+                      )}
+                      
+                      {prochainEvenement.options_sondage.desserts && prochainEvenement.options_sondage.desserts.length > 0 && (
+                        <div>
+                          <p className="text-base text-gray-400 font-medium">Desserts :</p>
+                          <p className="text-white text-lg">
+                            {prochainEvenement.options_sondage.desserts.map((d, i) => (
+                              <span key={i}>
+                                {i > 0 && <span className="text-[#D4A024] font-bold mx-2">OU</span>}
+                                {d}
+                              </span>
+                            ))}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Choix de menu pour les repas */}
                 {prochainEvenement.type_sondage === 'repas' && reponse === 'oui' && prochainEvenement.options_sondage && (
                   <div className="mb-4 p-4 bg-blue-900/20 border border-blue-500/30 rounded-lg space-y-4">
-                    <h5 className="text-blue-400 font-semibold flex items-center">
+                    <h5 className="text-blue-400 font-semibold flex items-center text-lg">
                       <span className="mr-2">🍽️</span>
                       Vos choix de menu
                     </h5>
@@ -625,22 +695,24 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
                     {/* Entrées */}
                     {prochainEvenement.options_sondage.entrees && prochainEvenement.options_sondage.entrees.length > 0 && (
                       <div>
-                        <p className="text-sm text-gray-400 mb-2">Entrée :</p>
-                        <div className="flex flex-wrap gap-2">
+                        <p className="text-base text-gray-400 mb-2 font-medium">Entrée :</p>
+                        <div className="flex flex-wrap items-center gap-2">
                           {prochainEvenement.options_sondage.entrees.map((entree, idx) => (
-                            <Button
-                              key={idx}
-                              variant="outline"
-                              size="sm"
-                              onClick={() => { setChoixEntree(entree); setReponseEnvoyee(false); }}
-                              className={`transition-all ${
-                                choixEntree === entree
-                                  ? 'bg-amber-600 border-amber-500 text-white'
-                                  : 'border-amber-600/50 text-amber-400 hover:bg-amber-900/30'
-                              }`}
-                            >
-                              {entree}
-                            </Button>
+                            <React.Fragment key={idx}>
+                              {idx > 0 && <span className="text-[#D4A024] font-bold text-lg mx-1">OU</span>}
+                              <Button
+                                variant="outline"
+                                size="lg"
+                                onClick={() => { setChoixEntree(entree); setReponseEnvoyee(false); }}
+                                className={`transition-all text-base px-4 py-2 ${
+                                  choixEntree === entree
+                                    ? 'bg-amber-600 border-amber-500 text-white'
+                                    : 'border-amber-600/50 text-amber-400 hover:bg-amber-900/30'
+                                }`}
+                              >
+                                {entree}
+                              </Button>
+                            </React.Fragment>
                           ))}
                         </div>
                       </div>
@@ -649,22 +721,24 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
                     {/* Plats */}
                     {prochainEvenement.options_sondage.plats && prochainEvenement.options_sondage.plats.length > 0 && (
                       <div>
-                        <p className="text-sm text-gray-400 mb-2">Plat :</p>
-                        <div className="flex flex-wrap gap-2">
+                        <p className="text-base text-gray-400 mb-2 font-medium">Plat :</p>
+                        <div className="flex flex-wrap items-center gap-2">
                           {prochainEvenement.options_sondage.plats.map((plat, idx) => (
-                            <Button
-                              key={idx}
-                              variant="outline"
-                              size="sm"
-                              onClick={() => { setChoixPlat(plat); setReponseEnvoyee(false); }}
-                              className={`transition-all ${
-                                choixPlat === plat
-                                  ? 'bg-blue-600 border-blue-500 text-white'
-                                  : 'border-blue-600/50 text-blue-400 hover:bg-blue-900/30'
-                              }`}
-                            >
-                              {plat}
-                            </Button>
+                            <React.Fragment key={idx}>
+                              {idx > 0 && <span className="text-[#D4A024] font-bold text-lg mx-1">OU</span>}
+                              <Button
+                                variant="outline"
+                                size="lg"
+                                onClick={() => { setChoixPlat(plat); setReponseEnvoyee(false); }}
+                                className={`transition-all text-base px-4 py-2 ${
+                                  choixPlat === plat
+                                    ? 'bg-blue-600 border-blue-500 text-white'
+                                    : 'border-blue-600/50 text-blue-400 hover:bg-blue-900/30'
+                                }`}
+                              >
+                                {plat}
+                              </Button>
+                            </React.Fragment>
                           ))}
                         </div>
                       </div>
@@ -673,22 +747,24 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
                     {/* Desserts */}
                     {prochainEvenement.options_sondage.desserts && prochainEvenement.options_sondage.desserts.length > 0 && (
                       <div>
-                        <p className="text-sm text-gray-400 mb-2">Dessert :</p>
-                        <div className="flex flex-wrap gap-2">
+                        <p className="text-base text-gray-400 mb-2 font-medium">Dessert :</p>
+                        <div className="flex flex-wrap items-center gap-2">
                           {prochainEvenement.options_sondage.desserts.map((dessert, idx) => (
-                            <Button
-                              key={idx}
-                              variant="outline"
-                              size="sm"
-                              onClick={() => { setChoixDessert(dessert); setReponseEnvoyee(false); }}
-                              className={`transition-all ${
-                                choixDessert === dessert
-                                  ? 'bg-purple-600 border-purple-500 text-white'
-                                  : 'border-purple-600/50 text-purple-400 hover:bg-purple-900/30'
-                              }`}
-                            >
-                              {dessert}
-                            </Button>
+                            <React.Fragment key={idx}>
+                              {idx > 0 && <span className="text-[#D4A024] font-bold text-lg mx-1">OU</span>}
+                              <Button
+                                variant="outline"
+                                size="lg"
+                                onClick={() => { setChoixDessert(dessert); setReponseEnvoyee(false); }}
+                                className={`transition-all text-base px-4 py-2 ${
+                                  choixDessert === dessert
+                                    ? 'bg-purple-600 border-purple-500 text-white'
+                                    : 'border-purple-600/50 text-purple-400 hover:bg-purple-900/30'
+                                }`}
+                              >
+                                {dessert}
+                              </Button>
+                            </React.Fragment>
                           ))}
                         </div>
                       </div>

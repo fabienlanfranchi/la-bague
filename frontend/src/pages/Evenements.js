@@ -1682,16 +1682,27 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                       <input
                         key={i}
                         type="text"
-                        value={entree}
+                        value={entree === `Entrée ${String.fromCharCode(65 + i)}` ? '' : entree}
+                        placeholder={`Ex: Salade César, Foie gras...`}
                         onChange={(e) => {
                           const newEntrees = [...newEvent.options_sondage.entrees];
-                          newEntrees[i] = e.target.value;
+                          newEntrees[i] = e.target.value || `Entrée ${String.fromCharCode(65 + i)}`;
                           setNewEvent({
                             ...newEvent,
                             options_sondage: { ...newEvent.options_sondage, entrees: newEntrees }
                           });
                         }}
-                        className="w-full px-3 py-2 mb-2 bg-black/40 border border-[#D4A024]/30 rounded text-white text-sm"
+                        onFocus={(e) => {
+                          if (entree === `Entrée ${String.fromCharCode(65 + i)}`) {
+                            const newEntrees = [...newEvent.options_sondage.entrees];
+                            newEntrees[i] = '';
+                            setNewEvent({
+                              ...newEvent,
+                              options_sondage: { ...newEvent.options_sondage, entrees: newEntrees }
+                            });
+                          }
+                        }}
+                        className="w-full px-3 py-2 mb-2 bg-black/40 border border-[#D4A024]/30 rounded text-white text-sm placeholder:text-gray-500"
                       />
                     ))}
                     <Button
@@ -1711,16 +1722,27 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                       <input
                         key={i}
                         type="text"
-                        value={plat}
+                        value={plat === `Plat ${String.fromCharCode(65 + i)}` ? '' : plat}
+                        placeholder={`Ex: Filet de bœuf, Loup grillé...`}
                         onChange={(e) => {
                           const newPlats = [...newEvent.options_sondage.plats];
-                          newPlats[i] = e.target.value;
+                          newPlats[i] = e.target.value || `Plat ${String.fromCharCode(65 + i)}`;
                           setNewEvent({
                             ...newEvent,
                             options_sondage: { ...newEvent.options_sondage, plats: newPlats }
                           });
                         }}
-                        className="w-full px-3 py-2 mb-2 bg-black/40 border border-[#D4A024]/30 rounded text-white text-sm"
+                        onFocus={(e) => {
+                          if (plat === `Plat ${String.fromCharCode(65 + i)}`) {
+                            const newPlats = [...newEvent.options_sondage.plats];
+                            newPlats[i] = '';
+                            setNewEvent({
+                              ...newEvent,
+                              options_sondage: { ...newEvent.options_sondage, plats: newPlats }
+                            });
+                          }
+                        }}
+                        className="w-full px-3 py-2 mb-2 bg-black/40 border border-[#D4A024]/30 rounded text-white text-sm placeholder:text-gray-500"
                       />
                     ))}
                     <Button
@@ -1740,16 +1762,27 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                       <input
                         key={i}
                         type="text"
-                        value={dessert}
+                        value={dessert === `Dessert ${String.fromCharCode(65 + i)}` ? '' : dessert}
+                        placeholder={`Ex: Tarte aux fruits, Fondant chocolat...`}
                         onChange={(e) => {
                           const newDesserts = [...newEvent.options_sondage.desserts];
-                          newDesserts[i] = e.target.value;
+                          newDesserts[i] = e.target.value || `Dessert ${String.fromCharCode(65 + i)}`;
                           setNewEvent({
                             ...newEvent,
                             options_sondage: { ...newEvent.options_sondage, desserts: newDesserts }
                           });
                         }}
-                        className="w-full px-3 py-2 mb-2 bg-black/40 border border-[#D4A024]/30 rounded text-white text-sm"
+                        onFocus={(e) => {
+                          if (dessert === `Dessert ${String.fromCharCode(65 + i)}`) {
+                            const newDesserts = [...newEvent.options_sondage.desserts];
+                            newDesserts[i] = '';
+                            setNewEvent({
+                              ...newEvent,
+                              options_sondage: { ...newEvent.options_sondage, desserts: newDesserts }
+                            });
+                          }
+                        }}
+                        className="w-full px-3 py-2 mb-2 bg-black/40 border border-[#D4A024]/30 rounded text-white text-sm placeholder:text-gray-500"
                       />
                     ))}
                     <Button
