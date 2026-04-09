@@ -13,6 +13,22 @@ Application de gestion complète pour le club de cigares "La Bague Impériale". 
 
 ---
 
+## COMPLETED (Session 9 Avril 2026)
+
+### Messagerie interne ciblée (P0) - DONE
+- **Fonctionnalité** : Permet au Président d'envoyer des messages à des membres spécifiques au lieu de tous les membres
+- **Frontend** (`Messages.js`) :
+  - Checkbox "Tous les membres (35)" (cochée par défaut)
+  - Décocher révèle une liste scrollable de 35 membres avec checkboxes individuelles
+  - Sélection multiple possible
+- **Backend** (`server.py`) :
+  - API `POST /api/messages` accepte un tableau `destinataires: List[str]`
+  - Si `destinataires=[]` → envoie à tous les 35 membres
+  - Si `destinataires=[id1, id2]` → envoie uniquement à ces 2 membres
+- Tests validés à 100% (Backend: 6/6, Frontend: tous les flows)
+
+---
+
 ## COMPLETED (Session 3 Avril 2026)
 
 ### Corrections Bugs Critiques (P0) - DONE
@@ -80,7 +96,12 @@ Application de gestion complète pour le club de cigares "La Bague Impériale". 
 
 ## BACKLOG / FUTURE TASKS
 
-### P1 - Refactorisation server.py
+### P1 - Vérification Face ID en production
+**Statut** : En attente de validation utilisateur
+- Intégration WebAuthn complète (frontend + backend)
+- À tester en production pour valider la configuration du domaine (RP_ID)
+
+### P2 - Refactorisation server.py
 **Statut** : En cours (Plan créé dans `/app/backend/REFACTORING_PLAN.md`)
 - server.py fait encore ~5960 lignes
 - Prochaines extractions :
