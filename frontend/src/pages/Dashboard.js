@@ -818,17 +818,17 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
                         <div className="flex flex-wrap justify-center gap-2">
                           {choixEntree && (
                             <Badge className="bg-amber-600/80 text-white">
-                              🥗 {extractKeyword(choixEntree)}
+                              {extractKeyword(choixEntree)}
                             </Badge>
                           )}
                           {choixPlat && (
                             <Badge className="bg-blue-600/80 text-white">
-                              🍖 {extractKeyword(choixPlat)}
+                              {extractKeyword(choixPlat)}
                             </Badge>
                           )}
                           {choixDessert && (
                             <Badge className="bg-purple-600/80 text-white">
-                              🍰 {extractKeyword(choixDessert)}
+                              {extractKeyword(choixDessert)}
                             </Badge>
                           )}
                         </div>
