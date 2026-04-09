@@ -96,10 +96,13 @@ Application de gestion complète pour le club de cigares "La Bague Impériale". 
 
 ## BACKLOG / FUTURE TASKS
 
-### P1 - Vérification Face ID en production
-**Statut** : En attente de validation utilisateur
+### Face ID / Touch ID (WebAuthn) - DONE
+**Statut** : Prêt pour validation utilisateur
 - Intégration WebAuthn complète (frontend + backend)
-- À tester en production pour valider la configuration du domaine (RP_ID)
+- **Correction appliquée** : Le RP_ID utilise maintenant le bon domaine public (`club-messagerie.preview.emergentagent.com`) au lieu du domaine interne Kubernetes
+- Variable d'environnement `WEBAUTHN_ORIGIN` ajoutée au backend/.env
+- Tests API validés à 100% (9/9)
+- **À tester manuellement** : Enregistrement et authentification biométrique sur appareil iOS/macOS
 
 ### P2 - Refactorisation server.py
 **Statut** : En cours (Plan créé dans `/app/backend/REFACTORING_PLAN.md`)
