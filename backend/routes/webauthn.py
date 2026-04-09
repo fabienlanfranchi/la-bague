@@ -42,24 +42,40 @@ challenges_store = {}
 
 def get_rp_id_and_origin(request: Request):
     """Extrait le RP_ID et l'origine depuis les headers de la requête"""
-    # Essayer d'obtenir l'origine depuis le header Origin ou Referer
-    origin = request.headers.get('origin') or request.headers.get('referer', '')
+    from urllib.parse import urlparse
     
-    if origin:
-        from urllib.parse import urlparse
-        parsed = urlparse(origin)
-        rp_id = parsed.netloc.split(':')[0]  # Enlever le port si présent
-        # S'assurer que l'origin est bien formé
-        if not origin.startswith('http'):
-            origin = f"https://{parsed.netloc}"
-        else:
-            origin = f"{parsed.scheme}://{parsed.netloc}"
+    # Priorité 1: Variable d'environnement (plus fiable car Kubernetes modifie les headers)
+    env_origin = os.environ.get('WEBAUTHN_ORIGIN')
+    if env_origin:
+        parsed = urlparse(env_origin)
+        return parsed.netloc.split(':')[0], env_origin
+    
+    # Priorité 2: Header X-Forwarded-Host (set par l'ingress)
+    forwarded_host = request.headers.get('x-forwarded-host')
+    if forwarded_host:
+        rp_id = forwarded_host.split(':')[0]
+        proto = request.headers.get('x-forwarded-proto', 'https')
+        return rp_id, f"{proto}://{forwarded_host}"
+    
+    # Priorité 3: Referer header (contient souvent l'URL publique)
+    referer = request.headers.get('referer', '')
+    if referer and 'emergentagent.com' in referer:
+        parsed = urlparse(referer)
+        rp_id = parsed.netloc.split(':')[0]
+        origin = f"{parsed.scheme}://{parsed.netloc}"
         return rp_id, origin
     
-    # Fallback sur les variables d'environnement
-    rp_id = os.environ.get('WEBAUTHN_RP_ID', 'evento-cigars.vercel.app')
-    origin = os.environ.get('WEBAUTHN_ORIGIN', 'https://evento-cigars.vercel.app')
-    return rp_id, origin
+    # Priorité 4: Origin header
+    origin = request.headers.get('origin', '')
+    if origin and 'emergentagent.com' in origin:
+        parsed = urlparse(origin)
+        rp_id = parsed.netloc.split(':')[0]
+        return rp_id, f"{parsed.scheme}://{parsed.netloc}"
+    
+    # Fallback: domaine par défaut (la preview Emergent)
+    default_domain = 'club-messagerie.preview.emergentagent.com'
+    logger.warning(f"WebAuthn: Using fallback domain {default_domain}")
+    return default_domain, f"https://{default_domain}"
 
 def base64url_encode(data: bytes) -> str:
     """Encode bytes to base64url string"""
