@@ -71,21 +71,23 @@ Tu dois être élégant, professionnel et utiliser le vouvoiement digne d'un clu
         numero_membre = user_data.get('numero_membre', 'N/A')
         fonction = user_data.get('fonction', '').lower() if user_data.get('fonction') else ''
         is_pres_field = user_data.get('is_president', False)
-        role = user_data.get('role', '').lower() if user_data.get('role') else ''
         
-        # Détecter si c'est le Président (uniquement sur la FONCTION ou le flag is_president)
-        # IMPORTANT: Ne PAS utiliser le role 'admin' car d'autres admins ne sont pas le Président
+        # Détecter si c'est le Président (sur la FONCTION ou le flag is_president)
         is_president_user = (
             'président' in fonction or 
             fonction == 'president' or
             is_pres_field == True
         )
         
-        if is_president_user:
+        # IMPORTANT: Utiliser le MODE pour déterminer l'appellation
+        # Si l'utilisateur est en mode Président (_president dans user_id) ET qu'il est le Président
+        # -> Appeler "Président"
+        # Sinon (mode Membre) -> Appeler par son prénom même s'il est le Président
+        if is_president_mode and is_president_user:
             appellation = "Président"
             membre_info = f"""
-⚠️⚠️⚠️ RÈGLE ABSOLUE - PRÉSIDENT DU CLUB ⚠️⚠️⚠️
-Tu parles au PRÉSIDENT du club "La Bague Impériale" (membre #{numero_membre}).
+⚠️⚠️⚠️ RÈGLE ABSOLUE - MODE PRÉSIDENT ACTIF ⚠️⚠️⚠️
+Tu parles au PRÉSIDENT du club "La Bague Impériale" (membre #{numero_membre}) qui est connecté en MODE PRÉSIDENT.
 
 INSTRUCTIONS STRICTES :
 - Tu dois TOUJOURS l'appeler "Président" ou "Monsieur le Président"
@@ -98,8 +100,20 @@ Exemples corrects: "Bien sûr Président", "Monsieur le Président, voici...", "
 Exemples INCORRECTS à ne JAMAIS utiliser: "Fabien", "Cher Fabien", "{prenom}"
 """
         else:
+            # Mode Membre OU ce n'est pas le Président -> utiliser le prénom
             appellation = prenom
-            membre_info = f"""
+            if is_president_user:
+                # C'est le Président mais en mode Membre
+                membre_info = f"""
+👤 MEMBRE ACTUEL : {nom_complet} (#{numero_membre})
+⚠️ ATTENTION : Cette personne est le Président du club, MAIS elle est connectée en MODE MEMBRE.
+- Tu dois l'appeler par son PRÉNOM : {appellation}
+- Tu ne dois PAS l'appeler "Président" car il n'est pas en mode Président
+- Traite-le comme un membre normal du club
+- Email : {user_data.get('email', 'N/A')}
+"""
+            else:
+                membre_info = f"""
 👤 MEMBRE ACTUEL : {nom_complet} (#{numero_membre})
 - Tu t'adresses à lui/elle par son prénom : {appellation}
 - Email : {user_data.get('email', 'N/A')}

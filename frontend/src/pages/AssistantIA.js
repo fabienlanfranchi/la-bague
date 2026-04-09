@@ -38,13 +38,16 @@ const AssistantIA = () => {
   const inputRef = useRef(null);
   const hasInitializedFromGuide = useRef(false);
 
-  // ID utilisateur pour l'API - différencie le Président des autres membres
+  // ID utilisateur pour l'API - différencie le MODE Président du MODE Membre
   const getUserId = () => {
     if (!currentMember) return 'default-user';
-    // UNIQUEMENT si la fonction est "Président" (pas juste admin)
+    // IMPORTANT: Utiliser isAdmin (mode actif) ET vérifier si c'est le Président
+    // Si l'utilisateur est en MODE Président (isAdmin=true) ET qu'il est le Président du club
+    // -> Ajouter _president pour que Winston l'appelle "Président"
+    // Sinon (mode Membre) -> Juste l'ID pour que Winston l'appelle par son prénom
     const isPresident = currentMember.fonction?.toLowerCase() === 'président' || 
                         currentMember.is_president === true;
-    if (isPresident) {
+    if (isAdmin && isPresident) {
       return `${currentMember.id}_president`;
     }
     return currentMember.id;
@@ -89,6 +92,22 @@ const AssistantIA = () => {
   useEffect(() => {
     loadChatHistory();
   }, [userId]);
+
+  // Réinitialiser la session quand on change de mode (Membre <-> Président)
+  useEffect(() => {
+    const resetOnModeChange = async () => {
+      if (currentMember) {
+        const newUserId = getUserId();
+        try {
+          await axios.post(`${API}/assistant/reset?user_id=${newUserId}`);
+          setMessages([]);
+        } catch (error) {
+          console.error('Erreur reset session Winston:', error);
+        }
+      }
+    };
+    resetOnModeChange();
+  }, [isAdmin]);
 
   // Gérer l'arrivée depuis le guide "Tout sur le cigare"
   useEffect(() => {
