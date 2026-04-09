@@ -15,6 +15,23 @@ Application de gestion complète pour le club de cigares "La Bague Impériale". 
 
 ## COMPLETED (Session 9 Avril 2026)
 
+### Info - Prochain événement (P0) - DONE
+- **Fonctionnalité** : Nouveau template dans Messages pour annoncer un événement à venir avant sa création officielle
+- **Frontend** (`Messages.js`) :
+  - Template "Info - Prochain événement" avec icône cyan
+  - Modal spécial avec choix type (repas/apéro), calendrier de date, champ lieu
+  - Aperçu du message en temps réel
+  - Envoi automatique à tous les membres
+- **Backend** (`server.py`) :
+  - API `POST/GET/DELETE /api/prochain-evenement-info`
+  - Modèle `ProchainEvenementInfo` (type_evenement, date, lieu, actif)
+  - Désactivation automatique des anciennes infos
+- **Dashboard Membre** :
+  - Section "Prochain événement" avec style cyan distinct
+  - Affiche badge type, date formatée et lieu
+  - Visible uniquement quand pas d'événement officiel
+- Tests validés à 100% (Backend: 9/9, Frontend: tous les flows)
+
 ### Messagerie interne ciblée (P0) - DONE
 - **Fonctionnalité** : Permet au Président d'envoyer des messages à des membres spécifiques au lieu de tous les membres
 - **Frontend** (`Messages.js`) :
