@@ -589,7 +589,7 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
                 {/* Présence */}
                 <div className="mb-4">
                   <p className="text-white mb-3">Serez-vous présent ?</p>
-                  <div className="flex space-x-3">
+                  <div className="flex flex-col sm:flex-row gap-3">
                     <Button
                       variant="outline"
                       onClick={() => { setReponse('oui'); setReponseEnvoyee(false); }}
@@ -599,7 +599,7 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
                           : 'border-green-600/50 text-green-400 hover:bg-green-900/30'
                       }`}
                     >
-                      <Check className={`w-5 h-5 mr-2 ${reponse === 'oui' ? 'animate-bounce' : ''}`} />
+                      <Check className={`w-5 h-5 mr-2 flex-shrink-0 ${reponse === 'oui' ? 'animate-bounce' : ''}`} />
                       OUI, je serai présent
                     </Button>
                     <Button
@@ -611,7 +611,7 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
                           : 'border-red-600/50 text-red-400 hover:bg-red-900/30'
                       }`}
                     >
-                      <X className={`w-5 h-5 mr-2 ${reponse === 'non' ? 'animate-bounce' : ''}`} />
+                      <X className={`w-5 h-5 mr-2 flex-shrink-0 ${reponse === 'non' ? 'animate-bounce' : ''}`} />
                       NON, absent
                     </Button>
                   </div>
@@ -696,15 +696,14 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
                     {prochainEvenement.options_sondage.entrees && prochainEvenement.options_sondage.entrees.length > 0 && (
                       <div>
                         <p className="text-base text-gray-400 mb-2 font-medium">Entrée :</p>
-                        <div className="flex flex-wrap items-center gap-2">
+                        <div className="space-y-2">
                           {prochainEvenement.options_sondage.entrees.map((entree, idx) => (
-                            <React.Fragment key={idx}>
-                              {idx > 0 && <span className="text-[#D4A024] font-bold text-lg mx-1">OU</span>}
+                            <div key={idx}>
+                              {idx > 0 && <p className="text-[#D4A024] font-bold text-center my-2">OU</p>}
                               <Button
                                 variant="outline"
-                                size="lg"
                                 onClick={() => { setChoixEntree(entree); setReponseEnvoyee(false); }}
-                                className={`transition-all text-base px-4 py-2 ${
+                                className={`w-full text-left whitespace-normal h-auto py-3 px-4 transition-all text-base ${
                                   choixEntree === entree
                                     ? 'bg-amber-600 border-amber-500 text-white'
                                     : 'border-amber-600/50 text-amber-400 hover:bg-amber-900/30'
@@ -712,7 +711,7 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
                               >
                                 {entree}
                               </Button>
-                            </React.Fragment>
+                            </div>
                           ))}
                         </div>
                       </div>
@@ -722,15 +721,14 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
                     {prochainEvenement.options_sondage.plats && prochainEvenement.options_sondage.plats.length > 0 && (
                       <div>
                         <p className="text-base text-gray-400 mb-2 font-medium">Plat :</p>
-                        <div className="flex flex-wrap items-center gap-2">
+                        <div className="space-y-2">
                           {prochainEvenement.options_sondage.plats.map((plat, idx) => (
-                            <React.Fragment key={idx}>
-                              {idx > 0 && <span className="text-[#D4A024] font-bold text-lg mx-1">OU</span>}
+                            <div key={idx}>
+                              {idx > 0 && <p className="text-[#D4A024] font-bold text-center my-2">OU</p>}
                               <Button
                                 variant="outline"
-                                size="lg"
                                 onClick={() => { setChoixPlat(plat); setReponseEnvoyee(false); }}
-                                className={`transition-all text-base px-4 py-2 ${
+                                className={`w-full text-left whitespace-normal h-auto py-3 px-4 transition-all text-base ${
                                   choixPlat === plat
                                     ? 'bg-blue-600 border-blue-500 text-white'
                                     : 'border-blue-600/50 text-blue-400 hover:bg-blue-900/30'
@@ -738,7 +736,7 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
                               >
                                 {plat}
                               </Button>
-                            </React.Fragment>
+                            </div>
                           ))}
                         </div>
                       </div>
@@ -748,15 +746,14 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
                     {prochainEvenement.options_sondage.desserts && prochainEvenement.options_sondage.desserts.length > 0 && (
                       <div>
                         <p className="text-base text-gray-400 mb-2 font-medium">Dessert :</p>
-                        <div className="flex flex-wrap items-center gap-2">
+                        <div className="space-y-2">
                           {prochainEvenement.options_sondage.desserts.map((dessert, idx) => (
-                            <React.Fragment key={idx}>
-                              {idx > 0 && <span className="text-[#D4A024] font-bold text-lg mx-1">OU</span>}
+                            <div key={idx}>
+                              {idx > 0 && <p className="text-[#D4A024] font-bold text-center my-2">OU</p>}
                               <Button
                                 variant="outline"
-                                size="lg"
                                 onClick={() => { setChoixDessert(dessert); setReponseEnvoyee(false); }}
-                                className={`transition-all text-base px-4 py-2 ${
+                                className={`w-full text-left whitespace-normal h-auto py-3 px-4 transition-all text-base ${
                                   choixDessert === dessert
                                     ? 'bg-purple-600 border-purple-500 text-white'
                                     : 'border-purple-600/50 text-purple-400 hover:bg-purple-900/30'
@@ -764,7 +761,7 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
                               >
                                 {dessert}
                               </Button>
-                            </React.Fragment>
+                            </div>
                           ))}
                         </div>
                       </div>
