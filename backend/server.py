@@ -1237,6 +1237,21 @@ class ReponseSondageMessage(BaseModel):
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
+class ProchainEvenementInfo(BaseModel):
+    """Info préliminaire sur un prochain événement (avant création officielle)"""
+    model_config = ConfigDict(extra="ignore")
+    
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    type_evenement: str  # "repas" ou "apero"
+    date: str  # Format YYYY-MM-DD
+    lieu: str
+    actif: bool = True  # Devient False quand l'événement officiel est créé
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_by: Optional[str] = None  # ID du membre qui a créé l'info
+
+
+
+
 # ============ COMPTABILITÉ - ROUTES ============
 
 # -------- COMPTES --------
@@ -2785,6 +2800,89 @@ async def delete_message(message_id: str):
     await db.messages.delete_one({"id": message_id})
     await db.notifications.delete_many({"message_id": message_id})
     return {"message": "Message supprimé"}
+
+
+
+# ============ PROCHAIN ÉVÉNEMENT INFO - ROUTES ============
+
+class ProchainEvenementInfoCreate(BaseModel):
+    type_evenement: str  # "repas" ou "apero"
+    date: str  # Format YYYY-MM-DD
+    lieu: str
+
+@api_router.get("/prochain-evenement-info")
+async def get_prochain_evenement_info():
+    """Récupérer l'info du prochain événement (si actif et pas encore d'événement officiel)"""
+    # Chercher l'info active
+    info = await db.prochain_evenement_info.find_one({"actif": True}, {"_id": 0})
+    
+    if not info:
+        return {"info": None}
+    
+    # Vérifier si un événement officiel existe pour cette date
+    # (auquel cas on désactive l'info)
+    evenements = await db.evenements.find({
+        "date": {"$regex": f"^{info['date']}"},
+        "statut": "à venir"
+    }, {"_id": 0}).to_list(10)
+    
+    if evenements:
+        # Un événement officiel existe, désactiver l'info
+        await db.prochain_evenement_info.update_one(
+            {"id": info["id"]},
+            {"$set": {"actif": False}}
+        )
+        return {"info": None}
+    
+    return {"info": info}
+
+
+@api_router.post("/prochain-evenement-info")
+async def create_prochain_evenement_info(data: ProchainEvenementInfoCreate, request: Request):
+    """Créer/mettre à jour l'info du prochain événement"""
+    # Récupérer l'auteur depuis la session
+    session_data = request.session.get("user")
+    auteur_id = session_data.get("membre_id") if session_data else None
+    
+    # Désactiver les anciennes infos
+    await db.prochain_evenement_info.update_many(
+        {"actif": True},
+        {"$set": {"actif": False}}
+    )
+    
+    # Créer la nouvelle info
+    info = ProchainEvenementInfo(
+        type_evenement=data.type_evenement,
+        date=data.date,
+        lieu=data.lieu,
+        actif=True,
+        created_by=auteur_id
+    )
+    
+    doc = info.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    
+    await db.prochain_evenement_info.insert_one(doc)
+    
+    # Retirer _id avant de retourner la réponse
+    doc.pop('_id', None)
+    
+    return {"success": True, "info": doc, "id": info.id}
+
+
+@api_router.delete("/prochain-evenement-info/{info_id}")
+async def delete_prochain_evenement_info(info_id: str):
+    """Supprimer/désactiver une info de prochain événement"""
+    result = await db.prochain_evenement_info.update_one(
+        {"id": info_id},
+        {"$set": {"actif": False}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Info non trouvée")
+    
+    return {"success": True, "message": "Info désactivée"}
+
 
 
 # ============ TEMPLATES DE MESSAGES - ROUTES ============

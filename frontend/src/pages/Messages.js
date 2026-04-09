@@ -5,6 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Label } from '@/components/ui/label';
 import {
   MessageSquare,
   Send,
@@ -23,10 +26,14 @@ import {
   Bell,
   ScrollText,
   ExternalLink,
-  Copy
+  Copy,
+  MapPin,
+  Info
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -127,6 +134,16 @@ Le Bureau de La Bague Impériale`
     bgColor: 'bg-purple-500/10',
     borderColor: 'border-purple-500/30',
     defaultMessage: ``
+  },
+  {
+    id: 'info_prochain_evenement',
+    titre: 'Info - Prochain événement',
+    icon: Calendar,
+    color: 'text-cyan-500',
+    bgColor: 'bg-cyan-500/10',
+    borderColor: 'border-cyan-500/30',
+    defaultMessage: ``,
+    isSpecial: true // Ce template a un formulaire spécial
   }
 ];
 
@@ -193,6 +210,12 @@ const Messages = () => {
   const [selectedMembres, setSelectedMembres] = useState([]);
   const [sendToAll, setSendToAll] = useState(true);
 
+  // États pour "Info - Prochain événement"
+  const [infoTypeEvenement, setInfoTypeEvenement] = useState('apero'); // 'repas' ou 'apero'
+  const [infoDate, setInfoDate] = useState(null);
+  const [infoLieu, setInfoLieu] = useState('');
+  const [showInfoModal, setShowInfoModal] = useState(false);
+
   // URL WhatsApp du groupe
   const WHATSAPP_GROUP_URL = "https://chat.whatsapp.com/IYYdAQJFPXq9OMsIaAyaUB";
 
@@ -227,9 +250,17 @@ const Messages = () => {
   };
 
   const selectTemplate = (template) => {
-    setSelectedTemplate(template);
-    setMessageTitle(template.titre);
-    setMessageContent(template.defaultMessage);
+    if (template.id === 'info_prochain_evenement') {
+      // Ouvrir le modal spécial pour l'info
+      setShowInfoModal(true);
+      setInfoTypeEvenement('apero');
+      setInfoDate(null);
+      setInfoLieu('');
+    } else {
+      setSelectedTemplate(template);
+      setMessageTitle(template.titre);
+      setMessageContent(template.defaultMessage);
+    }
   };
 
   const closeTemplate = () => {
@@ -238,6 +269,65 @@ const Messages = () => {
     setMessageTitle('');
     setSelectedMembres([]);
     setSendToAll(true);
+  };
+
+  const closeInfoModal = () => {
+    setShowInfoModal(false);
+    setInfoTypeEvenement('apero');
+    setInfoDate(null);
+    setInfoLieu('');
+  };
+
+  // Envoyer l'info du prochain événement
+  const sendInfoProchainEvenement = async () => {
+    if (!infoDate) {
+      toast.error('Veuillez sélectionner une date');
+      return;
+    }
+    if (!infoLieu.trim()) {
+      toast.error('Veuillez indiquer le lieu');
+      return;
+    }
+
+    setSending(true);
+    try {
+      // 1. Créer l'info du prochain événement
+      const dateFormatted = format(infoDate, 'yyyy-MM-dd');
+      await axios.post(`${API}/prochain-evenement-info`, {
+        type_evenement: infoTypeEvenement,
+        date: dateFormatted,
+        lieu: infoLieu.trim()
+      });
+
+      // 2. Envoyer un message à tous les membres
+      const dateDisplay = format(infoDate, "EEEE d MMMM yyyy", { locale: fr });
+      const typeLabel = infoTypeEvenement === 'repas' ? 'Prochain repas' : 'Prochain apéro';
+      
+      const messageText = `${typeLabel}
+
+📅 ${dateDisplay}
+📍 ${infoLieu.trim()}
+
+Plus d'informations à venir sur l'application.
+
+Cordialement,
+Le Bureau de La Bague Impériale`;
+
+      await axios.post(`${API}/messages`, {
+        type: 'info_prochain_evenement',
+        titre: typeLabel,
+        contenu: messageText,
+        destinataires: membres.map(m => m.id)
+      });
+
+      toast.success('Info envoyée avec succès !');
+      closeInfoModal();
+    } catch (error) {
+      console.error('Erreur:', error);
+      toast.error('Erreur lors de l\'envoi');
+    } finally {
+      setSending(false);
+    }
   };
 
   const sendMessage = async () => {
@@ -598,6 +688,145 @@ const Messages = () => {
                 className="flex-1 border-gray-600 text-gray-400 hover:bg-gray-800"
               >
                 Fermer
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Modal Info - Prochain événement */}
+      {showInfoModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <Card className="bg-gradient-to-br from-[#1a1a2e] to-[#0f0f1a] border-2 border-cyan-500/30 w-full max-w-lg">
+            <CardHeader className="border-b border-cyan-500/30">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xl font-serif text-white flex items-center">
+                  <Info className="w-5 h-5 mr-2 text-cyan-500" />
+                  Info - Prochain événement
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  onClick={closeInfoModal}
+                  className="text-gray-400 hover:text-white"
+                >
+                  <X className="w-6 h-6" />
+                </Button>
+              </div>
+            </CardHeader>
+            
+            <CardContent className="py-6 space-y-6">
+              {/* Type d'événement */}
+              <div className="space-y-3">
+                <Label className="text-white font-serif">Type d'événement</Label>
+                <div className="flex space-x-4">
+                  <Button
+                    type="button"
+                    onClick={() => setInfoTypeEvenement('apero')}
+                    variant={infoTypeEvenement === 'apero' ? 'default' : 'outline'}
+                    className={infoTypeEvenement === 'apero' 
+                      ? 'bg-cyan-600 hover:bg-cyan-700 text-white flex-1' 
+                      : 'border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10 flex-1'}
+                    data-testid="info-type-apero"
+                  >
+                    🥂 Prochain apéro
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => setInfoTypeEvenement('repas')}
+                    variant={infoTypeEvenement === 'repas' ? 'default' : 'outline'}
+                    className={infoTypeEvenement === 'repas' 
+                      ? 'bg-cyan-600 hover:bg-cyan-700 text-white flex-1' 
+                      : 'border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10 flex-1'}
+                    data-testid="info-type-repas"
+                  >
+                    🍽️ Prochain repas
+                  </Button>
+                </div>
+              </div>
+
+              {/* Date */}
+              <div className="space-y-3">
+                <Label className="text-white font-serif">Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={`w-full justify-start text-left font-normal border-cyan-500/30 ${
+                        !infoDate ? 'text-gray-400' : 'text-white'
+                      } bg-black/30 hover:bg-black/50`}
+                      data-testid="info-date-picker"
+                    >
+                      <Calendar className="mr-2 h-4 w-4 text-cyan-500" />
+                      {infoDate ? format(infoDate, "EEEE d MMMM yyyy", { locale: fr }) : "Sélectionner une date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 bg-[#1a1a2e] border-cyan-500/30" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={infoDate}
+                      onSelect={setInfoDate}
+                      locale={fr}
+                      disabled={(date) => date < new Date()}
+                      className="rounded-md border-cyan-500/30"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              {/* Lieu */}
+              <div className="space-y-3">
+                <Label className="text-white font-serif">Lieu</Label>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-cyan-500" />
+                  <Input
+                    value={infoLieu}
+                    onChange={(e) => setInfoLieu(e.target.value)}
+                    placeholder="Ex: Restaurant Le Miramar, Ajaccio"
+                    className="pl-10 bg-black/30 border-cyan-500/30 text-white placeholder:text-gray-500"
+                    data-testid="info-lieu-input"
+                  />
+                </div>
+              </div>
+
+              {/* Aperçu du message */}
+              <div className="space-y-3">
+                <Label className="text-gray-400 text-sm">Aperçu du message</Label>
+                <div className="bg-black/40 rounded-lg p-4 border border-cyan-500/20 text-sm text-gray-300">
+                  <p className="font-semibold text-cyan-400 mb-2">
+                    {infoTypeEvenement === 'repas' ? 'Prochain repas' : 'Prochain apéro'}
+                  </p>
+                  <p>📅 {infoDate ? format(infoDate, "EEEE d MMMM yyyy", { locale: fr }) : '---'}</p>
+                  <p>📍 {infoLieu || '---'}</p>
+                  <p className="mt-2 text-gray-500 italic">Plus d'informations à venir sur l'application.</p>
+                </div>
+              </div>
+            </CardContent>
+            
+            <div className="p-4 border-t border-cyan-500/30 flex space-x-3">
+              <Button
+                onClick={closeInfoModal}
+                variant="outline"
+                className="flex-1 border-gray-600 text-gray-400 hover:bg-gray-800"
+              >
+                Annuler
+              </Button>
+              <Button
+                onClick={sendInfoProchainEvenement}
+                disabled={sending || !infoDate || !infoLieu.trim()}
+                className="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white font-serif"
+                data-testid="send-info-btn"
+              >
+                {sending ? (
+                  <>
+                    <Clock className="w-5 h-5 mr-2 animate-spin" />
+                    Envoi...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-5 h-5 mr-2" />
+                    Envoyer l'info
+                  </>
+                )}
               </Button>
             </div>
           </Card>

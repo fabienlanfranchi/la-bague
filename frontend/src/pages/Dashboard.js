@@ -119,7 +119,7 @@ const CharteClub = ({ defaultExpanded = false }) => {
 };
 
 // ============ COMPOSANT DASHBOARD MEMBRE ============
-const DashboardMembre = ({ prochainEvenement, currentMember }) => {
+const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMember }) => {
   const [reponse, setReponse] = useState(null); // null, 'oui', 'non'
   const [reponseEnvoyee, setReponseEnvoyee] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -744,7 +744,44 @@ const DashboardMembre = ({ prochainEvenement, currentMember }) => {
       )}
 
       {/* Pas d'événement */}
-      {!prochainEvenement && (
+      {!prochainEvenement && prochainEvenementInfo && (
+        <Card className="bg-gradient-to-br from-[#1a1a2e] to-[#0f0f1a] border-2 border-cyan-500/30 backdrop-blur-sm">
+          <CardHeader className="border-b border-cyan-500/30">
+            <CardTitle className="text-lg font-serif text-white flex items-center">
+              <Calendar className="w-5 h-5 mr-2 text-cyan-400" />
+              Prochain événement
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <Badge className="bg-cyan-500/20 text-cyan-300 border-cyan-500/50 font-serif">
+                {prochainEvenementInfo.type_evenement === 'repas' ? '🍽️ Repas' : '🥂 Apéro'}
+              </Badge>
+              <span className="text-gray-400 text-sm">
+                {new Date(prochainEvenementInfo.date).toLocaleDateString('fr-FR', {
+                  weekday: 'long',
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric'
+                })}
+              </span>
+            </div>
+            
+            <div className="bg-black/30 rounded-lg p-4 border border-cyan-500/20">
+              <p className="text-gray-300 flex items-center">
+                <span className="text-cyan-400 mr-2">📍</span>
+                {prochainEvenementInfo.lieu}
+              </p>
+            </div>
+            
+            <p className="text-gray-500 text-sm italic text-center">
+              Plus d'informations à venir...
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {!prochainEvenement && !prochainEvenementInfo && (
         <Card className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm">
           <CardContent className="py-8 text-center">
             <Calendar className="w-12 h-12 text-gray-600 mx-auto mb-3" />
@@ -765,6 +802,7 @@ const Dashboard = () => {
   const { isAdmin, currentMember } = useUser();
   const [members, setMembers] = useState([]);
   const [prochainEvenement, setProchainEvenement] = useState(null);
+  const [prochainEvenementInfo, setProchainEvenementInfo] = useState(null); // Info préliminaire (avant création événement)
   const [nonRepondants, setNonRepondants] = useState([]);
   const [loadingRelance, setLoadingRelance] = useState(false);
   const [showRelanceModal, setShowRelanceModal] = useState(false);  // Modal de relance WhatsApp
@@ -840,6 +878,7 @@ const Dashboard = () => {
   useEffect(() => {
     loadDashboardData();
     loadProchainEvenement();
+    loadProchainEvenementInfo();
     loadPaiementsEnAttente();
     loadDemandesMotDePasse();
   }, []);
@@ -1033,6 +1072,17 @@ const Dashboard = () => {
       console.error('Erreur chargement événement:', error);
     }
   };
+
+  // Charger l'info du prochain événement (avant création officielle)
+  const loadProchainEvenementInfo = async () => {
+    try {
+      const response = await axios.get(`${API}/prochain-evenement-info`);
+      setProchainEvenementInfo(response.data?.info || null);
+    } catch (error) {
+      console.error('Erreur chargement info événement:', error);
+    }
+  };
+
 
   // Charger la liste des membres qui n'ont pas répondu au sondage
   const loadNonRepondants = async (evenementId, manualResponsesData = []) => {
@@ -1347,7 +1397,7 @@ const Dashboard = () => {
 
   // Dashboard MEMBRE (avec sondage)
   if (!isAdmin) {
-    return <DashboardMembre prochainEvenement={prochainEvenement} currentMember={currentMember} />;
+    return <DashboardMembre prochainEvenement={prochainEvenement} prochainEvenementInfo={prochainEvenementInfo} currentMember={currentMember} />;
   }
 
   // Dashboard ADMIN (Président)
