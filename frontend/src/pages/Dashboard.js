@@ -939,6 +939,7 @@ const Dashboard = () => {
   
   // États pour les modals de détails du sondage
   const [showPresentsModal, setShowPresentsModal] = useState(false);
+  const [showAbsentsModal, setShowAbsentsModal] = useState(false);
   const [showMenuDetailModal, setShowMenuDetailModal] = useState(false);
   const [selectedMenuDetail, setSelectedMenuDetail] = useState({ type: '', item: '' });
   const [reponsesSondage, setReponsesSondage] = useState([]);
@@ -1040,6 +1041,14 @@ const Dashboard = () => {
     if (prochainEvenement) {
       await loadReponsesSondage(prochainEvenement.id);
       setShowPresentsModal(true);
+    }
+  };
+  
+  // Afficher les détails des absents
+  const handleShowAbsents = async () => {
+    if (prochainEvenement) {
+      await loadReponsesSondage(prochainEvenement.id);
+      setShowAbsentsModal(true);
     }
   };
   
@@ -1668,11 +1677,15 @@ const Dashboard = () => {
                     <div className="text-base text-gray-400">Présents</div>
                     <div className="text-xs text-green-500 mt-1">Cliquez pour détails</div>
                   </div>
-                  <div className="bg-red-900/20 border border-red-600/30 rounded-lg p-4 text-center">
+                  <div 
+                    onClick={handleShowAbsents}
+                    className="bg-red-900/20 border border-red-600/30 rounded-lg p-4 text-center cursor-pointer hover:bg-red-900/40 transition-colors"
+                  >
                     <div className="text-3xl font-serif font-bold text-red-400">
                       {nextEvent.sondageResults?.absents || 0}
                     </div>
                     <div className="text-base text-gray-400">Absents</div>
+                    <div className="text-xs text-red-500 mt-1">Cliquez pour détails</div>
                   </div>
                   <div className="bg-yellow-900/20 border border-yellow-600/30 rounded-lg p-4 text-center">
                     <div className="text-3xl font-serif font-bold text-yellow-400">
@@ -2559,6 +2572,66 @@ const Dashboard = () => {
                     )}
                   </div>
                 ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Modal: Liste des absents */}
+      {showAbsentsModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <Card className="bg-[#7A2020] border-2 border-[#D4A024] max-w-2xl w-full max-h-[80vh] overflow-hidden">
+            <CardHeader className="border-b border-[#D4A024]/30">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xl font-serif text-[#D4A024] flex items-center">
+                  <X className="w-5 h-5 mr-2 text-red-400" />
+                  Membres Absents ({reponsesSondage.filter(r => !r.present).length + manualResponses.filter(r => !r.present).length})
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowAbsentsModal(false)}
+                  className="text-[#D4A024] hover:bg-[#D4A024]/10"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-4 overflow-y-auto max-h-[60vh]">
+              <div className="space-y-3">
+                {reponsesSondage
+                  .filter(r => !r.present)
+                  .map((reponse, idx) => {
+                    const membre = members.find(m => m.id === reponse.membre_id);
+                    return (
+                      <div key={idx} className="bg-black/30 rounded-lg p-3 border border-red-600/30">
+                        <div className="flex items-center justify-between">
+                          <span className="text-white font-medium text-lg">{membre?.nom_complet || 'Membre inconnu'}</span>
+                          <Badge className="bg-red-600">Absent</Badge>
+                        </div>
+                      </div>
+                    );
+                  })}
+                
+                {/* Ajouts manuels absents */}
+                {manualResponses.filter(r => !r.present).map((reponse, idx) => (
+                  <div key={`manual-absent-${idx}`} className="bg-black/30 rounded-lg p-3 border border-red-600/30">
+                    <div className="flex items-center justify-between">
+                      <span className="text-white font-medium text-lg">{reponse.nom}</span>
+                      <div className="flex gap-2">
+                        <Badge className={reponse.type === 'invite' ? 'bg-purple-600' : 'bg-blue-600'}>
+                          {reponse.type === 'invite' ? 'Invité' : 'Ajout manuel'}
+                        </Badge>
+                        <Badge className="bg-red-600">Absent</Badge>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                
+                {reponsesSondage.filter(r => !r.present).length === 0 && manualResponses.filter(r => !r.present).length === 0 && (
+                  <p className="text-gray-400 text-center py-4">Aucun absent pour le moment</p>
+                )}
               </div>
             </CardContent>
           </Card>
