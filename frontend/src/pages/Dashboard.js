@@ -633,7 +633,7 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
                   
                   {/* Aperçu du menu (avant de répondre) */}
                   {prochainEvenement.type_sondage === 'repas' && showMenuPreview && !reponse && prochainEvenement.options_sondage && (
-                    <div className="mt-4 p-4 bg-[#D4A024]/10 border border-[#D4A024]/30 rounded-lg space-y-3">
+                    <div className="mt-4 p-4 bg-[#D4A024]/10 border border-[#D4A024]/30 rounded-lg space-y-4">
                       <h5 className="text-[#D4A024] font-semibold flex items-center text-lg">
                         <span className="mr-2">📋</span>
                         Menu du repas
@@ -641,43 +641,43 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
                       
                       {prochainEvenement.options_sondage.entrees && prochainEvenement.options_sondage.entrees.length > 0 && (
                         <div>
-                          <p className="text-base text-gray-400 font-medium">Entrées :</p>
-                          <p className="text-white text-lg">
+                          <p className="text-base text-gray-400 font-medium mb-2">Entrées :</p>
+                          <div className="space-y-2">
                             {prochainEvenement.options_sondage.entrees.map((e, i) => (
-                              <span key={i}>
-                                {i > 0 && <span className="text-[#D4A024] font-bold mx-2">OU</span>}
-                                {e}
-                              </span>
+                              <div key={i}>
+                                {i > 0 && <p className="text-[#D4A024] font-bold text-center my-2">OU</p>}
+                                <p className="text-white text-lg">{e}</p>
+                              </div>
                             ))}
-                          </p>
+                          </div>
                         </div>
                       )}
                       
                       {prochainEvenement.options_sondage.plats && prochainEvenement.options_sondage.plats.length > 0 && (
                         <div>
-                          <p className="text-base text-gray-400 font-medium">Plats :</p>
-                          <p className="text-white text-lg">
+                          <p className="text-base text-gray-400 font-medium mb-2">Plats :</p>
+                          <div className="space-y-2">
                             {prochainEvenement.options_sondage.plats.map((p, i) => (
-                              <span key={i}>
-                                {i > 0 && <span className="text-[#D4A024] font-bold mx-2">OU</span>}
-                                {p}
-                              </span>
+                              <div key={i}>
+                                {i > 0 && <p className="text-[#D4A024] font-bold text-center my-2">OU</p>}
+                                <p className="text-white text-lg">{p}</p>
+                              </div>
                             ))}
-                          </p>
+                          </div>
                         </div>
                       )}
                       
                       {prochainEvenement.options_sondage.desserts && prochainEvenement.options_sondage.desserts.length > 0 && (
                         <div>
-                          <p className="text-base text-gray-400 font-medium">Desserts :</p>
-                          <p className="text-white text-lg">
+                          <p className="text-base text-gray-400 font-medium mb-2">Desserts :</p>
+                          <div className="space-y-2">
                             {prochainEvenement.options_sondage.desserts.map((d, i) => (
-                              <span key={i}>
-                                {i > 0 && <span className="text-[#D4A024] font-bold mx-2">OU</span>}
-                                {d}
-                              </span>
+                              <div key={i}>
+                                {i > 0 && <p className="text-[#D4A024] font-bold text-center my-2">OU</p>}
+                                <p className="text-white text-lg">{d}</p>
+                              </div>
                             ))}
-                          </p>
+                          </div>
                         </div>
                       )}
                     </div>

@@ -781,28 +781,37 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                 {prochainEvenement.type_sondage === 'repas' && prochainEvenement.options_sondage && (
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                     <div>
-                      <h4 className="text-white font-semibold mb-2">🥗 Entrées</h4>
-                      <ul className="text-gray-300 text-sm space-y-1">
+                      <h4 className="text-white font-semibold mb-2 text-lg">🥗 Entrées</h4>
+                      <div className="text-gray-200 text-base space-y-2">
                         {prochainEvenement.options_sondage.entrees?.map((e, i) => (
-                          <li key={i}>• {e}</li>
+                          <div key={i}>
+                            {i > 0 && <p className="text-[#D4A024] font-bold text-center my-2">OU</p>}
+                            <p>{e}</p>
+                          </div>
                         ))}
-                      </ul>
+                      </div>
                     </div>
                     <div>
-                      <h4 className="text-white font-semibold mb-2">🍖 Plats</h4>
-                      <ul className="text-gray-300 text-sm space-y-1">
+                      <h4 className="text-white font-semibold mb-2 text-lg">🍖 Plats</h4>
+                      <div className="text-gray-200 text-base space-y-2">
                         {prochainEvenement.options_sondage.plats?.map((p, i) => (
-                          <li key={i}>• {p}</li>
+                          <div key={i}>
+                            {i > 0 && <p className="text-[#D4A024] font-bold text-center my-2">OU</p>}
+                            <p>{p}</p>
+                          </div>
                         ))}
-                      </ul>
+                      </div>
                     </div>
                     <div>
-                      <h4 className="text-white font-semibold mb-2">🍰 Desserts</h4>
-                      <ul className="text-gray-300 text-sm space-y-1">
+                      <h4 className="text-white font-semibold mb-2 text-lg">🍰 Desserts</h4>
+                      <div className="text-gray-200 text-base space-y-2">
                         {prochainEvenement.options_sondage.desserts?.map((d, i) => (
-                          <li key={i}>• {d}</li>
+                          <div key={i}>
+                            {i > 0 && <p className="text-[#D4A024] font-bold text-center my-2">OU</p>}
+                            <p>{d}</p>
+                          </div>
                         ))}
-                      </ul>
+                      </div>
                     </div>
                   </div>
                 )}
