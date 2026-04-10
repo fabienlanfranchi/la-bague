@@ -15,6 +15,17 @@ Application de gestion complète pour le club de cigares "La Bague Impériale". 
 
 ## COMPLETED (Session 10 Avril 2026)
 
+### Résumé Intelligent Restaurateur (P0) - DONE
+- **Fonctionnalité** : Export du résumé des présences et choix de menu pour le restaurateur
+- **Format** : Message formaté avec emojis et séparateurs visuels
+- **Contenu** :
+  - Récapitulatif : Nbr de présences / Nbr rép. en attente / Nbr max
+  - Entrées avec mots-clés résumés (ex: "Crudo" au lieu de "Crudo de langoustines aux agrumes")
+  - Plats avec mots-clés résumés (ex: "Risotto", "Veau")
+  - Desserts avec mots-clés résumés (ex: "Mousse", "Macaron")
+- **Bouton** : "Résumé Restaurateur" dans la section Prochain Événement (Dashboard Président)
+- **Action** : Copie le message dans le presse-papier pour envoi rapide via WhatsApp/SMS
+
 ### Organisation hiérarchique de Ma Cigarthèque (P0) - DONE
 - **Fonctionnalité** : Réorganisation complète de "Ma Cigarthèque" avec des accordéons dépliables sur 4 niveaux
 - **Hiérarchie** : Terroir → Marque → Gamme → Liste des cigares

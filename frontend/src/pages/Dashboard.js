@@ -1461,20 +1461,44 @@ const Dashboard = () => {
     const totalPresents = (presents || 0) + manuelPresents.length;
     const totalMax = totalPresents + enAttente;
     
-    // Fusionner les choix de menu
-    const allChoixEntrees = { ...choixEntrees };
-    const allChoixPlats = { ...choixPlats };
-    const allChoixDesserts = { ...choixDesserts };
+    // Fusionner les choix de menu avec les résumés intelligents
+    const allChoixEntrees = {};
+    const allChoixPlats = {};
+    const allChoixDesserts = {};
     
+    // Traiter les choix existants avec extractKeyword
+    if (choixEntrees) {
+      Object.entries(choixEntrees).forEach(([entree, count]) => {
+        const keyword = extractKeyword(entree);
+        allChoixEntrees[keyword] = (allChoixEntrees[keyword] || 0) + count;
+      });
+    }
+    if (choixPlats) {
+      Object.entries(choixPlats).forEach(([plat, count]) => {
+        const keyword = extractKeyword(plat);
+        allChoixPlats[keyword] = (allChoixPlats[keyword] || 0) + count;
+      });
+    }
+    if (choixDesserts) {
+      Object.entries(choixDesserts).forEach(([dessert, count]) => {
+        const keyword = extractKeyword(dessert);
+        allChoixDesserts[keyword] = (allChoixDesserts[keyword] || 0) + count;
+      });
+    }
+    
+    // Ajouter les choix manuels
     manuelPresents.forEach(r => {
       if (r.choix_entree) {
-        allChoixEntrees[r.choix_entree] = (allChoixEntrees[r.choix_entree] || 0) + 1;
+        const keyword = extractKeyword(r.choix_entree);
+        allChoixEntrees[keyword] = (allChoixEntrees[keyword] || 0) + 1;
       }
       if (r.choix_plat) {
-        allChoixPlats[r.choix_plat] = (allChoixPlats[r.choix_plat] || 0) + 1;
+        const keyword = extractKeyword(r.choix_plat);
+        allChoixPlats[keyword] = (allChoixPlats[keyword] || 0) + 1;
       }
       if (r.choix_dessert) {
-        allChoixDesserts[r.choix_dessert] = (allChoixDesserts[r.choix_dessert] || 0) + 1;
+        const keyword = extractKeyword(r.choix_dessert);
+        allChoixDesserts[keyword] = (allChoixDesserts[keyword] || 0) + 1;
       }
     });
     
@@ -1483,16 +1507,18 @@ const Dashboard = () => {
       ? new Date(prochainEvenement.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })
       : nextEvent.date;
     
-    // Construire le message
-    let message = `Repas de La Bague Impériale du ${dateEvent}\n\n`;
-    message += `Pour l'instant :\n`;
-    message += `Nbre de Personnes : ${totalPresents}\n`;
-    message += `En attente de réponses : ${enAttente}\n`;
-    message += `Nbre de personnes Max : ${totalMax}\n`;
+    // Construire le message avec format restaurateur
+    let message = `🍽️ La Bague Impériale - ${dateEvent}\n\n`;
+    message += `📊 RÉCAPITULATIF\n`;
+    message += `━━━━━━━━━━━━━━━━━━━━\n`;
+    message += `Nbr de présences : ${totalPresents}\n`;
+    message += `Nbr rép. en attente : ${enAttente}\n`;
+    message += `Nbr max : ${totalMax}\n`;
     
     // Entrées
     if (Object.keys(allChoixEntrees).length > 0) {
-      message += `\n`;
+      message += `\n🥗 ENTRÉES\n`;
+      message += `━━━━━━━━━━━━━━━━━━━━\n`;
       Object.entries(allChoixEntrees).forEach(([entree, count]) => {
         message += `${entree} : ${count}\n`;
       });
@@ -1500,7 +1526,8 @@ const Dashboard = () => {
     
     // Plats
     if (Object.keys(allChoixPlats).length > 0) {
-      message += `\n`;
+      message += `\n🍖 PLATS\n`;
+      message += `━━━━━━━━━━━━━━━━━━━━\n`;
       Object.entries(allChoixPlats).forEach(([plat, count]) => {
         message += `${plat} : ${count}\n`;
       });
@@ -1508,7 +1535,8 @@ const Dashboard = () => {
     
     // Desserts
     if (Object.keys(allChoixDesserts).length > 0) {
-      message += `\n`;
+      message += `\n🍰 DESSERTS\n`;
+      message += `━━━━━━━━━━━━━━━━━━━━\n`;
       Object.entries(allChoixDesserts).forEach(([dessert, count]) => {
         message += `${dessert} : ${count}\n`;
       });
@@ -1516,7 +1544,7 @@ const Dashboard = () => {
     
     // Copier dans le presse-papier
     navigator.clipboard.writeText(message);
-    toast.success('Message copié ! Prêt à envoyer au restaurateur.');
+    toast.success('Résumé copié ! Prêt à envoyer au restaurateur.');
   };
 
   const handleShowMembersByStars = (stars) => {
@@ -1711,9 +1739,10 @@ const Dashboard = () => {
                   <Button
                     onClick={handleExportSMS}
                     className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif"
+                    data-testid="export-restaurateur-btn"
                   >
                     <Download className="w-4 h-4 mr-2" />
-                    Export SMS
+                    Résumé Restaurateur
                   </Button>
                 </div>
               </div>
