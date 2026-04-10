@@ -19,20 +19,22 @@ const API = `${BACKEND_URL}/api`;
 const extractKeyword = (platComplet) => {
   if (!platComplet) return '';
   
-  // Mots-clés d'ingrédients principaux à rechercher
+  // Mots-clés d'ingrédients principaux à rechercher (ordre de priorité)
+  // Les préparations en premier pour éviter "Maigre" au lieu de "Crudo"
   const ingredients = [
+    // Préparations (prioritaires)
+    'risotto', 'ravioli', 'raviolis', 'tartare', 'carpaccio', 'crudo',
+    'salade', 'velouté', 'soupe', 'mousse', 'tarte', 'fondant', 'macaron',
+    'tiramisu', 'panna cotta', 'cheesecake', 'profiterole', 'brochette',
     // Viandes
     'agneau', 'veau', 'boeuf', 'bœuf', 'porc', 'échine', 'filet', 'côte', 'entrecôte',
-    'poulet', 'canard', 'magret', 'foie gras', 'volaille',
+    'poulet', 'canard', 'magret', 'foie gras', 'volaille', 'cochon', 'jambon',
     // Poissons & fruits de mer
     'langoustine', 'langoustines', 'homard', 'langouste', 'crevette', 'crevettes',
     'loup', 'bar', 'daurade', 'dorade', 'thon', 'saumon', 'cabillaud', 'maigre',
-    'moules', 'huîtres', 'saint-jacques', 'coquilles',
-    // Préparations
-    'risotto', 'ravioli', 'raviolis', 'tartare', 'carpaccio', 'crudo',
-    'salade', 'velouté', 'soupe', 'mousse', 'tarte', 'fondant', 'macaron',
+    'moules', 'huîtres', 'saint-jacques', 'coquilles', 'poulpe', 'seiche',
     // Autres
-    'truffe', 'fraises', 'chocolat', 'framboise', 'citron'
+    'truffe', 'fraises', 'chocolat', 'framboise', 'citron', 'café'
   ];
   
   const platLower = platComplet.toLowerCase();
@@ -45,9 +47,13 @@ const extractKeyword = (platComplet) => {
     }
   }
   
-  // Si aucun ingrédient trouvé, prendre les 2-3 premiers mots
-  const mots = platComplet.split(/[,\s]+/).filter(m => m.length > 2);
-  return mots.slice(0, 2).join(' ');
+  // Si aucun ingrédient trouvé, prendre le premier mot significatif (>3 caractères)
+  const mots = platComplet.split(/[,\s]+/).filter(m => m.length > 3 && !['avec', 'sauce', 'maison', 'mini'].includes(m.toLowerCase()));
+  if (mots.length > 0) {
+    return mots[0].charAt(0).toUpperCase() + mots[0].slice(1).toLowerCase();
+  }
+  
+  return platComplet.substring(0, 15) + '...';
 };
 
 // ============ CHARTE DU CLUB ============
