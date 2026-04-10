@@ -15,6 +15,17 @@ Application de gestion complète pour le club de cigares "La Bague Impériale". 
 
 ## COMPLETED (Session 10 Avril 2026)
 
+### Tri des colonnes - Page Membres (P0) - DONE
+- **Fonctionnalité** : Cliquer sur les en-têtes de colonnes pour trier la liste des membres
+- **Colonnes triables** : #, Nom, Fonction, Entrée, Étoiles, Présences, Cotisation
+- **Tri par défaut** : Par numéro de membre (#) ascendant
+- **Comportement** : 
+  - Clic sur une colonne → Tri ascendant
+  - Clic à nouveau → Tri descendant
+  - Icône ↑ ou ↓ indique la direction du tri actuel
+  - Icône ↕ sur les autres colonnes (non triées)
+- Tests validés visuellement (tri par # puis par Nom)
+
 ### Résumé Intelligent Restaurateur (P0) - DONE
 - **Fonctionnalité** : Export du résumé des présences et choix de menu pour le restaurateur
 - **Format** : Message formaté avec emojis et séparateurs visuels

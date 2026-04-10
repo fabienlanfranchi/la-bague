@@ -28,7 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Star, Plus, Pencil, Trash2, Search, User, TrendingUp, Calendar, X, ChevronRight, Key, Copy } from 'lucide-react';
+import { Star, Plus, Pencil, Trash2, Search, User, TrendingUp, Calendar, X, ChevronRight, Key, Copy, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { toast } from 'sonner';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -43,6 +43,10 @@ const MembersPage = () => {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
+  
+  // Tri des colonnes
+  const [sortColumn, setSortColumn] = useState('numero_membre'); // Par défaut: numéro de membre
+  const [sortDirection, setSortDirection] = useState('asc'); // 'asc' ou 'desc'
   
   // Pour la vue profil détaillé
   const [selectedMember, setSelectedMember] = useState(null);
@@ -76,12 +80,85 @@ const MembersPage = () => {
 
   useEffect(() => {
     // Filtrer les membres en fonction de la recherche
-    const filtered = members.filter((member) =>
+    let filtered = members.filter((member) =>
       member.nom_complet.toLowerCase().includes(searchTerm.toLowerCase()) ||
       member.fonction.toLowerCase().includes(searchTerm.toLowerCase())
     );
+    
+    // Trier les membres
+    filtered = [...filtered].sort((a, b) => {
+      let valueA, valueB;
+      
+      switch (sortColumn) {
+        case 'numero_membre':
+          valueA = a.numero_membre || 0;
+          valueB = b.numero_membre || 0;
+          break;
+        case 'nom_complet':
+          valueA = (a.nom_complet || '').toLowerCase();
+          valueB = (b.nom_complet || '').toLowerCase();
+          break;
+        case 'fonction':
+          valueA = (a.fonction || '').toLowerCase();
+          valueB = (b.fonction || '').toLowerCase();
+          break;
+        case 'annee_entree':
+          valueA = a.annee_entree || 0;
+          valueB = b.annee_entree || 0;
+          break;
+        case 'etoiles':
+          valueA = a.etoiles || 0;
+          valueB = b.etoiles || 0;
+          break;
+        case 'pourcentage_presences':
+          valueA = a.pourcentage_presences || 0;
+          valueB = b.pourcentage_presences || 0;
+          break;
+        case 'situation_cotisation':
+          valueA = a.situation_cotisation || 0;
+          valueB = b.situation_cotisation || 0;
+          break;
+        default:
+          valueA = a.numero_membre || 0;
+          valueB = b.numero_membre || 0;
+      }
+      
+      // Comparer les valeurs
+      if (typeof valueA === 'string') {
+        return sortDirection === 'asc' 
+          ? valueA.localeCompare(valueB)
+          : valueB.localeCompare(valueA);
+      } else {
+        return sortDirection === 'asc' 
+          ? valueA - valueB 
+          : valueB - valueA;
+      }
+    });
+    
     setFilteredMembers(filtered);
-  }, [searchTerm, members]);
+  }, [searchTerm, members, sortColumn, sortDirection]);
+
+  // Fonction pour gérer le clic sur une colonne de tri
+  const handleSort = (column) => {
+    if (sortColumn === column) {
+      // Si on clique sur la même colonne, inverser la direction
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Nouvelle colonne, tri ascendant par défaut
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  // Composant pour l'icône de tri
+  const SortIcon = ({ column }) => {
+    if (sortColumn !== column) {
+      return <ArrowUpDown className="w-4 h-4 ml-1 opacity-40" />;
+    }
+    return sortDirection === 'asc' 
+      ? <ArrowUp className="w-4 h-4 ml-1 text-[#D4A024]" />
+      : <ArrowDown className="w-4 h-4 ml-1 text-[#D4A024]" />;
+  };
 
   const loadMembers = async () => {
     try {
@@ -586,13 +663,69 @@ const MembersPage = () => {
             <Table>
               <TableHeader>
                 <TableRow className="border-[#D4A024]/20 hover:bg-[#D4A024]/5">
-                  <TableHead className="text-[#D4A024] font-serif w-12">#</TableHead>
-                  <TableHead className="text-[#D4A024] font-serif">Nom</TableHead>
-                  <TableHead className="text-[#D4A024] font-serif">Fonction</TableHead>
-                  <TableHead className="text-[#D4A024] font-serif">Entrée</TableHead>
-                  <TableHead className="text-center text-[#D4A024] font-serif">Étoiles</TableHead>
-                  <TableHead className="text-center text-[#D4A024] font-serif">Présences</TableHead>
-                  <TableHead className="text-center text-[#D4A024] font-serif">Cotisation</TableHead>
+                  <TableHead 
+                    className="text-[#D4A024] font-serif w-12 cursor-pointer hover:bg-[#D4A024]/10 select-none"
+                    onClick={() => handleSort('numero_membre')}
+                  >
+                    <div className="flex items-center">
+                      #
+                      <SortIcon column="numero_membre" />
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="text-[#D4A024] font-serif cursor-pointer hover:bg-[#D4A024]/10 select-none"
+                    onClick={() => handleSort('nom_complet')}
+                  >
+                    <div className="flex items-center">
+                      Nom
+                      <SortIcon column="nom_complet" />
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="text-[#D4A024] font-serif cursor-pointer hover:bg-[#D4A024]/10 select-none"
+                    onClick={() => handleSort('fonction')}
+                  >
+                    <div className="flex items-center">
+                      Fonction
+                      <SortIcon column="fonction" />
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="text-[#D4A024] font-serif cursor-pointer hover:bg-[#D4A024]/10 select-none"
+                    onClick={() => handleSort('annee_entree')}
+                  >
+                    <div className="flex items-center">
+                      Entrée
+                      <SortIcon column="annee_entree" />
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="text-center text-[#D4A024] font-serif cursor-pointer hover:bg-[#D4A024]/10 select-none"
+                    onClick={() => handleSort('etoiles')}
+                  >
+                    <div className="flex items-center justify-center">
+                      Étoiles
+                      <SortIcon column="etoiles" />
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="text-center text-[#D4A024] font-serif cursor-pointer hover:bg-[#D4A024]/10 select-none"
+                    onClick={() => handleSort('pourcentage_presences')}
+                  >
+                    <div className="flex items-center justify-center">
+                      Présences
+                      <SortIcon column="pourcentage_presences" />
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="text-center text-[#D4A024] font-serif cursor-pointer hover:bg-[#D4A024]/10 select-none"
+                    onClick={() => handleSort('situation_cotisation')}
+                  >
+                    <div className="flex items-center justify-center">
+                      Cotisation
+                      <SortIcon column="situation_cotisation" />
+                    </div>
+                  </TableHead>
                   <TableHead className="text-right text-[#D4A024] font-serif">Actions</TableHead>
                 </TableRow>
               </TableHeader>
