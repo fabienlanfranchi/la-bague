@@ -15,6 +15,19 @@ Application de gestion complète pour le club de cigares "La Bague Impériale". 
 
 ## COMPLETED (Session 10 Avril 2026)
 
+### Organisation hiérarchique de Ma Cigarthèque (P0) - DONE
+- **Fonctionnalité** : Réorganisation complète de "Ma Cigarthèque" avec des accordéons dépliables sur 4 niveaux
+- **Hiérarchie** : Terroir → Marque → Gamme → Liste des cigares
+- **Interface** (`Cigarotheque.js`) :
+  - Accordéons imbriqués avec compteurs de cigares à chaque niveau
+  - Bouton **"Tout ouvrir"** : Déplie tous les niveaux d'un coup
+  - Bouton **"Tout fermer"** : Replie tout
+  - Icône 📍 MapPin pour les terroirs (Cuba, Nicaragua, etc.)
+  - Badges avec compteurs à chaque niveau
+  - Boutons d'action sur chaque cigare (❤️ favori, 📖 voir, ✏️ noter, 🗑️ supprimer)
+  - Recherche et filtre "Favoris uniquement" conservés
+- Tests validés à 100% (9/9 fonctionnalités frontend)
+
 ### Favoris Cigares ❤️ Global (P0) - DONE
 - **Fonctionnalité** : Permet aux membres de marquer leurs cigares préférés avec un cœur ❤️ partout dans l'application
 - **Frontend** (`Cigarotheque.js`) :
