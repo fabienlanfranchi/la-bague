@@ -5812,6 +5812,57 @@ async def delete_cigare_personnel(cigare_id: str):
     return {"message": "Cigare supprimé de votre collection"}
 
 
+
+# ============ FAVORIS CIGARES ============
+
+@api_router.post("/ma-cigarotheque/{cigare_id}/favori")
+async def toggle_favori(cigare_id: str):
+    """Ajouter/retirer un cigare des favoris"""
+    # Récupérer le cigare
+    cigare = await db.cigares_personnels.find_one({"id": cigare_id}, {"_id": 0})
+    if not cigare:
+        raise HTTPException(status_code=404, detail="Cigare non trouvé")
+    
+    # Toggle le favori
+    new_favori = not cigare.get("favori", False)
+    
+    await db.cigares_personnels.update_one(
+        {"id": cigare_id},
+        {"$set": {"favori": new_favori}}
+    )
+    
+    return {"success": True, "favori": new_favori, "message": "Ajouté aux favoris" if new_favori else "Retiré des favoris"}
+
+
+@api_router.get("/ma-cigarotheque/{membre_id}/favoris")
+async def get_favoris(membre_id: str):
+    """Récupérer les cigares favoris d'un membre avec les données du catalogue"""
+    # Récupérer les cigares personnels marqués comme favoris
+    favoris = await db.cigares_personnels.find(
+        {"membre_id": membre_id, "favori": True},
+        {"_id": 0}
+    ).to_list(100)
+    
+    # Pour chaque favori, récupérer les données du catalogue si disponible
+    result = []
+    for fav in favoris:
+        cigare_catalogue = None
+        if fav.get("cigare_id"):
+            # Chercher dans le catalogue MySQL via la route existante
+            cigare_catalogue = await db.cigares_catalogue.find_one(
+                {"id": fav["cigare_id"]},
+                {"_id": 0}
+            )
+        
+        result.append({
+            "fiche_personnelle": fav,
+            "fiche_catalogue": cigare_catalogue
+        })
+    
+    return result
+
+
+
 # ============ APÉRO DU CLUB (Cigares fumés aux événements) ============
 
 class AperoClubCigare(BaseModel):

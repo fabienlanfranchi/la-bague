@@ -50,7 +50,8 @@ import {
   AlertTriangle,
   Settings,
   Share2,
-  MessageCircle
+  MessageCircle,
+  Heart
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -128,6 +129,10 @@ const Cigarotheque = () => {
   // Ma Cigarthèque
   const [maCigarotheque, setMaCigarotheque] = useState([]);
   
+  // Mes Favoris
+  const [mesFavoris, setMesFavoris] = useState([]);
+  const [loadingFavoris, setLoadingFavoris] = useState(false);
+  
   // Apéro du Club
   const [aperoClub, setAperoClub] = useState([]);
   
@@ -197,9 +202,10 @@ const Cigarotheque = () => {
   useEffect(() => {
     loadFiltres();
     loadAperoClub();
-    // Charger Ma Cigarthèque uniquement pour les membres (pas l'admin)
+    // Charger Ma Cigarthèque et Mes Favoris uniquement pour les membres (pas l'admin)
     if (!isAdmin && currentMember?.id) {
       loadMaCigarotheque();
+      loadMesFavoris();
     }
   }, [isAdmin, currentMember?.id]);
 
@@ -393,6 +399,36 @@ const Cigarotheque = () => {
       console.error('Erreur chargement ma cigarthèque:', error);
     }
   }, [currentMember?.id]);
+
+  // Charger les favoris
+  const loadMesFavoris = useCallback(async () => {
+    if (!currentMember?.id) return;
+    setLoadingFavoris(true);
+    try {
+      const response = await axios.get(`${API}/ma-cigarotheque/${currentMember.id}/favoris`);
+      setMesFavoris(response.data);
+    } catch (error) {
+      console.error('Erreur chargement favoris:', error);
+    } finally {
+      setLoadingFavoris(false);
+    }
+  }, [currentMember?.id]);
+
+  // Toggle favori
+  const toggleFavori = async (cigareId) => {
+    try {
+      const response = await axios.post(`${API}/ma-cigarotheque/${cigareId}/favori`);
+      if (response.data.success) {
+        toast.success(response.data.message);
+        // Recharger ma cigarthèque et les favoris
+        loadMaCigarotheque();
+        loadMesFavoris();
+      }
+    } catch (error) {
+      console.error('Erreur toggle favori:', error);
+      toast.error('Erreur lors de la mise à jour du favori');
+    }
+  };
 
   const loadAperoClub = async () => {
     try {
@@ -1164,7 +1200,8 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
       return [
         { value: 'catalogue', label: 'Catalogue', icon: BookOpen },
         { value: 'apero-club', label: 'Apéro du Club', icon: Wine },
-        { value: 'ma-collection', label: 'Ma Cigarthèque', icon: User }
+        { value: 'ma-collection', label: 'Ma Cigarthèque', icon: User },
+        { value: 'mes-favoris', label: 'Mes Favoris', icon: Heart }
       ];
     }
   };
@@ -1265,7 +1302,7 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-2' : 'grid-cols-3'} bg-black/40`}>
+        <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-2' : 'grid-cols-4'} bg-black/40`}>
           {getTabs().map(tab => (
             <TabsTrigger 
               key={tab.value}
@@ -2013,6 +2050,16 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
                                 <Button
                                   variant="ghost"
                                   size="sm"
+                                  onClick={() => toggleFavori(cigare.id)}
+                                  className={`${cigare.favori ? 'text-red-500' : 'text-gray-400'} hover:text-red-400`}
+                                  title={cigare.favori ? "Retirer des favoris" : "Ajouter aux favoris"}
+                                  data-testid={`fav-btn-${cigare.id}`}
+                                >
+                                  <Heart className={`w-5 h-5 ${cigare.favori ? 'fill-red-500' : ''}`} />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
                                   onClick={() => openFullCigarDetail(cigare)}
                                   className="text-blue-400 hover:text-blue-300"
                                   title="Voir la fiche détaillée"
@@ -2042,6 +2089,153 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
                               </div>
                             </div>
                           ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+
+        {/* ==================== ONGLET MES FAVORIS ==================== */}
+        {!isAdmin && (
+          <TabsContent value="mes-favoris" className="space-y-4">
+            <Card className="bg-black/40 border-2 border-[#D4A024]/30">
+              <CardHeader>
+                <CardTitle className="flex items-center text-[#D4A024] font-serif">
+                  <Heart className="w-6 h-6 mr-2 fill-red-500 text-red-500" />
+                  Mes Favoris ({mesFavoris.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loadingFavoris ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin w-8 h-8 border-4 border-[#D4A024] border-t-transparent rounded-full mx-auto"></div>
+                    <p className="text-gray-400 mt-4">Chargement des favoris...</p>
+                  </div>
+                ) : mesFavoris.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Heart className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+                    <p className="text-gray-400">Aucun favori pour le moment</p>
+                    <p className="text-gray-500 text-sm mt-2">
+                      Cliquez sur le cœur ❤️ dans "Ma Cigarthèque" pour ajouter des favoris
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {mesFavoris.map((item, idx) => (
+                      <div key={idx} className="bg-gradient-to-r from-[#7A2020]/20 to-black/40 rounded-lg border-2 border-red-500/30 overflow-hidden">
+                        {/* En-tête avec nom du cigare et bouton favori */}
+                        <div className="bg-red-900/30 p-4 flex items-center justify-between">
+                          <h3 className="text-white font-serif font-bold text-xl">
+                            {item.fiche_personnelle?.marque} {item.fiche_personnelle?.gamme || ''}
+                          </h3>
+                          <div className="flex items-center gap-2">
+                            <Heart className="w-6 h-6 fill-red-500 text-red-500" />
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => toggleFavori(item.fiche_personnelle?.id)}
+                              className="text-gray-400 hover:text-red-400"
+                              title="Retirer des favoris"
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                        
+                        <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* Fiche personnalisée du membre */}
+                          <div className="bg-black/40 rounded-lg p-4 border border-[#D4A024]/30">
+                            <h4 className="text-[#D4A024] font-semibold mb-3 flex items-center">
+                              <User className="w-4 h-4 mr-2" />
+                              Ma Fiche Personnelle
+                            </h4>
+                            <div className="space-y-2 text-sm">
+                              <p className="text-gray-400">
+                                <span className="text-white">Vitole:</span> {item.fiche_personnelle?.vitole || 'Non défini'}
+                              </p>
+                              {item.fiche_personnelle?.note_personnelle && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-gray-400">Note:</span>
+                                  <Badge className="bg-[#D4A024] text-[#7A2020]">
+                                    <Star className="w-3 h-3 mr-1" />
+                                    {item.fiche_personnelle.note_personnelle}/5
+                                  </Badge>
+                                </div>
+                              )}
+                              {item.fiche_personnelle?.note_puissance && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-gray-400">Puissance:</span>
+                                  <Badge variant="outline" className="border-orange-500/50 text-orange-400">
+                                    <Flame className="w-3 h-3 mr-1" />
+                                    {item.fiche_personnelle.note_puissance}/5
+                                  </Badge>
+                                </div>
+                              )}
+                              {item.fiche_personnelle?.note_qualite_prix && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-gray-400">Qualité/Prix:</span>
+                                  <Badge variant="outline" className="border-green-500/50 text-green-400">
+                                    <Euro className="w-3 h-3 mr-1" />
+                                    {item.fiche_personnelle.note_qualite_prix}/5
+                                  </Badge>
+                                </div>
+                              )}
+                              {item.fiche_personnelle?.commentaire && (
+                                <div className="mt-3 pt-3 border-t border-gray-700">
+                                  <p className="text-gray-400 italic text-xs">
+                                    "{item.fiche_personnelle.commentaire}"
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {/* Fiche catalogue (globale) */}
+                          <div className="bg-black/40 rounded-lg p-4 border border-blue-500/30">
+                            <h4 className="text-blue-400 font-semibold mb-3 flex items-center">
+                              <BookOpen className="w-4 h-4 mr-2" />
+                              Fiche Catalogue
+                            </h4>
+                            {item.fiche_catalogue ? (
+                              <div className="space-y-2 text-sm">
+                                <p className="text-gray-400">
+                                  <span className="text-white">Origine:</span> {item.fiche_catalogue.pays || 'Non défini'}
+                                </p>
+                                <p className="text-gray-400">
+                                  <span className="text-white">Module:</span> {item.fiche_catalogue.module || 'Non défini'}
+                                </p>
+                                <p className="text-gray-400">
+                                  <span className="text-white">Prix:</span> {item.fiche_catalogue.prix_unitaire ? `${item.fiche_catalogue.prix_unitaire}€` : 'Non défini'}
+                                </p>
+                                {item.fiche_catalogue.description && (
+                                  <div className="mt-3 pt-3 border-t border-gray-700">
+                                    <p className="text-gray-400 italic text-xs">
+                                      {item.fiche_catalogue.description}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <p className="text-gray-500 italic text-sm">
+                                Données du catalogue non disponibles
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Bouton voir la fiche complète */}
+                        <div className="p-4 pt-0">
+                          <Button
+                            onClick={() => openFullCigarDetail(item.fiche_personnelle)}
+                            className="w-full bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020]"
+                          >
+                            <BookOpen className="w-4 h-4 mr-2" />
+                            Voir la fiche complète
+                          </Button>
                         </div>
                       </div>
                     ))}
