@@ -13,6 +13,26 @@ Application de gestion complète pour le club de cigares "La Bague Impériale". 
 
 ---
 
+## COMPLETED (Session 10 Avril 2026)
+
+### Favoris Cigares ❤️ Global (P0) - DONE
+- **Fonctionnalité** : Permet aux membres de marquer leurs cigares préférés avec un cœur ❤️ partout dans l'application
+- **Frontend** (`Cigarotheque.js`) :
+  - Bouton ❤️ sur TOUTES les cartes cigares (Catalogue, Apéro du Club, Ma Cigarthèque)
+  - Filtre "Favoris uniquement" dans le Catalogue (visible quand il y a des favoris)
+  - Filtre "Favoris uniquement" dans Ma Cigarthèque
+  - Modal de détail avec boutons "Ajouter aux favoris" ET "Ma Cigarthèque" pour les membres
+  - Cœur vide → cœur rouge plein quand le cigare est en favori
+- **Backend** (`server.py`) :
+  - Nouvelle API `POST /api/favoris/toggle-from-catalogue` : Ajoute un cigare aux favoris directement depuis le catalogue (l'ajoute aussi à Ma Cigarthèque si besoin)
+  - API existante `POST /api/ma-cigarotheque/{cigare_id}/favori` : Toggle favori pour cigares déjà dans la collection
+- **Winston** (`routes/winston.py`) :
+  - Section "❤️ CIGARES FAVORIS DES MEMBRES" ajoutée au contexte
+  - Winston connaît les favoris de chaque membre et peut les mentionner dans ses recommandations
+- Tests validés à 100% (Backend: 9/9, Frontend: tous les flows)
+
+---
+
 ## COMPLETED (Session 9 Avril 2026)
 
 ### Info - Prochain événement (P0) - DONE
