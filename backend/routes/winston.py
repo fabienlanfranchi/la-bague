@@ -174,34 +174,60 @@ Exemples INCORRECTS à ne JAMAIS utiliser: "Fabien", "Cher Fabien", "{prenom}"
             members_text += "\n"
         context_parts.append(members_text)
     
-    # 5. Collections de tous les membres
-    all_collections = await db.ma_cigarotheque.find({}).to_list(500)
+    # 5. Collections et FAVORIS de tous les membres
+    all_collections = await db.cigares_personnels.find({}).to_list(500)
     if all_collections:
         collections_by_user = {}
+        favoris_by_user = {}
         for c in all_collections:
-            uid = c.get('user_id')
+            uid = c.get('membre_id')
             if uid not in collections_by_user:
                 collections_by_user[uid] = []
+                favoris_by_user[uid] = []
             collections_by_user[uid].append(c)
+            # Collecter les favoris
+            if c.get('favori') == True:
+                favoris_by_user[uid].append(c)
         
-        collections_text = "\n--- CIGARES PRÉFÉRÉS DES MEMBRES ---\n"
+        # Section des favoris (❤️)
+        favoris_text = "\n--- ❤️ CIGARES FAVORIS DES MEMBRES ---\n"
+        favoris_text += "Les favoris sont les cigares marqués d'un cœur par chaque membre (leurs préférés absolus).\n"
+        has_favoris = False
+        for uid, favoris in favoris_by_user.items():
+            if favoris:
+                has_favoris = True
+                member = await db.members.find_one({"id": uid})
+                if member:
+                    name = member.get('nom_complet', f"{member.get('prenom', '')} {member.get('nom', '')}")
+                    favoris_text += f"\n❤️ {name} ({len(favoris)} favori(s)) :\n"
+                    for fav in favoris:
+                        note = fav.get('note_personnelle', fav.get('note_globale', '?'))
+                        favoris_text += f"  - {fav.get('marque', '')} {fav.get('gamme', '')} ({fav.get('pays', 'Origine ?')}) - Note: {note}/5\n"
+        
+        if not has_favoris:
+            favoris_text += "Aucun membre n'a encore marqué de cigares favoris.\n"
+        
+        context_parts.append(favoris_text)
+        
+        # Section des cigares préférés (par note)
+        collections_text = "\n--- CIGARES LES MIEUX NOTÉS PAR CHAQUE MEMBRE ---\n"
         for uid, cigars in collections_by_user.items():
             member = await db.members.find_one({"id": uid})
             if member:
                 name = member.get('nom_complet', f"{member.get('prenom', '')} {member.get('nom', '')}")
-                top_cigars = sorted(cigars, key=lambda x: float(x.get('note_globale', 0) or 0), reverse=True)[:5]
+                top_cigars = sorted(cigars, key=lambda x: float(x.get('note_personnelle', x.get('note_globale', 0)) or 0), reverse=True)[:5]
                 if top_cigars:
-                    cubains = [c for c in top_cigars if c.get('terroir', '').lower() == 'cuba']
-                    non_cubains = [c for c in top_cigars if c.get('terroir', '').lower() != 'cuba' and c.get('terroir')]
+                    cubains = [c for c in top_cigars if (c.get('pays', '') or '').lower() == 'cuba']
+                    non_cubains = [c for c in top_cigars if (c.get('pays', '') or '').lower() != 'cuba' and c.get('pays')]
                     
                     collections_text += f"\n{name} :\n"
                     if cubains:
                         collections_text += f"  Cubains préférés : "
-                        collections_text += ", ".join([f"{c.get('marque', '')} {c.get('gamme', '')} ({c.get('note_globale', '?')}/5)" for c in cubains[:3]])
+                        collections_text += ", ".join([f"{c.get('marque', '')} {c.get('gamme', '')} ({c.get('note_personnelle', c.get('note_globale', '?'))}/5)" for c in cubains[:3]])
                         collections_text += "\n"
                     if non_cubains:
                         collections_text += f"  Non-cubains préférés : "
-                        collections_text += ", ".join([f"{c.get('marque', '')} {c.get('gamme', '')} - {c.get('terroir', '')} ({c.get('note_globale', '?')}/5)" for c in non_cubains[:3]])
+                        collections_text += ", ".join([f"{c.get('marque', '')} {c.get('gamme', '')} - {c.get('pays', '')} ({c.get('note_personnelle', c.get('note_globale', '?'))}/5)" for c in non_cubains[:3]])
                         collections_text += "\n"
         context_parts.append(collections_text)
     

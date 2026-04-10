@@ -1,127 +1,148 @@
 <analysis>**original_problem_statement**: 
-Finaliser l'application de gestion pour le club de cigares La Bague Impériale pour sa mise en production. L'application comprend un catalogue de cigares (MySQL), la gestion des événements, des statistiques, et un assistant IA Winston. Les derniers ajustements concernent la correction critique de la persistance de session (Rester connecté), l'ajustement du comportement de l'IA (Winston), la refonte de l'interface d'édition des événements (sauvegarde groupée), et l'optimisation de l'affichage mobile. 
+Finaliser l'application de gestion pour le club de cigares La Bague Impériale pour sa mise en production. PRODUCT REQUIREMENTS incluent l'ajout de nouvelles fonctionnalités de communication (Info Prochain Événement sans sondage), l'optimisation des formulaires de sondage et du Dashboard (mobile responsive, affichage dynamique des choix, liste des absents), la distinction des rôles par l'IA Winston, et l'ajout d'une fonctionnalité de favoris (❤️) simple dans la Cigarthèque avec intégration dans l'IA.
 
-**User's preferred language**: Français (You MUST automatically detect the user's primary language from their messages inside the <trajectory> tag and INSTRUCT next agent to respond in the user's preferred language only).
+**User's preferred language**: French (Français). INSTRUCT NEXT AGENT TO RESPOND IN FRENCH ONLY.
 
 **what currently exists?** 
-Une application full-stack prête pour la production. Le catalogue (MySQL OVH) contient 651 cigares. Le partage natif/WhatsApp exporte désormais les fiches complètes avec notes de dégustation. L'Apéro du Club sauvegarde les données complètes des cigares. L'édition des événements se fait désormais par Sauvegarde groupée par saison. Le design mobile a été corrigé. Les identifiants BDD ont été sécurisés dans . Les balises Open Graph (Logo du lien de partage) et le Favicon ont été personnalisés au nom du club.
+Une application full-stack (React, FastAPI, MongoDB, MySQL). 
+- La messagerie ciblée et Face ID / WebAuthn fonctionnent et ont été validés. 
+- Une nouvelle fonctionnalité de Pré-annonce (Info - Prochain Événement) affiche le prochain événement (date/lieu) sur les dashboards avec notifications et bouton WhatsApp pour le président.
+- Le système de sondage a été amélioré : boutons Présent/Absent optimisés pour mobile, choix de menu formatés avec un OU doré, et fonction de résumé intelligent (ex: affiche Langoustine au lieu de la phrase complète). 
+- Le Dashboard Président permet de cliquer sur Absents pour voir qui ne vient pas. 
+- Winston fait correctement la distinction entre le mode Membre (l'appelle par son prénom) et Président en se basant sur le toggle de la session active.
 
 **Last working item**: 
-    - **Last item agent was working**: Résolution des bugs récurrents : 1. La fonction Rester connecté qui se désactivait lors du changement de page. 2. L'assistant Winston qui appelait le Président Fabien au lieu de Président. L'agent a corrigé un bug de variable masquée () et un paramètre manquant dans , et a supprimé une mention codée en dur dans le prompt système de .
-    - **Status**: USER VERIFICATION PENDING
-    - **Agent Testing Done**: Y
-    - **Which testing method agent to use?** Frontend screenshot tool (Test réalisé avec succès par l'agent, montrant la persistance de session après navigation, mais l'utilisateur n'a pas encore confirmé).
+    - **Last item agent was working**: Refonte de la fonctionnalité Favoris dans la Cigarthèque selon le retour utilisateur. L'agent a supprimé l'onglet Mes Favoris qu'il venait de créer car jugé trop complexe (usine à gaz), pour le remplacer par un simple bouton cœur (❤️) sur les fiches de Ma Cigarthèque, l'ajout d'un filtre Favoris uniquement, et la mise à jour du prompt de Winston () pour qu'il prenne en compte le champ .
+    - **Status**: TESTING PENDING
+    - **Agent Testing Done**: N
+    - **Which testing method agent to use?** Frontend screenshot tool (pour vérifier l'interface de Ma Cigarthèque avec le cœur et le filtre) et curl/python -c (pour s'assurer que le backend enregistre bien le favori).
     - **User Testing Done**: N
 
 **All Pending/In progress Issue list**: 
-  - **Issue 1: Vérification Rester connecté et Winston (P0)**
-     - **Attempted fixes**: L'agent a modifié  pour empêcher la fonction  d'écraser le  lors de la restauration du cache (ajout du paramètre manquant). Pour Winston, l'agent a supprimé la mention présidé par Fabien Lanfranchi du prompt système de base dans  qui contredisait la règle d'appeler l'utilisateur Président.
+  - **Issue 1: Test et validation des Favoris (Cigarthèque)**
+     - **Attempted fixes**: Le code a été modifié (suppression du TabsContent mes-favoris, ajout du toggle favori sur la carte, modification du , mise à jour de ).
      - **Next debug checklist**: 
-       - Frontend : Vérifier  et  si le bug de session persiste.
-       - Backend : Vérifier . S'assurer que le LLM budget (Emergent LLM Key) a été rechargé par l'utilisateur, car le budget était épuisé, ce qui bloquait les réponses récentes de Winston.
-     - **Why fix this issue and what will be achieved with the fix?** C'est le point de friction majeur de l'utilisateur. La session doit persister pour une utilisation normale, et l'IA doit respecter son instruction de rôle.
+       - Frontend : Tester  (onglet Ma Cigarthèque). Vérifier la présence du bouton cœur, tester le clic, et vérifier que le filtre Favoris uniquement fonctionne.
+       - Backend : Vérifier que l'API  met correctement à jour le statut dans MongoDB.
+     - **Why fix this issue and what will be achieved with the fix?** Rendre la gestion des favoris plus fluide pour les membres et consultable par Winston.
+     - **Status**: TESTING PENDING
+     - **Is recurring issue?** N
+     - **Should Test frontend/backend/both after fix?** Both
+     - **Blocked on other issue**: None
+
+  - **Issue 2: Vérification Face ID en production (P1)**
+     - **Attempted fixes**: Intégration WebAuthn effectuée et corrigée (le RP_ID pointe désormais bien vers le domaine public via la variable d'environnement).
+     - **Next debug checklist**: S'assurer que l'utilisateur a pu tester le flux biométrique avec succès sur un appareil physique.
+     - **Why fix this issue?** Fonctionnalité demandée pour une connexion rapide.
      - **Status**: USER VERIFICATION PENDING
-     - **Is recurring issue?** Y (Mentionné 3 fois par l'utilisateur)
-     - **Should Test frontend/backend/both after fix?** Both (Screenshot pour le frontend, test de l'assistant IA pour le backend).
-     - **Blocked on other issue**: LLM Budget Exceeded (L'utilisateur doit ajouter des crédits à son Universal Key pour que Winston réponde correctement).
+     - **Is recurring issue?** N
+     - **Should Test frontend/backend/both after fix?** NA (L'agent a validé l'API, le test final relève du hardware physique de l'utilisateur).
+     - **Blocked on other issue**: None
 
 **In progress Task List**: 
-  - Aucune tâche en cours.
+  - **Task 1: Nettoyage et stabilisation UI Favoris**
+     - **Where to resume**: .
+     - **What will be achieved with this?** Terminer la requête en cours de l'utilisateur.
+     - **Status**: TESTING PENDING
+     - **Should Test frontend/backend/both after fix?** Frontend (Screenshot tool)
+     - **Blocked on something**: None
 
 **Upcoming and Future Tasks**
     Future Tasks:
-    - (P2) Refactorisation de  : Continuer l'extraction des routes (auth, événements, etc.) vers le dossier  pour réduire la taille du fichier principal, en suivant le . À faire uniquement quand l'utilisateur ne demande pas de corrections urgentes.
+    - (P2) Refactorisation de  : Continuer l'extraction des routes (auth, members, cigares, evenements, comptabilite) vers le dossier  pour alléger ce fichier monolithique de près de 6000 lignes. (Discuté dans le handoff et le PRD).
 
 **Completed work in this session**
-- Intégration et test (100% success) de la section Paramètres dans le profil (DONE)
-- Enrichissement du partage WhatsApp (Cigarthèque) avec notes de dégustation et étoiles (DONE)
-- Enrichissement du modèle de données Apéro du Club pour afficher les détails complets (DONE)
-- Sécurisation des credentials MySQL OVH dans  (DONE)
-- Personnalisation du Favicon et balises Open Graph (Logo pour partage WhatsApp) (DONE)
-- Nettoyage manuel des événements de test (fantômes) dans MongoDB pour corriger les statistiques (DONE)
-- Correction responsive (mobile) sur les pages Statistiques et Événements (DONE)
-- Refonte de l'UI d'édition des Événements : Édition groupée avec un seul bouton Sauvegarder la saison et suppression de l'édition ligne par ligne (DONE)
-- Ajout de l'icône œil pour voir les mots de passe (DONE)
-- Suppression de l'onglet Sauvegarde de l'interface d'administration (DONE)
+- Validation de la messagerie interne ciblée (DONE)
+- Correction du RP_ID pour Face ID / WebAuthn (DONE)
+- Implémentation complète de Info - Prochain Événement (CRUD, UI, Dashboard, Notifications, WhatsApp share) (DONE)
+- Ajout du bouton Voir le menu et formatage OU doré pour les sondages repas (DONE)
+- Ajout de la carte Absents cliquable (avec modal de détails) sur Dashboard Président (DONE)
+- Optimisation mobile du Dashboard (flex-col pour les boutons Présent/Absent, wrap des textes) (DONE)
+- Ajout du Résumé intelligent du menu via  (ex: affiche Langoustine) après le vote (DONE)
+- Résolution du problème de session IA (Winston appelle désormais Fabien correctement selon le toggle ) (DONE)
 
 **Earlier issues found/mentioned but not fixed**
-   - **Issue 1: Budget LLM Emergent épuisé**
-     - **Debug checklist**: Vérifier les logs backend lors d'un appel à .
-     - **Why to solve this issue and what will be achieved with this?** Winston ne peut pas générer de réponses si le budget est à 0. 
-     - **Should Test frontend/backend/both after fix**: Backend
-     - **Is recurring issue?** N (L'agent a informé l'utilisateur d'ajouter des crédits, mais il faut s'assurer qu'il l'a fait si le problème de Winston persiste).
-
+   - **Issue 1**: Valeurs 3,5l dans des champs vides de la Cigarthèque. L'agent a conclu que le code gère bien les valeurs vides () et que cela provient de vieilles données corrompues en BDD. Si cela se reproduit, il faudra peut-être nettoyer la base de données.
+   
 **Known issue recurrence from previous fork**
-  - **Issue recurrence in previous fork**: Persistance de la session (Rester connecté). L'agent précédent avait tenté de le fixer, mais le composant  dans  était vide, et  effaçait le cache.
-  - **Recurrence count**: 3
-  - **Status**: USER VERIFICATION PENDING
+  - **Issue recurrence in previous fork**: Incompréhension de l'utilisateur sur le déploiement (teste en prod avant même que le code soit push/déployé).
+  - **Recurrence count**: 3 fois dans cette session.
+  - **Status**: RESOLVED (L'agent a expliqué à l'utilisateur qu'il doit déclencher un redéploiement pour voir les changements sur son téléphone).
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- **Double Base de Données** : MongoDB (local) pour les utilisateurs/événements/stats, et MySQL OVH (externe) pour le catalogue des 651 cigares.
-- **Édition Groupée** : Dans , l'état  accumule les modifications des cellules. Un bouton global sauvegarde tout via .
+- React Context pour la distinction des modes (Président vs Membre).
+- Extraction conditionnelle de mots-clés ( en JS).
+- Manipulation MongoDB : Ne jamais retourner l'objet  direct au frontend (Erreur corrigée sur ).
 
 **key DB schema**
-  - **MySQL **: Catalogue externe en lecture seule.
-  - **MongoDB **: Historique des apéros/repas.
-  - **MongoDB **: Stocke désormais les détails complets des cigares dégustés.
+  - **MongoDB **: {membre_id, cigare_id, marque, gamme, ..., **favori (boolean)**}
+  - **MongoDB **: {type_evenement, date, lieu, actif}
 
 **changes in tech stack**
-  - None
+  - Aucune.
 
 **All files of reference** 
-  -  (Modifié massivement pour la persistance)
-  -  (Mise à jour des  et )
-  -  (Mise à jour du prompt système)
-  -  (Logique de sauvegarde groupée)
-  -  (Balises Open Graph)
+  -  (Fichier cible pour la tâche en cours)
+  - 
+  - 
+  - 
+  - 
 
 **Areas that need refactoring**: 
-  -  : Toujours trop volumineux, à découper.
+  -  : Toujours trop volumineux, à découper impérativement.
 
 **key api endpoints**
+  -  (Nouvelle route pour le toggle)
   - 
-  -  (Winston)
-  -  (Nouvelle route d'édition groupée si implémentée, ou appels séquentiels gérés par le frontend).
+  - 
 
 **Critical Info for New Agent** 
-- **Sécurité** : Les identifiants MySQL OVH sont maintenant dans le . Ne modifiez pas ces accès.
-- **Attitude de l'utilisateur** : L'utilisateur est agacé par les redéploiements inutiles et les bugs récurrents (Session et Winston). **Ne lui demandez de redéployer que si c'est absolument nécessaire.** Privilégiez les tests via le  ou  avant d'annoncer que c'est corrigé.
-- **Problème Winston** : Si Winston échoue, vérifiez d'abord les logs backend. Le budget Emergent LLM Key a été dépassé récemment.
-- **Identifiants de test** : Email: , Password: .
+- **COMMUNICATION** : TU DOIS COMMUNIQUER EN FRANÇAIS AVEC L'UTILISATEUR.
+- **DÉPLOIEMENT** : L'utilisateur teste l'application sur son téléphone via l'URL de production et se plaint souvent que ça ne marche pas parce qu'il ne réalise pas qu'il faut *déployer* l'app après tes changements. Rappelle-lui toujours de **redéployer l'application** après un fix.
+- **MongoDB ** : L'agent précédent a généré une erreur 500  en utilisant . Pensez toujours à convertir l' en string ou à l'exclure () avant de renvoyer le dictionnaire.
 
 **documents and test reports created in this job**
-  - 
-  - 
-  - 
-  - 
+  -  (Mis à jour avec les avancées)
+  -  (Messagerie validée)
+  -  (Face ID validé)
+  -  (Info Prochain événement validé)
 
 **Last 10 User Messages and any pending HUMAN messages** 
- 1. User: Signale une incohérence dans les statistiques d'événements. -> *Done (Agent a supprimé 6 événements de test en DB)*
- 2. User: Demande de corriger l'affichage mobile et signale que Rester connecté ne marche pas. -> *Done*
- 3. User: Se plaint de l'édition ligne par ligne des événements et veut une sauvegarde de page globale. -> *Done*
- 4. User: Demande de supprimer l'onglet Sauvegarde admin, signale que Rester connecté et Winston ne marchent TOUJOURS PAS. -> *Done (Agent a identifié des conflits dans UserContext et winston.py et a corrigé, test réussi en screenshot)*
- 5. **(PENDING)** User: Message de l'utilisateur suite à la déclaration de l'agent que Rester connecté et Winston sont réparés. Attente de sa confirmation.
+ 1. User: Dans la cigarotheque... je veux pouvoir marquer en favori avec un ❤️.
+ 2. Agent: Construit un onglet complet Mes Favoris + Routes API.
+ 3. User: Non cela fait usine à gaz. Il ne faut pas d’onglet mais juste un cœur qui devient rouge... et le bouton apparaît dans les filtres. Winston doit connaître tous les favoris.
+ 4. Agent: (En cours) Retire l'onglet, ajoute le filtre Favoris uniquement, met à jour .
 
 **Project Health Check:**
-- **Broken**: Potentiellement Rester connecté et Winston (en attente de confirmation de l'utilisateur).
-- **Mocked**: Aucun.
+- Broken: Aucun (L'application compile et tourne, un redéploiement est juste requis).
+- Mocked: Aucun.
 
 **3rd Party Integrations** 
-  - OpenAI via Emergent LLM Key — (Winston Chat) - **ATTENTION: Budget potentiellement épuisé récemment**.
-  - OVH CloudDB (MySQL) — Database Cigares (Credentials in .env).
+  - OpenAI GPT via Emergent LLM Key (Winston - mis à jour pour lire les favoris)
+  - WebAuthn (Face ID)
 
 **Testing status**
-  - Testing agent used after significant changes: YES (For Profile Settings)
-  - Troubleshoot agent used after agent stuck in loop: NO
-  - Test files created: None
-  - Known regressions: Rester connecté persistance.
+  - Testing agent used after significant changes: YES (itérations 5, 6, 7 pour WebAuthn, Messages et Info Événement).
+  - Troubleshoot agent used after agent stuck in loop: NO.
+  - Test files created: None.
+  - Known regressions: None.
 
 **Credentials to test flow:**
-  - Login Président :  / 
+  - Email: 
+  - Mdp: 
 
 **What agent forgot to execute**
-  - L'agent n'a pas pu vérifier définitivement si l'utilisateur a rechargé son budget Universal Key pour tester Winston correctement.
-  - L'agent a remplacé le bouton d'édition ligne par ligne par un bouton global dans Événements, mais il faut s'assurer que les appels multiples à l'API lors d'une sauvegarde de saison ne surchargent pas le serveur.</analysis>
+  - L'agent a fait les modifications () pour la demande de simplification des favoris (suppression de l'onglet, ajout du filtre, update de Winston), mais la session s'est terminée **avant qu'il n'ait pu prendre un screenshot ou appeler le testing_agent** pour s'assurer que la nouvelle interface de favoris s'affiche et fonctionne bien sans générer d'erreurs.
+
+**Debugging checklist for current issue**
+    Issue: Finaliser et tester l'interface simplifiée des Favoris dans la Cigarthèque.
+
+    Frontend files to check: 
+    -  : S'assurer que le filtre  s'applique bien dans le  et que l'interface s'affiche correctement sans l'onglet Mes Favoris.
+  
+    Backend files to check:
+    -  : Vérifier la route .
+    -  : S'assurer que la syntaxe ajoutée ne cause pas d'erreurs lors du prompt (ligne ~202).</analysis>

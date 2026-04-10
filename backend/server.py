@@ -5817,7 +5817,7 @@ async def delete_cigare_personnel(cigare_id: str):
 
 @api_router.post("/ma-cigarotheque/{cigare_id}/favori")
 async def toggle_favori(cigare_id: str):
-    """Ajouter/retirer un cigare des favoris"""
+    """Ajouter/retirer un cigare des favoris (dans Ma Cigarthèque)"""
     # Récupérer le cigare
     cigare = await db.cigares_personnels.find_one({"id": cigare_id}, {"_id": 0})
     if not cigare:
@@ -5832,6 +5832,89 @@ async def toggle_favori(cigare_id: str):
     )
     
     return {"success": True, "favori": new_favori, "message": "Ajouté aux favoris" if new_favori else "Retiré des favoris"}
+
+
+@api_router.post("/favoris/toggle-from-catalogue")
+async def toggle_favori_from_catalogue(
+    membre_id: str = Query(...),
+    cigare_catalogue_id: int = Query(...)
+):
+    """
+    Toggle favori depuis le Catalogue ou Apéro Club.
+    Si le cigare n'est pas dans Ma Cigarthèque, l'ajoute d'abord puis le met en favori.
+    Si le cigare existe déjà, toggle simplement le favori.
+    """
+    # Vérifier si le cigare est déjà dans Ma Cigarthèque
+    existing = await db.cigares_personnels.find_one(
+        {"membre_id": membre_id, "cigare_id": cigare_catalogue_id},
+        {"_id": 0}
+    )
+    
+    if existing:
+        # Toggle le favori existant
+        new_favori = not existing.get("favori", False)
+        await db.cigares_personnels.update_one(
+            {"id": existing["id"]},
+            {"$set": {"favori": new_favori}}
+        )
+        return {
+            "success": True, 
+            "favori": new_favori, 
+            "added_to_collection": False,
+            "message": "Ajouté aux favoris" if new_favori else "Retiré des favoris"
+        }
+    else:
+        # Récupérer les infos du cigare depuis le catalogue MySQL
+        cigare_data = None
+        try:
+            with get_mysql_connection() as conn:
+                with conn.cursor(pymysql.cursors.DictCursor) as cursor:
+                    cursor.execute("""
+                        SELECT 
+                            id,
+                            marque,
+                            gamme,
+                            COALESCE(nom_cigare, vitole_nom, vitole) as vitole,
+                            COALESCE(terroir, pays_fabrication, 'Non défini') as pays,
+                            puissance,
+                            prix
+                        FROM cigares
+                        WHERE id = %s
+                    """, (cigare_catalogue_id,))
+                    cigare_data = cursor.fetchone()
+        except Exception as e:
+            logging.error(f"Erreur MySQL: {e}")
+        
+        if not cigare_data:
+            raise HTTPException(status_code=404, detail="Cigare non trouvé dans le catalogue")
+        
+        # Créer l'entrée dans Ma Cigarthèque avec favori=True
+        new_id = str(uuid.uuid4())
+        new_cigare = {
+            "id": new_id,
+            "membre_id": membre_id,
+            "cigare_id": cigare_catalogue_id,
+            "marque": cigare_data.get("marque") or "Inconnu",
+            "gamme": cigare_data.get("gamme") or "",
+            "vitole": cigare_data.get("vitole") or "",
+            "pays": cigare_data.get("pays") or "",
+            "puissance": cigare_data.get("puissance") or "",
+            "prix": float(cigare_data.get("prix")) if cigare_data.get("prix") else None,
+            "favori": True,
+            "note_personnelle": None,
+            "commentaire": None,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        await db.cigares_personnels.insert_one(new_cigare)
+        
+        return {
+            "success": True, 
+            "favori": True, 
+            "added_to_collection": True,
+            "cigare_id": new_id,
+            "message": "Ajouté à Ma Cigarthèque et aux favoris"
+        }
 
 
 @api_router.get("/ma-cigarotheque/{membre_id}/favoris")

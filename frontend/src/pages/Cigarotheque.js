@@ -129,9 +129,11 @@ const Cigarotheque = () => {
   // Ma Cigarthèque
   const [maCigarotheque, setMaCigarotheque] = useState([]);
   
-  // Mes Favoris
-  const [mesFavoris, setMesFavoris] = useState([]);
-  const [loadingFavoris, setLoadingFavoris] = useState(false);
+  // Filtre Favoris uniquement (Ma Cigarthèque)
+  const [showFavorisOnly, setShowFavorisOnly] = useState(false);
+  
+  // Filtre Favoris uniquement (Catalogue)
+  const [showCatalogueFavorisOnly, setShowCatalogueFavorisOnly] = useState(false);
   
   // Apéro du Club
   const [aperoClub, setAperoClub] = useState([]);
@@ -202,10 +204,9 @@ const Cigarotheque = () => {
   useEffect(() => {
     loadFiltres();
     loadAperoClub();
-    // Charger Ma Cigarthèque et Mes Favoris uniquement pour les membres (pas l'admin)
+    // Charger Ma Cigarthèque uniquement pour les membres (pas l'admin)
     if (!isAdmin && currentMember?.id) {
       loadMaCigarotheque();
-      loadMesFavoris();
     }
   }, [isAdmin, currentMember?.id]);
 
@@ -375,20 +376,25 @@ const Cigarotheque = () => {
     }
   }, [page, search, marqueFilter, isCubainFilter, terroirFilter, moduleFilter, puissanceFilter, prixMin, prixMax, collectionFilter, maCigarotheque, showIncompleteOnly, isAdmin]);
 
-  // Filtrer les cigares selon le filtre "pas dans ma collection" uniquement
+  // Filtrer les cigares selon le filtre "pas dans ma collection" et "favoris"
   const filteredCigares = useMemo(() => {
+    let result = cigares;
+    
     // Si filtre "dans", on a déjà chargé directement les cigares de la collection
     if (collectionFilter === 'dans') {
-      return cigares;
+      result = cigares;
+    } else if (collectionFilter === 'pas_dans') {
+      // Filtre "pas_dans" - filtrer côté client
+      result = cigares.filter(c => !isInMaCollection(c.id));
     }
     
-    // Filtre "pas_dans" - filtrer côté client
-    if (collectionFilter === 'pas_dans') {
-      return cigares.filter(c => !isInMaCollection(c.id));
+    // Filtre favoris uniquement (Catalogue)
+    if (showCatalogueFavorisOnly && !isAdmin) {
+      result = result.filter(c => isFavoriInCatalogue(c.id));
     }
     
-    return cigares;
-  }, [cigares, collectionFilter, maCollectionCigareIds]);
+    return result;
+  }, [cigares, collectionFilter, maCollectionCigareIds, showCatalogueFavorisOnly, maCigarotheque, isAdmin]);
 
   const loadMaCigarotheque = useCallback(async () => {
     if (!currentMember?.id) return;
@@ -400,34 +406,48 @@ const Cigarotheque = () => {
     }
   }, [currentMember?.id]);
 
-  // Charger les favoris
-  const loadMesFavoris = useCallback(async () => {
-    if (!currentMember?.id) return;
-    setLoadingFavoris(true);
-    try {
-      const response = await axios.get(`${API}/ma-cigarotheque/${currentMember.id}/favoris`);
-      setMesFavoris(response.data);
-    } catch (error) {
-      console.error('Erreur chargement favoris:', error);
-    } finally {
-      setLoadingFavoris(false);
-    }
-  }, [currentMember?.id]);
-
-  // Toggle favori
+  // Toggle favori (pour Ma Cigarthèque - cigare déjà dans la collection)
   const toggleFavori = async (cigareId) => {
     try {
       const response = await axios.post(`${API}/ma-cigarotheque/${cigareId}/favori`);
       if (response.data.success) {
         toast.success(response.data.message);
-        // Recharger ma cigarthèque et les favoris
+        // Recharger ma cigarthèque
         loadMaCigarotheque();
-        loadMesFavoris();
       }
     } catch (error) {
       console.error('Erreur toggle favori:', error);
       toast.error('Erreur lors de la mise à jour du favori');
     }
+  };
+
+  // Toggle favori depuis le Catalogue ou Apéro Club (ajoute aussi à Ma Cigarthèque si nécessaire)
+  const toggleFavoriFromCatalogue = async (cigareCatalogueId) => {
+    if (!currentMember?.id) {
+      toast.error('Vous devez être connecté');
+      return;
+    }
+    try {
+      const response = await axios.post(`${API}/favoris/toggle-from-catalogue`, null, {
+        params: {
+          membre_id: currentMember.id,
+          cigare_catalogue_id: cigareCatalogueId
+        }
+      });
+      if (response.data.success) {
+        toast.success(response.data.message);
+        // Recharger ma cigarthèque pour mettre à jour l'état
+        loadMaCigarotheque();
+      }
+    } catch (error) {
+      console.error('Erreur toggle favori catalogue:', error);
+      toast.error('Erreur lors de la mise à jour du favori');
+    }
+  };
+
+  // Vérifier si un cigare du catalogue est en favori
+  const isFavoriInCatalogue = (cigareCatalogueId) => {
+    return maCigarotheque.some(c => c.cigare_id === cigareCatalogueId && c.favori === true);
   };
 
   const loadAperoClub = async () => {
@@ -455,6 +475,7 @@ const Cigarotheque = () => {
     setPrixMin('');
     setPrixMax('');
     setCollectionFilter('');
+    setShowCatalogueFavorisOnly(false);
     setPage(0);
     loadFiltres(null, null); // Recharger tous les filtres sans restriction
   };
@@ -512,6 +533,11 @@ const Cigarotheque = () => {
   const filteredMaCigarotheque = useMemo(() => {
     let filtered = [...maCigarotheque];
     
+    // Filtrer par favoris uniquement
+    if (showFavorisOnly) {
+      filtered = filtered.filter(c => c.favori === true);
+    }
+    
     // Filtrer par recherche
     if (maCollectionSearch) {
       const searchLower = maCollectionSearch.toLowerCase();
@@ -552,7 +578,7 @@ const Cigarotheque = () => {
     });
     
     return filtered;
-  }, [maCigarotheque, maCollectionSearch, maCollectionPays, maCollectionMarque, maCollectionModule, maCollectionTri]);
+  }, [maCigarotheque, maCollectionSearch, maCollectionPays, maCollectionMarque, maCollectionModule, maCollectionTri, showFavorisOnly]);
 
   // Extraire les options de filtres de Ma Cigarthèque (en cascade)
   const maCollectionFilterOptions = useMemo(() => {
@@ -1200,8 +1226,7 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
       return [
         { value: 'catalogue', label: 'Catalogue', icon: BookOpen },
         { value: 'apero-club', label: 'Apéro du Club', icon: Wine },
-        { value: 'ma-collection', label: 'Ma Cigarthèque', icon: User },
-        { value: 'mes-favoris', label: 'Mes Favoris', icon: Heart }
+        { value: 'ma-collection', label: 'Ma Cigarthèque', icon: User }
       ];
     }
   };
@@ -1302,7 +1327,7 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-2' : 'grid-cols-4'} bg-black/40`}>
+        <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-2' : 'grid-cols-3'} bg-black/40`}>
           {getTabs().map(tab => (
             <TabsTrigger 
               key={tab.value}
@@ -1501,6 +1526,25 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
                     Réinitialiser
                   </Button>
                 </div>
+                
+                {/* Filtre Favoris uniquement - Catalogue (membres seulement) */}
+                {!isAdmin && maCigarotheque.some(c => c.favori) && (
+                  <div className="flex items-center gap-3 pt-3 border-t border-[#D4A024]/20 mt-3">
+                    <Button
+                      type="button"
+                      variant={showCatalogueFavorisOnly ? "default" : "outline"}
+                      onClick={() => setShowCatalogueFavorisOnly(!showCatalogueFavorisOnly)}
+                      className={showCatalogueFavorisOnly 
+                        ? "bg-red-600 hover:bg-red-700 text-white" 
+                        : "border-red-500/50 text-red-400 hover:bg-red-500/10"}
+                      data-testid="filter-favoris-catalogue-btn"
+                    >
+                      <Heart className={`w-4 h-4 mr-2 ${showCatalogueFavorisOnly ? 'fill-white' : ''}`} />
+                      Favoris uniquement
+                      <Badge className="ml-2 bg-white/20">{maCigarotheque.filter(c => c.favori).length}</Badge>
+                    </Button>
+                  </div>
+                )}
               </form>
             </CardContent>
           </Card>
@@ -1695,14 +1739,28 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
                               </Button>
                             </>
                           ) : (
-                            <Button 
-                              size="sm"
-                              onClick={() => addToMaCigarotheque(cigare)}
-                              className="bg-[#7A2020] hover:bg-[#8A3030] text-white"
-                              data-testid={`add-collection-btn-${cigare.id}`}
-                            >
-                              <Plus className="w-4 h-4" />
-                            </Button>
+                            <>
+                              {/* Bouton Favori ❤️ */}
+                              <Button 
+                                size="sm"
+                                variant="outline"
+                                onClick={() => toggleFavoriFromCatalogue(cigare.id)}
+                                className={`${isFavoriInCatalogue(cigare.id) ? 'border-red-500 text-red-500' : 'border-gray-500 text-gray-400'} hover:border-red-500 hover:text-red-500`}
+                                title={isFavoriInCatalogue(cigare.id) ? "Retirer des favoris" : "Ajouter aux favoris"}
+                                data-testid={`fav-catalogue-btn-${cigare.id}`}
+                              >
+                                <Heart className={`w-4 h-4 ${isFavoriInCatalogue(cigare.id) ? 'fill-red-500' : ''}`} />
+                              </Button>
+                              {/* Bouton Ajouter à Ma Cigarthèque */}
+                              <Button 
+                                size="sm"
+                                onClick={() => addToMaCigarotheque(cigare)}
+                                className="bg-[#7A2020] hover:bg-[#8A3030] text-white"
+                                data-testid={`add-collection-btn-${cigare.id}`}
+                              >
+                                <Plus className="w-4 h-4" />
+                              </Button>
+                            </>
                           )}
                         </div>
                       </div>
@@ -1825,19 +1883,33 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
 
                         {/* Boutons d'action */}
                         <div className="flex gap-2 mt-3 pt-3 border-t border-[#D4A024]/20">
-                          {/* Bouton Ajouter à Ma Cigarthèque - Membres seulement */}
+                          {/* Boutons pour Membres */}
                           {!isAdmin && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => { e.stopPropagation(); addToMaCigarotheque(cigare, true); }}
-                              className="flex-1 text-[#D4A024] hover:bg-[#D4A024]/10"
-                              title="Ajouter à Ma Cigarthèque"
-                              data-testid={`add-to-collection-apero-btn-${cigare.id}`}
-                            >
-                              <Plus className="w-4 h-4 mr-1" />
-                              Ma Cigarthèque
-                            </Button>
+                            <>
+                              {/* Bouton Favori ❤️ */}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => { e.stopPropagation(); toggleFavoriFromCatalogue(cigare.cigare_id); }}
+                                className={`${isFavoriInCatalogue(cigare.cigare_id) ? 'text-red-500' : 'text-gray-400'} hover:text-red-400`}
+                                title={isFavoriInCatalogue(cigare.cigare_id) ? "Retirer des favoris" : "Ajouter aux favoris"}
+                                data-testid={`fav-apero-btn-${cigare.id}`}
+                              >
+                                <Heart className={`w-5 h-5 ${isFavoriInCatalogue(cigare.cigare_id) ? 'fill-red-500' : ''}`} />
+                              </Button>
+                              {/* Bouton Ajouter à Ma Cigarthèque */}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => { e.stopPropagation(); addToMaCigarotheque(cigare, true); }}
+                                className="flex-1 text-[#D4A024] hover:bg-[#D4A024]/10"
+                                title="Ajouter à Ma Cigarthèque"
+                                data-testid={`add-to-collection-apero-btn-${cigare.id}`}
+                              >
+                                <Plus className="w-4 h-4 mr-1" />
+                                Ma Cigarthèque
+                              </Button>
+                            </>
                           )}
                           {isAdmin && (
                             <>
@@ -1981,6 +2053,23 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
                       </SelectContent>
                     </Select>
                   </div>
+                  
+                  {/* Filtre Favoris */}
+                  <div className="flex items-center gap-3 pt-2 border-t border-[#D4A024]/20">
+                    <Button
+                      variant={showFavorisOnly ? "default" : "outline"}
+                      onClick={() => setShowFavorisOnly(!showFavorisOnly)}
+                      className={showFavorisOnly 
+                        ? "bg-red-600 hover:bg-red-700 text-white" 
+                        : "border-red-500/50 text-red-400 hover:bg-red-500/10"}
+                    >
+                      <Heart className={`w-4 h-4 mr-2 ${showFavorisOnly ? 'fill-white' : ''}`} />
+                      Favoris uniquement
+                      {maCigarotheque.filter(c => c.favori).length > 0 && (
+                        <Badge className="ml-2 bg-white/20">{maCigarotheque.filter(c => c.favori).length}</Badge>
+                      )}
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Liste groupée */}
@@ -2089,153 +2178,6 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
                               </div>
                             </div>
                           ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        )}
-
-        {/* ==================== ONGLET MES FAVORIS ==================== */}
-        {!isAdmin && (
-          <TabsContent value="mes-favoris" className="space-y-4">
-            <Card className="bg-black/40 border-2 border-[#D4A024]/30">
-              <CardHeader>
-                <CardTitle className="flex items-center text-[#D4A024] font-serif">
-                  <Heart className="w-6 h-6 mr-2 fill-red-500 text-red-500" />
-                  Mes Favoris ({mesFavoris.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {loadingFavoris ? (
-                  <div className="text-center py-8">
-                    <div className="animate-spin w-8 h-8 border-4 border-[#D4A024] border-t-transparent rounded-full mx-auto"></div>
-                    <p className="text-gray-400 mt-4">Chargement des favoris...</p>
-                  </div>
-                ) : mesFavoris.length === 0 ? (
-                  <div className="text-center py-8">
-                    <Heart className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-                    <p className="text-gray-400">Aucun favori pour le moment</p>
-                    <p className="text-gray-500 text-sm mt-2">
-                      Cliquez sur le cœur ❤️ dans "Ma Cigarthèque" pour ajouter des favoris
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    {mesFavoris.map((item, idx) => (
-                      <div key={idx} className="bg-gradient-to-r from-[#7A2020]/20 to-black/40 rounded-lg border-2 border-red-500/30 overflow-hidden">
-                        {/* En-tête avec nom du cigare et bouton favori */}
-                        <div className="bg-red-900/30 p-4 flex items-center justify-between">
-                          <h3 className="text-white font-serif font-bold text-xl">
-                            {item.fiche_personnelle?.marque} {item.fiche_personnelle?.gamme || ''}
-                          </h3>
-                          <div className="flex items-center gap-2">
-                            <Heart className="w-6 h-6 fill-red-500 text-red-500" />
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => toggleFavori(item.fiche_personnelle?.id)}
-                              className="text-gray-400 hover:text-red-400"
-                              title="Retirer des favoris"
-                            >
-                              <X className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </div>
-                        
-                        <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {/* Fiche personnalisée du membre */}
-                          <div className="bg-black/40 rounded-lg p-4 border border-[#D4A024]/30">
-                            <h4 className="text-[#D4A024] font-semibold mb-3 flex items-center">
-                              <User className="w-4 h-4 mr-2" />
-                              Ma Fiche Personnelle
-                            </h4>
-                            <div className="space-y-2 text-sm">
-                              <p className="text-gray-400">
-                                <span className="text-white">Vitole:</span> {item.fiche_personnelle?.vitole || 'Non défini'}
-                              </p>
-                              {item.fiche_personnelle?.note_personnelle && (
-                                <div className="flex items-center gap-2">
-                                  <span className="text-gray-400">Note:</span>
-                                  <Badge className="bg-[#D4A024] text-[#7A2020]">
-                                    <Star className="w-3 h-3 mr-1" />
-                                    {item.fiche_personnelle.note_personnelle}/5
-                                  </Badge>
-                                </div>
-                              )}
-                              {item.fiche_personnelle?.note_puissance && (
-                                <div className="flex items-center gap-2">
-                                  <span className="text-gray-400">Puissance:</span>
-                                  <Badge variant="outline" className="border-orange-500/50 text-orange-400">
-                                    <Flame className="w-3 h-3 mr-1" />
-                                    {item.fiche_personnelle.note_puissance}/5
-                                  </Badge>
-                                </div>
-                              )}
-                              {item.fiche_personnelle?.note_qualite_prix && (
-                                <div className="flex items-center gap-2">
-                                  <span className="text-gray-400">Qualité/Prix:</span>
-                                  <Badge variant="outline" className="border-green-500/50 text-green-400">
-                                    <Euro className="w-3 h-3 mr-1" />
-                                    {item.fiche_personnelle.note_qualite_prix}/5
-                                  </Badge>
-                                </div>
-                              )}
-                              {item.fiche_personnelle?.commentaire && (
-                                <div className="mt-3 pt-3 border-t border-gray-700">
-                                  <p className="text-gray-400 italic text-xs">
-                                    "{item.fiche_personnelle.commentaire}"
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          
-                          {/* Fiche catalogue (globale) */}
-                          <div className="bg-black/40 rounded-lg p-4 border border-blue-500/30">
-                            <h4 className="text-blue-400 font-semibold mb-3 flex items-center">
-                              <BookOpen className="w-4 h-4 mr-2" />
-                              Fiche Catalogue
-                            </h4>
-                            {item.fiche_catalogue ? (
-                              <div className="space-y-2 text-sm">
-                                <p className="text-gray-400">
-                                  <span className="text-white">Origine:</span> {item.fiche_catalogue.pays || 'Non défini'}
-                                </p>
-                                <p className="text-gray-400">
-                                  <span className="text-white">Module:</span> {item.fiche_catalogue.module || 'Non défini'}
-                                </p>
-                                <p className="text-gray-400">
-                                  <span className="text-white">Prix:</span> {item.fiche_catalogue.prix_unitaire ? `${item.fiche_catalogue.prix_unitaire}€` : 'Non défini'}
-                                </p>
-                                {item.fiche_catalogue.description && (
-                                  <div className="mt-3 pt-3 border-t border-gray-700">
-                                    <p className="text-gray-400 italic text-xs">
-                                      {item.fiche_catalogue.description}
-                                    </p>
-                                  </div>
-                                )}
-                              </div>
-                            ) : (
-                              <p className="text-gray-500 italic text-sm">
-                                Données du catalogue non disponibles
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        
-                        {/* Bouton voir la fiche complète */}
-                        <div className="p-4 pt-0">
-                          <Button
-                            onClick={() => openFullCigarDetail(item.fiche_personnelle)}
-                            className="w-full bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020]"
-                          >
-                            <BookOpen className="w-4 h-4 mr-2" />
-                            Voir la fiche complète
-                          </Button>
                         </div>
                       </div>
                     ))}
@@ -2405,10 +2347,26 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
                       </Button>
                     </>
                   ) : (
-                    <Button onClick={() => { addToMaCigarotheque(selectedCigare); setShowDetail(false); }} variant="outline" className="border-[#D4A024] text-[#D4A024]">
-                      <Plus className="w-4 h-4 mr-2" />
-                      Ma Cigarthèque
-                    </Button>
+                    <>
+                      {/* Bouton Favori ❤️ */}
+                      <Button 
+                        onClick={() => toggleFavoriFromCatalogue(selectedCigare.id)} 
+                        variant="outline" 
+                        className={isFavoriInCatalogue(selectedCigare.id)
+                          ? "bg-red-600 border-red-600 text-white hover:bg-red-700"
+                          : "border-red-500/50 text-red-400 hover:bg-red-500/20"
+                        }
+                        data-testid="fav-modal-btn"
+                      >
+                        <Heart className={`w-4 h-4 mr-2 ${isFavoriInCatalogue(selectedCigare.id) ? 'fill-white' : ''}`} />
+                        {isFavoriInCatalogue(selectedCigare.id) ? "Retirer des favoris" : "Ajouter aux favoris"}
+                      </Button>
+                      {/* Bouton Ajouter à Ma Cigarthèque */}
+                      <Button onClick={() => { addToMaCigarotheque(selectedCigare); setShowDetail(false); }} variant="outline" className="border-[#D4A024] text-[#D4A024]">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Ma Cigarthèque
+                      </Button>
+                    </>
                   )}
                 </div>
               </div>
