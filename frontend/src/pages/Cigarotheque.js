@@ -22,6 +22,12 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 import { 
   Search, 
   Star, 
@@ -33,6 +39,7 @@ import {
   Plus,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Copy,
   Wine,
   User,
@@ -92,7 +99,11 @@ const Cigarotheque = () => {
   const [maCollectionPays, setMaCollectionPays] = useState('');
   const [maCollectionMarque, setMaCollectionMarque] = useState('');
   const [maCollectionModule, setMaCollectionModule] = useState('');
-  const [maCollectionTri, setMaCollectionTri] = useState('pays'); // pays, marque, module
+  
+  // Accordéons ouverts dans Ma Cigarthèque (hiérarchie Terroir > Marque > Gamme)
+  const [openTerroirs, setOpenTerroirs] = useState([]);
+  const [openMarques, setOpenMarques] = useState([]);
+  const [openGammes, setOpenGammes] = useState([]);
   
   // Handlers pour les filtres en cascade
   const handleMaCollectionPaysChange = (value) => {
@@ -563,22 +574,17 @@ const Cigarotheque = () => {
       filtered = filtered.filter(c => c.vitole === maCollectionModule);
     }
     
-    // Trier
+    // Trier par pays > marque > gamme pour la hiérarchie
     filtered.sort((a, b) => {
-      switch(maCollectionTri) {
-        case 'pays':
-          return (a.pays || '').localeCompare(b.pays || '');
-        case 'marque':
-          return (a.marque || '').localeCompare(b.marque || '');
-        case 'module':
-          return (a.vitole || '').localeCompare(b.vitole || '');
-        default:
-          return 0;
-      }
+      const paysCompare = (a.pays || '').localeCompare(b.pays || '');
+      if (paysCompare !== 0) return paysCompare;
+      const marqueCompare = (a.marque || '').localeCompare(b.marque || '');
+      if (marqueCompare !== 0) return marqueCompare;
+      return (a.gamme || '').localeCompare(b.gamme || '');
     });
     
     return filtered;
-  }, [maCigarotheque, maCollectionSearch, maCollectionPays, maCollectionMarque, maCollectionModule, maCollectionTri, showFavorisOnly]);
+  }, [maCigarotheque, maCollectionSearch, maCollectionPays, maCollectionMarque, maCollectionModule, showFavorisOnly]);
 
   // Extraire les options de filtres de Ma Cigarthèque (en cascade)
   const maCollectionFilterOptions = useMemo(() => {
@@ -1231,29 +1237,59 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
     }
   };
 
-  // Grouper les cigares de Ma Cigarthèque par la clé de tri
-  const groupedMaCigarotheque = useMemo(() => {
-    const groups = {};
+  // Grouper les cigares de Ma Cigarthèque en hiérarchie : Terroir > Marque > Gamme > Cigares
+  const hierarchicalMaCigarotheque = useMemo(() => {
+    const hierarchy = {};
+    
     filteredMaCigarotheque.forEach(cigare => {
-      let key;
-      switch(maCollectionTri) {
-        case 'pays':
-          key = cigare.pays || 'Non défini';
-          break;
-        case 'marque':
-          key = cigare.marque || 'Sans marque';
-          break;
-        case 'module':
-          key = cigare.vitole || 'Non défini';
-          break;
-        default:
-          key = 'Tous';
+      const terroir = cigare.pays || 'Origine inconnue';
+      const marque = cigare.marque || 'Sans marque';
+      const gamme = cigare.gamme || 'Sans gamme';
+      
+      if (!hierarchy[terroir]) {
+        hierarchy[terroir] = { count: 0, marques: {} };
       }
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(cigare);
+      hierarchy[terroir].count++;
+      
+      if (!hierarchy[terroir].marques[marque]) {
+        hierarchy[terroir].marques[marque] = { count: 0, gammes: {} };
+      }
+      hierarchy[terroir].marques[marque].count++;
+      
+      if (!hierarchy[terroir].marques[marque].gammes[gamme]) {
+        hierarchy[terroir].marques[marque].gammes[gamme] = [];
+      }
+      hierarchy[terroir].marques[marque].gammes[gamme].push(cigare);
     });
-    return groups;
-  }, [filteredMaCigarotheque, maCollectionTri]);
+    
+    return hierarchy;
+  }, [filteredMaCigarotheque]);
+
+  // Fonction pour tout ouvrir/fermer
+  const toggleAllAccordions = (open) => {
+    if (open) {
+      const allTerroirs = Object.keys(hierarchicalMaCigarotheque);
+      const allMarques = [];
+      const allGammes = [];
+      
+      Object.entries(hierarchicalMaCigarotheque).forEach(([terroir, data]) => {
+        Object.entries(data.marques).forEach(([marque, marqueData]) => {
+          allMarques.push(`${terroir}-${marque}`);
+          Object.keys(marqueData.gammes).forEach(gamme => {
+            allGammes.push(`${terroir}-${marque}-${gamme}`);
+          });
+        });
+      });
+      
+      setOpenTerroirs(allTerroirs);
+      setOpenMarques(allMarques);
+      setOpenGammes(allGammes);
+    } else {
+      setOpenTerroirs([]);
+      setOpenMarques([]);
+      setOpenGammes([]);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -1980,78 +2016,41 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Filtres et Tri pour Ma Cigarthèque */}
+                {/* Barre de recherche et boutons */}
                 <div className="bg-black/30 rounded-lg p-4 space-y-4">
-                  <div className="flex items-center gap-2 text-[#D4A024] mb-2">
-                    <Filter className="w-5 h-5" />
-                    <span className="font-semibold">Filtres et Tri</span>
-                  </div>
-                  
-                  {/* Recherche */}
-                  <div className="relative">
-                    <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                    <Input
-                      value={maCollectionSearch}
-                      onChange={(e) => setMaCollectionSearch(e.target.value)}
-                      placeholder="Rechercher..."
-                      className="pl-10 bg-black/60 border-[#D4A024]/30 text-white"
-                    />
-                  </div>
-                  
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {/* Tri par */}
-                    <Select value={maCollectionTri} onValueChange={setMaCollectionTri}>
-                      <SelectTrigger className="bg-black/60 border-[#D4A024]/30 text-white">
-                        <SortAsc className="w-4 h-4 mr-2 text-[#D4A024]" />
-                        <SelectValue placeholder="Trier par" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-[#1a1a1a] border-[#D4A024]/30">
-                        <SelectItem value="pays" className="text-white">Par Terroir</SelectItem>
-                        <SelectItem value="marque" className="text-white">Par Marque</SelectItem>
-                        <SelectItem value="module" className="text-white">Par Module</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <div className="flex flex-col md:flex-row gap-3">
+                    {/* Recherche */}
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                      <Input
+                        value={maCollectionSearch}
+                        onChange={(e) => setMaCollectionSearch(e.target.value)}
+                        placeholder="Rechercher un cigare..."
+                        className="pl-10 bg-black/60 border-[#D4A024]/30 text-white"
+                      />
+                    </div>
                     
-                    {/* Filtre Pays */}
-                    <Select value={maCollectionPays} onValueChange={handleMaCollectionPaysChange}>
-                      <SelectTrigger className="bg-black/60 border-[#D4A024]/30 text-white">
-                        <MapPin className="w-4 h-4 mr-2 text-[#D4A024]" />
-                        <SelectValue placeholder="Terroir" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-[#1a1a1a] border-[#D4A024]/30">
-                        <SelectItem value="all" className="text-gray-400">Tous</SelectItem>
-                        {maCollectionFilterOptions.pays.map(p => (
-                          <SelectItem key={p} value={p} className="text-white">{p}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    
-                    {/* Filtre Marque */}
-                    <Select value={maCollectionMarque} onValueChange={handleMaCollectionMarqueChange}>
-                      <SelectTrigger className="bg-black/60 border-[#D4A024]/30 text-white">
-                        <SelectValue placeholder="Marque" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-[#1a1a1a] border-[#D4A024]/30 max-h-[200px]">
-                        <SelectItem value="all" className="text-gray-400">Toutes</SelectItem>
-                        {maCollectionFilterOptions.marques.map(m => (
-                          <SelectItem key={m} value={m} className="text-white">{m}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    
-                    {/* Filtre Module */}
-                    <Select value={maCollectionModule} onValueChange={setMaCollectionModule}>
-                      <SelectTrigger className="bg-black/60 border-[#D4A024]/30 text-white">
-                        <Box className="w-4 h-4 mr-2 text-[#D4A024]" />
-                        <SelectValue placeholder="Module" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-[#1a1a1a] border-[#D4A024]/30 max-h-[200px]">
-                        <SelectItem value="all" className="text-gray-400">Tous</SelectItem>
-                        {maCollectionFilterOptions.modules.map(m => (
-                          <SelectItem key={m} value={m} className="text-white">{m}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {/* Boutons Tout ouvrir / Tout fermer */}
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => toggleAllAccordions(true)}
+                        className="border-[#D4A024]/50 text-[#D4A024] hover:bg-[#D4A024]/10"
+                      >
+                        <ChevronDown className="w-4 h-4 mr-1" />
+                        Tout ouvrir
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => toggleAllAccordions(false)}
+                        className="border-gray-500 text-gray-400 hover:bg-gray-500/10"
+                      >
+                        <ChevronDown className="w-4 h-4 mr-1 rotate-180" />
+                        Tout fermer
+                      </Button>
+                    </div>
                   </div>
                   
                   {/* Filtre Favoris */}
@@ -2072,7 +2071,7 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
                   </div>
                 </div>
 
-                {/* Liste groupée */}
+                {/* Liste hiérarchique avec accordéons */}
                 {filteredMaCigarotheque.length === 0 ? (
                   <div className="text-center py-8">
                     <BookOpen className="w-16 h-16 text-gray-600 mx-auto mb-4" />
@@ -2086,102 +2085,135 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-6">
-                    {Object.entries(groupedMaCigarotheque).map(([groupName, groupCigares]) => (
-                      <div key={groupName}>
-                        <h3 className="text-[#D4A024] font-serif font-bold text-xl mb-3 border-b border-[#D4A024]/30 pb-2">
-                          {groupName} ({groupCigares.length})
-                        </h3>
-                        <div className="space-y-3">
-                          {groupCigares.map((cigare) => (
-                            <div key={cigare.id} className="flex items-center justify-between p-4 bg-black/40 rounded-lg border border-[#D4A024]/20" data-testid={`collection-item-${cigare.id}`}>
-                              <div className="flex-1 min-w-0">
-                                <h4 className="text-white font-semibold text-lg">{cigare.marque} {cigare.gamme || ''}</h4>
-                                <p className="text-gray-400">{cigare.vitole || ''}</p>
-                                {cigare.note_personnelle && (
-                                  <div className="flex items-center mt-2 flex-wrap gap-2">
-                                    <Badge className="bg-[#D4A024] text-[#7A2020]">
-                                      <Star className="w-3 h-3 mr-1" />
-                                      {cigare.note_personnelle}/5
+                  <Accordion type="multiple" value={openTerroirs} onValueChange={setOpenTerroirs} className="space-y-2">
+                    {Object.entries(hierarchicalMaCigarotheque).sort().map(([terroir, terroirData]) => (
+                      <AccordionItem 
+                        key={terroir} 
+                        value={terroir}
+                        className="border border-[#D4A024]/30 rounded-lg bg-gradient-to-r from-[#7A2020]/20 to-transparent overflow-hidden"
+                      >
+                        <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-[#D4A024]/10">
+                          <div className="flex items-center gap-3">
+                            <MapPin className="w-5 h-5 text-[#D4A024]" />
+                            <span className="text-[#D4A024] font-serif font-bold text-lg">{terroir}</span>
+                            <Badge className="bg-[#D4A024]/20 text-[#D4A024] border border-[#D4A024]/50">
+                              {terroirData.count} cigare{terroirData.count > 1 ? 's' : ''}
+                            </Badge>
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent className="px-2 pb-2">
+                          <Accordion type="multiple" value={openMarques} onValueChange={setOpenMarques} className="space-y-1 ml-4">
+                            {Object.entries(terroirData.marques).sort().map(([marque, marqueData]) => (
+                              <AccordionItem 
+                                key={`${terroir}-${marque}`} 
+                                value={`${terroir}-${marque}`}
+                                className="border border-[#D4A024]/20 rounded-lg bg-black/30"
+                              >
+                                <AccordionTrigger className="px-3 py-2 hover:no-underline hover:bg-[#D4A024]/5">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-white font-semibold">{marque}</span>
+                                    <Badge variant="outline" className="border-gray-500 text-gray-400 text-xs">
+                                      {marqueData.count}
                                     </Badge>
-                                    {cigare.commentaire && cigare.commentaire.includes('Puissance:') && (
-                                      <Badge variant="outline" className="border-orange-500/50 text-orange-400">
-                                        <Flame className="w-3 h-3 mr-1" />
-                                        {cigare.commentaire.match(/Puissance:\s*(\d+(?:\.\d+)?)/)?.[1]}/5
-                                      </Badge>
-                                    )}
-                                    {cigare.commentaire && cigare.commentaire.includes('Qualité/Prix:') && (
-                                      <Badge variant="outline" className="border-green-500/50 text-green-400">
-                                        <DollarSign className="w-3 h-3 mr-1" />
-                                        {cigare.commentaire.match(/Qualité\/Prix:\s*(\d+(?:\.\d+)?)/)?.[1]}/5
-                                      </Badge>
-                                    )}
-                                    {cigare.commentaire && cigare.commentaire.includes('Évolution') && (
-                                      <Badge variant="outline" className="border-blue-500/50 text-blue-400">Évolution</Badge>
-                                    )}
-                                    {cigare.commentaire && cigare.commentaire.includes('Linéaire') && (
-                                      <Badge variant="outline" className="border-green-500/50 text-green-400">Linéaire</Badge>
-                                    )}
                                   </div>
-                                )}
-                                {cigare.commentaire && cigare.commentaire.includes('Notes:') && (
-                                  <p className="text-gray-400 text-sm mt-1 italic">
-                                    "{cigare.commentaire.match(/Notes:\s*(.+)/)?.[1] || ''}"
-                                  </p>
-                                )}
-                                {!cigare.note_personnelle && (
-                                  <Badge variant="outline" className="mt-2 border-gray-600 text-gray-500">
-                                    Non noté
-                                  </Badge>
-                                )}
-                              </div>
-                              <div className="flex gap-2 ml-4">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => toggleFavori(cigare.id)}
-                                  className={`${cigare.favori ? 'text-red-500' : 'text-gray-400'} hover:text-red-400`}
-                                  title={cigare.favori ? "Retirer des favoris" : "Ajouter aux favoris"}
-                                  data-testid={`fav-btn-${cigare.id}`}
-                                >
-                                  <Heart className={`w-5 h-5 ${cigare.favori ? 'fill-red-500' : ''}`} />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => openFullCigarDetail(cigare)}
-                                  className="text-blue-400 hover:text-blue-300"
-                                  title="Voir la fiche détaillée"
-                                  data-testid={`view-btn-${cigare.id}`}
-                                >
-                                  <BookOpen className="w-5 h-5" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => openNoteModal(cigare)}
-                                  className="text-[#D4A024]"
-                                  title="Noter ce cigare"
-                                  data-testid={`note-btn-${cigare.id}`}
-                                >
-                                  <Edit3 className="w-5 h-5" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => deleteFromMaCigarotheque(cigare.id)}
-                                  className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
-                                  data-testid={`delete-collection-btn-${cigare.id}`}
-                                >
-                                  <Trash2 className="w-5 h-5" />
-                                </Button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+                                </AccordionTrigger>
+                                <AccordionContent className="px-2 pb-2">
+                                  <Accordion type="multiple" value={openGammes} onValueChange={setOpenGammes} className="space-y-1 ml-4">
+                                    {Object.entries(marqueData.gammes).sort().map(([gamme, cigares]) => (
+                                      <AccordionItem 
+                                        key={`${terroir}-${marque}-${gamme}`} 
+                                        value={`${terroir}-${marque}-${gamme}`}
+                                        className="border border-gray-700 rounded-lg bg-black/20"
+                                      >
+                                        <AccordionTrigger className="px-3 py-2 hover:no-underline hover:bg-white/5">
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-gray-300 italic">{gamme}</span>
+                                            <Badge variant="outline" className="border-gray-600 text-gray-500 text-xs">
+                                              {cigares.length}
+                                            </Badge>
+                                          </div>
+                                        </AccordionTrigger>
+                                        <AccordionContent className="px-2 pb-2">
+                                          <div className="space-y-2 ml-2">
+                                            {cigares.map((cigare) => (
+                                              <div 
+                                                key={cigare.id} 
+                                                className="flex items-center justify-between p-3 bg-black/40 rounded-lg border border-[#D4A024]/10 hover:border-[#D4A024]/30 transition-colors"
+                                                data-testid={`collection-item-${cigare.id}`}
+                                              >
+                                                <div className="flex-1 min-w-0">
+                                                  <h4 className="text-white font-medium">{cigare.vitole || 'Vitole non définie'}</h4>
+                                                  {cigare.note_personnelle && (
+                                                    <div className="flex items-center mt-1 flex-wrap gap-1">
+                                                      <Badge className="bg-[#D4A024] text-[#7A2020] text-xs">
+                                                        <Star className="w-3 h-3 mr-1" />
+                                                        {cigare.note_personnelle}/5
+                                                      </Badge>
+                                                      {cigare.commentaire && cigare.commentaire.includes('Puissance:') && (
+                                                        <Badge variant="outline" className="border-orange-500/50 text-orange-400 text-xs">
+                                                          <Flame className="w-3 h-3 mr-1" />
+                                                          {cigare.commentaire.match(/Puissance:\s*(\d+(?:\.\d+)?)/)?.[1]}/5
+                                                        </Badge>
+                                                      )}
+                                                    </div>
+                                                  )}
+                                                </div>
+                                                <div className="flex gap-1 ml-2">
+                                                  <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => toggleFavori(cigare.id)}
+                                                    className={`${cigare.favori ? 'text-red-500' : 'text-gray-400'} hover:text-red-400 p-1`}
+                                                    title={cigare.favori ? "Retirer des favoris" : "Ajouter aux favoris"}
+                                                    data-testid={`fav-btn-${cigare.id}`}
+                                                  >
+                                                    <Heart className={`w-4 h-4 ${cigare.favori ? 'fill-red-500' : ''}`} />
+                                                  </Button>
+                                                  <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => openFullCigarDetail(cigare)}
+                                                    className="text-blue-400 hover:text-blue-300 p-1"
+                                                    title="Voir la fiche"
+                                                    data-testid={`view-btn-${cigare.id}`}
+                                                  >
+                                                    <BookOpen className="w-4 h-4" />
+                                                  </Button>
+                                                  <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => openNoteModal(cigare)}
+                                                    className="text-[#D4A024] p-1"
+                                                    title="Noter ce cigare"
+                                                    data-testid={`note-btn-${cigare.id}`}
+                                                  >
+                                                    <Edit3 className="w-4 h-4" />
+                                                  </Button>
+                                                  <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => deleteFromMaCigarotheque(cigare.id)}
+                                                    className="text-red-400 hover:text-red-300 p-1"
+                                                    data-testid={`delete-collection-btn-${cigare.id}`}
+                                                  >
+                                                    <Trash2 className="w-4 h-4" />
+                                                  </Button>
+                                                </div>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </AccordionContent>
+                                      </AccordionItem>
+                                    ))}
+                                  </Accordion>
+                                </AccordionContent>
+                              </AccordionItem>
+                            ))}
+                          </Accordion>
+                        </AccordionContent>
+                      </AccordionItem>
                     ))}
-                  </div>
+                  </Accordion>
                 )}
               </CardContent>
             </Card>
