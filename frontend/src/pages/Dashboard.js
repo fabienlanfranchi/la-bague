@@ -367,15 +367,58 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
     }
   };
 
+  // Message d'accueil personnalisé avec compte à rebours
+  const getWelcomeMessage = () => {
+    const prenom = currentMember?.prenom || currentMember?.nom_complet?.split(' ')[0] || 'membre';
+    const heure = new Date().getHours();
+    let salutation;
+    if (heure < 12) salutation = 'Bonjour';
+    else if (heure < 18) salutation = 'Bon après-midi';
+    else salutation = 'Bonsoir';
+
+    let eventInfo = null;
+    if (prochainEvenement?.date) {
+      const eventDate = new Date(prochainEvenement.date);
+      const now = new Date();
+      const diffMs = eventDate.getTime() - now.getTime();
+      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+      
+      const objet = prochainEvenement.objet?.toLowerCase() || '';
+      let typeLabel = 'événement';
+      if (objet.includes('repas') || prochainEvenement.type_sondage === 'repas') typeLabel = 'repas';
+      else if (objet.includes('apéro') || objet.includes('apero')) typeLabel = 'apéro';
+      else if (objet.includes('anniversaire')) typeLabel = 'anniversaire';
+
+      if (diffDays === 0) eventInfo = { text: `Votre ${typeLabel} c'est ce soir !`, urgent: true };
+      else if (diffDays === 1) eventInfo = { text: `Votre prochain ${typeLabel} est demain !`, urgent: true };
+      else if (diffDays <= 7) eventInfo = { text: `Prochain ${typeLabel} dans ${diffDays} jours`, urgent: false };
+      else eventInfo = { text: `Prochain ${typeLabel} dans ${diffDays} jours`, urgent: false };
+    }
+
+    return { salutation, prenom, eventInfo };
+  };
+
+  const welcome = getWelcomeMessage();
+
   return (
     <div className="space-y-8">
       <div className="mb-8">
         <h1 className="text-4xl font-serif font-bold text-white mb-2">
-          Bienvenue à La Bague Impériale
+          {welcome.salutation}, {welcome.prenom}
         </h1>
         <p className="text-[#D4A024] text-lg font-serif">
-          Votre espace membre {currentMember?.nom_complet && `- ${currentMember.nom_complet}`}
+          Bienvenue à La Bague Impériale
         </p>
+        {welcome.eventInfo && (
+          <div className={`mt-3 inline-flex items-center px-4 py-2 rounded-full text-base font-serif ${
+            welcome.eventInfo.urgent
+              ? 'bg-[#D4A024]/20 text-[#D4A024] border border-[#D4A024]/50 animate-pulse'
+              : 'bg-white/5 text-gray-300 border border-white/10'
+          }`} data-testid="event-countdown">
+            <Calendar className="w-4 h-4 mr-2" />
+            {welcome.eventInfo.text}
+          </div>
+        )}
       </div>
 
       {/* MESSAGES NON LUS */}
