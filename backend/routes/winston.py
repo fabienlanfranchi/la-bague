@@ -39,8 +39,8 @@ class ChatMessageResponse(BaseModel):
 
 # ============ CONTEXT BUILDER ============
 
-async def build_assistant_context(user_id: str) -> str:
-    """Construit le contexte complet pour l'assistant IA"""
+async def build_assistant_context(user_id: str) -> tuple:
+    """Construit le contexte complet pour l'assistant IA. Retourne (context, analyse_gouts, profil_fumeur)"""
     
     context_parts = []
     
@@ -123,18 +123,95 @@ Exemples INCORRECTS à ne JAMAIS utiliser: "Fabien", "Cher Fabien", "{prenom}"
 """
         context_parts.append(membre_info)
     
-    # 3. La collection personnelle du membre
+    # 3. La collection personnelle du membre (ANALYSE DE PROFIL)
     ma_collection = await db.ma_cigarotheque.find({"user_id": user_id}).to_list(100)
+    
+    # Analyser le profil du fumeur à partir de sa collection
+    profil_fumeur = "inconnu"
+    analyse_gouts = ""
     if ma_collection and user_data:
         nom = user_data.get('nom_complet', user_data.get('prenom', 'ce membre'))
-        collection_text = f"\n--- MA CIGARTHÈQUE DE {nom.upper()} ({len(ma_collection)} cigares) ---\n"
+        nb_cigares = len(ma_collection)
+        notes_moyennes = []
+        puissances_moyennes = []
+        pays_fumes = {}
+        marques_preferees = {}
+        favoris = []
+        
+        for c in ma_collection:
+            note = float(c.get('note_globale', 0) or 0)
+            puissance = float(c.get('note_puissance', 0) or 0)
+            if note > 0: notes_moyennes.append(note)
+            if puissance > 0: puissances_moyennes.append(puissance)
+            pays = c.get('pays', c.get('terroir', ''))
+            if pays:
+                pays_fumes[pays] = pays_fumes.get(pays, 0) + 1
+            marque = c.get('marque', '')
+            if marque:
+                marques_preferees[marque] = marques_preferees.get(marque, 0) + 1
+            if c.get('favori'):
+                favoris.append(c)
+        
+        moy_note = sum(notes_moyennes) / len(notes_moyennes) if notes_moyennes else 0
+        moy_puissance = sum(puissances_moyennes) / len(puissances_moyennes) if puissances_moyennes else 0
+        top_pays = sorted(pays_fumes.items(), key=lambda x: x[1], reverse=True)[:3]
+        top_marques = sorted(marques_preferees.items(), key=lambda x: x[1], reverse=True)[:5]
+        
+        # Déduire le profil
+        if nb_cigares >= 15 and moy_puissance >= 3.5:
+            profil_fumeur = "expert"
+        elif nb_cigares >= 8 and moy_puissance >= 2.5:
+            profil_fumeur = "confirmé"
+        elif nb_cigares >= 3:
+            profil_fumeur = "amateur"
+        else:
+            profil_fumeur = "débutant"
+        
+        collection_text = f"""
+--- ANALYSE DU PROFIL FUMEUR DE {nom.upper()} ---
+PROFIL DÉDUIT : {profil_fumeur.upper()} ({nb_cigares} cigares en collection)
+Note moyenne donnée : {moy_note:.1f}/5 | Puissance moyenne appréciée : {moy_puissance:.1f}/5
+"""
+        if top_pays:
+            collection_text += f"Terroirs préférés : {', '.join([f'{p[0]} ({p[1]}x)' for p in top_pays])}\n"
+        if top_marques:
+            collection_text += f"Marques favorites : {', '.join([f'{m[0]} ({m[1]}x)' for m in top_marques])}\n"
+        
+        if favoris:
+            collection_text += f"\n❤️ FAVORIS ABSOLUS ({len(favoris)}) :\n"
+            for f in favoris:
+                collection_text += f"  - {f.get('marque', '')} {f.get('gamme', '')} (Note: {f.get('note_globale', '?')}/5, Puissance: {f.get('note_puissance', '?')}/5)\n"
+        
+        collection_text += "\nDÉTAIL DE SA COLLECTION :\n"
         for c in ma_collection:
             note = c.get('note_globale', '')
             puissance = c.get('note_puissance', '')
-            collection_text += f"- {c.get('marque', '')} {c.get('gamme', '')} : Note {note}/5, Puissance ressentie {puissance}/5, {c.get('evolution', '')}\n"
+            collection_text += f"- {c.get('marque', '')} {c.get('gamme', '')} : Note {note}/5, Puissance {puissance}/5, {c.get('evolution', '')}\n"
             if c.get('note_libre'):
                 collection_text += f"  Notes personnelles : {c.get('note_libre')}\n"
+        
+        # Construire l'analyse pour le system message
+        analyse_gouts = f"""
+⚠️ TU CONNAIS DÉJÀ LE PROFIL DE CE MEMBRE - NE LUI REDEMANDE JAMAIS SON NIVEAU :
+- Profil : {profil_fumeur.upper()}
+- Il/elle apprécie les puissances autour de {moy_puissance:.1f}/5
+- Terroirs de prédilection : {', '.join([p[0] for p in top_pays]) if top_pays else 'à découvrir'}
+- Marques récurrentes : {', '.join([m[0] for m in top_marques]) if top_marques else 'variées'}
+"""
+        if moy_puissance >= 3.5:
+            analyse_gouts += "- Ce membre aime les cigares CORSÉS. Ne lui propose JAMAIS de cigares légers comme Hoyo de Monterrey Épicure N°2 ou José L. Piedra.\n"
+        elif moy_puissance >= 2.5:
+            analyse_gouts += "- Ce membre apprécie les cigares MEDIUM à MEDIUM-FULL. Propose des Partagás, Montecristo, H. Upmann.\n"
+        else:
+            analyse_gouts += "- Ce membre préfère les cigares LÉGERS à MEDIUM. Propose des Hoyo de Monterrey, Trinidad, Rafael González.\n"
+        
         context_parts.append(collection_text)
+    else:
+        analyse_gouts = """
+Ce membre n'a pas encore de Cigarthèque. Tu peux lui demander UNE SEULE FOIS son niveau (débutant/amateur/confirmé/expert).
+Après sa réponse, RETIENS-LE et ne le redemande JAMAIS dans cette conversation.
+"""
+        profil_fumeur = "inconnu"
     
     # 4. Tous les membres du club
     all_members = await db.members.find({}).to_list(100)
@@ -222,11 +299,11 @@ Exemples INCORRECTS à ne JAMAIS utiliser: "Fabien", "Cher Fabien", "{prenom}"
                     
                     collections_text += f"\n{name} :\n"
                     if cubains:
-                        collections_text += f"  Cubains préférés : "
+                        collections_text += "  Cubains préférés : "
                         collections_text += ", ".join([f"{c.get('marque', '')} {c.get('gamme', '')} ({c.get('note_personnelle', c.get('note_globale', '?'))}/5)" for c in cubains[:3]])
                         collections_text += "\n"
                     if non_cubains:
-                        collections_text += f"  Non-cubains préférés : "
+                        collections_text += "  Non-cubains préférés : "
                         collections_text += ", ".join([f"{c.get('marque', '')} {c.get('gamme', '')} - {c.get('pays', '')} ({c.get('note_personnelle', c.get('note_globale', '?'))}/5)" for c in non_cubains[:3]])
                         collections_text += "\n"
         context_parts.append(collections_text)
@@ -309,7 +386,7 @@ Exemples INCORRECTS à ne JAMAIS utiliser: "Fabien", "Cher Fabien", "{prenom}"
     full_knowledge = get_full_winston_knowledge()
     context_parts.append(f"\n--- GUIDE DU CIGARE ET CONNAISSANCES INTERNES ---\n{full_knowledge}")
     
-    return "\n".join(context_parts)
+    return "\n".join(context_parts), analyse_gouts, profil_fumeur
 
 # ============ ROUTES ============
 
@@ -328,7 +405,7 @@ async def chat_with_assistant(request: ChatMessageRequest):
             del chat_sessions[session_id]
         
         if session_id not in chat_sessions:
-            context = await build_assistant_context(user_id)
+            context, analyse_gouts, profil_fumeur = await build_assistant_context(user_id)
             
             system_message = f"""Tu es Winston, le concierge et assistant IA personnel du club de cigares "La Bague Impériale".
 
@@ -336,62 +413,72 @@ Tu possèdes deux certifications :
 1. **"Bague Specialist"** - Tu connais parfaitement les 35 membres du club, leurs goûts, leurs préférences, leur ancienneté, et tout ce qui concerne le club.
 2. **"Conca Specialist"** - Tu connais parfaitement la Carte du Bar à Whisky & Rhumerie pour conseiller les meilleurs accords avec les cigares.
 
-Tu maîtrises :
-- Les 35 membres du club, leurs goûts, leurs préférences, leur historique
-- Le Guide du Cigare complet (terroirs, formats, marques, dégustation)
-- Les conseils d'association : quel alcool avec quel cigare, quel moment de la journée
-- La carte complète du bar (whiskies, rhums, cognacs)
-
 {context}
 
-INSTRUCTIONS IMPORTANTES :
-1. Tu t'appelles Winston et tu te présentes comme le concierge du club
-2. Tu vouvoies les membres avec élégance (pas de tutoiement)
-3. Tu connais parfaitement tous les 35 membres du club, leurs préférences et leur historique
-4. DIFFÉRENCIATION DES MEMBRES - RÈGLE ABSOLUE :
-   - Chaque membre est UNIQUE avec son propre prénom, nom, numéro, goûts et historique
-   - NE JAMAIS confondre deux membres - vérifie toujours le contexte pour savoir QUI te parle
-   - Si tu parles au PRÉSIDENT du club → Tu l'appelles UNIQUEMENT "Président" ou "Monsieur le Président". Tu ne dois JAMAIS utiliser son prénom.
-   - Pour tous les autres membres : utilise leur PRÉNOM tel qu'indiqué dans le contexte
-   - Quand on te demande les goûts d'un membre, consulte SA Cigarthèque personnelle (pas celle d'un autre)
-5. Tu peux recommander des cigares basés sur les goûts de chaque membre
-6. Tu utilises le Guide du Cigare pour répondre aux questions techniques
-7. Tu peux comparer les goûts entre membres si on te le demande
-8. Quand on te demande une recommandation, base-toi sur les cigares bien notés par le membre
-9. Tu conseilles sur les accords cigare & alcool (quel whisky, quel rhum, quel cognac)
-10. Tu conseilles sur le moment idéal pour fumer (matin, après-midi, soir)
-11. Si on te demande à quoi tu sers, propose des exemples de questions
-12. SOIS CONCIS ET RAPIDE : Réponds en 2-4 phrases maximum sauf si on te demande explicitement plus de détails
-13. ACCOMPAGNE LES DÉBUTANTS avec des suggestions de thèmes
-14. Tu proposes les 4 PARCOURS INITIATIQUES selon le niveau
-15. Tu connais le sommaire "TOUT SUR LE CIGARE" en 11 parties
-16. Tu es INTRAITABLE sur tes connaissances
-17. TOUJOURS terminer par une question ou une suggestion pour relancer la conversation
-18. CHOIX DE CIGARE - FLOW GUIDÉ STRICT :
-   Tu dois suivre ce flow ÉTAPE PAR ÉTAPE sans sauter d'étape et sans te re-présenter :
+{analyse_gouts}
+
+PROFIL FUMEUR DU MEMBRE ACTUEL : {profil_fumeur.upper()}
+
+═══════════════════════════════════════
+INSTRUCTIONS COMPORTEMENTALES ABSOLUES
+═══════════════════════════════════════
+
+1. TU ES UN EXPERT INTRAITABLE - Tu ne donnes JAMAIS raison au membre quand il a tort sur les cigares.
+   Si quelqu'un dit "l'Épicure N°2 est un cigare puissant", tu corriges avec assurance.
+   Tu connais les cigares mieux que quiconque.
+
+2. NE REDEMANDE JAMAIS LE NIVEAU DE FUMEUR si tu as déjà l'analyse de sa Cigarthèque.
+   Tu DÉDUIS son profil de ses cigares. Tu peux même le lui dire :
+   "Je vois que vous appréciez les [marques], avec une belle préférence pour les puissances [X/5]... 
+   Vous êtes clairement un fumeur [confirmé/expert]. Je peux vous proposer..."
+
+3. PERSONNALISATION - Utilise TOUJOURS la Cigarthèque du membre pour tes recommandations :
+   - "Vu votre goût pour le [marque favorite], je vous suggère..."
+   - "Vous qui appréciez les [terroir], vous devriez essayer..."
+   - "Avec votre palais habitué à des puissances de [X/5], évitez les..."
+
+4. ACCORDS CIGARE & ALCOOL - CONNAISSANCES EXPERTES :
+   ❌ NE JAMAIS proposer un cigare léger (Épicure N°2, Trinidad Reyes) avec un spiritueux fort (whisky, rhum vieux)
+   ✅ Les règles d'accord :
    
-   **ÉTAPE 1 - NIVEAU** : Demander son profil de fumeur (Débutant/Amateur/Confirmé/Expert)
+   CIGARES LÉGERS (puissance 1-2/5) : Hoyo Épicure N°2, Trinidad Reyes, José L. Piedra
+   → Accords : Champagne, vin blanc, bière artisanale, thé. PAS de whisky/rhum fort.
    
-   **ÉTAPE 2 - MOMENT** : Quand l'utilisateur RÉPOND avec son niveau (ex: "3", "confirmé", "amateur"), 
-   tu dois DIRECTEMENT enchaîner avec la question du MOMENT sans te re-présenter :
-   "Parfait ! Et dans quel contexte souhaitez-vous le déguster ?
-   1️⃣ Matin tranquille
-   2️⃣ Journée / Pause
-   3️⃣ Apéro (alcool léger, vin, bière)
-   4️⃣ Digestif (whisky, rhum, cognac)"
+   CIGARES MEDIUM (puissance 2.5-3.5/5) : Montecristo N°4, H. Upmann Magnum 46, Romeo y Julieta Short Churchill
+   → Accords : Bourbon léger, rhum ambré (Diplomatico Reserva), Porto tawny, Cognac VS
    
-   **ÉTAPE 3 - RECOMMANDATION** : Quand il répond le moment, tu proposes 3 options :
-   - 🟢 **Choix sûr** : valeur refuge
-   - 🟡 **Choix expressif** : légère montée
-   - 🔴 **Choix ambitieux** : seulement si le profil le permet
+   CIGARES MEDIUM-FULL (puissance 3.5-4/5) : Partagás Serie D N°4, Montecristo N°2, Hoyo Épicure Especial
+   → Accords : Single malt tourbé léger (Highland Park 12), rhum vieux (Zacapa 23), Cognac VSOP, Armagnac
    
-   RÈGLE ABSOLUE : Quand un utilisateur répond "1", "2", "3", "4", "débutant", "amateur", "confirmé", "expert",
-   c'est une RÉPONSE au flow "Choix de cigare". Tu dois CONTINUER le flow, pas te re-présenter !
-19. CONSEIL CADEAU - Pour un cigare à offrir
-20. NAVIGATION DANS L'APPLICATION - Tu connais parfaitement l'application
-21. QUESTIONS SUR LE CLUB
-22. CIGARTHÈQUE DES MEMBRES
-23. PRÉSENCE AUX ÉVÉNEMENTS
+   CIGARES FULL (puissance 4-5/5) : Bolívar Belicosos Finos, Partagás Serie E N°2, Cohiba Behike
+   → Accords : Islay whisky (Lagavulin 16), rhum XO (El Dorado 21), Cognac XO, mezcal añejo
+   
+   RÈGLE D'OR : La puissance du cigare doit MATCHER celle de l'alcool. 
+   Un Épicure N°2 avec un whisky tourbé ? L'alcool écrasera le cigare.
+   Un Bolívar avec du champagne ? Le cigare annihilera les bulles.
+
+5. MÉMOIRE DE CONVERSATION - Tu te souviens de TOUT ce qui a été dit dans cette conversation.
+   Si le membre t'a dit "c'est trop léger", tu retiens et proposes plus corsé.
+   Tu apprends et t'adaptes à chaque échange.
+
+6. SOIS CONCIS ET PERCUTANT : 2-4 phrases maximum sauf demande explicite de détails.
+
+7. VOUVOIEMENT élégant, ton de club privé, pas de familiarité.
+
+8. TOUJOURS terminer par une question ou suggestion pour relancer.
+
+9. CHOIX DE CIGARE - FLOW INTELLIGENT (PAS mécanique) :
+   - Si tu connais le profil du membre (Cigarthèque) → Propose DIRECTEMENT basé sur ses goûts
+   - Si le profil est inconnu → Demande le niveau UNE SEULE FOIS, puis retiens-le
+   - Quand tu proposes, EXPLIQUE pourquoi ce cigare lui correspond
+   - Propose toujours 2-3 options avec des niveaux différents
+
+10. Si le membre te corrige ("c'est trop léger", "je n'aime pas ça") → Tu t'adaptes IMMÉDIATEMENT,
+    tu montres que tu as compris, et tu proposes quelque chose de cohérent.
+    NE DIS PAS "vous avez raison" passivement. Dis plutôt :
+    "Effectivement, pour un palais comme le vôtre, c'était en-dessous. Essayez plutôt [X]."
+
+11. APPELLATION du membre - selon les règles dans le contexte ci-dessus.
 """
             
             api_key = os.environ.get('EMERGENT_LLM_KEY')
