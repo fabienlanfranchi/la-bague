@@ -91,8 +91,9 @@ const MembersPage = () => {
       
       switch (sortColumn) {
         case 'numero_membre':
-          valueA = a.numero_membre || 0;
-          valueB = b.numero_membre || 0;
+          // Forcer la conversion en nombre pour un tri numérique correct
+          valueA = parseInt(a.numero_membre, 10) || 0;
+          valueB = parseInt(b.numero_membre, 10) || 0;
           break;
         case 'nom_complet':
           valueA = (a.nom_complet || '').toLowerCase();
@@ -103,20 +104,20 @@ const MembersPage = () => {
           valueB = (b.fonction || '').toLowerCase();
           break;
         case 'annee_entree':
-          valueA = a.annee_entree || 0;
-          valueB = b.annee_entree || 0;
+          valueA = parseInt(a.annee_entree, 10) || 0;
+          valueB = parseInt(b.annee_entree, 10) || 0;
           break;
         case 'etoiles':
-          valueA = a.etoiles || 0;
-          valueB = b.etoiles || 0;
+          valueA = parseInt(a.etoiles, 10) || 0;
+          valueB = parseInt(b.etoiles, 10) || 0;
           break;
         case 'pourcentage_presences':
-          valueA = a.pourcentage_presences || 0;
-          valueB = b.pourcentage_presences || 0;
+          valueA = parseFloat(a.pourcentage_presences) || 0;
+          valueB = parseFloat(b.pourcentage_presences) || 0;
           break;
         case 'situation_cotisation':
-          valueA = a.situation_cotisation || 0;
-          valueB = b.situation_cotisation || 0;
+          valueA = parseFloat(a.situation_cotisation) || 0;
+          valueB = parseFloat(b.situation_cotisation) || 0;
           break;
         default:
           valueA = a.numero_membre || 0;
