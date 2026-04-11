@@ -587,47 +587,55 @@ Le Bureau de La Bague Impériale`;
               </div>
             </CardContent>
             
-            <div className="flex-shrink-0 p-4 border-t border-[#D4A024]/30 flex space-x-3">
-              <Button
-                onClick={() => copyToClipboard(messageContent)}
-                disabled={!messageContent.trim()}
-                variant="outline"
-                className="border-[#D4A024] text-[#D4A024] hover:bg-[#D4A024]/10"
-                data-testid="copy-message-btn"
-              >
-                <Copy className="w-5 h-5 mr-2" />
-                Copier (interne)
-              </Button>
-              <Button
-                onClick={() => {
-                  // Message externe = Titre + Lien Dashboard uniquement
-                  const messageExterne = `🎩 *La Bague Impériale*\n\n📩 *${messageTitle}*\n\n👉 Voir sur l'app : https://labagueimperiale.optizioni.app/dashboard`;
-                  copyToClipboard(messageExterne, 'Message externe');
-                }}
-                disabled={!messageTitle.trim()}
-                variant="outline"
-                className="border-green-500 text-green-400 hover:bg-green-500/10"
-                data-testid="share-externe-btn"
-              >
-                <Share2 className="w-5 h-5 mr-2" />
-                Partager (externe)
-              </Button>
-              <Button
-                onClick={sendMessage}
-                disabled={sending || !messageContent.trim()}
-                className="flex-1 bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif font-bold"
-              >
-                {sending ? (
-                  <Clock className="w-5 h-5 mr-2 animate-spin" />
-                ) : (
-                  <Send className="w-5 h-5 mr-2" />
-                )}
-                Envoyer
-              </Button>
+            <div className="flex-shrink-0 p-4 border-t border-[#D4A024]/30 space-y-3">
+              <div className="flex space-x-3">
+                <Button
+                  onClick={sendMessage}
+                  disabled={sending || !messageContent.trim()}
+                  className="flex-1 bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif font-bold"
+                  data-testid="partager-interne-btn"
+                >
+                  {sending ? (
+                    <Clock className="w-5 h-5 mr-2 animate-spin" />
+                  ) : (
+                    <Send className="w-5 h-5 mr-2" />
+                  )}
+                  Partager en interne
+                </Button>
+                <Button
+                  onClick={async () => {
+                    const messageExterne = `🎩 *La Bague Impériale*\n\n📩 *${messageTitle}*\n\n👉 Lire le message : https://labagueimperiale.optizioni.app/dashboard`;
+                    if (navigator.share) {
+                      try {
+                        await navigator.share({
+                          title: `La Bague Impériale - ${messageTitle}`,
+                          text: messageExterne,
+                        });
+                        toast.success('Message partagé !');
+                        return;
+                      } catch (err) {
+                        if (err.name === 'AbortError') return;
+                      }
+                    }
+                    try {
+                      await navigator.clipboard.writeText(messageExterne);
+                      toast.success('Message copié ! Collez-le dans WhatsApp ou SMS');
+                    } catch (err) {
+                      toast.error('Erreur de partage');
+                    }
+                  }}
+                  disabled={!messageTitle.trim()}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white font-serif font-bold"
+                  data-testid="partager-externe-btn"
+                >
+                  <Share2 className="w-5 h-5 mr-2" />
+                  Partager en externe
+                </Button>
+              </div>
               <Button
                 onClick={closeTemplate}
                 variant="outline"
-                className="border-gray-600 text-gray-400 hover:bg-gray-800"
+                className="w-full border-gray-600 text-gray-400 hover:bg-gray-800"
               >
                 Annuler
               </Button>
