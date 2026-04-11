@@ -136,6 +136,7 @@ Exemples INCORRECTS à ne JAMAIS utiliser: "Fabien", "Cher Fabien", "{prenom}"
         puissances_moyennes = []
         pays_fumes = {}
         marques_preferees = {}
+        formats_fumes = {}
         favoris = []
         
         for c in ma_collection:
@@ -149,6 +150,9 @@ Exemples INCORRECTS à ne JAMAIS utiliser: "Fabien", "Cher Fabien", "{prenom}"
             marque = c.get('marque', '')
             if marque:
                 marques_preferees[marque] = marques_preferees.get(marque, 0) + 1
+            fmt = c.get('format', c.get('vitole', ''))
+            if fmt:
+                formats_fumes[fmt] = formats_fumes.get(fmt, 0) + 1
             if c.get('favori'):
                 favoris.append(c)
         
@@ -156,6 +160,7 @@ Exemples INCORRECTS à ne JAMAIS utiliser: "Fabien", "Cher Fabien", "{prenom}"
         moy_puissance = sum(puissances_moyennes) / len(puissances_moyennes) if puissances_moyennes else 0
         top_pays = sorted(pays_fumes.items(), key=lambda x: x[1], reverse=True)[:3]
         top_marques = sorted(marques_preferees.items(), key=lambda x: x[1], reverse=True)[:5]
+        top_formats = sorted(formats_fumes.items(), key=lambda x: x[1], reverse=True)[:3]
         
         # Déduire le profil
         if nb_cigares >= 15 and moy_puissance >= 3.5:
@@ -167,28 +172,107 @@ Exemples INCORRECTS à ne JAMAIS utiliser: "Fabien", "Cher Fabien", "{prenom}"
         else:
             profil_fumeur = "peu_fourni"
         
+        # Analyse de diversité (pour le coaching)
+        nb_pays_differents = len(pays_fumes)
+        pays_dominant = top_pays[0][0] if top_pays else None
+        pct_pays_dominant = (top_pays[0][1] / nb_cigares * 100) if top_pays and nb_cigares > 0 else 0
+        format_dominant = top_formats[0][0] if top_formats else None
+        pct_format_dominant = (top_formats[0][1] / nb_cigares * 100) if top_formats and nb_cigares > 0 else 0
+        
+        # Favoris uniquement cubains ?
+        favoris_pays = {}
+        for f in favoris:
+            fp = f.get('pays', f.get('terroir', 'Inconnu'))
+            if fp:
+                favoris_pays[fp] = favoris_pays.get(fp, 0) + 1
+        
         collection_text = f"""
 --- ANALYSE DU PROFIL FUMEUR DE {nom.upper()} ---
 PROFIL DÉDUIT : {profil_fumeur.upper()} ({nb_cigares} cigares en collection)
 Note moyenne donnée : {moy_note:.1f}/5 | Puissance moyenne appréciée : {moy_puissance:.1f}/5
 """
         if top_pays:
-            collection_text += f"Terroirs préférés : {', '.join([f'{p[0]} ({p[1]}x)' for p in top_pays])}\n"
+            collection_text += f"Terroirs : {', '.join([f'{p[0]} ({p[1]}x)' for p in top_pays])} — {nb_pays_differents} pays différents\n"
         if top_marques:
-            collection_text += f"Marques favorites : {', '.join([f'{m[0]} ({m[1]}x)' for m in top_marques])}\n"
+            collection_text += f"Marques : {', '.join([f'{m[0]} ({m[1]}x)' for m in top_marques])}\n"
+        if top_formats:
+            collection_text += f"Formats/Vitoles : {', '.join([f'{f[0]} ({f[1]}x)' for f in top_formats])}\n"
         
         if favoris:
-            collection_text += f"\n❤️ FAVORIS ABSOLUS ({len(favoris)}) :\n"
-            for f in favoris:
-                collection_text += f"  - {f.get('marque', '')} {f.get('gamme', '')} (Note: {f.get('note_globale', '?')}/5, Puissance: {f.get('note_puissance', '?')}/5)\n"
+            collection_text += f"\n❤️ FAVORIS ({len(favoris)}) :\n"
+            for fav in favoris:
+                collection_text += f"  - {fav.get('marque', '')} {fav.get('gamme', '')} ({fav.get('pays', fav.get('terroir', '?'))}, {fav.get('format', fav.get('vitole', '?'))}) — Note: {fav.get('note_globale', '?')}/5, Puissance: {fav.get('note_puissance', '?')}/5\n"
         
-        collection_text += "\nDÉTAIL DE SA COLLECTION :\n"
+        collection_text += f"\nCOLLECTION COMPLÈTE :\n"
         for c in ma_collection:
             note = c.get('note_globale', '')
             puissance = c.get('note_puissance', '')
-            collection_text += f"- {c.get('marque', '')} {c.get('gamme', '')} : Note {note}/5, Puissance {puissance}/5, {c.get('evolution', '')}\n"
+            pays_c = c.get('pays', c.get('terroir', ''))
+            fmt_c = c.get('format', c.get('vitole', ''))
+            collection_text += f"- {c.get('marque', '')} {c.get('gamme', '')} | {pays_c} | {fmt_c} | Note {note}/5, Puissance {puissance}/5\n"
             if c.get('note_libre'):
-                collection_text += f"  Notes personnelles : {c.get('note_libre')}\n"
+                collection_text += f"  Notes perso : {c.get('note_libre')}\n"
+        
+        # ═══ INSIGHTS DE COACHING pour le system message ═══
+        coaching_insights = []
+        
+        # Insight terroir : trop concentré sur un pays ?
+        if pct_pays_dominant >= 70 and nb_cigares >= 4 and pays_dominant:
+            autres_pays = {"Cuba": "Nicaragua, Honduras, République Dominicaine",
+                           "Nicaragua": "Cuba, Honduras, Mexique",
+                           "Honduras": "Nicaragua, Cuba, Équateur",
+                           "République Dominicaine": "Nicaragua, Cuba, Honduras"}
+            suggestion_pays = autres_pays.get(pays_dominant, "d'autres terroirs")
+            coaching_insights.append(
+                f"TERROIR : {pct_pays_dominant:.0f}% de sa collection vient de {pays_dominant}. "
+                f"Quand c'est pertinent, propose une TRANSVERSALE vers {suggestion_pays}. "
+                f"Ex: 'Je vois que vous êtes fidèle au {pays_dominant}, et si on tentait un [cigare de {suggestion_pays.split(',')[0].strip()}] "
+                f"qui a le même profil que votre [favori] mais avec une touche différente ?'"
+            )
+        elif nb_pays_differents >= 4 and nb_cigares >= 6:
+            coaching_insights.append(
+                "TERROIR : Ce membre est CURIEUX et explore beaucoup de terroirs. "
+                "Encourage cette diversité et propose des origines rares (Mexique, Équateur, Philippines, Cameroun)."
+            )
+        
+        # Insight format : toujours le même format ?
+        if pct_format_dominant >= 70 and nb_cigares >= 4 and format_dominant:
+            alternatives = {"Robusto": "Churchill, Toro ou Corona Gorda",
+                           "Churchill": "Robusto, Belicoso ou Lancero",
+                           "Corona": "Robusto, Petit Corona ou Panetela",
+                           "Toro": "Churchill, Robusto ou Double Corona",
+                           "Petit Corona": "Robusto, Corona Gorda ou Mareva"}
+            suggestion_fmt = alternatives.get(format_dominant, "un autre format")
+            coaching_insights.append(
+                f"FORMAT : {pct_format_dominant:.0f}% de ses cigares sont des {format_dominant}. "
+                f"Quand c'est pertinent, challenge-le : 'Vous êtes un homme de {format_dominant}, "
+                f"mais osez donc un {suggestion_fmt} pour changer — vous découvrirez un tout autre équilibre.'"
+            )
+        
+        # Insight favoris : tendance dans les favoris ?
+        if favoris and len(favoris_pays) == 1:
+            pays_fav = list(favoris_pays.keys())[0]
+            coaching_insights.append(
+                f"FAVORIS : Tous ses favoris sont des {pays_fav}s. "
+                f"C'est l'occasion de dire : 'Vos favoris sont exclusivement {pays_fav}s — "
+                f"je connais un [autre terroir] qui a exactement ce profil que vous adorez, "
+                f"ça pourrait être une belle découverte.'"
+            )
+        
+        # Insight puissance : toujours la même zone ?
+        if puissances_moyennes and max(puissances_moyennes) - min(puissances_moyennes) <= 1 and nb_cigares >= 4:
+            if moy_puissance >= 3:
+                coaching_insights.append(
+                    "PUISSANCE : Ce membre reste dans sa zone de confort (cigares corsés). "
+                    "Ponctuellement, propose un cigare plus subtil : 'Et si vous tentiez quelque chose de plus fin ? "
+                    "Un palais comme le vôtre saura apprécier la complexité d'un medium bien construit.'"
+                )
+            else:
+                coaching_insights.append(
+                    "PUISSANCE : Ce membre reste sur des cigares légers/medium. "
+                    "Quand il semble prêt, propose une montée : 'Avec votre expérience, "
+                    "il serait temps de goûter quelque chose de plus charpenté — je pense que vous êtes prêt.'"
+                )
         
         # Construire l'analyse pour le system message
         if profil_fumeur == "peu_fourni":
@@ -209,16 +293,27 @@ Combine ensuite son niveau déclaré + les {nb_cigares} cigare(s) que tu connais
             analyse_gouts = f"""
 ⚠️ TU CONNAIS DÉJÀ LE PROFIL DE CE MEMBRE - NE LUI REDEMANDE JAMAIS SON NIVEAU :
 - Profil : {profil_fumeur.upper()}
-- Il/elle apprécie les puissances autour de {moy_puissance:.1f}/5
-- Terroirs de prédilection : {', '.join([p[0] for p in top_pays]) if top_pays else 'à découvrir'}
+- Puissances autour de {moy_puissance:.1f}/5
+- Terroirs : {', '.join([p[0] for p in top_pays]) if top_pays else 'à découvrir'}
 - Marques récurrentes : {', '.join([m[0] for m in top_marques]) if top_marques else 'variées'}
+- Formats préférés : {', '.join([f[0] for f in top_formats]) if top_formats else 'variés'}
 """
             if moy_puissance >= 3.5:
-                analyse_gouts += "- Ce membre aime les cigares CORSÉS. Ne lui propose JAMAIS de cigares légers comme Hoyo de Monterrey Épicure N°2 ou José L. Piedra.\n"
+                analyse_gouts += "- Ce membre aime les cigares CORSÉS. Ne lui propose JAMAIS de cigares légers.\n"
             elif moy_puissance >= 2.5:
-                analyse_gouts += "- Ce membre apprécie les cigares MEDIUM à MEDIUM-FULL. Propose des Partagás, Montecristo, H. Upmann.\n"
+                analyse_gouts += "- Ce membre apprécie les cigares MEDIUM à MEDIUM-FULL.\n"
             else:
-                analyse_gouts += "- Ce membre préfère les cigares LÉGERS à MEDIUM. Propose des Hoyo de Monterrey, Trinidad, Rafael González.\n"
+                analyse_gouts += "- Ce membre préfère les cigares LÉGERS à MEDIUM.\n"
+            
+            # Ajouter les insights de coaching
+            if coaching_insights:
+                analyse_gouts += "\n═══ INSIGHTS DE COACHING (utilise-les quand c'est pertinent, pas systématiquement) ═══\n"
+                for insight in coaching_insights:
+                    analyse_gouts += f"• {insight}\n"
+                analyse_gouts += "\nRÈGLE : Alterne naturellement entre :\n"
+                analyse_gouts += "  - CONFORTER ses goûts : 'Je vois que vous aimez [X], c'est exactement ce qu'il faut pour...'\n"
+                analyse_gouts += "  - CHALLENGER ses habitudes : 'Vous qui êtes fidèle aux [X], osez donc un [Y] pour changer...'\n"
+                analyse_gouts += "  NE FAIS PAS les deux à chaque message. Varie. Sois naturel, pas mécanique.\n"
         
         context_parts.append(collection_text)
     else:
