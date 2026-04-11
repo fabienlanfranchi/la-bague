@@ -185,42 +185,89 @@ const LoginPage = () => {
           </CardDescription>
         </CardHeader>
         
-        <CardContent className="space-y-6 pt-4">
-          {/* Face ID / Touch ID - Si supporté */}
-          {webAuthnSupported && (
-            <Button
-              onClick={handleFaceIdLogin}
-              disabled={faceIdLoading}
-              className="w-full h-14 bg-gradient-to-r from-[#7A2020] to-[#5A1515] hover:from-[#8A3030] hover:to-[#6A2020] text-white font-serif text-lg"
-              data-testid="faceid-btn"
-            >
-              {faceIdLoading ? (
-                <Loader2 className="w-6 h-6 mr-3 animate-spin" />
-              ) : (
-                <Fingerprint className="w-6 h-6 mr-3" />
-              )}
-              {faceIdLoading ? 'Authentification...' : 'Face ID / Touch ID'}
-            </Button>
-          )}
+        <CardContent className="space-y-4 pt-4">
+          {/* Option 1: Entrée directe (appareil reconnu) */}
+          <Button
+            onClick={async () => {
+              const deviceToken = localStorage.getItem(DEVICE_TOKEN_KEY);
+              if (!deviceToken) {
+                toast.error('Appareil non reconnu. Utilisez votre clé ou Face ID.');
+                return;
+              }
+              setKeyLoading(true);
+              try {
+                const response = await axios.post(`${API_URL}/api/auth/device-login`, {
+                  device_token: deviceToken
+                });
+                if (response.data.success) {
+                  setCurrentMember(response.data.member, true);
+                  toast.success(`Bienvenue ${response.data.member.nom_complet?.split(' ')[0]} !`);
+                  navigate('/dashboard');
+                }
+              } catch (error) {
+                localStorage.removeItem(DEVICE_TOKEN_KEY);
+                toast.error('Appareil non reconnu. Utilisez votre clé.');
+              } finally {
+                setKeyLoading(false);
+              }
+            }}
+            disabled={keyLoading}
+            className="w-full h-14 bg-gradient-to-r from-[#D4A024] to-[#B8941D] hover:from-[#C8941D] hover:to-[#A8840D] text-[#7A2020] font-serif font-bold text-lg"
+            data-testid="direct-entry-btn"
+          >
+            {keyLoading ? (
+              <Loader2 className="w-6 h-6 mr-3 animate-spin" />
+            ) : (
+              <LogIn className="w-6 h-6 mr-3" />
+            )}
+            Entrée directe
+          </Button>
 
           {/* Séparateur */}
-          {webAuthnSupported && (
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-[#D4A024]/30" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="bg-black/60 px-4 text-gray-500 font-serif">ou avec votre clé</span>
-              </div>
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-[#D4A024]/30" />
             </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="bg-black/60 px-4 text-gray-500 font-serif">ou</span>
+            </div>
+          </div>
+
+          {/* Option 2: Face ID / Touch ID - Si supporté */}
+          {webAuthnSupported && (
+            <>
+              <Button
+                onClick={handleFaceIdLogin}
+                disabled={faceIdLoading}
+                className="w-full h-14 bg-gradient-to-r from-[#7A2020] to-[#5A1515] hover:from-[#8A3030] hover:to-[#6A2020] text-white font-serif text-lg"
+                data-testid="faceid-btn"
+              >
+                {faceIdLoading ? (
+                  <Loader2 className="w-6 h-6 mr-3 animate-spin" />
+                ) : (
+                  <Fingerprint className="w-6 h-6 mr-3" />
+                )}
+                {faceIdLoading ? 'Authentification...' : 'Face ID / Touch ID'}
+              </Button>
+
+              {/* Séparateur */}
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-[#D4A024]/30" />
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="bg-black/60 px-4 text-gray-500 font-serif">ou</span>
+                </div>
+              </div>
+            </>
           )}
 
-          {/* Formulaire de clé d'activation */}
-          <form onSubmit={handleKeyLogin} className="space-y-4">
+          {/* Option 3: Clé d'activation */}
+          <form onSubmit={handleKeyLogin} className="space-y-3">
             <div className="space-y-2">
               <Label htmlFor="cle" className="text-[#D4A024] font-serif flex items-center">
                 <KeyRound className="w-4 h-4 mr-2" />
-                Votre clé personnelle
+                Clé d'activation
               </Label>
               <div className="relative">
                 <Input
@@ -241,42 +288,38 @@ const LoginPage = () => {
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
-              <p className="text-xs text-gray-500 font-serif">
-                Votre prénom + "labague" + votre n° de membre
-              </p>
             </div>
 
             <Button
               type="submit"
-              disabled={keyLoading}
-              className="w-full h-12 bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif font-bold text-lg"
+              disabled={keyLoading || !cleActivation.trim()}
+              variant="outline"
+              className="w-full h-12 border-[#D4A024] text-[#D4A024] hover:bg-[#D4A024]/10 font-serif font-bold text-lg"
               data-testid="login-btn"
             >
               {keyLoading ? (
                 <Loader2 className="w-5 h-5 mr-2 animate-spin" />
               ) : (
-                <LogIn className="w-5 h-5 mr-2" />
+                <KeyRound className="w-5 h-5 mr-2" />
               )}
-              {keyLoading ? 'Connexion...' : 'Entrer'}
+              Valider
             </Button>
           </form>
 
-          {/* Message d'info */}
-          <div className="bg-[#D4A024]/10 border border-[#D4A024]/30 rounded-lg p-4">
-            <div className="flex items-start space-x-3">
-              <Smartphone className="w-5 h-5 text-[#D4A024] mt-0.5 flex-shrink-0" />
-              <div className="text-sm text-gray-300 font-serif space-y-2">
-                <p><span className="text-[#D4A024] font-medium">1ère fois ?</span> Entrez votre clé pour activer votre compte.</p>
-                <p><span className="text-[#D4A024] font-medium">Nouveau téléphone ?</span> Même clé pour vous reconnecter.</p>
-                <p><span className="text-[#D4A024] font-medium">Téléphone habituel ?</span> Connexion automatique !</p>
-              </div>
+          {/* Consigne en dessous */}
+          <div className="bg-[#D4A024]/10 border border-[#D4A024]/30 rounded-lg p-4 mt-4">
+            <div className="text-sm text-gray-300 font-serif space-y-2">
+              <p><span className="text-[#D4A024] font-medium">• Entrée directe :</span> Si votre téléphone est déjà mémorisé</p>
+              <p><span className="text-[#D4A024] font-medium">• Face ID :</span> Si vous l'avez activé</p>
+              <p><span className="text-[#D4A024] font-medium">• Clé d'activation :</span> 1ère fois ou nouveau téléphone</p>
+              <p className="text-gray-500 text-xs pt-2">Clé = votre prénom + "labague" + n° membre (ex: fabienlabague1)</p>
             </div>
           </div>
 
           {/* Clé oubliée */}
-          <div className="text-center">
+          <div className="text-center pt-2">
             <p className="text-sm text-gray-500 font-serif">
-              Clé oubliée ? Contactez le président du club.
+              Clé oubliée ? Contactez le président.
             </p>
           </div>
         </CardContent>
