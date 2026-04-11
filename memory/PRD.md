@@ -221,6 +221,37 @@ Application de gestion complète pour le club de cigares "La Bague Impériale". 
 ---
 
 ## Test Credentials
+- **Admin (Président)** : Clé `labague1` (Fabien Lanfranchi)
+- **Membre standard** : Clé `labague3` (Jacques Peretti)
+- **Ancien login** : Email `fabien.lanfranchi@yahoo.fr` / Password `fabienlabague1`
+
+---
+
+## 3rd Party Integrations
+- **OpenAI via Emergent LLM Key** : Winston Chat
+- **OVH CloudDB (MySQL)** : Database Cigares
+
+---
+
+## URLs
+- Frontend: https://cigare-gestion.preview.emergentagent.com
+- API: https://cigare-gestion.preview.emergentagent.com/api
+
+---
+
+## Ready for Production
+L'application est fonctionnelle et prête à être déployée.
+- Authentication sécurisée
+- 651 cigares complets
+- Winston IA opérationnel
+- Interface mobile optimisée
+- Partage natif WhatsApp
+│   ├── components/ui/         # Shadcn components
+```
+
+---
+
+## Test Credentials
 - **Email**: `fabien.lanfranchi@yahoo.fr`
 - **Password**: `fabienlabague1`
 - **Role**: Président (Admin)
