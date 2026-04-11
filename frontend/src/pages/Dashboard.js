@@ -1340,7 +1340,21 @@ const Dashboard = () => {
       month: 'long',
       year: 'numeric'
     });
-    return `🔔 *Rappel - La Bague Impériale*\n\nBonjour,\n\nNous n'avons pas encore reçu votre réponse pour le ${prochainEvenement.objet} du ${dateEvt} à ${prochainEvenement.lieu}.\n\nMerci de répondre sur l'application dès que possible.\n\nCordialement,\nLe Président`;
+    // URL de l'application (utilise l'URL de production ou l'URL actuelle)
+    const appUrl = window.location.origin;
+    
+    return `🔔 *Rappel - La Bague Impériale*
+
+Bonjour,
+
+Nous n'avons pas encore reçu votre réponse pour le ${prochainEvenement.objet} du ${dateEvt} à ${prochainEvenement.lieu}.
+
+👉 Répondre maintenant : ${appUrl}
+
+Merci de répondre dès que possible.
+
+Cordialement,
+Le Président`;
   };
 
   // Copier les numéros de téléphone
