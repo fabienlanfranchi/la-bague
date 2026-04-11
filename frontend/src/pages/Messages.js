@@ -28,7 +28,8 @@ import {
   ExternalLink,
   Copy,
   MapPin,
-  Info
+  Info,
+  Share2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -51,6 +52,8 @@ const MESSAGE_TEMPLATES = [
 
 Nous vous rappelons que votre cotisation pour la saison en cours n'a pas encore été réglée.
 
+👉 Voir mon profil et payer : {{PROFILE_URL}}
+
 Merci de régulariser votre situation dans les meilleurs délais.
 
 Cordialement,
@@ -66,6 +69,8 @@ Le Bureau de La Bague Impériale`
     defaultMessage: `Cher membre,
 
 Un sondage est en cours et nous attendons votre réponse.
+
+👉 Répondre maintenant : {{DASHBOARD_URL}}
 
 Merci de répondre rapidement afin de faciliter l'organisation.
 
@@ -259,7 +264,11 @@ const Messages = () => {
     } else {
       setSelectedTemplate(template);
       setMessageTitle(template.titre);
-      setMessageContent(template.defaultMessage);
+      // Remplacer les placeholders par les vraies URLs
+      let message = template.defaultMessage;
+      message = message.replace('{{PROFILE_URL}}', `${window.location.origin}/profil`);
+      message = message.replace('{{DASHBOARD_URL}}', `${window.location.origin}/dashboard`);
+      setMessageContent(message);
     }
   };
 
@@ -587,7 +596,21 @@ Le Bureau de La Bague Impériale`;
                 data-testid="copy-message-btn"
               >
                 <Copy className="w-5 h-5 mr-2" />
-                Copier
+                Copier (interne)
+              </Button>
+              <Button
+                onClick={() => {
+                  // Message externe = Titre + Lien Dashboard uniquement
+                  const messageExterne = `🎩 *La Bague Impériale*\n\n📩 *${messageTitle}*\n\n👉 Voir sur l'app : ${window.location.origin}/dashboard`;
+                  copyToClipboard(messageExterne, 'Message externe');
+                }}
+                disabled={!messageTitle.trim()}
+                variant="outline"
+                className="border-green-500 text-green-400 hover:bg-green-500/10"
+                data-testid="share-externe-btn"
+              >
+                <Share2 className="w-5 h-5 mr-2" />
+                Partager (externe)
               </Button>
               <Button
                 onClick={sendMessage}

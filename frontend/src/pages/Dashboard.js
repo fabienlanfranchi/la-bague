@@ -1340,8 +1340,8 @@ const Dashboard = () => {
       month: 'long',
       year: 'numeric'
     });
-    // URL de l'application (utilise l'URL de production ou l'URL actuelle)
-    const appUrl = window.location.origin;
+    // URL de l'application - Pointe directement vers le Dashboard pour faciliter la réponse
+    const appUrl = `${window.location.origin}/dashboard`;
     
     return `🔔 *Rappel - La Bague Impériale*
 

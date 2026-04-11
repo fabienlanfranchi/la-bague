@@ -229,8 +229,8 @@ const Evenements = () => {
       objetText = `🎩 *${event.objet || 'Événement'}* à ${lieu}`;
     }
     
-    // URL de l'app avec l'événement
-    const appUrl = `${window.location.origin}/evenements`;
+    // URL de l'app - Pointe vers le Dashboard pour faciliter la réponse
+    const appUrl = `${window.location.origin}/dashboard`;
     
     const message = `🎩 *La Bague Impériale*
 
@@ -264,8 +264,8 @@ _Merci de confirmer votre présence !_`;
       objetText = `🎩 *${event.objet || 'Événement'}* à ${lieu}`;
     }
     
-    // URL de l'app
-    const appUrl = window.location.origin;
+    // URL de l'app - Pointe vers le Dashboard
+    const appUrl = `${window.location.origin}/dashboard`;
     
     let message = `🎩 *La Bague Impériale*
 ━━━━━━━━━━━━━━━━━━━━
