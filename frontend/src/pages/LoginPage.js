@@ -275,7 +275,7 @@ const LoginPage = () => {
                   type={showPassword ? 'text' : 'password'}
                   value={cleActivation}
                   onChange={(e) => setCleActivation(e.target.value)}
-                  placeholder="prenomlabague1"
+                  placeholder="labague1"
                   className="bg-black/60 border-[#D4A024]/30 text-white pr-10 h-12 text-lg"
                   autoComplete="current-password"
                   data-testid="cle-input"
@@ -312,7 +312,7 @@ const LoginPage = () => {
               <p><span className="text-[#D4A024] font-medium">• Entrée directe :</span> Si votre téléphone est déjà mémorisé</p>
               <p><span className="text-[#D4A024] font-medium">• Face ID :</span> Si vous l'avez activé</p>
               <p><span className="text-[#D4A024] font-medium">• Clé d'activation :</span> 1ère fois ou nouveau téléphone</p>
-              <p className="text-gray-500 text-xs pt-2">Clé = votre prénom + "labague" + n° membre (ex: fabienlabague1)</p>
+              <p className="text-gray-500 text-xs pt-2">Clé = "labague" + votre n° de membre (ex: labague1, labague25)</p>
             </div>
           </div>
 

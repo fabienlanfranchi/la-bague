@@ -570,19 +570,18 @@ async def device_login(request: Request, data: DeviceLoginRequest):
 
 @api_router.post("/auth/key-login")
 async def key_login(request: Request, data: KeyLoginRequest):
-    """Connexion par clé d'activation (prenomlabagueX) - pour nouveaux appareils"""
+    """Connexion par clé d'activation (labagueX) - pour nouveaux appareils"""
     
     cle = data.cle_activation.lower().strip()
     
-    # Extraire le numéro de membre de la clé (les chiffres à la fin)
+    # Format attendu: labagueX (où X est le numéro de membre)
     import re
-    match = re.match(r'^(.+)labague(\d+)$', cle)
+    match = re.match(r'^labague(\d+)$', cle)
     
     if not match:
-        raise HTTPException(status_code=400, detail="Format de clé invalide. Utilisez: prenomlabagueX")
+        raise HTTPException(status_code=400, detail="Format de clé invalide. Utilisez: labague + votre numéro (ex: labague1)")
     
-    prenom_cle = match.group(1)
-    numero_membre = int(match.group(2))
+    numero_membre = int(match.group(1))
     
     # Chercher le membre par numéro
     member = await db.members.find_one(
@@ -591,31 +590,7 @@ async def key_login(request: Request, data: KeyLoginRequest):
     )
     
     if not member:
-        raise HTTPException(status_code=401, detail="Membre non trouvé")
-    
-    # Vérifier que le prénom correspond (approximativement)
-    prenom_membre = member.get('nom_complet', '').split()[0].lower()
-    prenom_membre_clean = prenom_membre.lower().replace(' ', '').replace('-', '')
-    prenom_membre_clean = ''.join(c for c in prenom_membre_clean if c.isalnum())
-    
-    # Normaliser les accents
-    import unicodedata
-    def normalize(s):
-        return ''.join(c for c in unicodedata.normalize('NFD', s) if unicodedata.category(c) != 'Mn')
-    
-    prenom_cle_normalized = normalize(prenom_cle)
-    prenom_membre_normalized = normalize(prenom_membre_clean)
-    
-    # Vérification souple (le prénom de la clé doit être contenu dans le prénom du membre ou vice versa)
-    if prenom_cle_normalized not in prenom_membre_normalized and prenom_membre_normalized not in prenom_cle_normalized:
-        # Vérifier aussi le mot de passe hashé si le compte est déjà activé
-        if member.get('password_hash'):
-            if verify_password(data.cle_activation, member['password_hash']):
-                pass  # OK, c'est le mot de passe
-            else:
-                raise HTTPException(status_code=401, detail="Clé d'activation incorrecte")
-        else:
-            raise HTTPException(status_code=401, detail="Clé d'activation incorrecte")
+        raise HTTPException(status_code=401, detail="Membre non trouvé avec ce numéro")
     
     # Générer un nouveau device token
     new_device_token = str(uuid.uuid4())
