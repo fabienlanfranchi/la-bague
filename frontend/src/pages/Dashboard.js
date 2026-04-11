@@ -1340,8 +1340,7 @@ const Dashboard = () => {
       month: 'long',
       year: 'numeric'
     });
-    // URL de l'application - Pointe directement vers le Dashboard pour faciliter la réponse
-    const appUrl = `${window.location.origin}/dashboard`;
+    const appUrl = `https://labagueimperiale.optizioni.app/dashboard`;
     
     return `🔔 *Rappel - La Bague Impériale*
 
@@ -2021,7 +2020,7 @@ Le Président`;
                     onClick={() => {
                       const typeLabel = prochainEvenementInfo.type_evenement === 'repas' ? 'Prochain repas' : 'Prochain apéro';
                       const dateStr = new Date(prochainEvenementInfo.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-                      const message = `🎩 *La Bague Impériale*\n\n*${typeLabel}*\n\n📅 ${dateStr}\n📍 ${prochainEvenementInfo.lieu}\n\nPlus d'informations à venir sur l'application.\n\n${window.location.origin}`;
+                      const message = `🎩 *La Bague Impériale*\n\n*${typeLabel}*\n\n📅 ${dateStr}\n📍 ${prochainEvenementInfo.lieu}\n\nPlus d'informations à venir sur l'application.\n\nhttps://labagueimperiale.optizioni.app`;
                       window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
                     }}
                     className="bg-green-600 hover:bg-green-700 text-white font-serif"

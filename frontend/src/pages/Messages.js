@@ -266,8 +266,8 @@ const Messages = () => {
       setMessageTitle(template.titre);
       // Remplacer les placeholders par les vraies URLs
       let message = template.defaultMessage;
-      message = message.replace('{{PROFILE_URL}}', `${window.location.origin}/profil`);
-      message = message.replace('{{DASHBOARD_URL}}', `${window.location.origin}/dashboard`);
+      message = message.replace('{{PROFILE_URL}}', `https://labagueimperiale.optizioni.app/profil`);
+      message = message.replace('{{DASHBOARD_URL}}', `https://labagueimperiale.optizioni.app/dashboard`);
       setMessageContent(message);
     }
   };
@@ -601,7 +601,7 @@ Le Bureau de La Bague Impériale`;
               <Button
                 onClick={() => {
                   // Message externe = Titre + Lien Dashboard uniquement
-                  const messageExterne = `🎩 *La Bague Impériale*\n\n📩 *${messageTitle}*\n\n👉 Voir sur l'app : ${window.location.origin}/dashboard`;
+                  const messageExterne = `🎩 *La Bague Impériale*\n\n📩 *${messageTitle}*\n\n👉 Voir sur l'app : https://labagueimperiale.optizioni.app/dashboard`;
                   copyToClipboard(messageExterne, 'Message externe');
                 }}
                 disabled={!messageTitle.trim()}

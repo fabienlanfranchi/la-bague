@@ -376,8 +376,8 @@ const MembersPage = () => {
                 variant="outline"
                 size="icon"
                 className="border-[#D4A024]/50 text-[#D4A024] hover:bg-[#D4A024]/10 ml-2 w-10 h-10"
-                data-testid="btn-mots-de-passe"
-                title="Mots de passe des membres"
+                data-testid="btn-cles-membres"
+                title="Clés d'activation des membres"
               >
                 <Key className="w-5 h-5" />
               </Button>
@@ -1028,7 +1028,7 @@ const MembersPage = () => {
         </div>
       )}
 
-      {/* Modal: Espace Mots de Passe des Membres */}
+      {/* Modal: Clés d'activation des Membres */}
       {showMotsDePasseModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <Card className="bg-[#7A2020] border-2 border-[#D4A024] max-w-4xl w-full max-h-[85vh] overflow-hidden">
@@ -1036,7 +1036,7 @@ const MembersPage = () => {
               <div className="flex items-center justify-between">
                 <CardTitle className="text-2xl font-serif text-[#D4A024] flex items-center">
                   <Key className="w-6 h-6 mr-2" />
-                  Espace Mots de Passe des Membres
+                  Clés d'activation des Membres
                 </CardTitle>
                 <Button
                   variant="ghost"
@@ -1048,7 +1048,7 @@ const MembersPage = () => {
                 </Button>
               </div>
               <CardDescription className="text-gray-300 mt-2">
-                Utilisez ces informations pour aider les membres qui ont oublié leur mot de passe.
+                Utilisez ces clés pour aider les membres qui ont oublié leur accès.
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-4 overflow-y-auto max-h-[65vh]">
@@ -1060,26 +1060,21 @@ const MembersPage = () => {
                         <p className="text-white font-bold text-lg">
                           {membre.numero_membre}. {membre.nom_complet}
                         </p>
-                        <p className="text-gray-400 text-sm">{membre.email}</p>
                       </div>
                       <div className="flex items-center gap-3 bg-black/40 rounded-lg px-4 py-2">
                         <div>
-                          <p className="text-xs text-gray-500">Code temporaire</p>
-                          <p className="text-orange-400 font-mono text-sm">{membre.temporary_password}</p>
-                        </div>
-                        <div className="border-l border-gray-600 pl-3">
-                          <p className="text-xs text-gray-500">Mot de passe actuel</p>
+                          <p className="text-xs text-gray-500">Clé d'activation</p>
                           <div className="flex items-center gap-2">
-                            <p className="text-green-400 font-mono text-sm">
-                              {membre.password_clair || membre.temporary_password || '(non défini)'}
+                            <p className="text-[#D4A024] font-mono text-lg font-bold">
+                              labague{membre.numero_membre}
                             </p>
                             <Button
                               variant="ghost"
                               size="icon"
                               className="h-6 w-6 text-[#D4A024] hover:bg-[#D4A024]/10"
                               onClick={() => {
-                                navigator.clipboard.writeText(membre.password_clair || membre.temporary_password || '');
-                                toast.success('Mot de passe copié !');
+                                navigator.clipboard.writeText(`labague${membre.numero_membre}`);
+                                toast.success('Clé copiée !');
                               }}
                             >
                               <Copy className="w-3 h-3" />
@@ -1093,7 +1088,7 @@ const MembersPage = () => {
                 
                 {membresMotsDePasse.length === 0 && (
                   <div className="text-center text-gray-400 py-8">
-                    Aucun membre avec un compte activé
+                    Aucun membre trouvé
                   </div>
                 )}
               </div>

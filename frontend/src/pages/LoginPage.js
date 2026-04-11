@@ -181,7 +181,7 @@ const LoginPage = () => {
             La Bague Impériale
           </CardTitle>
           <CardDescription className="text-gray-400 font-serif">
-            Club de cigares depuis 2011
+            Club de cigares depuis 2013
           </CardDescription>
         </CardHeader>
         

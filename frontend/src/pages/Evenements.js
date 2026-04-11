@@ -210,6 +210,9 @@ const Evenements = () => {
     return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
   };
 
+  // URL de production de l'app
+  const APP_BASE_URL = 'https://labagueimperiale.optizioni.app';
+
   // Construire le message WhatsApp pour un événement
   const buildEventWhatsAppMessage = (event) => {
     const dateFormatted = formatDateComplete(event.date);
@@ -229,8 +232,7 @@ const Evenements = () => {
       objetText = `🎩 *${event.objet || 'Événement'}* à ${lieu}`;
     }
     
-    // URL de l'app - Pointe vers le Dashboard pour faciliter la réponse
-    const appUrl = `${window.location.origin}/dashboard`;
+    const appUrl = `${APP_BASE_URL}/dashboard`;
     
     const message = `🎩 *La Bague Impériale*
 
@@ -264,8 +266,7 @@ _Merci de confirmer votre présence !_`;
       objetText = `🎩 *${event.objet || 'Événement'}* à ${lieu}`;
     }
     
-    // URL de l'app - Pointe vers le Dashboard
-    const appUrl = `${window.location.origin}/dashboard`;
+    const appUrl = `${APP_BASE_URL}/dashboard`;
     
     let message = `🎩 *La Bague Impériale*
 ━━━━━━━━━━━━━━━━━━━━
@@ -274,6 +275,11 @@ _Merci de confirmer votre présence !_`;
 
 ${objetText}`;
 
+    // Récupérer les options du menu (dans options_sondage ou directement sur l'event)
+    const entrees = event.options_sondage?.entrees || event.entrees || [];
+    const plats = event.options_sondage?.plats || event.plats || [];
+    const desserts = event.options_sondage?.desserts || event.desserts || [];
+
     // Ajouter le menu si c'est un repas
     if (event.type_sondage === 'repas') {
       message += `
@@ -281,34 +287,31 @@ ${objetText}`;
 🍽️ *MENU AU CHOIX*
 ━━━━━━━━━━━━━━━━━━━━`;
       
-      // Entrées
-      if (event.entrees && event.entrees.length > 0) {
+      if (entrees.length > 0) {
         message += `
 
 🥗 *Entrées :*`;
-        event.entrees.forEach((entree, idx) => {
+        entrees.forEach((entree, idx) => {
           message += `
   ${idx + 1}. ${entree}`;
         });
       }
       
-      // Plats
-      if (event.plats && event.plats.length > 0) {
+      if (plats.length > 0) {
         message += `
 
 🍖 *Plats :*`;
-        event.plats.forEach((plat, idx) => {
+        plats.forEach((plat, idx) => {
           message += `
   ${idx + 1}. ${plat}`;
         });
       }
       
-      // Desserts
-      if (event.desserts && event.desserts.length > 0) {
+      if (desserts.length > 0) {
         message += `
 
 🍰 *Desserts :*`;
-        event.desserts.forEach((dessert, idx) => {
+        desserts.forEach((dessert, idx) => {
           message += `
   ${idx + 1}. ${dessert}`;
         });
