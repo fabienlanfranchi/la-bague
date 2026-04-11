@@ -1936,9 +1936,10 @@ Le Président`;
                     </Button>
                   </div>
                   
-                  <p className="text-sm text-gray-400 mb-3">
-                    ⚠️ Ces ajouts sont comptés pour le restaurateur mais n'affectent PAS les statistiques de présence du club.
-                  </p>
+                  <div className="text-sm text-gray-400 mb-3 space-y-1">
+                    <p>• <span className="text-purple-400 font-medium">Invités</span> : Comptés pour le restaurateur, <span className="text-red-400">PAS</span> dans les stats du club</p>
+                    <p>• <span className="text-blue-400 font-medium">Membres sans accès</span> : Comptés pour le restaurateur <span className="text-green-400">ET</span> dans les stats du club</p>
+                  </div>
                   
                   {/* Liste des réponses manuelles */}
                   {manualResponses.length > 0 ? (
