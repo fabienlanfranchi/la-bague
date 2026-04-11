@@ -84,6 +84,43 @@ const Comptabilite = () => {
   // Options fixes pour les caisses
   const caisseOptions = ['Compte', 'Chez Fabien', 'Chez Jacques', 'PayPal', 'Asso Connect', 'Chèque'];
 
+  // Filtres pour l'historique des mouvements
+  const [filterCaisse, setFilterCaisse] = useState('tous');
+  const [filterType, setFilterType] = useState('tous');
+  const [filterPeriode, setFilterPeriode] = useState('tous');
+
+  // Transactions filtrées
+  const getFilteredTransactions = () => {
+    let filtered = [...transactions];
+    
+    if (filterCaisse !== 'tous') {
+      filtered = filtered.filter(t => t.endroit === filterCaisse);
+    }
+    if (filterType !== 'tous') {
+      filtered = filtered.filter(t => t.type === filterType);
+    }
+    if (filterPeriode !== 'tous') {
+      const now = new Date();
+      let startDate;
+      if (filterPeriode === '7j') {
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      } else if (filterPeriode === '30j') {
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      } else if (filterPeriode === '90j') {
+        startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+      } else if (filterPeriode === '1an') {
+        startDate = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+      }
+      if (startDate) {
+        filtered = filtered.filter(t => new Date(t.date) >= startDate);
+      }
+    }
+    return filtered;
+  };
+
+  const filteredTransactions = getFilteredTransactions();
+  const hasActiveFilters = filterCaisse !== 'tous' || filterType !== 'tous' || filterPeriode !== 'tous';
+
   useEffect(() => {
     loadData();
   }, []);
@@ -507,9 +544,61 @@ const Comptabilite = () => {
             Mouvements
           </span>
           <span className="text-base text-gray-400 font-normal">
-            {transactions.length} mouvement(s)
+            {hasActiveFilters ? `${filteredTransactions.length} / ${transactions.length}` : `${transactions.length}`} mouvement(s)
           </span>
         </h2>
+
+        {/* Filtres */}
+        <div className="flex flex-wrap gap-3 mb-4">
+          <Select value={filterCaisse} onValueChange={setFilterCaisse}>
+            <SelectTrigger className="w-[160px] bg-black/60 border-[#D4A024]/30 text-white h-10 text-sm" data-testid="filter-caisse">
+              <SelectValue placeholder="Caisse" />
+            </SelectTrigger>
+            <SelectContent className="bg-[#1a1a1a] border-[#D4A024]/30">
+              <SelectItem value="tous" className="text-gray-400 text-sm py-2">Toutes caisses</SelectItem>
+              {[...new Set(transactions.map(t => t.endroit))].filter(Boolean).map(c => (
+                <SelectItem key={c} value={c} className="text-white text-sm py-2">{c}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={filterType} onValueChange={setFilterType}>
+            <SelectTrigger className="w-[150px] bg-black/60 border-[#D4A024]/30 text-white h-10 text-sm" data-testid="filter-type">
+              <SelectValue placeholder="Type" />
+            </SelectTrigger>
+            <SelectContent className="bg-[#1a1a1a] border-[#D4A024]/30">
+              <SelectItem value="tous" className="text-gray-400 text-sm py-2">Tous types</SelectItem>
+              <SelectItem value="recette" className="text-green-400 text-sm py-2">Recettes</SelectItem>
+              <SelectItem value="dépense" className="text-red-400 text-sm py-2">Dépenses</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={filterPeriode} onValueChange={setFilterPeriode}>
+            <SelectTrigger className="w-[150px] bg-black/60 border-[#D4A024]/30 text-white h-10 text-sm" data-testid="filter-periode">
+              <SelectValue placeholder="Période" />
+            </SelectTrigger>
+            <SelectContent className="bg-[#1a1a1a] border-[#D4A024]/30">
+              <SelectItem value="tous" className="text-gray-400 text-sm py-2">Toute période</SelectItem>
+              <SelectItem value="7j" className="text-white text-sm py-2">7 derniers jours</SelectItem>
+              <SelectItem value="30j" className="text-white text-sm py-2">30 derniers jours</SelectItem>
+              <SelectItem value="90j" className="text-white text-sm py-2">3 derniers mois</SelectItem>
+              <SelectItem value="1an" className="text-white text-sm py-2">1 an</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => { setFilterCaisse('tous'); setFilterType('tous'); setFilterPeriode('tous'); }}
+              className="text-[#D4A024] hover:bg-[#D4A024]/10 h-10 text-sm"
+              data-testid="clear-filters-btn"
+            >
+              <X className="w-4 h-4 mr-1" />
+              Effacer
+            </Button>
+          )}
+        </div>
 
         {/* Formulaire d'ajout - Compatible iOS avec Shadcn Select */}
         <Card className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm mb-4">
@@ -665,14 +754,14 @@ const Comptabilite = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {transactions.length === 0 ? (
+                  {filteredTransactions.length === 0 ? (
                     <tr>
                       <td colSpan="7" className="p-8 text-center text-gray-400 text-lg">
-                        Aucun mouvement enregistré
+                        {hasActiveFilters ? 'Aucun mouvement pour ces filtres' : 'Aucun mouvement enregistré'}
                       </td>
                     </tr>
                   ) : (
-                    transactions.map((trans) => {
+                    filteredTransactions.map((trans) => {
                       const membreName = getMemberName(trans.membre_id);
                       const objetLabel = trans.objet ? (trans.objet.charAt(0).toUpperCase() + trans.objet.slice(1)) : '-';
                       const raisonMembre = membreName !== '-'
