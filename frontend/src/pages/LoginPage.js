@@ -220,7 +220,7 @@ const LoginPage = () => {
             <div className="space-y-2">
               <Label htmlFor="cle" className="text-[#D4A024] font-serif flex items-center">
                 <KeyRound className="w-4 h-4 mr-2" />
-                Clé d'activation
+                Votre clé personnelle
               </Label>
               <div className="relative">
                 <Input
@@ -242,7 +242,7 @@ const LoginPage = () => {
                 </button>
               </div>
               <p className="text-xs text-gray-500 font-serif">
-                Format : votre prénom + "labague" + votre numéro de membre
+                Votre prénom + "labague" + votre n° de membre
               </p>
             </div>
 
@@ -257,7 +257,7 @@ const LoginPage = () => {
               ) : (
                 <LogIn className="w-5 h-5 mr-2" />
               )}
-              {keyLoading ? 'Connexion...' : 'Se connecter'}
+              {keyLoading ? 'Connexion...' : 'Entrer'}
             </Button>
           </form>
 
@@ -265,9 +265,10 @@ const LoginPage = () => {
           <div className="bg-[#D4A024]/10 border border-[#D4A024]/30 rounded-lg p-4">
             <div className="flex items-start space-x-3">
               <Smartphone className="w-5 h-5 text-[#D4A024] mt-0.5 flex-shrink-0" />
-              <div className="text-sm text-gray-300 font-serif">
-                <p className="font-medium text-[#D4A024] mb-1">Connexion automatique</p>
-                <p>Après votre première connexion, cet appareil sera mémorisé. Vous n'aurez plus besoin d'entrer votre clé !</p>
+              <div className="text-sm text-gray-300 font-serif space-y-2">
+                <p><span className="text-[#D4A024] font-medium">1ère fois ?</span> Entrez votre clé pour activer votre compte.</p>
+                <p><span className="text-[#D4A024] font-medium">Nouveau téléphone ?</span> Même clé pour vous reconnecter.</p>
+                <p><span className="text-[#D4A024] font-medium">Téléphone habituel ?</span> Connexion automatique !</p>
               </div>
             </div>
           </div>
