@@ -124,7 +124,7 @@ Exemples INCORRECTS à ne JAMAIS utiliser: "Fabien", "Cher Fabien", "{prenom}"
         context_parts.append(membre_info)
     
     # 3. La collection personnelle du membre (ANALYSE DE PROFIL)
-    ma_collection = await db.ma_cigarotheque.find({"user_id": user_id}).to_list(100)
+    ma_collection = await db.cigares_personnels.find({"membre_id": actual_user_id}).to_list(100)
     
     # Analyser le profil du fumeur à partir de sa collection
     profil_fumeur = "inconnu"
@@ -165,7 +165,7 @@ Exemples INCORRECTS à ne JAMAIS utiliser: "Fabien", "Cher Fabien", "{prenom}"
         elif nb_cigares >= 3:
             profil_fumeur = "amateur"
         else:
-            profil_fumeur = "débutant"
+            profil_fumeur = "peu_fourni"
         
         collection_text = f"""
 --- ANALYSE DU PROFIL FUMEUR DE {nom.upper()} ---
@@ -191,25 +191,47 @@ Note moyenne donnée : {moy_note:.1f}/5 | Puissance moyenne appréciée : {moy_p
                 collection_text += f"  Notes personnelles : {c.get('note_libre')}\n"
         
         # Construire l'analyse pour le system message
-        analyse_gouts = f"""
+        if profil_fumeur == "peu_fourni":
+            cigares_list = ", ".join([f"{c.get('marque', '')} {c.get('gamme', '')}" for c in ma_collection])
+            analyse_gouts = f"""
+⚠️ CIGARTHÈQUE PEU FOURNIE ({nb_cigares} cigare(s) seulement : {cigares_list})
+Tu ne connais pas encore assez bien ce membre pour deviner son profil.
+QUAND il te demande un conseil cigare, tu DOIS d'abord reconnaître cette situation avec élégance :
+"J'ai consulté votre Cigarthèque, et je vois que vous avez {nb_cigares} cigare(s) en collection ({cigares_list}).
+C'est encore un peu tôt pour que je cerne précisément vos goûts.
+Pour vous faire la meilleure recommandation possible, permettez-moi de vous demander :
+comment vous situez-vous ? Plutôt débutant curieux, amateur éclairé, confirmé ou expert ?"
+
+APRÈS sa réponse, RETIENS son niveau et NE LE REDEMANDE PLUS JAMAIS dans cette conversation.
+Combine ensuite son niveau déclaré + les {nb_cigares} cigare(s) que tu connais de lui pour tes conseils.
+"""
+        else:
+            analyse_gouts = f"""
 ⚠️ TU CONNAIS DÉJÀ LE PROFIL DE CE MEMBRE - NE LUI REDEMANDE JAMAIS SON NIVEAU :
 - Profil : {profil_fumeur.upper()}
 - Il/elle apprécie les puissances autour de {moy_puissance:.1f}/5
 - Terroirs de prédilection : {', '.join([p[0] for p in top_pays]) if top_pays else 'à découvrir'}
 - Marques récurrentes : {', '.join([m[0] for m in top_marques]) if top_marques else 'variées'}
 """
-        if moy_puissance >= 3.5:
-            analyse_gouts += "- Ce membre aime les cigares CORSÉS. Ne lui propose JAMAIS de cigares légers comme Hoyo de Monterrey Épicure N°2 ou José L. Piedra.\n"
-        elif moy_puissance >= 2.5:
-            analyse_gouts += "- Ce membre apprécie les cigares MEDIUM à MEDIUM-FULL. Propose des Partagás, Montecristo, H. Upmann.\n"
-        else:
-            analyse_gouts += "- Ce membre préfère les cigares LÉGERS à MEDIUM. Propose des Hoyo de Monterrey, Trinidad, Rafael González.\n"
+            if moy_puissance >= 3.5:
+                analyse_gouts += "- Ce membre aime les cigares CORSÉS. Ne lui propose JAMAIS de cigares légers comme Hoyo de Monterrey Épicure N°2 ou José L. Piedra.\n"
+            elif moy_puissance >= 2.5:
+                analyse_gouts += "- Ce membre apprécie les cigares MEDIUM à MEDIUM-FULL. Propose des Partagás, Montecristo, H. Upmann.\n"
+            else:
+                analyse_gouts += "- Ce membre préfère les cigares LÉGERS à MEDIUM. Propose des Hoyo de Monterrey, Trinidad, Rafael González.\n"
         
         context_parts.append(collection_text)
     else:
         analyse_gouts = """
-Ce membre n'a pas encore de Cigarthèque. Tu peux lui demander UNE SEULE FOIS son niveau (débutant/amateur/confirmé/expert).
-Après sa réponse, RETIENS-LE et ne le redemande JAMAIS dans cette conversation.
+⚠️ CIGARTHÈQUE VIDE - Ce membre n'a encore enregistré aucun cigare dans sa collection.
+Tu ne le connais pas encore. QUAND il te demande un conseil cigare, tu DOIS reconnaître cette situation :
+"J'ai consulté votre Cigarthèque et je constate qu'elle est encore vide !
+Pour vous offrir des recommandations vraiment personnalisées, j'aurais besoin de mieux vous connaître.
+Permettez-moi de vous demander : comment vous situez-vous en tant que fumeur ?
+Plutôt débutant curieux, amateur éclairé, confirmé ou expert ?"
+
+APRÈS sa réponse, RETIENS son niveau et NE LE REDEMANDE PLUS JAMAIS dans cette conversation.
+Encourage-le aussi à enrichir sa Cigarthèque pour que tu puisses mieux le conseiller à l'avenir.
 """
         profil_fumeur = "inconnu"
     
