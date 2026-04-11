@@ -351,7 +351,9 @@ const Comptabilite = () => {
           </CardHeader>
           <CardContent>
             <div className="text-4xl font-serif font-bold text-[#D4A024]">
-              {formatMontant(summary.solde_total + totalDettes)}
+              {formatMontant(
+                (summary.solde_total - (comptes.find(c => c.nom === 'Dehors')?.solde || 0)) + totalDettes
+              )}
             </div>
             <p className="text-sm text-gray-500 mt-1">Comptes + Dehors ({formatMontant(totalDettes)})</p>
           </CardContent>
@@ -407,8 +409,8 @@ const Comptabilite = () => {
           </Button>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* Comptes normaux */}
-          {comptes.map((compte) => {
+          {/* Comptes normaux (exclure Dehors qui est géré par la carte Dettes) */}
+          {comptes.filter(c => c.nom !== 'Dehors').map((compte) => {
             const transCount = getTransactionsForCaisse(compte.nom).length;
             return (
               <Card key={compte.id} className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm">
@@ -646,7 +648,7 @@ const Comptabilite = () => {
           </CardContent>
         </Card>
 
-        {/* Liste des mouvements */}
+        {/* Liste des mouvements - Format optimisé */}
         <Card className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm">
           <CardContent className="p-0">
             <div className="overflow-x-auto">
@@ -654,66 +656,72 @@ const Comptabilite = () => {
                 <thead className="border-b-2 border-[#D4A024]/30 bg-black/30">
                   <tr className="text-left">
                     <th className="p-3 text-base font-serif text-[#D4A024]">Date</th>
-                    <th className="p-3 text-base font-serif text-[#D4A024]">Type</th>
-                    <th className="p-3 text-base font-serif text-[#D4A024]">Membre</th>
-                    <th className="p-3 text-base font-serif text-[#D4A024]">Objet</th>
                     <th className="p-3 text-base font-serif text-[#D4A024] text-right">Montant</th>
-                    <th className="p-3 text-base font-serif text-[#D4A024]">Caisse</th>
+                    <th className="p-3 text-base font-serif text-[#D4A024]">Type</th>
+                    <th className="p-3 text-base font-serif text-[#D4A024]">Raison / Membre</th>
                     <th className="p-3 text-base font-serif text-[#D4A024]">Détail</th>
-                    <th className="p-3 text-base font-serif text-[#D4A024]">Actions</th>
+                    <th className="p-3 text-base font-serif text-[#D4A024]">Caisse</th>
+                    <th className="p-3 text-base font-serif text-[#D4A024]"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {transactions.length === 0 ? (
                     <tr>
-                      <td colSpan="8" className="p-8 text-center text-gray-400 text-lg">
+                      <td colSpan="7" className="p-8 text-center text-gray-400 text-lg">
                         Aucun mouvement enregistré
                       </td>
                     </tr>
                   ) : (
-                    transactions.map((trans) => (
-                      <tr key={trans.id} className="border-b border-[#D4A024]/10 hover:bg-[#D4A024]/5">
-                        <td className="p-3 text-base text-gray-300">
-                          {formatDate(trans.date)}
-                        </td>
-                        <td className="p-3">
-                          <Badge className={`text-sm px-3 py-1 ${
-                            trans.type === 'recette'
-                              ? 'bg-green-900/30 text-green-400 border border-green-600/30'
-                              : 'bg-red-900/30 text-red-400 border border-red-600/30'
+                    transactions.map((trans) => {
+                      const membreName = getMemberName(trans.membre_id);
+                      const objetLabel = trans.objet ? (trans.objet.charAt(0).toUpperCase() + trans.objet.slice(1)) : '-';
+                      const raisonMembre = membreName !== '-'
+                        ? `${objetLabel} - ${membreName}`
+                        : objetLabel;
+                      return (
+                        <tr key={trans.id} className="border-b border-[#D4A024]/10 hover:bg-[#D4A024]/5">
+                          <td className="p-3 text-base text-gray-300 whitespace-nowrap">
+                            {formatDate(trans.date)}
+                          </td>
+                          <td className={`p-3 text-lg font-semibold text-right whitespace-nowrap ${
+                            trans.type === 'recette' ? 'text-green-400' : 'text-red-400'
                           }`}>
-                            {trans.type}
-                          </Badge>
-                        </td>
-                        <td className="p-3 text-base text-white">
-                          {getMemberName(trans.membre_id)}
-                        </td>
-                        <td className="p-3 text-base text-white">
-                          {trans.objet}
-                        </td>
-                        <td className={`p-3 text-lg font-semibold text-right ${
-                          trans.type === 'recette' ? 'text-green-400' : 'text-red-400'
-                        }`}>
-                          {trans.type === 'recette' ? '+' : '-'}{formatMontant(trans.montant)}
-                        </td>
-                        <td className="p-3 text-base text-gray-300">
-                          {trans.endroit}
-                        </td>
-                        <td className="p-3 text-base text-gray-300">
-                          {trans.detail || '-'}
-                        </td>
-                        <td className="p-3">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteTransaction(trans.id)}
-                            className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </td>
-                      </tr>
-                    ))
+                            {trans.type === 'recette' ? '+' : '-'}{formatMontant(trans.montant)}
+                          </td>
+                          <td className="p-3">
+                            <Badge className={`text-sm px-3 py-1 ${
+                              trans.type === 'recette'
+                                ? 'bg-green-900/30 text-green-400 border border-green-600/30'
+                                : 'bg-red-900/30 text-red-400 border border-red-600/30'
+                            }`}>
+                              {trans.type === 'recette' ? 'Recette' : 'Dépense'}
+                            </Badge>
+                          </td>
+                          <td className="p-3 text-base text-white">
+                            {raisonMembre}
+                          </td>
+                          <td className="p-3 text-base text-gray-400">
+                            {trans.detail || '-'}
+                          </td>
+                          <td className="p-3">
+                            <Badge className="bg-[#7A2020]/50 text-[#D4A024] border border-[#D4A024]/30 text-sm px-2 py-1">
+                              {trans.endroit}
+                            </Badge>
+                          </td>
+                          <td className="p-3">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteTransaction(trans.id)}
+                              className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                              data-testid={`delete-trans-${trans.id}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
