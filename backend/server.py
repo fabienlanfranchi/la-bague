@@ -532,6 +532,134 @@ async def logout(request: Request):
     return {"message": "Déconnexion réussie"}
 
 
+# ============ CONNEXION SIMPLIFIÉE PAR APPAREIL ============
+
+class DeviceLoginRequest(BaseModel):
+    device_token: str
+
+class KeyLoginRequest(BaseModel):
+    cle_activation: str  # Format: prenomlabague1
+
+@api_router.post("/auth/device-login")
+async def device_login(request: Request, data: DeviceLoginRequest):
+    """Connexion automatique par appareil mémorisé (device token)"""
+    
+    # Chercher le membre avec ce device token
+    member = await db.members.find_one(
+        {"device_tokens": data.device_token},
+        {"_id": 0}
+    )
+    
+    if not member:
+        raise HTTPException(status_code=401, detail="Appareil non reconnu")
+    
+    # Mettre à jour la dernière connexion
+    await db.members.update_one(
+        {"id": member['id']},
+        {"$set": {"last_device_login": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    # Stocker en session
+    request.session['member_id'] = member['id']
+    
+    return {
+        "success": True,
+        "member": member
+    }
+
+
+@api_router.post("/auth/key-login")
+async def key_login(request: Request, data: KeyLoginRequest):
+    """Connexion par clé d'activation (prenomlabagueX) - pour nouveaux appareils"""
+    
+    cle = data.cle_activation.lower().strip()
+    
+    # Extraire le numéro de membre de la clé (les chiffres à la fin)
+    import re
+    match = re.match(r'^(.+)labague(\d+)$', cle)
+    
+    if not match:
+        raise HTTPException(status_code=400, detail="Format de clé invalide. Utilisez: prenomlabagueX")
+    
+    prenom_cle = match.group(1)
+    numero_membre = int(match.group(2))
+    
+    # Chercher le membre par numéro
+    member = await db.members.find_one(
+        {"numero_membre": numero_membre},
+        {"_id": 0}
+    )
+    
+    if not member:
+        raise HTTPException(status_code=401, detail="Membre non trouvé")
+    
+    # Vérifier que le prénom correspond (approximativement)
+    prenom_membre = member.get('nom_complet', '').split()[0].lower()
+    prenom_membre_clean = prenom_membre.lower().replace(' ', '').replace('-', '')
+    prenom_membre_clean = ''.join(c for c in prenom_membre_clean if c.isalnum())
+    
+    # Normaliser les accents
+    import unicodedata
+    def normalize(s):
+        return ''.join(c for c in unicodedata.normalize('NFD', s) if unicodedata.category(c) != 'Mn')
+    
+    prenom_cle_normalized = normalize(prenom_cle)
+    prenom_membre_normalized = normalize(prenom_membre_clean)
+    
+    # Vérification souple (le prénom de la clé doit être contenu dans le prénom du membre ou vice versa)
+    if prenom_cle_normalized not in prenom_membre_normalized and prenom_membre_normalized not in prenom_cle_normalized:
+        # Vérifier aussi le mot de passe hashé si le compte est déjà activé
+        if member.get('password_hash'):
+            if verify_password(data.cle_activation, member['password_hash']):
+                pass  # OK, c'est le mot de passe
+            else:
+                raise HTTPException(status_code=401, detail="Clé d'activation incorrecte")
+        else:
+            raise HTTPException(status_code=401, detail="Clé d'activation incorrecte")
+    
+    # Générer un nouveau device token
+    new_device_token = str(uuid.uuid4())
+    
+    # Ajouter le device token au membre
+    await db.members.update_one(
+        {"id": member['id']},
+        {
+            "$addToSet": {"device_tokens": new_device_token},
+            "$set": {
+                "compte_active": True,
+                "last_device_login": datetime.now(timezone.utc).isoformat()
+            }
+        }
+    )
+    
+    # Récupérer le membre mis à jour
+    updated_member = await db.members.find_one({"id": member['id']}, {"_id": 0})
+    
+    # Stocker en session
+    request.session['member_id'] = updated_member['id']
+    
+    return {
+        "success": True,
+        "member": updated_member,
+        "device_token": new_device_token  # À stocker côté client
+    }
+
+
+@api_router.post("/auth/remove-device")
+async def remove_device(request: Request, data: DeviceLoginRequest):
+    """Supprimer un appareil mémorisé (déconnexion de cet appareil)"""
+    
+    # Supprimer le device token
+    await db.members.update_many(
+        {"device_tokens": data.device_token},
+        {"$pull": {"device_tokens": data.device_token}}
+    )
+    
+    request.session.clear()
+    
+    return {"success": True, "message": "Appareil déconnecté"}
+
+
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
 

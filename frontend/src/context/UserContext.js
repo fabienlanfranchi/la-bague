@@ -241,13 +241,25 @@ export const UserProvider = ({ children }) => {
   };
 
   // Fonction de déconnexion
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
     console.log('[AUTH] Déconnexion - nettoyage complet du cache');
     hasManualLogin.current = false;
+    
+    // Supprimer le device token côté serveur
+    const deviceToken = localStorage.getItem('labague_device_token');
+    if (deviceToken) {
+      try {
+        await axios.post(`${API_URL}/api/auth/remove-device`, { device_token: deviceToken });
+      } catch (e) {
+        console.log('Erreur suppression device token:', e);
+      }
+    }
+    
     // Nettoyage COMPLET de tous les stockages possibles
     localStorage.removeItem('currentMemberId');
     localStorage.removeItem('currentMemberData');
     localStorage.removeItem('rememberedMember');
+    localStorage.removeItem('labague_device_token'); // Device token
     sessionStorage.removeItem('currentMemberId');
     sessionStorage.removeItem('currentMemberData');
     // Aussi nettoyer d'éventuelles clés parasites
