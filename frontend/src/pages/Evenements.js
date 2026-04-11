@@ -22,7 +22,8 @@ import {
   Image,
   MessageCircle,
   Send,
-  RefreshCw
+  RefreshCw,
+  Share2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -242,6 +243,113 @@ ${objetText}
 _Merci de confirmer votre présence !_`;
 
     return message;
+  };
+
+  // Message complet de l'événement (avec menu entier) pour les membres sans accès
+  const buildFullEventMessage = (event) => {
+    const dateFormatted = formatDateComplete(event.date);
+    const heure = formatHeure(event.date);
+    
+    let objetText = '';
+    const objet = event.objet?.toLowerCase() || '';
+    const lieu = event.lieu || '';
+    
+    if (objet.includes('repas') || event.type_sondage === 'repas') {
+      objetText = `🍽️ *Repas du Club* au ${lieu}`;
+    } else if (objet.includes('apéro') || objet.includes('apero')) {
+      objetText = `🥃 *Apéro du Club* à ${lieu}`;
+    } else if (objet.includes('anniversaire')) {
+      objetText = `🎂 *Anniversaire du Club* à ${lieu}`;
+    } else {
+      objetText = `🎩 *${event.objet || 'Événement'}* à ${lieu}`;
+    }
+    
+    // URL de l'app
+    const appUrl = window.location.origin;
+    
+    let message = `🎩 *La Bague Impériale*
+━━━━━━━━━━━━━━━━━━━━
+
+📅 *${dateFormatted}* à ${heure}
+
+${objetText}`;
+
+    // Ajouter le menu si c'est un repas
+    if (event.type_sondage === 'repas') {
+      message += `
+
+🍽️ *MENU AU CHOIX*
+━━━━━━━━━━━━━━━━━━━━`;
+      
+      // Entrées
+      if (event.entrees && event.entrees.length > 0) {
+        message += `
+
+🥗 *Entrées :*`;
+        event.entrees.forEach((entree, idx) => {
+          message += `
+  ${idx + 1}. ${entree}`;
+        });
+      }
+      
+      // Plats
+      if (event.plats && event.plats.length > 0) {
+        message += `
+
+🍖 *Plats :*`;
+        event.plats.forEach((plat, idx) => {
+          message += `
+  ${idx + 1}. ${plat}`;
+        });
+      }
+      
+      // Desserts
+      if (event.desserts && event.desserts.length > 0) {
+        message += `
+
+🍰 *Desserts :*`;
+        event.desserts.forEach((dessert, idx) => {
+          message += `
+  ${idx + 1}. ${dessert}`;
+        });
+      }
+    }
+
+    message += `
+
+━━━━━━━━━━━━━━━━━━━━
+👉 *Répondre sur l'app :* ${appUrl}
+
+_Merci de confirmer votre présence et vos choix de menu !_`;
+
+    return message;
+  };
+
+  // Envoyer l'événement complet (pour membres sans accès)
+  const shareFullEvent = async (event) => {
+    const message = buildFullEventMessage(event);
+    
+    // Utiliser l'API Web Share native si disponible
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `La Bague Impériale - ${event.objet}`,
+          text: message,
+        });
+        toast.success('Événement partagé !');
+        return;
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+      }
+    }
+    
+    // Fallback: copier dans le presse-papier
+    try {
+      await navigator.clipboard.writeText(message);
+      toast.success('Événement copié ! Collez-le dans WhatsApp pour l\'envoyer');
+    } catch (err) {
+      toast.error('Erreur de partage');
+    }
   };
 
   // Partager un événement sur WhatsApp
@@ -869,6 +977,16 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                 </div>
 
                 <div className="flex flex-wrap gap-3 pt-4 border-t border-[#D4A024]/20">
+                  {/* Bouton "Envoyer l'événement" - VISIBLE PAR TOUS (Admin ET Membres) */}
+                  <Button
+                    onClick={() => shareFullEvent(prochainEvenement)}
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                    data-testid="envoyer-event-btn"
+                  >
+                    <Share2 className="w-4 h-4 mr-2" />
+                    Envoyer l'événement
+                  </Button>
+                  
                   {/* Bouton "Voir les réponses" - ADMIN UNIQUEMENT */}
                   {hasAdminAccess && (
                     <Button 
@@ -884,11 +1002,12 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                     <>
                       <Button
                         onClick={() => shareEventToWhatsApp(prochainEvenement)}
-                        className="bg-green-600 hover:bg-green-700 text-white"
+                        variant="outline"
+                        className="border-blue-500 text-blue-400 hover:bg-blue-900/20"
                         data-testid="share-event-btn"
                       >
                         <Send className="w-4 h-4 mr-2" />
-                        Partager
+                        Envoi infos
                       </Button>
                       <Button
                         onClick={() => relancerNonRepondants(prochainEvenement)}

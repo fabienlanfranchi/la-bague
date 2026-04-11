@@ -1762,7 +1762,7 @@ Le Président`;
                     data-testid="export-restaurateur-btn"
                   >
                     <Download className="w-4 h-4 mr-2" />
-                    Résumé Restaurateur
+                    Récap
                   </Button>
                 </div>
               </div>
