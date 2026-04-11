@@ -244,6 +244,7 @@ export const UserProvider = ({ children }) => {
   const logout = useCallback(async () => {
     console.log('[AUTH] Déconnexion - nettoyage complet du cache');
     hasManualLogin.current = false;
+    sessionStorage.removeItem('appSessionActive');
     
     // Supprimer le device token côté serveur
     const deviceToken = localStorage.getItem('labague_device_token');

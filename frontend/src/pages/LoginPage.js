@@ -31,6 +31,7 @@ const LoginPage = () => {
   // Vérifier si déjà connecté
   useEffect(() => {
     if (currentMember) {
+      sessionStorage.setItem('appSessionActive', 'true');
       navigate('/dashboard');
     }
   }, [currentMember, navigate]);

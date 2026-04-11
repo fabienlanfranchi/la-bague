@@ -1,6 +1,6 @@
 import React from 'react';
 import '@/App.css';
-import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-router-dom';
 import { UserProvider, useUser } from './context/UserContext';
 import { Toaster } from '@/components/ui/sonner';
 import Sidebar from './components/Sidebar';
@@ -81,6 +81,27 @@ const ProtectedRoute = ({ children }) => {
   }
   
   return children;
+};
+
+// Composant qui force la redirection vers /dashboard au premier chargement de l'app
+const InitialRedirect = () => {
+  const { currentMember, loading } = useUser();
+  const location = useLocation();
+  const navigate = useNavigate();
+  
+  React.useEffect(() => {
+    if (loading || !currentMember) return;
+    
+    const sessionActive = sessionStorage.getItem('appSessionActive');
+    if (!sessionActive && location.pathname !== '/dashboard' && location.pathname !== '/login' && location.pathname !== '/') {
+      sessionStorage.setItem('appSessionActive', 'true');
+      navigate('/dashboard', { replace: true });
+    } else if (!sessionActive) {
+      sessionStorage.setItem('appSessionActive', 'true');
+    }
+  }, [loading, currentMember, location.pathname, navigate]);
+  
+  return null;
 };
 
 const AdminRoute = ({ children }) => {
@@ -208,6 +229,7 @@ function App() {
     <UserProvider>
       <div className="App">
         <BrowserRouter>
+          <InitialRedirect />
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<LoginPage />} />
