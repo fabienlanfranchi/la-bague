@@ -869,14 +869,17 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                 </div>
 
                 <div className="flex flex-wrap gap-3 pt-4 border-t border-[#D4A024]/20">
-                  <Button 
-                    onClick={() => loadRepondants(prochainEvenement)}
-                    className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif"
-                    data-testid="voir-reponses-btn"
-                  >
-                    <Users className="w-4 h-4 mr-2" />
-                    Voir les réponses
-                  </Button>
+                  {/* Bouton "Voir les réponses" - ADMIN UNIQUEMENT */}
+                  {hasAdminAccess && (
+                    <Button 
+                      onClick={() => loadRepondants(prochainEvenement)}
+                      className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif"
+                      data-testid="voir-reponses-btn"
+                    >
+                      <Users className="w-4 h-4 mr-2" />
+                      Voir les réponses
+                    </Button>
+                  )}
                   {hasAdminAccess && (
                     <>
                       <Button
