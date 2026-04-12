@@ -1,16 +1,9 @@
 # Test Credentials - La Bague Impériale
 
-## Admin (Président)
-- Clé d'activation: `labague1`
-- Nom: Fabien Lanfranchi
-- Ancien email: fabien.lanfranchi@yahoo.fr
-- Ancien password: fabienlabague1
+## Authentication Method
+Key-based login (enter key in password field, click "Valider")
 
-## Membre standard
-- Clé d'activation: `labague3`
-- Nom: Jacques Peretti
-- Fonction: Trésorier
-
-## URLs
-- Frontend: https://cigar-management-app.preview.emergentagent.com
-- Production: https://labagueimperiale.optizioni.app
+## Accounts
+- **Admin (Président)**: Key `labague1` → Fabien Lanfranchi (is_president=true)
+- **Membre (Trésorier)**: Key `labague3` → Jacques Peretti (fonction=Trésorier)
+- **Ancien login email**: fabien.lanfranchi@yahoo.fr / fabienlabague1
