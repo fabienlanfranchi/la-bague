@@ -12,5 +12,5 @@
 - Fonction: Trésorier
 
 ## URLs
-- Frontend: https://cigare-gestion.preview.emergentagent.com
+- Frontend: https://cigar-management-app.preview.emergentagent.com
 - Production: https://labagueimperiale.optizioni.app

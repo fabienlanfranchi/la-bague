@@ -20,6 +20,7 @@ import Statistiques from './pages/Statistiques';
 import LoginPage from './pages/LoginPage';
 import ToutSurLeCigare from './pages/ToutSurLeCigare';
 import Aide from './pages/Aide';
+import TresorierPage from './pages/TresorierPage';
 
 // Composant de chargement global
 const LoadingScreen = () => {
@@ -341,6 +342,16 @@ function App() {
                 <ProtectedRoute>
                   <AppLayout>
                     <Aide />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tresorier"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <TresorierPage />
                   </AppLayout>
                 </ProtectedRoute>
               }

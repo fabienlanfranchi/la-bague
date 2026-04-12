@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Users, TrendingUp, Star, Calendar, DollarSign, MessageSquare, Download, X, Bell, RefreshCw, Check, CheckCircle, ScrollText, ChevronDown, ChevronUp, UserPlus, Trash2, CreditCard, Key, Eye, EyeOff, Copy, ExternalLink, Phone, Send } from 'lucide-react';
+import { Users, TrendingUp, Star, Calendar, DollarSign, MessageSquare, Download, X, Bell, RefreshCw, Check, CheckCircle, ScrollText, ChevronDown, ChevronUp, UserPlus, Trash2, CreditCard, Key, Eye, EyeOff, Copy, ExternalLink, Phone, Send, UserX } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
 
@@ -1129,6 +1129,32 @@ const Dashboard = () => {
     }
   };
   
+  // Marquer un non-répondant comme absent
+  const handleMarkAbsent = async (membre) => {
+    if (!prochainEvenement?.id) {
+      toast.error('Aucun événement en cours');
+      return;
+    }
+    try {
+      await axios.post(`${API}/reponses-manuelles`, {
+        evenement_id: prochainEvenement.id,
+        nom: membre.nom_complet,
+        type: 'membre_manuel',
+        membre_id: membre.id,
+        present: false,
+        choix_entree: null,
+        choix_plat: null,
+        choix_dessert: null
+      });
+      toast.success(`${membre.nom_complet} marqué absent`);
+      // Recharger le sondage pour rafraîchir la liste
+      loadDashboardData();
+      loadProchainEvenement();
+    } catch (error) {
+      toast.error('Erreur lors du marquage absent');
+    }
+  };
+  
   // Charger les réponses détaillées du sondage
   const loadReponsesSondage = async (evenementId) => {
     try {
@@ -1860,16 +1886,26 @@ Le Président`;
                       <Bell className="w-5 h-5 mr-2" />
                       Membres n'ayant pas répondu ({nonRepondants.length})
                     </h4>
-                    <div className="flex flex-wrap gap-2">
-                      {nonRepondants.slice(0, 10).map((m) => (
-                        <Badge key={m.id} className="bg-yellow-900/50 text-yellow-300 border border-yellow-600/30 text-sm px-3 py-1">
-                          {m.nom_complet}
-                        </Badge>
+                    <div className="space-y-2">
+                      {nonRepondants.slice(0, 15).map((m) => (
+                        <div key={m.id} className="flex items-center justify-between bg-yellow-900/20 border border-yellow-600/20 rounded-lg px-3 py-2" data-testid={`non-repondant-${m.id}`}>
+                          <span className="text-yellow-300 text-sm">{m.nom_complet}</span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleMarkAbsent(m)}
+                            className="text-red-400 hover:text-red-300 hover:bg-red-900/30 text-xs px-2 py-1 h-auto"
+                            data-testid={`mark-absent-${m.id}`}
+                          >
+                            <UserX className="w-3.5 h-3.5 mr-1" />
+                            Absent
+                          </Button>
+                        </div>
                       ))}
-                      {nonRepondants.length > 10 && (
-                        <Badge className="bg-gray-800 text-gray-400 text-sm px-3 py-1">
-                          +{nonRepondants.length - 10} autres
-                        </Badge>
+                      {nonRepondants.length > 15 && (
+                        <p className="text-gray-400 text-sm text-center mt-2">
+                          +{nonRepondants.length - 15} autres
+                        </p>
                       )}
                     </div>
                     <p className="text-sm text-gray-400 mt-3">

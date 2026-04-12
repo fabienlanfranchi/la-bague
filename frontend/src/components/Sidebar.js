@@ -21,7 +21,8 @@ import {
   PieChart,
   Save,
   BookOpen,
-  HelpCircle
+  HelpCircle,
+  ClipboardCheck
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -32,6 +33,9 @@ const Sidebar = () => {
   
   // Le toggle mode n'est disponible que pour le Président
   const canToggleMode = currentMember?.is_president === true;
+  
+  // Le menu Trésorier est visible pour les membres ayant la fonction Trésorier
+  const isTresorier = currentMember?.fonction?.toLowerCase().includes('trésorier') || false;
 
   const isActive = (path) => location.pathname === path;
 
@@ -39,6 +43,7 @@ const Sidebar = () => {
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, adminOnly: false },
     { path: '/comptabilite', label: 'Comptabilité', icon: DollarSign, adminOnly: true },
     { path: '/members', label: 'Membres', icon: Users, adminOnly: true },
+    { path: '/tresorier', label: 'Trésorier', icon: ClipboardCheck, adminOnly: false, tresorierOnly: true },
     { path: '/evenements', label: 'Événements', icon: Calendar, adminOnly: false },
     { path: '/jeux', label: 'Jeux', icon: Gamepad2, adminOnly: false },
     { path: '/boutique', label: 'Boutique', icon: ShoppingBag, adminOnly: false },
@@ -92,8 +97,11 @@ const Sidebar = () => {
                 {currentMember?.nom_complet || 'Utilisateur'}
               </h3>
               <p className="text-[#D4A024] text-sm font-semibold tracking-wider">
-                {/* SÉCURITÉ: Afficher PRÉSIDENT seulement si is_president est true */}
-                {currentMember?.is_president === true && isAdmin ? 'PRÉSIDENT' : 'MEMBRE'}
+                {/* Afficher le titre/fonction du membre */}
+                {currentMember?.is_president === true && isAdmin ? 'PRÉSIDENT' : 
+                  (currentMember?.fonction && currentMember.fonction !== 'Membre' 
+                    ? currentMember.fonction.toUpperCase() 
+                    : 'MEMBRE')}
               </p>
             </div>
           </div>
@@ -105,6 +113,9 @@ const Sidebar = () => {
               const hasAdminAccess = isAdmin && currentMember?.is_president === true;
               if (item.adminOnly && !hasAdminAccess) return null;
               if (item.memberOnly && hasAdminAccess) return null;
+              // Onglet Trésorier visible uniquement pour les trésoriers (pas en mode admin)
+              if (item.tresorierOnly && !isTresorier) return null;
+              if (item.tresorierOnly && hasAdminAccess) return null;
               
               const Icon = item.icon;
               

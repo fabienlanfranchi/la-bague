@@ -234,8 +234,8 @@ Application de gestion complète pour le club de cigares "La Bague Impériale". 
 ---
 
 ## URLs
-- Frontend: https://cigare-gestion.preview.emergentagent.com
-- API: https://cigare-gestion.preview.emergentagent.com/api
+- Frontend: https://cigar-management-app.preview.emergentagent.com
+- API: https://cigar-management-app.preview.emergentagent.com/api
 
 ---
 
@@ -265,8 +265,8 @@ L'application est fonctionnelle et prête à être déployée.
 ---
 
 ## URLs
-- Frontend: https://cigare-gestion.preview.emergentagent.com
-- API: https://cigare-gestion.preview.emergentagent.com/api
+- Frontend: https://cigar-management-app.preview.emergentagent.com
+- API: https://cigar-management-app.preview.emergentagent.com/api
 
 ---
 
