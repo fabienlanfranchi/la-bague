@@ -2042,13 +2042,13 @@ Le Président`;
                           </div>
                           <div className="flex items-center space-x-2">
                             {response.choix_entree && (
-                              <span className="text-xs text-amber-400">E: {response.choix_entree}</span>
+                              <span className="text-xs text-amber-400">E: {extractKeyword(response.choix_entree)}</span>
                             )}
                             {response.choix_plat && (
-                              <span className="text-xs text-blue-400">P: {response.choix_plat}</span>
+                              <span className="text-xs text-blue-400">P: {extractKeyword(response.choix_plat)}</span>
                             )}
                             {response.choix_dessert && (
-                              <span className="text-xs text-purple-400">D: {response.choix_dessert}</span>
+                              <span className="text-xs text-purple-400">D: {extractKeyword(response.choix_dessert)}</span>
                             )}
                             <Button
                               variant="ghost"
