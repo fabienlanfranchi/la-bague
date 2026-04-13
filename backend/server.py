@@ -2701,6 +2701,80 @@ async def get_reponses_evenement(evenement_id: str):
     }
 
 
+
+@api_router.delete("/reponses-sondages/{evenement_id}/{membre_id}")
+async def annuler_reponse_sondage(evenement_id: str, membre_id: str):
+    """Annuler la réponse d'un membre à un événement (admin seulement).
+    Supprime la réponse et remet le membre en 'non-répondant'.
+    Met à jour les statistiques de présence si nécessaire."""
+    
+    # Chercher la réponse dans reponses_evenements
+    reponse = await db.reponses_evenements.find_one({
+        "evenement_id": evenement_id,
+        "membre_id": membre_id
+    })
+    
+    if not reponse:
+        raise HTTPException(status_code=404, detail="Réponse non trouvée")
+    
+    was_present = reponse.get("present", False)
+    
+    # Supprimer la réponse
+    await db.reponses_evenements.delete_one({
+        "evenement_id": evenement_id,
+        "membre_id": membre_id
+    })
+    
+    # Supprimer aussi de reponses_sondages si c'était un ajout manuel
+    await db.reponses_sondages.delete_one({
+        "evenement_id": evenement_id,
+        "membre_id": membre_id
+    })
+    
+    # Supprimer aussi de reponses_manuelles
+    await db.reponses_manuelles.delete_one({
+        "evenement_id": evenement_id,
+        "membre_id": membre_id
+    })
+    
+    # Mettre à jour les statistiques de présence si le membre était présent
+    if was_present:
+        evenement = await db.evenements.find_one({"id": evenement_id}, {"type_sondage": 1, "saison": 1, "_id": 0})
+        if evenement:
+            evt_type = evenement.get("type_sondage", "").lower()
+            evt_saison = evenement.get("saison")
+            
+            type_field_map = {
+                "apero": "presences_aperos",
+                "apéro": "presences_aperos",
+                "repas": "presences_repas",
+                "anniversaire": "presences_anniversaires"
+            }
+            presence_field = type_field_map.get(evt_type)
+            
+            if presence_field and evt_saison:
+                membre_presence = await db.presences_membres.find_one({
+                    "membre_id": membre_id,
+                    "saison": evt_saison
+                })
+                if membre_presence:
+                    current_value = membre_presence.get(presence_field, 0)
+                    new_value = max(0, current_value - 1)
+                    await db.presences_membres.update_one(
+                        {"membre_id": membre_id, "saison": evt_saison},
+                        {"$set": {
+                            presence_field: new_value,
+                            "updated_at": datetime.now(timezone.utc).isoformat()
+                        }}
+                    )
+    
+    # Récupérer le nom du membre pour le log
+    membre = await db.members.find_one({"id": membre_id}, {"nom_complet": 1, "_id": 0})
+    membre_nom = membre.get("nom_complet", "Membre") if membre else "Membre"
+    
+    return {"message": f"Réponse de {membre_nom} annulée. Il est maintenant dans les non-répondants."}
+
+
 # ============ TEMPLATES DE SONDAGES - ROUTES ============
 
 @api_router.get("/sondage-templates")

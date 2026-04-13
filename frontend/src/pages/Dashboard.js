@@ -1156,6 +1156,26 @@ const Dashboard = () => {
       toast.error('Erreur lors du marquage absent');
     }
   };
+
+  // Annuler la réponse d'un membre (le remet en non-répondant)
+  const handleAnnulerReponse = async (membreId) => {
+    if (!prochainEvenement?.id) return;
+    const membre = members.find(m => m.id === membreId);
+    const membreNom = membre?.nom_complet || 'Membre';
+    try {
+      await axios.delete(`${API}/reponses-sondages/${prochainEvenement.id}/${membreId}`);
+      toast.success(`Réponse de ${membreNom} annulée`);
+      loadDashboardData();
+      loadProchainEvenement();
+      // Rafraîchir les réponses dans les modals
+      if (prochainEvenement?.id) {
+        await loadReponsesSondage(prochainEvenement.id);
+        await loadManualResponses(prochainEvenement.id);
+      }
+    } catch (error) {
+      toast.error("Erreur lors de l'annulation");
+    }
+  };
   
   // Charger les réponses détaillées du sondage
   const loadReponsesSondage = async (evenementId) => {
@@ -2699,7 +2719,20 @@ Le Président`;
                       <div key={idx} className="bg-black/30 rounded-lg p-3 border border-green-600/30">
                         <div className="flex items-center justify-between">
                           <span className="text-white font-medium text-lg">{membre?.nom_complet || 'Membre inconnu'}</span>
-                          <Badge className="bg-green-600">Présent</Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge className="bg-green-600">Présent</Badge>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleAnnulerReponse(reponse.membre_id)}
+                              className="text-gray-400 hover:text-red-400 hover:bg-red-900/20 text-xs px-2 py-1 h-auto"
+                              data-testid={`annuler-present-${reponse.membre_id}`}
+                              title="Annuler la réponse"
+                            >
+                              <X className="w-3.5 h-3.5 mr-1" />
+                              Annuler
+                            </Button>
+                          </div>
                         </div>
                         {(reponse.choix_entree || reponse.choix_plat || reponse.choix_dessert) && (
                           <div className="mt-2 flex flex-wrap gap-2">
@@ -2793,7 +2826,20 @@ Le Président`;
                       <div key={idx} className="bg-black/30 rounded-lg p-3 border border-red-600/30">
                         <div className="flex items-center justify-between">
                           <span className="text-white font-medium text-lg">{membre?.nom_complet || 'Membre inconnu'}</span>
-                          <Badge className="bg-red-600">Absent</Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge className="bg-red-600">Absent</Badge>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleAnnulerReponse(reponse.membre_id)}
+                              className="text-gray-400 hover:text-yellow-400 hover:bg-yellow-900/20 text-xs px-2 py-1 h-auto"
+                              data-testid={`annuler-absent-${reponse.membre_id}`}
+                              title="Annuler la réponse"
+                            >
+                              <X className="w-3.5 h-3.5 mr-1" />
+                              Annuler
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     );
