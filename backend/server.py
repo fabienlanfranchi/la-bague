@@ -2528,7 +2528,7 @@ class ReponseSondageEvenement(BaseModel):
 
 
 @api_router.post("/reponses-sondages")
-async def submit_reponse_sondage(input: ReponseSondageEvenement):
+async def submit_reponse_sondage(request: Request, input: ReponseSondageEvenement):
     """Soumettre ou mettre à jour une réponse au sondage d'un événement
     
     AUTOMATISATION DES STATISTIQUES:
@@ -2555,6 +2555,30 @@ async def submit_reponse_sondage(input: ReponseSondageEvenement):
     old_present = existing.get("present", False) if existing else False
     action_text = "a modifié sa réponse" if existing else "a répondu"
     reponse_text = "PRÉSENT" if input.present else "ABSENT"
+    
+    # ========== JOURNAL D'AUDIT ==========
+    # Récupérer l'IP et le membre connecté en session pour tracer l'origine
+    session_member_id = request.session.get('member_id', 'inconnu')
+    client_ip = request.headers.get('x-forwarded-for', request.client.host if request.client else 'inconnu')
+    
+    audit_entry = {
+        "id": str(uuid.uuid4()),
+        "type": "reponse_sondage",
+        "action": "modification" if existing else "creation",
+        "evenement_id": input.evenement_id,
+        "membre_cible_id": input.membre_id,
+        "membre_cible_nom": membre_nom,
+        "session_membre_id": session_member_id,
+        "ancien_statut": "PRÉSENT" if old_present else ("ABSENT" if existing else "AUCUN"),
+        "nouveau_statut": reponse_text,
+        "choix_entree": input.choix_entree,
+        "choix_plat": input.choix_plat,
+        "choix_dessert": input.choix_dessert,
+        "ip": client_ip,
+        "timestamp": now
+    }
+    await db.audit_log.insert_one(audit_entry)
+    # ========== FIN AUDIT ==========
     
     if existing:
         # Mise à jour
@@ -2678,6 +2702,18 @@ async def get_reponse_membre(evenement_id: str, membre_id: str):
         raise HTTPException(status_code=404, detail="Réponse non trouvée")
     
     return reponse
+
+
+@api_router.get("/audit-log/{evenement_id}")
+async def get_audit_log(evenement_id: str, membre_id: Optional[str] = None):
+    """Consulter le journal d'audit des réponses pour un événement"""
+    query = {"evenement_id": evenement_id}
+    if membre_id:
+        query["membre_cible_id"] = membre_id
+    
+    logs = await db.audit_log.find(query, {"_id": 0}).sort("timestamp", -1).to_list(200)
+    return logs
+
 
 
 @api_router.get("/reponses-sondages/{evenement_id}")
