@@ -380,8 +380,10 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
     if (prochainEvenement?.date) {
       const eventDate = new Date(prochainEvenement.date);
       const now = new Date();
-      const diffMs = eventDate.getTime() - now.getTime();
-      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+      // Comparer les dates calendaires (sans les heures) pour éviter le décalage
+      const eventDay = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const diffDays = Math.round((eventDay.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
       
       const objet = prochainEvenement.objet?.toLowerCase() || '';
       let typeLabel = 'événement';
