@@ -1360,8 +1360,8 @@ const Dashboard = () => {
           }
         });
         
-        // Compter aussi les choix des réponses manuelles (membres sans accès + invités)
-        manualResponsesData.filter(r => r.present).forEach(r => {
+        // Compter aussi les choix des réponses manuelles (seulement ceux pas déjà comptés)
+        manualResponsesData.filter(r => r.present && !directMemberIds.has(r.membre_id)).forEach(r => {
           if (r.choix_entree) {
             choixEntrees[r.choix_entree] = (choixEntrees[r.choix_entree] || 0) + 1;
           }
@@ -1373,14 +1373,22 @@ const Dashboard = () => {
           }
         });
         
-        // Compter les présents : réponses directes + membres ajoutés manuellement + invités
-        const presentsDirects = reponsesRes.data.presents || 0;
-        const presentsManuels = manualResponsesData.filter(r => r.type === 'membre_manuel' && r.present).length;
+        // Compter les présents en évitant les doublons
+        // (un membre peut avoir une réponse directe ET une réponse manuelle)
+        const directMemberIds = new Set(reponses.map(r => r.membre_id));
+        
+        const presentsDirects = reponses.filter(r => r.present).length;
+        // Ne compter les manuels que s'ils ne sont pas déjà dans les réponses directes
+        const presentsManuels = manualResponsesData.filter(r => 
+          r.type === 'membre_manuel' && r.present && !directMemberIds.has(r.membre_id)
+        ).length;
         const presentsInvites = manualResponsesData.filter(r => r.type === 'invite' && r.present).length;
         const totalPresentsMembres = presentsDirects + presentsManuels;
         
-        const absentsDirects = reponsesRes.data.absents || 0;
-        const absentsManuels = manualResponsesData.filter(r => r.type === 'membre_manuel' && !r.present).length;
+        const absentsDirects = reponses.filter(r => !r.present).length;
+        const absentsManuels = manualResponsesData.filter(r => 
+          r.type === 'membre_manuel' && !r.present && !directMemberIds.has(r.membre_id)
+        ).length;
         const totalAbsents = absentsDirects + absentsManuels;
         
         // Mettre à jour les stats du sondage
@@ -2709,7 +2717,7 @@ Le Président`;
               <div className="flex items-center justify-between">
                 <CardTitle className="text-xl font-serif text-[#D4A024] flex items-center">
                   <CheckCircle className="w-5 h-5 mr-2 text-green-400" />
-                  Membres Présents ({reponsesSondage.filter(r => r.present).length})
+                  Membres Présents ({reponsesSondage.filter(r => r.present).length + manualResponses.filter(r => r.present && !reponsesSondage.some(s => s.membre_id === r.membre_id)).length})
                 </CardTitle>
                 <Button
                   variant="ghost"
@@ -2769,8 +2777,8 @@ Le Président`;
                     );
                   })}
                 
-                {/* Ajouts manuels présents */}
-                {manualResponses.filter(r => r.present).map((reponse, idx) => (
+                {/* Ajouts manuels présents (seulement ceux pas déjà dans les réponses directes) */}
+                {manualResponses.filter(r => r.present && !reponsesSondage.some(s => s.membre_id === r.membre_id)).map((reponse, idx) => (
                   <div key={`manual-${idx}`} className="bg-black/30 rounded-lg p-3 border border-purple-600/30">
                     <div className="flex items-center justify-between">
                       <span className="text-white font-medium text-lg">{reponse.nom}</span>
@@ -2838,7 +2846,7 @@ Le Président`;
               <div className="flex items-center justify-between">
                 <CardTitle className="text-xl font-serif text-[#D4A024] flex items-center">
                   <X className="w-5 h-5 mr-2 text-red-400" />
-                  Membres Absents ({reponsesSondage.filter(r => !r.present).length + manualResponses.filter(r => !r.present).length})
+                  Membres Absents ({reponsesSondage.filter(r => !r.present).length + manualResponses.filter(r => !r.present && !reponsesSondage.some(s => s.membre_id === r.membre_id)).length})
                 </CardTitle>
                 <Button
                   variant="ghost"
@@ -2879,8 +2887,8 @@ Le Président`;
                     );
                   })}
                 
-                {/* Ajouts manuels absents */}
-                {manualResponses.filter(r => !r.present).map((reponse, idx) => (
+                {/* Ajouts manuels absents (seulement ceux pas déjà dans les réponses directes) */}
+                {manualResponses.filter(r => !r.present && !reponsesSondage.some(s => s.membre_id === r.membre_id)).map((reponse, idx) => (
                   <div key={`manual-absent-${idx}`} className="bg-black/30 rounded-lg p-3 border border-red-600/30">
                     <div className="flex items-center justify-between">
                       <span className="text-white font-medium text-lg">{reponse.nom}</span>
