@@ -2055,40 +2055,44 @@ Le Président`;
                       {manualResponses.map((response) => (
                         <div 
                           key={response.id} 
-                          className={`flex items-center justify-between p-3 rounded-lg border ${
+                          className={`p-3 rounded-lg border ${
                             response.present 
                               ? 'bg-green-900/20 border-green-600/30' 
                               : 'bg-red-900/20 border-red-600/30'
                           }`}
                         >
-                          <div className="flex items-center space-x-3">
-                            <Badge className={response.type === 'invite' ? 'bg-purple-600' : 'bg-blue-600'}>
-                              {response.type === 'invite' ? 'Invité' : 'Membre'}
-                            </Badge>
-                            <span className="text-white font-medium">{response.nom}</span>
-                            <Badge className={response.present ? 'bg-green-600' : 'bg-red-600'}>
-                              {response.present ? 'Présent' : 'Absent'}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            {response.choix_entree && (
-                              <span className="text-xs text-amber-400">E: {extractKeyword(response.choix_entree)}</span>
-                            )}
-                            {response.choix_plat && (
-                              <span className="text-xs text-blue-400">P: {extractKeyword(response.choix_plat)}</span>
-                            )}
-                            {response.choix_dessert && (
-                              <span className="text-xs text-purple-400">D: {extractKeyword(response.choix_dessert)}</span>
-                            )}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 flex-wrap min-w-0">
+                              <Badge className={`${response.type === 'invite' ? 'bg-purple-600' : 'bg-blue-600'} text-xs flex-shrink-0`}>
+                                {response.type === 'invite' ? 'Invité' : 'Membre'}
+                              </Badge>
+                              <span className="text-white font-medium text-sm truncate">{response.nom}</span>
+                              <Badge className={`${response.present ? 'bg-green-600' : 'bg-red-600'} text-xs flex-shrink-0`}>
+                                {response.present ? 'Présent' : 'Absent'}
+                              </Badge>
+                            </div>
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => handleDeleteManualResponse(response.id)}
-                              className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                              className="text-red-400 hover:text-red-300 hover:bg-red-900/20 flex-shrink-0 ml-2"
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
                           </div>
+                          {response.present && (response.choix_entree || response.choix_plat || response.choix_dessert) && (
+                            <div className="flex flex-wrap gap-1.5 mt-2">
+                              {response.choix_entree && (
+                                <span className="text-xs text-amber-400 bg-amber-900/30 px-2 py-0.5 rounded">E: {extractKeyword(response.choix_entree)}</span>
+                              )}
+                              {response.choix_plat && (
+                                <span className="text-xs text-blue-400 bg-blue-900/30 px-2 py-0.5 rounded">P: {extractKeyword(response.choix_plat)}</span>
+                              )}
+                              {response.choix_dessert && (
+                                <span className="text-xs text-purple-400 bg-purple-900/30 px-2 py-0.5 rounded">D: {extractKeyword(response.choix_dessert)}</span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       ))}
                       
