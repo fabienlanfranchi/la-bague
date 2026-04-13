@@ -642,7 +642,7 @@ const Cigarotheque = () => {
         marque: cigare.marque || 'Inconnu',
         gamme: cigare.gamme || '',
         vitole: cigare.vitole_nom || cigare.vitole_type || '',
-        pays: cigare.pays_fabrication || '',
+        pays: cigare.terroir || cigare.pays_fabrication || cigare.pays || '',
         puissance: cigare.puissance || '',
         prix: cigare.prix || null
       });
@@ -671,7 +671,7 @@ const Cigarotheque = () => {
         marque: cigare.marque || 'Inconnu',
         gamme: cigare.gamme || '',
         vitole: cigare.vitole_nom || cigare.vitole || '',
-        pays: cigare.pays_fabrication || cigare.pays || '',
+        pays: cigare.terroir || cigare.pays_fabrication || cigare.pays || '',
         puissance: cigare.puissance || '',
         prix: cigare.prix || null
       });

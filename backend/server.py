@@ -6413,6 +6413,40 @@ async def shutdown_db_client():
     client.close()
 
 
+@app.on_event("startup")
+async def fix_cigares_personnels_pays():
+    """Corriger les cigares personnels qui n'ont pas de pays (terroir) en le récupérant du catalogue MySQL"""
+    try:
+        cigares_sans_pays = await db.cigares_personnels.find(
+            {"$or": [{"pays": ""}, {"pays": None}, {"pays": {"$exists": False}}], "cigare_id": {"$ne": None}},
+            {"_id": 0}
+        ).to_list(500)
+        
+        if not cigares_sans_pays:
+            return
+        
+        logging.info(f"Correction de {len(cigares_sans_pays)} cigares personnels sans pays...")
+        
+        with get_mysql_connection() as conn:
+            with conn.cursor(pymysql.cursors.DictCursor) as cursor:
+                for c in cigares_sans_pays:
+                    cursor.execute("SELECT terroir, pays_fabrication FROM cigares WHERE id = %s", (c['cigare_id'],))
+                    row = cursor.fetchone()
+                    if row:
+                        pays = row.get('terroir') or row.get('pays_fabrication') or ''
+                        if pays:
+                            await db.cigares_personnels.update_one(
+                                {"id": c['id']},
+                                {"$set": {"pays": pays}}
+                            )
+                            logging.info(f"  Corrigé: {c.get('marque')} -> {pays}")
+        
+        logging.info("Correction des pays terminée")
+    except Exception as e:
+        logging.error(f"Erreur correction pays cigares: {e}")
+
+
+
 # ==================== ASSISTANT IA (MODULE SÉPARÉ) ====================
 # Les routes Winston sont maintenant dans routes/winston.py
 from routes.winston import winston_router
