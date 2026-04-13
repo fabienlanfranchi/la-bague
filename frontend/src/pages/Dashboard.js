@@ -2762,11 +2762,33 @@ Le Président`;
                   <div key={`manual-${idx}`} className="bg-black/30 rounded-lg p-3 border border-purple-600/30">
                     <div className="flex items-center justify-between">
                       <span className="text-white font-medium text-lg">{reponse.nom}</span>
-                      <div className="flex gap-2">
+                      <div className="flex items-center gap-2">
                         <Badge className={reponse.type === 'invite' ? 'bg-purple-600' : 'bg-blue-600'}>
                           {reponse.type === 'invite' ? 'Invité' : 'Ajout manuel'}
                         </Badge>
                         <Badge className="bg-green-600">Présent</Badge>
+                        {reponse.type === 'membre_manuel' && reponse.membre_id ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleAnnulerReponse(reponse.membre_id)}
+                            className="text-gray-400 hover:text-red-400 hover:bg-red-900/20 text-xs px-2 py-1 h-auto"
+                            title="Annuler la réponse"
+                          >
+                            <X className="w-3.5 h-3.5 mr-1" />
+                            Annuler
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteManualResponse(reponse.id)}
+                            className="text-gray-400 hover:text-red-400 hover:bg-red-900/20 text-xs px-2 py-1 h-auto"
+                            title="Supprimer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                     {(reponse.choix_entree || reponse.choix_plat || reponse.choix_dessert) && (
@@ -2850,11 +2872,33 @@ Le Président`;
                   <div key={`manual-absent-${idx}`} className="bg-black/30 rounded-lg p-3 border border-red-600/30">
                     <div className="flex items-center justify-between">
                       <span className="text-white font-medium text-lg">{reponse.nom}</span>
-                      <div className="flex gap-2">
+                      <div className="flex items-center gap-2">
                         <Badge className={reponse.type === 'invite' ? 'bg-purple-600' : 'bg-blue-600'}>
                           {reponse.type === 'invite' ? 'Invité' : 'Ajout manuel'}
                         </Badge>
                         <Badge className="bg-red-600">Absent</Badge>
+                        {reponse.type === 'membre_manuel' && reponse.membre_id ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleAnnulerReponse(reponse.membre_id)}
+                            className="text-gray-400 hover:text-yellow-400 hover:bg-yellow-900/20 text-xs px-2 py-1 h-auto"
+                            title="Annuler la réponse"
+                          >
+                            <X className="w-3.5 h-3.5 mr-1" />
+                            Annuler
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteManualResponse(reponse.id)}
+                            className="text-gray-400 hover:text-red-400 hover:bg-red-900/20 text-xs px-2 py-1 h-auto"
+                            title="Supprimer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </div>
