@@ -96,12 +96,12 @@ const Sidebar = () => {
               <h3 className="text-white text-lg font-serif mb-1">
                 {currentMember?.nom_complet || 'Utilisateur'}
               </h3>
+              <p className="text-gray-400 text-xs tracking-wider">MEMBRE</p>
               <p className="text-[#D4A024] text-sm font-semibold tracking-wider">
-                {/* Afficher le titre/fonction du membre */}
                 {currentMember?.is_president === true && isAdmin ? 'PRÉSIDENT' : 
                   (currentMember?.fonction && currentMember.fonction !== 'Membre' 
                     ? currentMember.fonction.toUpperCase() 
-                    : 'MEMBRE')}
+                    : '')}
               </p>
             </div>
           </div>
