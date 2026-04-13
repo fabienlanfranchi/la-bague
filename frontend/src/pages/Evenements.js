@@ -162,16 +162,17 @@ const Evenements = () => {
     setLoadingRepondants(true);
     setShowRepondantsModal(true);
     try {
-      // Charger les réponses pour cet événement
-      const reponsesRes = await axios.get(`${API}/reponses-sondages/${evenement.id}`);
-      const reponsesData = reponsesRes.data || {};
-      const reponses = reponsesData.reponses || [];
-      
-      // Charger la liste des membres
-      const membresRes = await axios.get(`${API}/members`);
+      // Charger les réponses ET les réponses manuelles pour cet événement
+      const [reponsesRes, manuellesRes, membresRes] = await Promise.all([
+        axios.get(`${API}/reponses-sondages/${evenement.id}`),
+        axios.get(`${API}/reponses-manuelles/${evenement.id}`),
+        axios.get(`${API}/members`)
+      ]);
+      const reponses = reponsesRes.data?.reponses || [];
+      const manuelles = manuellesRes.data || [];
       const membres = membresRes.data || [];
       
-      // Associer les noms aux réponses
+      // Associer les noms aux réponses normales
       const reponsesAvecNoms = reponses.map(r => {
         const membre = membres.find(m => m.id === r.membre_id);
         return {
@@ -180,9 +181,22 @@ const Evenements = () => {
         };
       });
       
+      // Ajouter les réponses manuelles (membres sans accès + invités)
+      // en évitant les doublons (un membre_manuel peut déjà être dans reponses_evenements)
+      const membreIdsDejaPresents = new Set(reponses.map(r => r.membre_id));
+      const manuellesUniques = manuelles.filter(m => 
+        !m.membre_id || !membreIdsDejaPresents.has(m.membre_id)
+      );
+      
+      const manuellesAvecNoms = manuellesUniques.map(r => ({
+        ...r,
+        nom_complet: r.nom,
+        is_manual: true
+      }));
+      
       setRepondantsData({
         evenement,
-        reponses: reponsesAvecNoms,
+        reponses: [...reponsesAvecNoms, ...manuellesAvecNoms],
         membres
       });
     } catch (error) {
@@ -2043,7 +2057,12 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                       <div className="space-y-1">
                         {repondantsData.reponses.filter(r => r.present).map((r, idx) => (
                           <div key={idx} className="flex items-center justify-between p-2 bg-green-500/10 border border-green-500/30 rounded">
-                            <span className="text-white">{r.nom_complet}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-white">{r.nom_complet}</span>
+                              {r.is_manual && (
+                                <Badge className="bg-blue-600/50 text-xs">Manuel</Badge>
+                              )}
+                            </div>
                             {/* Afficher les choix du repas si c'est un sondage repas */}
                             {r.choix_entree || r.choix_plat || r.choix_dessert ? (
                               <div className="flex space-x-2 text-sm">
@@ -2069,6 +2088,9 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                         {repondantsData.reponses.filter(r => !r.present).map((r, idx) => (
                           <div key={idx} className="flex items-center p-2 bg-red-500/10 border border-red-500/30 rounded">
                             <span className="text-gray-400">{r.nom_complet}</span>
+                            {r.is_manual && (
+                              <Badge className="bg-blue-600/50 text-xs ml-2">Manuel</Badge>
+                            )}
                           </div>
                         ))}
                       </div>
