@@ -105,9 +105,13 @@ const Evenements = () => {
   // État pour l'upload d'image
   const [eventImage, setEventImage] = useState(null);
   const [uploadingImage, setUploadingImage] = useState(false);
+  
+  // Info préliminaire (avant création événement officiel)
+  const [prochainEvenementInfo, setProchainEvenementInfo] = useState(null);
 
   useEffect(() => {
     loadEvenements();
+    loadProchainEvenementInfo();
   }, []);
 
   const loadEvenements = async () => {
@@ -120,6 +124,15 @@ const Evenements = () => {
       toast.error('Erreur lors du chargement des événements');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadProchainEvenementInfo = async () => {
+    try {
+      const response = await axios.get(`${API}/prochain-evenement-info`);
+      setProchainEvenementInfo(response.data?.info || null);
+    } catch (error) {
+      setProchainEvenementInfo(null);
     }
   };
 
@@ -1056,6 +1069,35 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                   )}
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        ) : prochainEvenementInfo && prochainEvenementInfo.actif ? (
+          <Card className="bg-black/40 border-2 border-cyan-600/50 backdrop-blur-sm">
+            <CardContent className="p-8 text-center">
+              <Badge className="bg-cyan-600 text-white text-sm mb-4">
+                {prochainEvenementInfo.type_evenement === 'repas' ? 'Repas' : 'Apéro'}
+              </Badge>
+              <h3 className="text-2xl font-serif text-white mb-3">
+                {prochainEvenementInfo.type_evenement === 'repas' ? 'Prochain Repas' : 'Prochain Apéro'}
+              </h3>
+              <p className="text-[#D4A024] text-lg mb-1">
+                {new Date(prochainEvenementInfo.date + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+              </p>
+              <p className="text-gray-300 text-lg mb-4">
+                {prochainEvenementInfo.lieu}
+              </p>
+              <p className="text-gray-500 text-sm">
+                Plus d'informations à venir... Le sondage sera ouvert une fois l'événement créé.
+              </p>
+              {hasAdminAccess && (
+                <Button
+                  onClick={() => setShowCreateModal(true)}
+                  className="mt-4 bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif font-bold"
+                >
+                  <Plus className="w-5 h-5 mr-2" />
+                  Créer l'événement officiel
+                </Button>
+              )}
             </CardContent>
           </Card>
         ) : (
