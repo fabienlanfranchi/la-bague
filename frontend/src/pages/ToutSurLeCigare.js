@@ -93,10 +93,28 @@ const ToutSurLeCigare = () => {
 
   const scrollToSection = (numero) => {
     setActiveSection(numero);
-    setShowMobileSommaire(false); // Fermer le menu mobile
-    // Utiliser un ID HTML pour une navigation plus fiable
+    setShowMobileSommaire(false);
     setTimeout(() => {
       const element = document.getElementById(`partie-${numero}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 200);
+  };
+
+  // Scroll vers une sous-section de parcours (débutant, amateur, confirmé, expert)
+  const scrollToParcours = (niveau) => {
+    setActiveSection(11);
+    setShowMobileSommaire(false);
+    const anchorMap = {
+      'débutant': '1-debuter-sans-se-tromper',
+      'amateur': '2-progresser-comme-amateur',
+      'confirmé': '3-affiner-son-palais-de-confirme',
+      'expert': '4-ce-qui-peut-encore-surprendre-un-expert'
+    };
+    const anchorId = anchorMap[niveau];
+    setTimeout(() => {
+      const element = document.getElementById(anchorId);
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
@@ -146,9 +164,14 @@ const ToutSurLeCigare = () => {
           </h2>
         );
       } else if (line.startsWith('### ')) {
+        const h3Text = line.replace('### ', '');
+        // Créer un ID basé sur le texte pour les ancres de parcours
+        const h3Id = h3Text.toLowerCase()
+          .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
         elements.push(
-          <h3 key={index} className="text-xl font-semibold text-white mt-6 mb-3">
-            {line.replace('### ', '')}
+          <h3 key={index} id={h3Id} className="text-xl font-semibold text-white mt-6 mb-3 scroll-mt-4">
+            {h3Text}
           </h3>
         );
       } else if (line.startsWith('**') && line.endsWith('**')) {
@@ -258,7 +281,7 @@ const ToutSurLeCigare = () => {
                   }`}
                 >
                   <span className="font-bold text-sm w-6 text-[#D4A024]">{partie.numero}.</span>
-                  <span className="text-sm flex-1">{partie.titre}</span>
+                  <span className="text-base flex-1">{partie.titre}</span>
                 </button>
               ))}
             </div>
@@ -272,7 +295,7 @@ const ToutSurLeCigare = () => {
                 {parcours.map((p) => (
                   <Badge 
                     key={p.id}
-                    onClick={() => scrollToSection(11)}
+                    onClick={() => scrollToParcours(p.niveau)}
                     className={`cursor-pointer ${
                       p.niveau === 'débutant' ? 'bg-green-600' :
                       p.niveau === 'amateur' ? 'bg-blue-600' :
@@ -311,7 +334,7 @@ const ToutSurLeCigare = () => {
                   }`}
                 >
                   <span className="font-bold text-sm w-6">{partie.numero}.</span>
-                  <span className="text-sm flex-1 group-hover:text-white">{partie.titre}</span>
+                  <span className="text-base flex-1 group-hover:text-white">{partie.titre}</span>
                 </button>
               ))}
             </div>
@@ -325,17 +348,17 @@ const ToutSurLeCigare = () => {
               {parcours.map((p) => (
                 <button
                   key={p.id}
-                  onClick={() => scrollToSection(11)}
+                  onClick={() => scrollToParcours(p.niveau)}
                   className="w-full text-left p-2 hover:bg-[#D4A024]/10 rounded transition-colors flex items-center gap-2 group"
                 >
                   <Badge className={`${
                     p.niveau === 'débutant' ? 'bg-green-600' :
                     p.niveau === 'amateur' ? 'bg-blue-600' :
                     p.niveau === 'confirmé' ? 'bg-purple-600' : 'bg-red-600'
-                  } text-white text-xs`}>
+                  } text-white text-sm`}>
                     {p.niveau}
                   </Badge>
-                  <span className="text-gray-400 text-xs group-hover:text-white flex-1 truncate">{p.titre}</span>
+                  <span className="text-gray-400 text-sm group-hover:text-white flex-1 truncate">{p.titre}</span>
                 </button>
               ))}
             </div>
