@@ -3607,7 +3607,8 @@ async def get_presences_by_saison(saison: int):
 
 @api_router.get("/presences/membre/{membre_id}/detail/{saison}")
 async def get_presences_detail_membre(membre_id: str, saison: int, type_evt: Optional[str] = None):
-    """Détail des présences d'un membre pour une saison : liste des événements avec présent/absent"""
+    """Détail des présences d'un membre pour une saison : liste des événements avec présent/absent.
+    Pour les anciens événements sans réponse individuelle, déduit la présence des données agrégées."""
     # Récupérer tous les événements terminés de cette saison
     query = {"saison": saison, "statut": "terminé"}
     if type_evt:
@@ -3620,9 +3621,29 @@ async def get_presences_detail_membre(membre_id: str, saison: int, type_evt: Opt
     
     evenements = await db.evenements.find(query, {"_id": 0}).sort("date", 1).to_list(200)
     
+    # Récupérer les données agrégées de présence pour cette saison
+    presence_agregee = await db.presences_membres.find_one({
+        "membre_id": membre_id,
+        "saison": saison
+    }, {"_id": 0})
+    
+    # Mapper le type d'événement vers le champ de présence agrégée
+    type_to_field = {
+        "repas": "presences_repas",
+        "apero": "presences_aperos",
+        "apéro": "presences_aperos",
+        "anniversaire": "presences_anniversaires"
+    }
+    
+    # Nombre de présences agrégées pour ce type
+    field = type_to_field.get(type_evt, "")
+    nb_presences_agregees = presence_agregee.get(field, 0) if presence_agregee and field else 0
+    
     result = []
+    nb_sans_reponse = 0
+    
     for evt in evenements:
-        # Chercher la réponse du membre
+        # Chercher la réponse du membre dans reponses_evenements
         reponse = await db.reponses_evenements.find_one({
             "evenement_id": evt["id"],
             "membre_id": membre_id
@@ -3637,7 +3658,11 @@ async def get_presences_detail_membre(membre_id: str, saison: int, type_evt: Opt
             if reponse_manuelle:
                 reponse = reponse_manuelle
         
-        present = reponse.get("present", False) if reponse else None
+        if reponse:
+            present = reponse.get("present", False)
+        else:
+            present = None
+            nb_sans_reponse += 1
         
         result.append({
             "evenement_id": evt["id"],
@@ -3645,8 +3670,32 @@ async def get_presences_detail_membre(membre_id: str, saison: int, type_evt: Opt
             "lieu": evt.get("lieu", ""),
             "objet": evt.get("objet", ""),
             "type_sondage": evt.get("type_sondage", ""),
-            "present": present  # True, False, or None (pas répondu)
+            "present": present
         })
+    
+    # Si tous les événements sont sans réponse individuelle,
+    # déduire la présence des données agrégées
+    if nb_sans_reponse > 0 and nb_presences_agregees > 0:
+        # Nombre d'absences = total événements - présences agrégées
+        nb_absences = len(evenements) - nb_presences_agregees
+        
+        if nb_absences <= 0:
+            # Présent à tous → marquer tout comme présent
+            for r in result:
+                if r["present"] is None:
+                    r["present"] = True
+        else:
+            # On ne peut pas savoir lesquels exactement → marquer les plus récents d'abord
+            # car les données agrégées sont plus fiables sur les anciens événements
+            # On marque les premiers comme présent et les derniers non-répondus restent "?"
+            presents_a_remplir = nb_presences_agregees
+            for r in result:
+                if r["present"] is None:
+                    if presents_a_remplir > 0:
+                        r["present"] = True
+                        presents_a_remplir -= 1
+                    else:
+                        r["present"] = False
     
     return {"membre_id": membre_id, "saison": saison, "type": type_evt, "evenements": result}
 
