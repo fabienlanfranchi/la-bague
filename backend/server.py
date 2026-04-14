@@ -2382,6 +2382,7 @@ class EvenementUpdate(BaseModel):
     type_sondage: Optional[str] = None  # "repas", "apero", "anniversaire"
     total_presents: Optional[int] = None
     objet: Optional[str] = None
+    statut: Optional[str] = None  # "à venir", "terminé"
 
 
 @api_router.put("/evenements/{evenement_id}")
@@ -2412,6 +2413,8 @@ async def update_evenement(evenement_id: str, input: EvenementUpdate):
         update_data['total_presents'] = input.total_presents
     if input.objet is not None:
         update_data['objet'] = input.objet
+    if input.statut is not None:
+        update_data['statut'] = input.statut
     
     if not update_data:
         raise HTTPException(status_code=400, detail="Aucune donnée à mettre à jour")
@@ -3600,6 +3603,53 @@ async def get_presences_by_saison(saison: int):
         "config": config,
         "presences": presences
     }
+
+
+@api_router.get("/presences/membre/{membre_id}/detail/{saison}")
+async def get_presences_detail_membre(membre_id: str, saison: int, type_evt: Optional[str] = None):
+    """Détail des présences d'un membre pour une saison : liste des événements avec présent/absent"""
+    # Récupérer tous les événements terminés de cette saison
+    query = {"saison": saison, "statut": "terminé"}
+    if type_evt:
+        type_map = {"repas": "repas", "apero": ["apero", "apéro"], "anniversaire": "anniversaire"}
+        mapped = type_map.get(type_evt, type_evt)
+        if isinstance(mapped, list):
+            query["type_sondage"] = {"$in": mapped}
+        else:
+            query["type_sondage"] = mapped
+    
+    evenements = await db.evenements.find(query, {"_id": 0}).sort("date", 1).to_list(200)
+    
+    result = []
+    for evt in evenements:
+        # Chercher la réponse du membre
+        reponse = await db.reponses_evenements.find_one({
+            "evenement_id": evt["id"],
+            "membre_id": membre_id
+        })
+        
+        # Aussi chercher dans les réponses manuelles
+        if not reponse:
+            reponse_manuelle = await db.reponses_manuelles.find_one({
+                "evenement_id": evt["id"],
+                "membre_id": membre_id
+            })
+            if reponse_manuelle:
+                reponse = reponse_manuelle
+        
+        present = reponse.get("present", False) if reponse else None
+        
+        result.append({
+            "evenement_id": evt["id"],
+            "date": evt.get("date"),
+            "lieu": evt.get("lieu", ""),
+            "objet": evt.get("objet", ""),
+            "type_sondage": evt.get("type_sondage", ""),
+            "present": present  # True, False, or None (pas répondu)
+        })
+    
+    return {"membre_id": membre_id, "saison": saison, "type": type_evt, "evenements": result}
+
 
 
 @api_router.get("/presences/membre/{membre_id}")
@@ -6444,6 +6494,57 @@ async def fix_cigares_personnels_pays():
         logging.info("Correction des pays terminée")
     except Exception as e:
         logging.error(f"Erreur correction pays cigares: {e}")
+
+
+@app.on_event("startup")
+async def auto_terminer_evenements():
+    """Terminer automatiquement les événements dont la date est passée"""
+    try:
+        now = datetime.now(timezone.utc)
+        evenements_a_venir = await db.evenements.find(
+            {"statut": "à venir"},
+            {"_id": 0}
+        ).to_list(100)
+        
+        for evt in evenements_a_venir:
+            evt_date = evt.get('date')
+            if isinstance(evt_date, str):
+                try:
+                    evt_date = datetime.fromisoformat(evt_date.replace('Z', '+00:00'))
+                except:
+                    continue
+            
+            # S'assurer que la date a un timezone
+            if evt_date.tzinfo is None:
+                evt_date = evt_date.replace(tzinfo=timezone.utc)
+            
+            if evt_date and evt_date < now:
+                # Compter les présents réels
+                reponses = await db.reponses_evenements.find(
+                    {"evenement_id": evt['id']},
+                    {"_id": 0}
+                ).to_list(1000)
+                presents_directs = len([r for r in reponses if r.get('present')])
+                
+                # Ajouter les manuels
+                manuelles = await db.reponses_manuelles.find(
+                    {"evenement_id": evt['id']},
+                    {"_id": 0}
+                ).to_list(100)
+                presents_manuels = len([r for r in manuelles if r.get('present')])
+                
+                total = presents_directs + presents_manuels
+                
+                await db.evenements.update_one(
+                    {"id": evt['id']},
+                    {"$set": {
+                        "statut": "terminé",
+                        "total_presents": total
+                    }}
+                )
+                logging.info(f"Auto-terminé: {evt.get('objet')} du {evt.get('date')} - {total} présents")
+    except Exception as e:
+        logging.error(f"Erreur auto-terminaison: {e}")
 
 
 

@@ -1518,7 +1518,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                                   {/* Lieu - éditable seulement pour admin */}
                                   <input
                                     type="text"
-                                    value={getTableValue(evt.id, 'lieu', evt.lieu)}
+                                    value={getTableValue(evt, 'lieu')}
                                     onChange={(e) => hasAdminAccess && handleTableCellChange(evt.id, 'lieu', e.target.value)}
                                     readOnly={!hasAdminAccess}
                                     className={`font-serif font-semibold w-16 sm:w-24 px-1 py-0.5 rounded text-xs sm:text-sm bg-transparent text-white border border-transparent ${hasAdminAccess ? 'hover:border-[#D4A024]/30 focus:border-[#D4A024] focus:bg-black/30' : 'cursor-default'}`}
@@ -1528,7 +1528,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                                   {/* Date - éditable seulement pour admin */}
                                   <input
                                     type="date"
-                                    value={getTableValue(evt.id, 'date', evt.date?.split('T')[0] || '')}
+                                    value={getTableValue(evt, 'date')}
                                     onChange={(e) => hasAdminAccess && handleTableCellChange(evt.id, 'date', e.target.value)}
                                     readOnly={!hasAdminAccess}
                                     className={`w-24 sm:w-28 px-1 py-0.5 rounded text-xs bg-transparent text-gray-400 border border-transparent ${hasAdminAccess ? 'hover:border-[#D4A024]/30 focus:border-[#D4A024] focus:bg-black/30' : 'cursor-default'}`}
@@ -1537,7 +1537,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                                   
                                   {/* Type - éditable seulement pour admin (caché sur mobile) */}
                                   <select
-                                    value={getTableValue(evt.id, 'type_sondage', evt.type_sondage)}
+                                    value={getTableValue(evt, 'type_sondage')}
                                     onChange={(e) => hasAdminAccess && handleTableCellChange(evt.id, 'type_sondage', e.target.value)}
                                     disabled={!hasAdminAccess}
                                     className={`hidden sm:block w-20 px-1 py-0.5 rounded text-xs bg-transparent text-gray-400 border border-transparent ${hasAdminAccess ? 'hover:border-[#D4A024]/30 focus:border-[#D4A024] focus:bg-black/30' : 'cursor-default'}`}
@@ -1557,7 +1557,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                                     <input
                                       type="number"
                                       min="0"
-                                      value={getTableValue(evt.id, 'total_presents', evt.total_presents || 0)}
+                                      value={getTableValue(evt, 'total_presents')}
                                       onChange={(e) => hasAdminAccess && handleTableCellChange(evt.id, 'total_presents', e.target.value)}
                                       readOnly={!hasAdminAccess}
                                       className={`w-8 sm:w-10 text-center font-bold text-base sm:text-lg bg-transparent text-[#D4A024] border-none focus:outline-none ${!hasAdminAccess ? 'cursor-default' : ''}`}

@@ -181,6 +181,12 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
   
   // Stats personnelles
   const [statsPerso, setStatsPerso] = useState(null);
+  
+  // Modal détail des présences par type
+  const [showPresenceDetail, setShowPresenceDetail] = useState(false);
+  const [presenceDetailType, setPresenceDetailType] = useState('');
+  const [presenceDetailData, setPresenceDetailData] = useState([]);
+  const [loadingPresenceDetail, setLoadingPresenceDetail] = useState(false);
 
   // Charger les messages non lus et les stats perso
   useEffect(() => {
@@ -254,6 +260,23 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
     
     loadExistingReponse();
   }, [prochainEvenement, currentMember]);
+
+
+  // Charger le détail des présences par type (repas, apero, anniversaire)
+  const handleShowPresenceDetail = async (typeEvt) => {
+    if (!currentMember?.id) return;
+    setPresenceDetailType(typeEvt);
+    setLoadingPresenceDetail(true);
+    setShowPresenceDetail(true);
+    try {
+      const response = await axios.get(`${API}/presences/membre/${currentMember.id}/detail/13?type_evt=${typeEvt}`);
+      setPresenceDetailData(response.data?.evenements || []);
+    } catch (error) {
+      console.error('Erreur chargement détail:', error);
+      setPresenceDetailData([]);
+    }
+    setLoadingPresenceDetail(false);
+  };
 
   // Ouvrir un message et le marquer comme lu
   const openMessage = async (msg) => {
@@ -519,30 +542,42 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
               </div>
               
               {/* Apéros */}
-              <div className="bg-black/30 rounded-lg p-4 text-center border border-amber-500/20">
+              <div 
+                className="bg-black/30 rounded-lg p-4 text-center border border-amber-500/20 cursor-pointer hover:bg-amber-900/20 transition-colors"
+                onClick={() => handleShowPresenceDetail('apero')}
+              >
                 <p className="text-gray-400 text-base mb-1">Apéros</p>
                 <p className="text-2xl font-bold text-amber-400">
                   {statsPerso.presences_aperos}/{statsPerso.config?.nb_aperos || 0}
                 </p>
                 <p className="text-amber-400/70 text-base">{statsPerso.pct_aperos}%</p>
+                <p className="text-xs text-amber-500/50 mt-1">Détails</p>
               </div>
               
               {/* Repas */}
-              <div className="bg-black/30 rounded-lg p-4 text-center border border-blue-500/20">
+              <div 
+                className="bg-black/30 rounded-lg p-4 text-center border border-blue-500/20 cursor-pointer hover:bg-blue-900/20 transition-colors"
+                onClick={() => handleShowPresenceDetail('repas')}
+              >
                 <p className="text-gray-400 text-base mb-1">Repas</p>
                 <p className="text-2xl font-bold text-blue-400">
                   {statsPerso.presences_repas}/{statsPerso.config?.nb_repas || 0}
                 </p>
                 <p className="text-blue-400/70 text-base">{statsPerso.pct_repas}%</p>
+                <p className="text-xs text-blue-500/50 mt-1">Détails</p>
               </div>
               
               {/* Anniversaires */}
-              <div className="bg-black/30 rounded-lg p-4 text-center border border-purple-500/20">
+              <div 
+                className="bg-black/30 rounded-lg p-4 text-center border border-purple-500/20 cursor-pointer hover:bg-purple-900/20 transition-colors"
+                onClick={() => handleShowPresenceDetail('anniversaire')}
+              >
                 <p className="text-gray-400 text-base mb-1">Anniversaires</p>
                 <p className="text-2xl font-bold text-purple-400">
                   {statsPerso.presences_anniversaires}/{statsPerso.config?.nb_anniversaires || 0}
                 </p>
                 <p className="text-purple-400/70 text-base">{statsPerso.pct_anniversaires}%</p>
+                <p className="text-xs text-purple-500/50 mt-1">Détails</p>
               </div>
             </div>
           </CardContent>
@@ -975,6 +1010,59 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
 
       {/* Charte du Club */}
       <CharteClub defaultExpanded={false} />
+
+      {/* Modal détail des présences */}
+      {showPresenceDetail && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <Card className="bg-[#7A2020] border-2 border-[#D4A024] max-w-lg w-full max-h-[80vh] overflow-hidden">
+            <CardHeader className="border-b border-[#D4A024]/30">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xl font-serif text-[#D4A024]">
+                  {presenceDetailType === 'repas' ? 'Repas' : presenceDetailType === 'apero' ? 'Apéros' : 'Anniversaires'} - Saison 13
+                </CardTitle>
+                <Button variant="ghost" size="icon" onClick={() => setShowPresenceDetail(false)} className="text-[#D4A024]">
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-4 overflow-y-auto max-h-[60vh]">
+              {loadingPresenceDetail ? (
+                <div className="text-center py-8 text-gray-400">Chargement...</div>
+              ) : presenceDetailData.length === 0 ? (
+                <div className="text-center py-8 text-gray-400">Aucun événement trouvé</div>
+              ) : (
+                <div className="space-y-2">
+                  {presenceDetailData.map((evt, idx) => (
+                    <div 
+                      key={evt.evenement_id}
+                      className={`flex items-center justify-between p-3 rounded-lg border ${
+                        evt.present === true 
+                          ? 'bg-green-900/20 border-green-600/30' 
+                          : evt.present === false
+                            ? 'bg-red-900/20 border-red-600/30'
+                            : 'bg-gray-900/20 border-gray-600/30'
+                      }`}
+                    >
+                      <div>
+                        <span className="text-white font-medium">{evt.lieu || evt.objet}</span>
+                        <p className="text-gray-400 text-xs">
+                          {new Date(evt.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}
+                        </p>
+                      </div>
+                      <Badge className={
+                        evt.present === true ? 'bg-green-600' : 
+                        evt.present === false ? 'bg-red-600' : 'bg-gray-600'
+                      }>
+                        {evt.present === true ? 'Présent' : evt.present === false ? 'Absent' : '?'}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };
