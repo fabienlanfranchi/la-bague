@@ -252,7 +252,7 @@ const Evenements = () => {
     if (objet.includes('repas') || event.type_sondage === 'repas') {
       objetText = `🍽️ *Repas du Club* au ${lieu}`;
     } else if (objet.includes('apéro') || objet.includes('apero')) {
-      objetText = `🥃 *Apéro du Club* à ${lieu} de ${heure} à 21h`;
+      objetText = `🥃 *Apéro du Club* à ${lieu} de 19h à 21h`;
     } else if (objet.includes('anniversaire')) {
       objetText = `🎂 *Anniversaire du Club* à ${lieu}`;
     } else {
@@ -263,7 +263,7 @@ const Evenements = () => {
     
     const message = `🎩 *La Bague Impériale*
 
-📅 *${dateFormatted}* à ${heure}
+📅 *${dateFormatted}* à 19h
 
 ${objetText}
 
@@ -298,7 +298,7 @@ _Merci de confirmer votre présence !_`;
     let message = `🎩 *La Bague Impériale*
 ━━━━━━━━━━━━━━━━━━━━
 
-📅 *${dateFormatted}* à ${heure}
+📅 *${dateFormatted}* à 19h
 
 ${objetText}`;
 

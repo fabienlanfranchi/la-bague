@@ -79,7 +79,7 @@ const Aide = () => {
     },
     {
       icon: Wine,
-      title: "Cigarthèque",
+      title: "Cigarothèque",
       shortDesc: "Explorez notre catalogue de 651 cigares.",
       details: [
         "Parcourir le catalogue complet (cubains et non-cubains)",

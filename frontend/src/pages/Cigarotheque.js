@@ -94,13 +94,13 @@ const Cigarotheque = () => {
   const [prixMax, setPrixMax] = useState('');
   const [collectionFilter, setCollectionFilter] = useState(''); // '', 'dans', 'pas_dans'
   
-  // Filtres Ma Cigarthèque
+  // Filtres Ma Cigarothèque
   const [maCollectionSearch, setMaCollectionSearch] = useState('');
   const [maCollectionPays, setMaCollectionPays] = useState('');
   const [maCollectionMarque, setMaCollectionMarque] = useState('');
   const [maCollectionModule, setMaCollectionModule] = useState('');
   
-  // Accordéons ouverts dans Ma Cigarthèque (hiérarchie Terroir > Marque > Gamme)
+  // Accordéons ouverts dans Ma Cigarothèque (hiérarchie Terroir > Marque > Gamme)
   const [openTerroirs, setOpenTerroirs] = useState([]);
   const [openMarques, setOpenMarques] = useState([]);
   const [openGammes, setOpenGammes] = useState([]);
@@ -131,16 +131,16 @@ const Cigarotheque = () => {
   // Filtre admin: cigares incomplets
   const [showIncompleteOnly, setShowIncompleteOnly] = useState(false);
   
-  // Modal recherche cigare (pour ajouter à Ma Cigarthèque)
+  // Modal recherche cigare (pour ajouter à Ma Cigarothèque)
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [searchModalQuery, setSearchModalQuery] = useState('');
   const [searchModalResults, setSearchModalResults] = useState([]);
   const [searchModalLoading, setSearchModalLoading] = useState(false);
   
-  // Ma Cigarthèque
+  // Ma Cigarothèque
   const [maCigarotheque, setMaCigarotheque] = useState([]);
   
-  // Filtre Favoris uniquement (Ma Cigarthèque)
+  // Filtre Favoris uniquement (Ma Cigarothèque)
   const [showFavorisOnly, setShowFavorisOnly] = useState(false);
   
   // Filtre Favoris uniquement (Catalogue)
@@ -149,7 +149,7 @@ const Cigarotheque = () => {
   // Apéro du Club
   const [aperoClub, setAperoClub] = useState([]);
   
-  // Modal notation guidée (Ma Cigarthèque)
+  // Modal notation guidée (Ma Cigarothèque)
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [noteType, setNoteType] = useState('basique'); // 'basique' ou 'poussee'
   const [noteData, setNoteData] = useState({
@@ -191,12 +191,12 @@ const Cigarotheque = () => {
 
   const LIMIT = 20;
 
-  // Set des IDs de cigares dans Ma Cigarthèque (pour le badge et le filtre)
+  // Set des IDs de cigares dans Ma Cigarothèque (pour le badge et le filtre)
   const maCollectionCigareIds = useMemo(() => {
     return new Set(maCigarotheque.map(c => c.cigare_id).filter(Boolean));
   }, [maCigarotheque]);
 
-  // Fonction pour vérifier si un cigare est dans Ma Cigarthèque
+  // Fonction pour vérifier si un cigare est dans Ma Cigarothèque
   const isInMaCollection = (cigareId) => {
     return maCollectionCigareIds.has(cigareId);
   };
@@ -215,7 +215,7 @@ const Cigarotheque = () => {
   useEffect(() => {
     loadFiltres();
     loadAperoClub();
-    // Charger Ma Cigarthèque uniquement pour les membres (pas l'admin)
+    // Charger Ma Cigarothèque uniquement pour les membres (pas l'admin)
     if (!isAdmin && currentMember?.id) {
       loadMaCigarotheque();
     }
@@ -417,7 +417,7 @@ const Cigarotheque = () => {
     }
   }, [currentMember?.id]);
 
-  // Toggle favori (pour Ma Cigarthèque - cigare déjà dans la collection)
+  // Toggle favori (pour Ma Cigarothèque - cigare déjà dans la collection)
   const toggleFavori = async (cigareId) => {
     try {
       const response = await axios.post(`${API}/ma-cigarotheque/${cigareId}/favori`);
@@ -432,7 +432,7 @@ const Cigarotheque = () => {
     }
   };
 
-  // Toggle favori depuis le Catalogue ou Apéro Club (ajoute aussi à Ma Cigarthèque si nécessaire)
+  // Toggle favori depuis le Catalogue ou Apéro Club (ajoute aussi à Ma Cigarothèque si nécessaire)
   const toggleFavoriFromCatalogue = async (cigareCatalogueId) => {
     if (!currentMember?.id) {
       toast.error('Vous devez être connecté');
@@ -586,7 +586,7 @@ const Cigarotheque = () => {
     return filtered;
   }, [maCigarotheque, maCollectionSearch, maCollectionPays, maCollectionMarque, maCollectionModule, showFavorisOnly]);
 
-  // Extraire les options de filtres de Ma Cigarthèque (en cascade)
+  // Extraire les options de filtres de Ma Cigarothèque (en cascade)
   const maCollectionFilterOptions = useMemo(() => {
     // Tous les pays disponibles
     const pays = [...new Set(maCigarotheque.map(c => c.pays).filter(Boolean))].sort();
@@ -646,7 +646,7 @@ const Cigarotheque = () => {
         puissance: cigare.puissance || '',
         prix: cigare.prix || null
       });
-      toast.success('Cigare ajouté à votre Cigarthèque !');
+      toast.success('Cigare ajouté à votre Cigarothèque !');
       loadMaCigarotheque();
       setShowSearchModal(false);
       setSearchModalQuery('');
@@ -675,7 +675,7 @@ const Cigarotheque = () => {
         puissance: cigare.puissance || '',
         prix: cigare.prix || null
       });
-      toast.success('Cigare ajouté à votre Cigarthèque !');
+      toast.success('Cigare ajouté à votre Cigarothèque !');
       loadMaCigarotheque();
     } catch (error) {
       toast.error('Erreur lors de l\'ajout');
@@ -1232,12 +1232,12 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
       return [
         { value: 'catalogue', label: 'Catalogue', icon: BookOpen },
         { value: 'apero-club', label: 'Apéro du Club', icon: Wine },
-        { value: 'ma-collection', label: 'Ma Cigarthèque', icon: User }
+        { value: 'ma-collection', label: 'Ma Cigarothèque', icon: User }
       ];
     }
   };
 
-  // Grouper les cigares de Ma Cigarthèque en hiérarchie : Terroir > Marque > Gamme > Cigares
+  // Grouper les cigares de Ma Cigarothèque en hiérarchie : Terroir > Marque > Gamme > Cigares
   const hierarchicalMaCigarotheque = useMemo(() => {
     const hierarchy = {};
     
@@ -1295,7 +1295,7 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
     <div className="space-y-6">
       <div className="text-center md:text-left">
         <h1 className="text-4xl md:text-5xl font-serif font-bold text-white mb-2">
-          Cigarthèque
+          Cigarothèque
         </h1>
         <p className="text-[#D4A024] text-lg font-serif">
           {total} cigares dans le catalogue
@@ -1525,7 +1525,7 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
                         <SelectItem value="all" className="text-gray-400">Tous les cigares</SelectItem>
                         <SelectItem value="dans" className="text-green-400">
                           <span className="flex items-center gap-2">
-                            <Check className="w-4 h-4" /> Dans Ma Cigarthèque ({maCigarotheque.length})
+                            <Check className="w-4 h-4" /> Dans Ma Cigarothèque ({maCigarotheque.length})
                           </span>
                         </SelectItem>
                         <SelectItem value="pas_dans" className="text-orange-400">
@@ -1652,12 +1652,12 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
                         </div>
                       )}
                       
-                      {/* Badge "Dans Ma Cigarthèque" (membres seulement) */}
+                      {/* Badge "Dans Ma Cigarothèque" (membres seulement) */}
                       {!isAdmin && isInMaCollection(cigare.id) && (
                         <div className="mb-2">
                           <Badge className="bg-green-600/80 text-white text-xs">
                             <Check className="w-3 h-3 mr-1" />
-                            Dans Ma Cigarthèque
+                            Dans Ma Cigarothèque
                           </Badge>
                         </div>
                       )}
@@ -1787,7 +1787,7 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
                               >
                                 <Heart className={`w-4 h-4 ${isFavoriInCatalogue(cigare.id) ? 'fill-red-500' : ''}`} />
                               </Button>
-                              {/* Bouton Ajouter à Ma Cigarthèque */}
+                              {/* Bouton Ajouter à Ma Cigarothèque */}
                               <Button 
                                 size="sm"
                                 onClick={() => addToMaCigarotheque(cigare)}
@@ -1933,17 +1933,17 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
                               >
                                 <Heart className={`w-5 h-5 ${isFavoriInCatalogue(cigare.cigare_id) ? 'fill-red-500' : ''}`} />
                               </Button>
-                              {/* Bouton Ajouter à Ma Cigarthèque */}
+                              {/* Bouton Ajouter à Ma Cigarothèque */}
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={(e) => { e.stopPropagation(); addToMaCigarotheque(cigare, true); }}
                                 className="flex-1 text-[#D4A024] hover:bg-[#D4A024]/10"
-                                title="Ajouter à Ma Cigarthèque"
+                                title="Ajouter à Ma Cigarothèque"
                                 data-testid={`add-to-collection-apero-btn-${cigare.id}`}
                               >
                                 <Plus className="w-4 h-4 mr-1" />
-                                Ma Cigarthèque
+                                Ma Cigarothèque
                               </Button>
                             </>
                           )}
@@ -2001,7 +2001,7 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
                   <div>
                     <CardTitle className="text-2xl font-serif text-white flex items-center">
                       <User className="w-6 h-6 mr-2 text-[#D4A024]" />
-                      Ma Cigarthèque
+                      Ma Cigarothèque
                     </CardTitle>
                     <p className="text-gray-400">{maCigarotheque.length} cigare(s) dans votre collection</p>
                   </div>
@@ -2393,10 +2393,10 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
                         <Heart className={`w-4 h-4 mr-2 ${isFavoriInCatalogue(selectedCigare.id) ? 'fill-white' : ''}`} />
                         {isFavoriInCatalogue(selectedCigare.id) ? "Retirer des favoris" : "Ajouter aux favoris"}
                       </Button>
-                      {/* Bouton Ajouter à Ma Cigarthèque */}
+                      {/* Bouton Ajouter à Ma Cigarothèque */}
                       <Button onClick={() => { addToMaCigarotheque(selectedCigare); setShowDetail(false); }} variant="outline" className="border-[#D4A024] text-[#D4A024]">
                         <Plus className="w-4 h-4 mr-2" />
-                        Ma Cigarthèque
+                        Ma Cigarothèque
                       </Button>
                     </>
                   )}
@@ -2950,7 +2950,7 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
         </DialogContent>
       </Dialog>
 
-      {/* ==================== MODAL RECHERCHE CIGARE (Ajouter à Ma Cigarthèque) ==================== */}
+      {/* ==================== MODAL RECHERCHE CIGARE (Ajouter à Ma Cigarothèque) ==================== */}
       <Dialog open={showSearchModal} onOpenChange={setShowSearchModal}>
         <DialogContent className="max-w-2xl bg-[#1a1a1a] border-[#D4A024]/50 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
