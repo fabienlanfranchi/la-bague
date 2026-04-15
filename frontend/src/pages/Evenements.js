@@ -536,7 +536,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
     if (!editModalEvent) return;
     
     try {
-      const dateWithTime = new Date(editModalForm.date + 'T12:00:00');
+      const dateWithTime = new Date(editModalForm.date + 'T19:00:00');
       
       await axios.put(`${API}/evenements/${editModalEvent.id}`, {
         objet: editModalForm.objet,
@@ -587,7 +587,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
     
     try {
       // Construire la date avec heure midi pour éviter les problèmes de timezone
-      const dateWithTime = new Date(editForm.date + 'T12:00:00');
+      const dateWithTime = new Date(editForm.date + 'T19:00:00');
       
       await axios.put(`${API}/evenements/${eventId}`, {
         lieu: editForm.lieu,
@@ -631,7 +631,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
     }
 
     try {
-      const dateWithTime = new Date(newEventForm.date + 'T12:00:00');
+      const dateWithTime = new Date(newEventForm.date + 'T19:00:00');
       
       await axios.post(`${API}/evenements/simple`, {
         lieu: newEventForm.lieu,
@@ -677,7 +677,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
       const updateData = {};
       if (changes.lieu !== undefined) updateData.lieu = changes.lieu;
       if (changes.date !== undefined) {
-        const dateWithTime = new Date(changes.date + 'T12:00:00');
+        const dateWithTime = new Date(changes.date + 'T19:00:00');
         updateData.date = dateWithTime.toISOString();
       }
       if (changes.type_sondage !== undefined) updateData.type_sondage = changes.type_sondage;
@@ -713,7 +713,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
         const updateData = {};
         if (changes.lieu !== undefined) updateData.lieu = changes.lieu;
         if (changes.date !== undefined) {
-          const dateWithTime = new Date(changes.date + 'T12:00:00');
+          const dateWithTime = new Date(changes.date + 'T19:00:00');
           updateData.date = dateWithTime.toISOString();
         }
         if (changes.type_sondage !== undefined) updateData.type_sondage = changes.type_sondage;
@@ -737,7 +737,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
         return {
           ...evt,
           lieu: data.lieu !== undefined ? data.lieu : evt.lieu,
-          date: data.date !== undefined ? new Date(data.date + 'T12:00:00').toISOString() : evt.date,
+          date: data.date !== undefined ? new Date(data.date + 'T19:00:00').toISOString() : evt.date,
           type_sondage: data.type_sondage !== undefined ? data.type_sondage : evt.type_sondage,
           total_presents: data.total_presents !== undefined ? parseInt(data.total_presents) || 0 : evt.total_presents,
         };
@@ -1081,7 +1081,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                 {prochainEvenementInfo.type_evenement === 'repas' ? 'Prochain Repas' : 'Prochain Apéro'}
               </h3>
               <p className="text-[#D4A024] text-lg mb-1">
-                {new Date(prochainEvenementInfo.date + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                {new Date(prochainEvenementInfo.date + 'T19:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
               </p>
               <p className="text-gray-300 text-lg mb-4">
                 {prochainEvenementInfo.lieu}
