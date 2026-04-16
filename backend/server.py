@@ -4356,6 +4356,31 @@ async def get_statistiques_saison(saison: int):
             "nb_anniversaires": 0
         }
     
+    # Auto-calculer le nombre réel d'événements terminés de la saison
+    nb_repas_reel = await db.evenements.count_documents({"saison": saison, "statut": "terminé", "type_sondage": "repas"})
+    nb_aperos_reel = await db.evenements.count_documents({"saison": saison, "statut": "terminé", "type_sondage": {"$in": ["apero", "apéro"]}})
+    nb_anniversaires_reel = await db.evenements.count_documents({"saison": saison, "statut": "terminé", "type_sondage": "anniversaire"})
+    
+    # Utiliser le max entre la config manuelle et le comptage réel
+    nb_aperos = max(config.get("nb_aperos", 0), nb_aperos_reel)
+    nb_repas = max(config.get("nb_repas", 0), nb_repas_reel)
+    nb_anniversaires = max(config.get("nb_anniversaires", 0), nb_anniversaires_reel)
+    
+    # Mettre à jour la config si les chiffres réels sont plus élevés
+    if nb_aperos > config.get("nb_aperos", 0) or nb_repas > config.get("nb_repas", 0) or nb_anniversaires > config.get("nb_anniversaires", 0):
+        await db.saisons_config.update_one(
+            {"saison": saison},
+            {"$set": {
+                "nb_aperos": nb_aperos,
+                "nb_repas": nb_repas,
+                "nb_anniversaires": nb_anniversaires,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        config["nb_aperos"] = nb_aperos
+        config["nb_repas"] = nb_repas
+        config["nb_anniversaires"] = nb_anniversaires
+    
     # Récupérer les présences de cette saison
     presences = await db.presences_membres.find({"saison": saison}, {"_id": 0}).to_list(100)
     presences_dict = {p["membre_id"]: p for p in presences}
@@ -4369,10 +4394,6 @@ async def get_statistiques_saison(saison: int):
         pres_aperos = presence.get("presences_aperos", 0)
         pres_repas = presence.get("presences_repas", 0)
         pres_anniversaires = presence.get("presences_anniversaires", 0)
-        
-        nb_aperos = config.get("nb_aperos", 0)
-        nb_repas = config.get("nb_repas", 0)
-        nb_anniversaires = config.get("nb_anniversaires", 0)
         
         total_pres = pres_aperos + pres_repas + pres_anniversaires
         total_events = nb_aperos + nb_repas + nb_anniversaires
