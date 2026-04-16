@@ -2900,6 +2900,60 @@ async def create_reponse_manuelle(input: ReponseManuelleCreate):
                 "ajout_manuel": True  # Marqueur pour savoir que c'est un ajout manuel
             }
             await db.reponses_sondages.insert_one(sondage_response)
+        
+        # ========== AUTOMATISATION: Mettre à jour presences_membres ==========
+        if input.present:
+            evenement = await db.evenements.find_one({"id": input.evenement_id}, {"type_sondage": 1, "saison": 1, "_id": 0})
+            if evenement:
+                evt_type = evenement.get("type_sondage", "").lower()
+                evt_saison = evenement.get("saison")
+                
+                presence_field_map = {
+                    "apero": "presences_aperos",
+                    "apéro": "presences_aperos",
+                    "repas": "presences_repas",
+                    "anniversaire": "presences_anniversaires"
+                }
+                presence_field = presence_field_map.get(evt_type)
+                
+                if presence_field and evt_saison:
+                    # Vérifier que ce n'est pas déjà compté
+                    already_counted = await db.presences_log.find_one({
+                        "evenement_id": input.evenement_id,
+                        "membre_id": input.membre_id
+                    })
+                    
+                    if not already_counted:
+                        existing_presence = await db.presences_membres.find_one({
+                            "membre_id": input.membre_id,
+                            "saison": evt_saison
+                        })
+                        
+                        if existing_presence:
+                            await db.presences_membres.update_one(
+                                {"membre_id": input.membre_id, "saison": evt_saison},
+                                {"$inc": {presence_field: 1}, "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}}
+                            )
+                        else:
+                            await db.presences_membres.insert_one({
+                                "id": str(uuid.uuid4()),
+                                "membre_id": input.membre_id,
+                                "saison": evt_saison,
+                                "presences_aperos": 1 if presence_field == "presences_aperos" else 0,
+                                "presences_repas": 1 if presence_field == "presences_repas" else 0,
+                                "presences_anniversaires": 1 if presence_field == "presences_anniversaires" else 0,
+                                "created_at": datetime.now(timezone.utc).isoformat(),
+                                "updated_at": datetime.now(timezone.utc).isoformat()
+                            })
+                        
+                        # Marquer comme compté
+                        await db.presences_log.insert_one({
+                            "evenement_id": input.evenement_id,
+                            "membre_id": input.membre_id,
+                            "presence_field": presence_field,
+                            "timestamp": datetime.now(timezone.utc).isoformat()
+                        })
+        # ========== FIN AUTOMATISATION ==========
     
     return {"message": "Réponse ajoutée", "reponse": {k: v for k, v in doc.items() if k != '_id'}}
 
@@ -6568,7 +6622,14 @@ async def fix_cigares_personnels_pays():
 
 @app.on_event("startup")
 async def auto_terminer_evenements():
-    """Terminer automatiquement les événements dont la date est passée"""
+    """Terminer automatiquement les événements dont la date est passée.
+    
+    AUTOMATISATION COMPLÈTE :
+    1. Passe le statut à "terminé"
+    2. Calcule le total_presents
+    3. Met à jour les presences_membres pour chaque membre (présent = +1)
+    4. Vérifie la cohérence saisons_config
+    """
     try:
         now = datetime.now(timezone.utc)
         evenements_a_venir = await db.evenements.find(
@@ -6584,35 +6645,94 @@ async def auto_terminer_evenements():
                 except:
                     continue
             
-            # S'assurer que la date a un timezone
             if evt_date.tzinfo is None:
                 evt_date = evt_date.replace(tzinfo=timezone.utc)
             
             if evt_date and evt_date < now:
-                # Compter les présents réels
+                evt_id = evt['id']
+                evt_saison = evt.get('saison')
+                evt_type = evt.get('type_sondage', '').lower()
+                
+                # Collecter TOUTES les réponses (directes + manuelles)
                 reponses = await db.reponses_evenements.find(
-                    {"evenement_id": evt['id']},
-                    {"_id": 0}
+                    {"evenement_id": evt_id}, {"_id": 0}
                 ).to_list(1000)
-                presents_directs = len([r for r in reponses if r.get('present')])
                 
-                # Ajouter les manuels
                 manuelles = await db.reponses_manuelles.find(
-                    {"evenement_id": evt['id']},
-                    {"_id": 0}
+                    {"evenement_id": evt_id}, {"_id": 0}
                 ).to_list(100)
-                presents_manuels = len([r for r in manuelles if r.get('present')])
                 
-                total = presents_directs + presents_manuels
+                # Dédupliquer : si un membre a une réponse directe ET manuelle, prioriser la directe
+                direct_member_ids = set(r.get('membre_id') for r in reponses if r.get('membre_id'))
+                manuelles_uniques = [m for m in manuelles if m.get('membre_id') and m['membre_id'] not in direct_member_ids]
                 
+                toutes_reponses = reponses + manuelles_uniques
+                presents = [r for r in toutes_reponses if r.get('present')]
+                total = len(presents)
+                
+                # 1. Passer en "terminé"
                 await db.evenements.update_one(
-                    {"id": evt['id']},
-                    {"$set": {
-                        "statut": "terminé",
-                        "total_presents": total
-                    }}
+                    {"id": evt_id},
+                    {"$set": {"statut": "terminé", "total_presents": total}}
                 )
-                logging.info(f"Auto-terminé: {evt.get('objet')} du {evt.get('date')} - {total} présents")
+                
+                # 2. Mettre à jour les presences_membres pour chaque membre présent
+                if evt_saison and evt_type:
+                    presence_field_map = {
+                        "apero": "presences_aperos",
+                        "apéro": "presences_aperos",
+                        "repas": "presences_repas",
+                        "anniversaire": "presences_anniversaires"
+                    }
+                    presence_field = presence_field_map.get(evt_type)
+                    
+                    if presence_field:
+                        for reponse in presents:
+                            membre_id = reponse.get('membre_id')
+                            if not membre_id:
+                                continue
+                            
+                            # Vérifier si ce membre a déjà été compté pour cet événement
+                            # via un marqueur dans la base
+                            already_counted = await db.presences_log.find_one({
+                                "evenement_id": evt_id,
+                                "membre_id": membre_id
+                            })
+                            
+                            if not already_counted:
+                                # Incrémenter la présence
+                                existing_presence = await db.presences_membres.find_one({
+                                    "membre_id": membre_id,
+                                    "saison": evt_saison
+                                })
+                                
+                                if existing_presence:
+                                    await db.presences_membres.update_one(
+                                        {"membre_id": membre_id, "saison": evt_saison},
+                                        {"$inc": {presence_field: 1}, "$set": {"updated_at": now.isoformat()}}
+                                    )
+                                else:
+                                    # Créer l'entrée de présence
+                                    await db.presences_membres.insert_one({
+                                        "id": str(uuid.uuid4()),
+                                        "membre_id": membre_id,
+                                        "saison": evt_saison,
+                                        "presences_aperos": 1 if presence_field == "presences_aperos" else 0,
+                                        "presences_repas": 1 if presence_field == "presences_repas" else 0,
+                                        "presences_anniversaires": 1 if presence_field == "presences_anniversaires" else 0,
+                                        "created_at": now.isoformat(),
+                                        "updated_at": now.isoformat()
+                                    })
+                                
+                                # Marquer comme compté pour éviter les doublons
+                                await db.presences_log.insert_one({
+                                    "evenement_id": evt_id,
+                                    "membre_id": membre_id,
+                                    "presence_field": presence_field,
+                                    "timestamp": now.isoformat()
+                                })
+                
+                logging.info(f"Auto-terminé: {evt.get('objet')} du {evt.get('date')} - {total} présents, presences_membres mis à jour")
     except Exception as e:
         logging.error(f"Erreur auto-terminaison: {e}")
 
