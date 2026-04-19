@@ -6649,6 +6649,11 @@ async def auto_terminer_evenements():
                 evt_date = evt_date.replace(tzinfo=timezone.utc)
             
             if evt_date and evt_date < now:
+                # Ne pas auto-terminer les événements de moins de 6h (laisser le temps au président)
+                hours_since = (now - evt_date).total_seconds() / 3600
+                if hours_since < 6:
+                    logging.info(f"Événement récent ignoré (< 6h): {evt.get('objet')} du {evt.get('date')}")
+                    continue
                 evt_id = evt['id']
                 evt_saison = evt.get('saison')
                 evt_type = evt.get('type_sondage', '').lower()
