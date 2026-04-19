@@ -1436,6 +1436,8 @@ const Dashboard = () => {
         const choixDesserts = {};
         
         // Compter les réponses directes
+        const directMemberIds = new Set(reponses.map(r => r.membre_id));
+        
         reponses.filter(r => r.present).forEach(r => {
           if (r.choix_entree) {
             choixEntrees[r.choix_entree] = (choixEntrees[r.choix_entree] || 0) + 1;
@@ -1463,8 +1465,6 @@ const Dashboard = () => {
         
         // Compter les présents en évitant les doublons
         // (un membre peut avoir une réponse directe ET une réponse manuelle)
-        const directMemberIds = new Set(reponses.map(r => r.membre_id));
-        
         const presentsDirects = reponses.filter(r => r.present).length;
         // Ne compter les manuels que s'ils ne sont pas déjà dans les réponses directes
         const presentsManuels = manualResponsesData.filter(r => 
