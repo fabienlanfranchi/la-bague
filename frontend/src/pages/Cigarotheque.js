@@ -58,7 +58,8 @@ import {
   Settings,
   Share2,
   MessageCircle,
-  Heart
+  Heart,
+  ExternalLink
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -1711,16 +1712,6 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
                           >
                             <MessageCircle className="w-4 h-4" />
                           </Button>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => copyFicheCigare(cigare)}
-                            className="border-[#D4A024]/50 text-[#D4A024]"
-                            title="Copier la fiche"
-                            data-testid={`copy-btn-${cigare.id}`}
-                          >
-                            <Copy className="w-4 h-4" />
-                          </Button>
                           {isAdmin ? (
                             <>
                               <Button 
@@ -2622,7 +2613,53 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
               Noter ce cigare
             </DialogTitle>
             {noteCigare && (
-              <p className="text-[#D4A024]">{noteCigare.marque} {noteCigare.gamme || ''}</p>
+              <div>
+                <p className="text-[#D4A024]">{noteCigare.marque} {noteCigare.gamme || ''}</p>
+                {/* Infos rapides du cigare pour aider à la notation */}
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {noteCigare.pays && (
+                    <Badge className="bg-blue-900/40 text-blue-300 border border-blue-600/30 text-xs">
+                      {noteCigare.pays}
+                    </Badge>
+                  )}
+                  {noteCigare.puissance && (
+                    <Badge className="bg-orange-900/40 text-orange-300 border border-orange-600/30 text-xs">
+                      {noteCigare.puissance === 'A' ? 'Légère' : noteCigare.puissance === 'B' ? 'Moyenne' : noteCigare.puissance === 'C' ? 'Forte' : noteCigare.puissance}
+                    </Badge>
+                  )}
+                  {noteCigare.prix && (
+                    <Badge className="bg-green-900/40 text-green-300 border border-green-600/30 text-xs">
+                      {noteCigare.prix}€
+                    </Badge>
+                  )}
+                  {noteCigare.vitole && (
+                    <Badge className="bg-purple-900/40 text-purple-300 border border-purple-600/30 text-xs">
+                      {noteCigare.vitole}
+                    </Badge>
+                  )}
+                </div>
+                {/* Lien vers la fiche complète dans le catalogue */}
+                {noteCigare.cigare_id && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setShowNoteModal(false);
+                      setActiveTab('catalogue');
+                      setSearch(noteCigare.marque || '');
+                      setTimeout(() => {
+                        const el = document.querySelector(`[data-testid="cigare-card-${noteCigare.cigare_id}"]`);
+                        if (el) el.scrollIntoView({ behavior: 'smooth' });
+                      }, 500);
+                    }}
+                    className="text-[#D4A024] hover:text-white text-xs mt-2 px-0"
+                    data-testid="voir-fiche-complete"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5 mr-1" />
+                    Voir la fiche complète dans le catalogue
+                  </Button>
+                )}
+              </div>
             )}
           </DialogHeader>
 

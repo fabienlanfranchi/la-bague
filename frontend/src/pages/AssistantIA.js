@@ -34,6 +34,7 @@ const AssistantIA = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [showGuideSommaire, setShowGuideSommaire] = useState(false);
   const [showCigarChoice, setShowCigarChoice] = useState(false);
+  const [showCapabilities, setShowCapabilities] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const hasInitializedFromGuide = useRef(false);
@@ -295,10 +296,23 @@ const AssistantIA = () => {
         </p>
       </div>
 
-      {/* Capacités de Winston - Carrousel horizontal sur mobile, grille sur desktop */}
-      {messages.length <= 1 && (
+      {/* Bouton pour afficher les cartes de compétences de Winston */}
+      <div className="mb-3">
+        <Button
+          onClick={() => setShowCapabilities(!showCapabilities)}
+          variant="ghost"
+          className="w-full bg-black/40 border border-[#D4A024]/20 text-[#D4A024] hover:bg-[#D4A024]/10 py-2"
+          data-testid="winston-capabilities-btn"
+        >
+          <Award className="w-4 h-4 mr-2" />
+          {showCapabilities ? 'Masquer les compétences' : 'Cartes de compétences de Winston'}
+        </Button>
+      </div>
+
+      {/* Capacités de Winston */}
+      {showCapabilities && (
         <>
-          {/* Version mobile - carrousel horizontal compact */}
+          {/* Version mobile */}
           <div className="md:hidden mb-3 overflow-x-auto scrollbar-hide">
             <div className="flex gap-2 pb-2 px-1" style={{ width: 'max-content' }}>
               {winstonCapabilities.map((cap, i) => (
@@ -309,7 +323,7 @@ const AssistantIA = () => {
               ))}
             </div>
           </div>
-          {/* Version desktop - grille complète */}
+          {/* Version desktop */}
           <div className="hidden md:grid md:grid-cols-5 gap-3 mb-4">
             {winstonCapabilities.map((cap, i) => (
               <div key={i} className="bg-black/40 border border-[#D4A024]/20 rounded-lg p-3 text-center">
