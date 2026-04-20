@@ -88,6 +88,8 @@ const Comptabilite = () => {
   const [filterCaisse, setFilterCaisse] = useState('tous');
   const [filterType, setFilterType] = useState('tous');
   const [filterPeriode, setFilterPeriode] = useState('tous');
+  const [filterMembre, setFilterMembre] = useState('tous');
+  const [filterObjet, setFilterObjet] = useState('tous');
 
   // Transactions filtrées
   const getFilteredTransactions = () => {
@@ -98,6 +100,12 @@ const Comptabilite = () => {
     }
     if (filterType !== 'tous') {
       filtered = filtered.filter(t => t.type === filterType);
+    }
+    if (filterMembre !== 'tous') {
+      filtered = filtered.filter(t => t.membre === filterMembre);
+    }
+    if (filterObjet !== 'tous') {
+      filtered = filtered.filter(t => t.objet?.toLowerCase() === filterObjet.toLowerCase());
     }
     if (filterPeriode !== 'tous') {
       const now = new Date();
@@ -119,7 +127,7 @@ const Comptabilite = () => {
   };
 
   const filteredTransactions = getFilteredTransactions();
-  const hasActiveFilters = filterCaisse !== 'tous' || filterType !== 'tous' || filterPeriode !== 'tous';
+  const hasActiveFilters = filterCaisse !== 'tous' || filterType !== 'tous' || filterPeriode !== 'tous' || filterMembre !== 'tous' || filterObjet !== 'tous';
 
   useEffect(() => {
     loadData();
@@ -573,6 +581,32 @@ const Comptabilite = () => {
             </SelectContent>
           </Select>
 
+          <Select value={filterMembre} onValueChange={setFilterMembre}>
+            <SelectTrigger className="w-[170px] bg-black/60 border-[#D4A024]/30 text-white h-10 text-sm" data-testid="filter-membre">
+              <SelectValue placeholder="Membre" />
+            </SelectTrigger>
+            <SelectContent className="bg-[#1a1a1a] border-[#D4A024]/30 max-h-[300px]">
+              <SelectItem value="tous" className="text-gray-400 text-sm py-2">Tous membres</SelectItem>
+              {[...new Set(transactions.map(t => t.membre))].filter(Boolean).sort().map(m => (
+                <SelectItem key={m} value={m} className="text-white text-sm py-2">{m}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={filterObjet} onValueChange={setFilterObjet}>
+            <SelectTrigger className="w-[160px] bg-black/60 border-[#D4A024]/30 text-white h-10 text-sm" data-testid="filter-objet">
+              <SelectValue placeholder="Objet" />
+            </SelectTrigger>
+            <SelectContent className="bg-[#1a1a1a] border-[#D4A024]/30">
+              <SelectItem value="tous" className="text-gray-400 text-sm py-2">Tous objets</SelectItem>
+              <SelectItem value="cotisation" className="text-white text-sm py-2">Cotisation</SelectItem>
+              <SelectItem value="album" className="text-white text-sm py-2">Album</SelectItem>
+              <SelectItem value="tombola" className="text-white text-sm py-2">Tombola</SelectItem>
+              <SelectItem value="anniversaire" className="text-white text-sm py-2">Anniversaire</SelectItem>
+              <SelectItem value="autres" className="text-white text-sm py-2">Autres</SelectItem>
+            </SelectContent>
+          </Select>
+
           <Select value={filterPeriode} onValueChange={setFilterPeriode}>
             <SelectTrigger className="w-[150px] bg-black/60 border-[#D4A024]/30 text-white h-10 text-sm" data-testid="filter-periode">
               <SelectValue placeholder="Période" />
@@ -590,7 +624,7 @@ const Comptabilite = () => {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => { setFilterCaisse('tous'); setFilterType('tous'); setFilterPeriode('tous'); }}
+              onClick={() => { setFilterCaisse('tous'); setFilterType('tous'); setFilterPeriode('tous'); setFilterMembre('tous'); setFilterObjet('tous'); }}
               className="text-[#D4A024] hover:bg-[#D4A024]/10 h-10 text-sm"
               data-testid="clear-filters-btn"
             >
