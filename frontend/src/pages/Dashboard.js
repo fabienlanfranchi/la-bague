@@ -692,29 +692,43 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
                   ? 'bg-green-900/20 border-green-500/50' 
                   : 'bg-[#D4A024]/10 border-[#D4A024]/30'
               }`}>
-                <h4 className={`font-semibold mb-4 flex items-center ${
+                <h4 className={`font-semibold mb-4 flex items-center justify-between ${
                   reponseEnvoyee ? 'text-green-400' : 'text-[#D4A024]'
                 }`}>
                   {reponseEnvoyee ? (
                     <>
-                      <CheckCircle className="w-5 h-5 mr-2" />
-                      Réponse enregistrée
+                      <span className="flex items-center">
+                        <CheckCircle className="w-5 h-5 mr-2" />
+                        Réponse : {reponse === 'oui' ? 'PRÉSENT' : 'ABSENT'}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setReponseEnvoyee(false)}
+                        className="text-[#D4A024] hover:text-white text-xs"
+                        data-testid="changer-reponse-btn"
+                      >
+                        Changer ma réponse
+                      </Button>
                     </>
                   ) : (
                     <>
-                      <MessageSquare className="w-5 h-5 mr-2" />
-                      Votre réponse
+                      <span className="flex items-center">
+                        <MessageSquare className="w-5 h-5 mr-2" />
+                        {existingReponse ? 'Modifier votre réponse' : 'Votre réponse'}
+                      </span>
                     </>
                   )}
                 </h4>
                 
                 {/* Présence */}
+                {!reponseEnvoyee && (
                 <div className="mb-4">
                   <p className="text-white mb-3">Serez-vous présent ?</p>
                   <div className="flex flex-col sm:flex-row gap-3">
                     <Button
                       variant="outline"
-                      onClick={() => { setReponse('oui'); setReponseEnvoyee(false); }}
+                      onClick={() => { setReponse('oui'); }}
                       className={`flex-1 transition-all duration-200 ${
                         reponse === 'oui'
                           ? 'bg-green-600 border-green-500 text-white font-bold shadow-lg shadow-green-500/30'
@@ -726,7 +740,7 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
                     </Button>
                     <Button
                       variant="outline"
-                      onClick={() => { setReponse('non'); setReponseEnvoyee(false); }}
+                      onClick={() => { setReponse('non'); }}
                       className={`flex-1 transition-all duration-200 ${
                         reponse === 'non'
                           ? 'bg-red-600 border-red-500 text-white font-bold shadow-lg shadow-red-500/30'
@@ -805,9 +819,10 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
                     </div>
                   )}
                 </div>
+                )}
 
-                {/* Choix de menu pour les repas */}
-                {prochainEvenement.type_sondage === 'repas' && reponse === 'oui' && prochainEvenement.options_sondage && (
+                {/* Choix de menu pour les repas - visible aussi en mode modification */}
+                {!reponseEnvoyee && prochainEvenement.type_sondage === 'repas' && reponse === 'oui' && prochainEvenement.options_sondage && (
                   <div className="mb-4 p-4 bg-blue-900/20 border border-blue-500/30 rounded-lg space-y-4">
                     <h5 className="text-blue-400 font-semibold flex items-center text-lg">
                       <span className="mr-2">🍽️</span>
