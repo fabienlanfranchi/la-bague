@@ -3300,20 +3300,24 @@ async def get_sondage_stats(message_id: str):
 # ============ SONDAGES GÉNÉRIQUES - MODELS & ROUTES ============
 
 class SondageGenerique(BaseModel):
-    """Sondage générique (non lié à un événement)"""
+    """Sondage générique multi-questions (non lié à un événement)"""
     model_config = ConfigDict(extra="ignore")
     
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    question: str
-    options: List[str]
+    titre: str = ""  # Titre global du sondage
+    question: str = ""  # Legacy: question unique (ancien format)
+    options: List[str] = []  # Legacy: options uniques (ancien format)
+    questions: List[dict] = []  # Nouveau: [{question, options, type}] - type: "choix_unique" ou "oui_non"
     status: str = "active"  # "active" ou "terminé"
-    created_by: Optional[str] = None  # ID du créateur (président)
+    created_by: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class SondageGeneriqueCreate(BaseModel):
-    question: str
-    options: List[str]
+    titre: str = ""
+    question: str = ""  # Legacy
+    options: List[str] = []  # Legacy
+    questions: List[dict] = []  # Nouveau format multi-questions
 
 
 class VoteSondage(BaseModel):
@@ -3323,7 +3327,8 @@ class VoteSondage(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     sondage_id: str
     membre_id: str
-    option_index: int
+    option_index: int = -1  # Legacy: index de l'option choisie
+    reponses: List[dict] = []  # Nouveau: [{question_index, option_index}]
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -3332,21 +3337,34 @@ async def get_sondages_generiques():
     """Liste tous les sondages génériques avec leurs votes"""
     sondages = await db.sondages_generiques.find({}, {"_id": 0}).sort("created_at", -1).to_list(100)
     
-    # Pour chaque sondage, calculer les votes
     for sondage in sondages:
         votes = await db.votes_sondages.find({"sondage_id": sondage["id"]}, {"_id": 0}).to_list(1000)
         
-        # Compter les votes par option
-        vote_counts = [0] * len(sondage.get("options", []))
-        for vote in votes:
-            idx = vote.get("option_index", 0)
-            if 0 <= idx < len(vote_counts):
-                vote_counts[idx] += 1
+        # Nouveau format multi-questions
+        if sondage.get("questions"):
+            questions = sondage["questions"]
+            for qi, q in enumerate(questions):
+                q["vote_counts"] = [0] * len(q.get("options", []))
+            
+            for vote in votes:
+                reponses = vote.get("reponses", [])
+                for rep in reponses:
+                    qi = rep.get("question_index", 0)
+                    oi = rep.get("option_index", 0)
+                    if 0 <= qi < len(questions) and 0 <= oi < len(questions[qi].get("options", [])):
+                        questions[qi]["vote_counts"][oi] += 1
+            
+            sondage["total_votes"] = len(votes)
+        else:
+            # Legacy format
+            vote_counts = [0] * len(sondage.get("options", []))
+            for vote in votes:
+                idx = vote.get("option_index", 0)
+                if 0 <= idx < len(vote_counts):
+                    vote_counts[idx] += 1
+            sondage["votes"] = vote_counts
+            sondage["total_votes"] = sum(vote_counts)
         
-        sondage["votes"] = vote_counts
-        sondage["total_votes"] = sum(vote_counts)
-        
-        # Convertir datetime
         if isinstance(sondage.get('created_at'), str):
             sondage['created_at'] = datetime.fromisoformat(sondage['created_at'])
     
@@ -3355,9 +3373,17 @@ async def get_sondages_generiques():
 
 @api_router.post("/sondages-generiques")
 async def create_sondage_generique(input: SondageGeneriqueCreate):
-    """Créer un nouveau sondage générique"""
-    if len(input.options) < 2:
-        raise HTTPException(status_code=400, detail="Au moins 2 options sont requises")
+    """Créer un nouveau sondage générique (simple ou multi-questions)"""
+    # Valider selon le format
+    if input.questions:
+        for q in input.questions:
+            if len(q.get("options", [])) < 2:
+                raise HTTPException(status_code=400, detail="Chaque question doit avoir au moins 2 options")
+    elif input.options:
+        if len(input.options) < 2:
+            raise HTTPException(status_code=400, detail="Au moins 2 options sont requises")
+    else:
+        raise HTTPException(status_code=400, detail="Le sondage doit avoir des questions ou des options")
     
     sondage = SondageGenerique(**input.model_dump())
     
@@ -3366,9 +3392,12 @@ async def create_sondage_generique(input: SondageGeneriqueCreate):
     
     await db.sondages_generiques.insert_one(doc)
     
-    # Récupérer le sondage sans _id
     created = await db.sondages_generiques.find_one({"id": sondage.id}, {"_id": 0})
-    created["votes"] = [0] * len(input.options)
+    if input.questions:
+        for q in created.get("questions", []):
+            q["vote_counts"] = [0] * len(q.get("options", []))
+    else:
+        created["votes"] = [0] * len(input.options)
     created["total_votes"] = 0
     
     return {"message": "Sondage créé avec succès", "sondage": created}
@@ -3389,38 +3418,52 @@ async def delete_sondage_generique(sondage_id: str):
 
 
 @api_router.post("/sondages-generiques/{sondage_id}/vote")
-async def voter_sondage_generique(sondage_id: str, membre_id: str, option_index: int):
-    """Voter sur un sondage générique"""
-    # Vérifier que le sondage existe
+async def voter_sondage_generique(sondage_id: str, request: Request, membre_id: str = None, option_index: int = -1):
+    """Voter sur un sondage générique (simple ou multi-questions)"""
     sondage = await db.sondages_generiques.find_one({"id": sondage_id}, {"_id": 0})
     if not sondage:
         raise HTTPException(status_code=404, detail="Sondage non trouvé")
     
-    # Vérifier que l'option existe
-    if option_index < 0 or option_index >= len(sondage.get("options", [])):
-        raise HTTPException(status_code=400, detail="Option invalide")
+    # Lire les réponses du body si c'est un sondage multi-questions
+    reponses = []
+    try:
+        body = await request.json()
+        if isinstance(body, list):
+            reponses = body
+        elif isinstance(body, dict):
+            membre_id = body.get("membre_id", membre_id)
+            option_index = body.get("option_index", option_index)
+            reponses = body.get("reponses", [])
+    except:
+        pass
     
-    # Vérifier si le membre a déjà voté
+    if not membre_id:
+        raise HTTPException(status_code=400, detail="membre_id requis")
+    
+    now = datetime.now(timezone.utc).isoformat()
+    
     existing_vote = await db.votes_sondages.find_one({
         "sondage_id": sondage_id,
         "membre_id": membre_id
     })
     
-    now = datetime.now(timezone.utc).isoformat()
-    
     if existing_vote:
-        # Mettre à jour le vote
+        update_data = {"updated_at": now}
+        if reponses:
+            update_data["reponses"] = reponses
+        else:
+            update_data["option_index"] = option_index
         await db.votes_sondages.update_one(
             {"id": existing_vote["id"]},
-            {"$set": {"option_index": option_index, "updated_at": now}}
+            {"$set": update_data}
         )
         return {"message": "Vote mis à jour"}
     else:
-        # Nouveau vote
         vote = VoteSondage(
             sondage_id=sondage_id,
             membre_id=membre_id,
-            option_index=option_index
+            option_index=option_index,
+            reponses=reponses
         )
         doc = vote.model_dump()
         doc['created_at'] = doc['created_at'].isoformat()
@@ -3437,8 +3480,12 @@ async def get_mon_vote_sondage(sondage_id: str, membre_id: str):
     }, {"_id": 0})
     
     if vote:
-        return {"hasVoted": True, "option_index": vote.get("option_index")}
-    return {"hasVoted": False, "option_index": None}
+        return {
+            "hasVoted": True, 
+            "option_index": vote.get("option_index", -1),
+            "reponses": vote.get("reponses", [])
+        }
+    return {"hasVoted": False, "option_index": None, "reponses": []}
 
 
 # ============ STATISTIQUES & PRÉSENCES - MODELS ============
