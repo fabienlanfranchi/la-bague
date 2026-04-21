@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { BarChart3, Plus, Trash2, CheckCircle2, Loader2, HelpCircle } from 'lucide-react';
+import { BarChart3, Plus, Trash2, CheckCircle2, Loader2, HelpCircle, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
 
@@ -224,6 +224,21 @@ const Sondages = () => {
     return total > 0 ? ((votes[index] / total) * 100).toFixed(0) : 0;
   };
 
+  // Partage WhatsApp d'un sondage anonyme
+  const handleShareSondageWhatsApp = (sondage) => {
+    const appUrl = window.location.origin + '/dashboard';
+    const titre = sondage.titre || sondage.question || 'Sondage';
+    const nbQuestions = sondage.questions?.length || 1;
+    const message = `*La Bague Impériale - Sondage anonyme*\n\n` +
+      `Un sondage est en attente de votre réponse :\n` +
+      `*${titre}*\n` +
+      `${nbQuestions} question(s) à répondre\n\n` +
+      `Vos votes sont *strictement anonymes*.\n\n` +
+      `Répondez directement depuis votre Dashboard :\n${appUrl}`;
+    const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+  };
+
   // Déterminer si un sondage est multi-questions ou legacy
   const isMultiQuestion = (sondage) => sondage.questions && sondage.questions.length > 0;
 
@@ -246,11 +261,26 @@ const Sondages = () => {
               <Badge className="bg-green-600">{sondage.status === 'active' ? 'Actif' : 'Terminé'}</Badge>
               <span className="text-sm text-gray-400">{sondage.total_votes || 0} vote(s)</span>
               <Badge className="bg-blue-600/50 text-xs">{sondage.questions.length} question(s)</Badge>
+              <Badge className="bg-black/40 border border-[#D4A024]/50 text-[#D4A024] text-xs">Anonyme</Badge>
             </div>
           </div>
-          <Button variant="ghost" size="sm" className="text-red-400 hover:text-red-500 hover:bg-red-900/20" onClick={() => handleDeleteSondage(sondage.id)}>
-            <Trash2 className="w-4 h-4" />
-          </Button>
+          <div className="flex items-center space-x-1">
+            {sondage.status === 'active' && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-green-400 hover:text-green-500 hover:bg-green-900/20"
+                onClick={() => handleShareSondageWhatsApp(sondage)}
+                data-testid={`share-whatsapp-sondage-${sondage.id}`}
+                title="Partager sur WhatsApp"
+              >
+                <Share2 className="w-4 h-4" />
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" className="text-red-400 hover:text-red-500 hover:bg-red-900/20" onClick={() => handleDeleteSondage(sondage.id)}>
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -295,11 +325,26 @@ const Sondages = () => {
             <div className="flex items-center space-x-2">
               <Badge className="bg-green-600">{sondage.status === 'active' ? 'Actif' : 'Terminé'}</Badge>
               <span className="text-sm text-gray-400">{getTotalVotes(sondage.votes)} vote(s)</span>
+              <Badge className="bg-black/40 border border-[#D4A024]/50 text-[#D4A024] text-xs">Anonyme</Badge>
             </div>
           </div>
-          <Button variant="ghost" size="sm" className="text-red-400 hover:text-red-500 hover:bg-red-900/20" onClick={() => handleDeleteSondage(sondage.id)}>
-            <Trash2 className="w-4 h-4" />
-          </Button>
+          <div className="flex items-center space-x-1">
+            {sondage.status === 'active' && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-green-400 hover:text-green-500 hover:bg-green-900/20"
+                onClick={() => handleShareSondageWhatsApp(sondage)}
+                data-testid={`share-whatsapp-sondage-legacy-${sondage.id}`}
+                title="Partager sur WhatsApp"
+              >
+                <Share2 className="w-4 h-4" />
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" className="text-red-400 hover:text-red-500 hover:bg-red-900/20" onClick={() => handleDeleteSondage(sondage.id)}>
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>

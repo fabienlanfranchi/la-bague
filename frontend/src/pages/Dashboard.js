@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Users, TrendingUp, Star, Calendar, DollarSign, MessageSquare, Download, X, Bell, RefreshCw, Check, CheckCircle, ScrollText, ChevronDown, ChevronUp, UserPlus, Trash2, CreditCard, Key, Eye, EyeOff, Copy, ExternalLink, Phone, Send, UserX } from 'lucide-react';
+import { Users, TrendingUp, Star, Calendar, DollarSign, MessageSquare, Download, X, Bell, RefreshCw, Check, CheckCircle, ScrollText, ChevronDown, ChevronUp, UserPlus, Trash2, CreditCard, Key, Eye, EyeOff, Copy, ExternalLink, Phone, Send, UserX, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
 
@@ -281,8 +281,13 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
       } catch (error) {
         // Pas de réponse existante, c'est normal
         console.log('Pas de réponse existante');
+      }
+    };
+    
+    loadExistingReponse();
+  }, [prochainEvenement, currentMember]);
 
-  // Vote sur un sondage depuis le Dashboard
+  // Vote sur un sondage depuis le Dashboard (anonyme)
   const setSondageAnswer = (sondageId, questionIndex, optionIndex) => {
     const current = sondageAnswers[sondageId] || [];
     const updated = current.filter(r => r.question_index !== questionIndex);
@@ -301,7 +306,10 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
           setVotingInProgress(false);
           return;
         }
-        await axios.post(`${API}/sondages-generiques/${sondage.id}/vote?membre_id=${currentMember.id}`, answers);
+        await axios.post(`${API}/sondages-generiques/${sondage.id}/vote`, {
+          membre_id: currentMember.id,
+          reponses: answers
+        });
       } else {
         // Legacy
         const answer = answers[0];
@@ -319,12 +327,6 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
     }
     setVotingInProgress(false);
   };
-
-      }
-    };
-    
-    loadExistingReponse();
-  }, [prochainEvenement, currentMember]);
 
 
   // Charger le détail des présences par type (repas, apero, anniversaire)
@@ -647,6 +649,105 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* SONDAGES GÉNÉRIQUES ACTIFS (ANONYMES) */}
+      {sondagesActifs.length > 0 && (
+        <div className="space-y-4" data-testid="sondages-actifs-section">
+          <h2 className="text-xl font-serif text-white flex items-center">
+            <ScrollText className="w-5 h-5 mr-2 text-[#D4A024]" />
+            Sondages en cours ({sondagesActifs.length})
+            <Badge className="ml-3 bg-black/40 border border-[#D4A024]/50 text-[#D4A024] text-xs">
+              Anonyme
+            </Badge>
+          </h2>
+          {sondagesActifs.map((sondage) => {
+            const hasVoted = sondageVotes[sondage.id]?.hasVoted;
+            const answers = sondageAnswers[sondage.id] || [];
+            const questions = sondage.questions && sondage.questions.length > 0
+              ? sondage.questions
+              : [{ question: sondage.question || sondage.titre, type: 'choix_unique', options: sondage.options || [] }];
+            return (
+              <Card
+                key={sondage.id}
+                className={`bg-black/40 border-2 backdrop-blur-sm ${hasVoted ? 'border-green-500/50' : 'border-[#D4A024]/40'}`}
+                data-testid={`sondage-card-${sondage.id}`}
+              >
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <CardTitle className="text-xl font-serif text-white">
+                        {sondage.titre}
+                      </CardTitle>
+                      {sondage.description && (
+                        <p className="text-gray-400 text-sm mt-1">{sondage.description}</p>
+                      )}
+                      <p className="text-xs text-[#D4A024]/80 mt-2 italic">
+                        Votre vote est strictement anonyme. Aucun autre membre ni l'administration ne pourra voir votre choix.
+                      </p>
+                    </div>
+                    {hasVoted ? (
+                      <Badge className="bg-green-600 text-white flex items-center shrink-0">
+                        <CheckCircle className="w-4 h-4 mr-1" />
+                        Voté
+                      </Badge>
+                    ) : (
+                      <Badge className="bg-yellow-600 text-white animate-pulse shrink-0">
+                        En attente
+                      </Badge>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {hasVoted ? (
+                    <div className="bg-black/30 rounded-lg p-4 border border-green-500/20 text-gray-300 text-sm">
+                      <CheckCircle className="w-4 h-4 text-green-400 inline mr-2" />
+                      Merci, votre réponse anonyme a bien été enregistrée.
+                    </div>
+                  ) : (
+                    <>
+                      {questions.map((q, qi) => {
+                        const selected = answers.find(a => a.question_index === qi)?.option_index;
+                        return (
+                          <div key={qi} className="bg-black/30 rounded-lg p-4 border border-[#D4A024]/20">
+                            <p className="text-white font-serif text-base mb-3">
+                              {qi + 1}. {q.question}
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              {(q.options || []).map((opt, oi) => (
+                                <Button
+                                  key={oi}
+                                  type="button"
+                                  onClick={() => setSondageAnswer(sondage.id, qi, oi)}
+                                  className={`${
+                                    selected === oi
+                                      ? 'bg-[#D4A024] text-[#7A2020] hover:bg-[#C8941D]'
+                                      : 'bg-black/50 text-gray-200 border border-[#D4A024]/30 hover:bg-[#D4A024]/20'
+                                  } font-serif`}
+                                  data-testid={`sondage-${sondage.id}-q${qi}-opt${oi}`}
+                                >
+                                  {opt}
+                                </Button>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      <Button
+                        onClick={() => handleVoteSondage(sondage)}
+                        disabled={votingInProgress}
+                        className="w-full bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif text-base"
+                        data-testid={`sondage-submit-${sondage.id}`}
+                      >
+                        {votingInProgress ? 'Envoi...' : 'Envoyer mon vote anonyme'}
+                      </Button>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       )}
 
       {/* SONDAGE EN COURS */}
@@ -1224,6 +1325,9 @@ const Dashboard = () => {
   // Demandes de mot de passe oublié (pour le président)
   const [demandesMotDePasse, setDemandesMotDePasse] = useState([]);
   
+  // Sondages génériques actifs (pour le président)
+  const [sondagesActifsAdmin, setSondagesActifsAdmin] = useState([]);
+  
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -1234,7 +1338,34 @@ const Dashboard = () => {
     loadProchainEvenementInfo();
     loadPaiementsEnAttente();
     loadDemandesMotDePasse();
+    loadSondagesActifsAdmin();
   }, []);
+  
+  // Charger les sondages actifs pour l'admin
+  const loadSondagesActifsAdmin = async () => {
+    try {
+      const response = await axios.get(`${API}/sondages-generiques`);
+      const actifs = (response.data || []).filter(s => s.status === 'active');
+      setSondagesActifsAdmin(actifs);
+    } catch (error) {
+      setSondagesActifsAdmin([]);
+    }
+  };
+  
+  // Partage WhatsApp admin d'un sondage anonyme
+  const handleShareSondageWhatsAppAdmin = (sondage) => {
+    const appUrl = window.location.origin + '/dashboard';
+    const titre = sondage.titre || sondage.question || 'Sondage';
+    const nbQuestions = sondage.questions?.length || 1;
+    const message = `*La Bague Impériale - Sondage anonyme*\n\n` +
+      `Un sondage est en attente de votre réponse :\n` +
+      `*${titre}*\n` +
+      `${nbQuestions} question(s) à répondre\n\n` +
+      `Vos votes sont *strictement anonymes*.\n\n` +
+      `Répondez directement depuis votre Dashboard :\n${appUrl}`;
+    const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+  };
   
   // Charger les paiements en attente
   const loadPaiementsEnAttente = async () => {
@@ -2342,6 +2473,58 @@ Le Président`;
           </Card>
         )}
       </div>
+
+      {/* ========== SECTION 2.5 : SONDAGES ANONYMES ACTIFS ========== */}
+      {sondagesActifsAdmin.length > 0 && (
+        <div>
+          <h2 className="text-2xl font-serif font-bold text-white mb-4 flex items-center">
+            <ScrollText className="w-6 h-6 mr-2 text-[#D4A024]" />
+            Sondages en cours
+            <Badge className="ml-3 bg-black/40 border border-[#D4A024]/50 text-[#D4A024] text-xs">
+              Anonyme
+            </Badge>
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {sondagesActifsAdmin.map((sondage) => (
+              <Card
+                key={sondage.id}
+                className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm"
+                data-testid={`admin-sondage-card-${sondage.id}`}
+              >
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <CardTitle className="text-lg font-serif text-white truncate">
+                        {sondage.titre || sondage.question}
+                      </CardTitle>
+                      <div className="flex items-center flex-wrap gap-2 mt-2">
+                        <Badge className="bg-green-600 text-xs">Actif</Badge>
+                        <span className="text-xs text-gray-400">
+                          {sondage.total_votes || 0} réponse(s)
+                        </span>
+                        {sondage.questions?.length > 0 && (
+                          <span className="text-xs text-[#D4A024]">
+                            {sondage.questions.length} question(s)
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <Button
+                      onClick={() => handleShareSondageWhatsAppAdmin(sondage)}
+                      className="bg-green-600 hover:bg-green-700 text-white font-serif shrink-0"
+                      size="sm"
+                      data-testid={`admin-share-whatsapp-${sondage.id}`}
+                    >
+                      <Share2 className="w-4 h-4 mr-1" />
+                      WhatsApp
+                    </Button>
+                  </div>
+                </CardHeader>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ========== SECTION 3 : COTISATIONS ========== */}
       <div>
