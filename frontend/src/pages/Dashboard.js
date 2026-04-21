@@ -190,6 +190,9 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
 
   // Charger les messages non lus et les stats perso
   useEffect(() => {
+    // Auto-terminer les événements passés
+    axios.post(`${API}/auto-terminer`).catch(() => {});
+    
     const loadMemberData = async () => {
       if (!currentMember?.id) return;
       
@@ -1162,6 +1165,8 @@ const Dashboard = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Auto-terminer les événements passés avant de charger les données
+    axios.post(`${API}/auto-terminer`).catch(() => {});
     loadDashboardData();
     loadProchainEvenement();
     loadProchainEvenementInfo();

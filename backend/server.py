@@ -6495,6 +6495,111 @@ async def export_all_data():
         raise HTTPException(status_code=500, detail=f"Erreur lors de l'export: {str(e)}")
 
 
+@api_router.post("/auto-terminer")
+async def auto_terminer_evenements_endpoint():
+    """Terminer automatiquement les événements passés et mettre à jour les présences.
+    Appelé à chaque chargement du Dashboard pour garantir la cohérence."""
+    now = datetime.now(timezone.utc)
+    evenements_a_venir = await db.evenements.find(
+        {"statut": "à venir"},
+        {"_id": 0}
+    ).to_list(100)
+    
+    terminated = []
+    
+    for evt in evenements_a_venir:
+        evt_date = evt.get('date')
+        if isinstance(evt_date, str):
+            try:
+                evt_date = datetime.fromisoformat(evt_date.replace('Z', '+00:00'))
+            except:
+                continue
+        if evt_date and evt_date.tzinfo is None:
+            evt_date = evt_date.replace(tzinfo=timezone.utc)
+        
+        if not evt_date or evt_date >= now:
+            continue
+        
+        # Ne pas terminer les événements de moins de 3h (laisser le temps)
+        hours_since = (now - evt_date).total_seconds() / 3600
+        if hours_since < 3:
+            continue
+        
+        evt_id = evt['id']
+        evt_saison = evt.get('saison')
+        evt_type = evt.get('type_sondage', '').lower()
+        
+        # Collecter TOUTES les réponses
+        reponses = await db.reponses_evenements.find(
+            {"evenement_id": evt_id}, {"_id": 0}
+        ).to_list(1000)
+        manuelles = await db.reponses_manuelles.find(
+            {"evenement_id": evt_id}, {"_id": 0}
+        ).to_list(100)
+        
+        # Dédupliquer
+        direct_ids = set(r.get('membre_id') for r in reponses if r.get('membre_id'))
+        manuelles_uniques = [m for m in manuelles if m.get('membre_id') and m['membre_id'] not in direct_ids]
+        toutes_reponses = reponses + manuelles_uniques
+        presents = [r for r in toutes_reponses if r.get('present')]
+        total = len(presents)
+        
+        # 1. Passer en "terminé"
+        await db.evenements.update_one(
+            {"id": evt_id},
+            {"$set": {"statut": "terminé", "total_presents": total}}
+        )
+        
+        # 2. Mettre à jour les presences_membres
+        if evt_saison and evt_type:
+            presence_field_map = {
+                "apero": "presences_aperos", "apéro": "presences_aperos",
+                "repas": "presences_repas", "anniversaire": "presences_anniversaires"
+            }
+            presence_field = presence_field_map.get(evt_type)
+            
+            if presence_field:
+                for reponse in presents:
+                    membre_id = reponse.get('membre_id')
+                    if not membre_id:
+                        continue
+                    
+                    # Anti-doublon
+                    already = await db.presences_log.find_one({
+                        "evenement_id": evt_id, "membre_id": membre_id
+                    })
+                    if already:
+                        continue
+                    
+                    existing = await db.presences_membres.find_one({
+                        "membre_id": membre_id, "saison": evt_saison
+                    })
+                    if existing:
+                        await db.presences_membres.update_one(
+                            {"membre_id": membre_id, "saison": evt_saison},
+                            {"$inc": {presence_field: 1}, "$set": {"updated_at": now.isoformat()}}
+                        )
+                    else:
+                        await db.presences_membres.insert_one({
+                            "id": str(uuid.uuid4()),
+                            "membre_id": membre_id, "saison": evt_saison,
+                            "presences_aperos": 1 if presence_field == "presences_aperos" else 0,
+                            "presences_repas": 1 if presence_field == "presences_repas" else 0,
+                            "presences_anniversaires": 1 if presence_field == "presences_anniversaires" else 0,
+                            "created_at": now.isoformat(), "updated_at": now.isoformat()
+                        })
+                    
+                    await db.presences_log.insert_one({
+                        "evenement_id": evt_id, "membre_id": membre_id,
+                        "presence_field": presence_field, "timestamp": now.isoformat()
+                    })
+        
+        terminated.append({"lieu": evt.get("lieu"), "total_presents": total})
+    
+    return {"terminated": len(terminated), "events": terminated}
+
+
+
 class ImportData(BaseModel):
     export_date: str
     version: str
