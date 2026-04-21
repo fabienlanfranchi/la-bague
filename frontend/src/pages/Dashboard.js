@@ -321,7 +321,14 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
         await axios.post(`${API}/sondages-generiques/${sondage.id}/vote?membre_id=${currentMember.id}&option_index=${answer.option_index}`);
       }
       toast.success('Vote anonyme enregistré !');
-      setSondageVotes({ ...sondageVotes, [sondage.id]: { hasVoted: true, reponses: answers } });
+      // Recharger les sondages pour afficher les résultats en direct
+      const sondagesRes = await axios.get(`${API}/sondages-generiques`);
+      const actifs = (sondagesRes.data || []).filter(s => s.status === 'active');
+      setSondagesActifs(actifs);
+      setSondageVotes({
+        ...sondageVotes,
+        [sondage.id]: { hasVoted: true, reponses: answers, option_index: answers[0]?.option_index }
+      });
     } catch (error) {
       toast.error('Erreur lors du vote');
     }
@@ -700,10 +707,56 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {hasVoted ? (
-                    <div className="bg-black/30 rounded-lg p-4 border border-green-500/20 text-gray-300 text-sm">
-                      <CheckCircle className="w-4 h-4 text-green-400 inline mr-2" />
-                      Merci, votre réponse anonyme a bien été enregistrée.
-                    </div>
+                    <>
+                      <div className="bg-green-900/20 rounded-lg p-3 border border-green-500/30 text-green-300 text-sm">
+                        <CheckCircle className="w-4 h-4 text-green-400 inline mr-2" />
+                        Merci, votre vote anonyme a bien été enregistré. Voici les résultats en direct :
+                      </div>
+                      {questions.map((q, qi) => {
+                        const myAnswer = (sondageVotes[sondage.id]?.reponses || []).find(r => r.question_index === qi);
+                        const votes = q.vote_counts || [];
+                        const totalQ = votes.reduce((s, v) => s + v, 0);
+                        return (
+                          <div key={qi} className="bg-black/30 rounded-lg p-4 border border-[#D4A024]/20">
+                            <p className="text-white font-serif text-base mb-3">
+                              {qi + 1}. {q.question}
+                            </p>
+                            <div className="space-y-2">
+                              {(q.options || []).map((opt, oi) => {
+                                const count = votes[oi] || 0;
+                                const pct = totalQ > 0 ? ((count / totalQ) * 100).toFixed(0) : 0;
+                                const isMyChoice = myAnswer?.option_index === oi;
+                                return (
+                                  <div key={oi} className="space-y-1" data-testid={`sondage-${sondage.id}-result-q${qi}-opt${oi}`}>
+                                    <div className="flex items-center justify-between text-sm">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-white">{opt}</span>
+                                        {isMyChoice && (
+                                          <span className="flex items-center text-[#D4A024] text-xs">
+                                            <CheckCircle className="w-3.5 h-3.5 mr-1" />
+                                            Votre choix
+                                          </span>
+                                        )}
+                                      </div>
+                                      <span className="text-[#D4A024] font-semibold">{count} ({pct}%)</span>
+                                    </div>
+                                    <div className="w-full bg-gray-700 rounded-full h-2">
+                                      <div
+                                        className={`h-2 rounded-full transition-all ${isMyChoice ? 'bg-[#D4A024]' : 'bg-gray-500'}`}
+                                        style={{ width: `${pct}%` }}
+                                      />
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      <p className="text-xs text-gray-500 italic text-center">
+                        {sondage.total_votes || 0} membre(s) ont voté · Les résultats restent anonymes
+                      </p>
+                    </>
                   ) : (
                     <>
                       {questions.map((q, qi) => {

@@ -30,7 +30,7 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const Sondages = () => {
-  const { isAdmin, currentUser } = useUser();
+  const { isAdmin, currentMember } = useUser();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [sondages, setSondages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -52,11 +52,11 @@ const Sondages = () => {
       const response = await axios.get(`${API}/sondages-generiques`);
       setSondages(response.data);
       
-      if (currentUser?.id) {
+      if (currentMember?.id) {
         const votesMap = {};
         for (const sondage of response.data) {
           try {
-            const voteRes = await axios.get(`${API}/sondages-generiques/${sondage.id}/mon-vote/${currentUser.id}`);
+            const voteRes = await axios.get(`${API}/sondages-generiques/${sondage.id}/mon-vote/${currentMember.id}`);
             if (voteRes.data.hasVoted) {
               votesMap[sondage.id] = {
                 option_index: voteRes.data.option_index,
@@ -174,7 +174,7 @@ const Sondages = () => {
   };
 
   const handleVoteMulti = async (sondageId, questions) => {
-    if (!currentUser?.id) {
+    if (!currentMember?.id) {
       toast.error('Vous devez être connecté');
       return;
     }
@@ -185,8 +185,11 @@ const Sondages = () => {
     }
 
     try {
-      await axios.post(`${API}/sondages-generiques/${sondageId}/vote?membre_id=${currentUser.id}`, answers);
-      toast.success('Vote enregistré !');
+      await axios.post(`${API}/sondages-generiques/${sondageId}/vote`, {
+        membre_id: currentMember.id,
+        reponses: answers
+      });
+      toast.success('Vote anonyme enregistré !');
       setUserVotes({ ...userVotes, [sondageId]: { reponses: answers } });
       loadSondages();
     } catch (error) {
@@ -196,10 +199,10 @@ const Sondages = () => {
 
   // Legacy: vote simple
   const handleVoteLegacy = async (sondageId, optionIndex) => {
-    if (!currentUser?.id) return;
+    if (!currentMember?.id) return;
     try {
-      await axios.post(`${API}/sondages-generiques/${sondageId}/vote?membre_id=${currentUser.id}&option_index=${optionIndex}`);
-      toast.success('Vote enregistré !');
+      await axios.post(`${API}/sondages-generiques/${sondageId}/vote?membre_id=${currentMember.id}&option_index=${optionIndex}`);
+      toast.success('Vote anonyme enregistré !');
       setUserVotes({ ...userVotes, [sondageId]: { option_index: optionIndex } });
       loadSondages();
     } catch (error) {
