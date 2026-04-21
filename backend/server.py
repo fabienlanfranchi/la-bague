@@ -6500,6 +6500,69 @@ async def export_all_data():
 
 
 @api_router.post("/auto-terminer")
+
+@api_router.get("/diagnostic/saison/{saison}")
+async def diagnostic_saison(saison: int):
+    """Diagnostic complet d'une saison - affiche toutes les données pour debug."""
+    evenements = await db.evenements.find({"saison": saison}, {"_id": 0}).sort("date", 1).to_list(200)
+    
+    result = {
+        "total_evenements": len(evenements),
+        "evenements": [],
+        "doublons": [],
+        "config": None
+    }
+    
+    # Check config
+    config = await db.saisons_config.find_one({"saison": saison}, {"_id": 0})
+    result["config"] = config
+    
+    # Check each event
+    dates_seen = {}
+    for evt in evenements:
+        evt_type = evt.get("type_sondage", "?")
+        evt_date = str(evt.get("date", ""))[:10]
+        
+        # Count responses
+        reponses = await db.reponses_evenements.count_documents({"evenement_id": evt["id"]})
+        manuelles = await db.reponses_manuelles.count_documents({"evenement_id": evt["id"]})
+        
+        evt_info = {
+            "id": evt["id"],
+            "type": evt_type,
+            "lieu": evt.get("lieu", "?"),
+            "date": evt_date,
+            "statut": evt.get("statut", "?"),
+            "total_presents": evt.get("total_presents", 0),
+            "reponses_directes": reponses,
+            "reponses_manuelles": manuelles
+        }
+        result["evenements"].append(evt_info)
+        
+        # Detect duplicates
+        key = f"{evt_date}_{evt_type}"
+        if key in dates_seen:
+            result["doublons"].append({
+                "original": dates_seen[key],
+                "doublon": evt["id"],
+                "date": evt_date,
+                "type": evt_type
+            })
+        else:
+            dates_seen[key] = evt["id"]
+    
+    # Count by type
+    types = {}
+    for evt in evenements:
+        t = evt.get("type_sondage", "?").lower().replace("é", "e")
+        s = evt.get("statut", "?")
+        key = f"{t}_{s}"
+        types[key] = types.get(key, 0) + 1
+    result["types_count"] = types
+    
+    return result
+
+
 async def auto_terminer_evenements_endpoint():
     """Terminer automatiquement les événements passés et recalculer toutes les présences."""
     now = datetime.now(timezone.utc)
