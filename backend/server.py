@@ -3437,7 +3437,7 @@ async def voter_sondage_generique(sondage_id: str, request: Request, membre_id: 
             membre_id = body.get("membre_id", membre_id)
             option_index = body.get("option_index", option_index)
             reponses = body.get("reponses", [])
-    except:
+    except Exception:
         pass
     
     if not membre_id:
