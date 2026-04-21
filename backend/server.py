@@ -4446,84 +4446,102 @@ async def get_statistiques_moyennes_dashboard():
 
 @api_router.get("/statistiques/saison/{saison}")
 async def get_statistiques_saison(saison: int):
-    """Statistiques pour une saison spécifique avec tous les membres"""
-    # Récupérer tous les membres
-    members = await db.members.find({}, {"_id": 0, "id": 1, "nom_complet": 1, "numero_membre": 1, "annee_entree": 1}).to_list(100)
+    """Statistiques pour une saison - TOUJOURS recalculées à partir des données réelles."""
+    members = await db.members.find({}, {"_id": 0, "id": 1, "nom_complet": 1, "numero_membre": 1}).to_list(100)
     
-    # Récupérer la config de la saison
+    # Compter les événements terminés DIRECTEMENT depuis la collection
+    evenements = await db.evenements.find(
+        {"saison": saison, "statut": "terminé"}, {"_id": 0}
+    ).to_list(200)
+    
+    nb_repas = 0
+    nb_aperos = 0
+    nb_anniversaires = 0
+    
+    # Compteurs de présences par membre recalculés en direct
+    compteurs = {}
+    
+    for evt in evenements:
+        evt_type = evt.get('type_sondage', '').lower().replace('é', 'e')
+        
+        if evt_type == 'repas':
+            nb_repas += 1
+            field = 'presences_repas'
+        elif evt_type == 'apero':
+            nb_aperos += 1
+            field = 'presences_aperos'
+        elif evt_type == 'anniversaire':
+            nb_anniversaires += 1
+            field = 'presences_anniversaires'
+        else:
+            continue
+        
+        # Compter les présents pour cet événement
+        reponses = await db.reponses_evenements.find({"evenement_id": evt['id']}, {"_id": 0}).to_list(1000)
+        manuelles = await db.reponses_manuelles.find({"evenement_id": evt['id']}, {"_id": 0}).to_list(100)
+        direct_ids = set(r.get('membre_id') for r in reponses if r.get('membre_id'))
+        manuelles_uniques = [m for m in manuelles if m.get('membre_id') and m['membre_id'] not in direct_ids]
+        
+        for r in reponses + manuelles_uniques:
+            membre_id = r.get('membre_id')
+            if not membre_id:
+                continue
+            if membre_id not in compteurs:
+                compteurs[membre_id] = {'presences_aperos': 0, 'presences_repas': 0, 'presences_anniversaires': 0}
+            if r.get('present'):
+                compteurs[membre_id][field] += 1
+    
+    # Mettre à jour saisons_config avec les vrais chiffres
     config = await db.saisons_config.find_one({"saison": saison}, {"_id": 0})
-    if not config:
-        config = {
-            "saison": saison,
-            "nb_aperos": 0,
-            "nb_repas": 0,
-            "nb_anniversaires": 0
-        }
-    
-    # Auto-calculer le nombre réel d'événements terminés de la saison
-    # Utiliser regex insensible à la casse pour matcher toutes les variantes
-    nb_repas_reel = await db.evenements.count_documents({"saison": saison, "statut": "terminé", "type_sondage": {"$regex": "^repas$", "$options": "i"}})
-    nb_aperos_reel = await db.evenements.count_documents({"saison": saison, "statut": "terminé", "type_sondage": {"$regex": "^ap[eé]ro$", "$options": "i"}})
-    nb_anniversaires_reel = await db.evenements.count_documents({"saison": saison, "statut": "terminé", "type_sondage": {"$regex": "^anniversaire$", "$options": "i"}})
-    
-    # Utiliser le max entre la config manuelle et le comptage réel
-    nb_aperos = max(config.get("nb_aperos", 0), nb_aperos_reel)
-    nb_repas = max(config.get("nb_repas", 0), nb_repas_reel)
-    nb_anniversaires = max(config.get("nb_anniversaires", 0), nb_anniversaires_reel)
-    
-    # Mettre à jour la config si les chiffres réels sont plus élevés
-    if nb_aperos > config.get("nb_aperos", 0) or nb_repas > config.get("nb_repas", 0) or nb_anniversaires > config.get("nb_anniversaires", 0):
+    if config:
         await db.saisons_config.update_one(
             {"saison": saison},
-            {"$set": {
-                "nb_aperos": nb_aperos,
-                "nb_repas": nb_repas,
-                "nb_anniversaires": nb_anniversaires,
-                "updated_at": datetime.now(timezone.utc).isoformat()
-            }}
+            {"$set": {"nb_aperos": nb_aperos, "nb_repas": nb_repas, "nb_anniversaires": nb_anniversaires}}
         )
         config["nb_aperos"] = nb_aperos
         config["nb_repas"] = nb_repas
         config["nb_anniversaires"] = nb_anniversaires
+    else:
+        config = {"saison": saison, "nb_aperos": nb_aperos, "nb_repas": nb_repas, "nb_anniversaires": nb_anniversaires}
     
-    # Récupérer les présences de cette saison
-    presences = await db.presences_membres.find({"saison": saison}, {"_id": 0}).to_list(100)
-    presences_dict = {p["membre_id"]: p for p in presences}
+    # Aussi sauvegarder les presences_membres recalculées
+    now = datetime.now(timezone.utc).isoformat()
+    for membre_id, counts in compteurs.items():
+        existing = await db.presences_membres.find_one({"membre_id": membre_id, "saison": saison})
+        if existing:
+            await db.presences_membres.update_one(
+                {"membre_id": membre_id, "saison": saison},
+                {"$set": {**counts, "updated_at": now}}
+            )
+        else:
+            await db.presences_membres.insert_one({
+                "id": str(uuid.uuid4()), "membre_id": membre_id, "saison": saison,
+                **counts, "created_at": now, "updated_at": now
+            })
     
     # Construire les stats pour chaque membre
+    total_events = nb_aperos + nb_repas + nb_anniversaires
     stats = []
     for member in members:
-        membre_id = member["id"]
-        presence = presences_dict.get(membre_id, {})
-        
-        pres_aperos = presence.get("presences_aperos", 0)
-        pres_repas = presence.get("presences_repas", 0)
-        pres_anniversaires = presence.get("presences_anniversaires", 0)
-        
-        total_pres = pres_aperos + pres_repas + pres_anniversaires
-        total_events = nb_aperos + nb_repas + nb_anniversaires
+        mid = member["id"]
+        c = compteurs.get(mid, {'presences_aperos': 0, 'presences_repas': 0, 'presences_anniversaires': 0})
+        total_pres = c['presences_aperos'] + c['presences_repas'] + c['presences_anniversaires']
         
         stats.append({
-            "membre_id": membre_id,
+            "membre_id": mid,
             "nom_complet": member["nom_complet"],
             "numero_membre": member["numero_membre"],
-            "presences_aperos": pres_aperos,
-            "presences_repas": pres_repas,
-            "presences_anniversaires": pres_anniversaires,
-            "pct_aperos": custom_round(pres_aperos / nb_aperos * 100) if nb_aperos > 0 else 0,
-            "pct_repas": custom_round(pres_repas / nb_repas * 100) if nb_repas > 0 else 0,
-            "pct_anniversaires": custom_round(pres_anniversaires / nb_anniversaires * 100) if nb_anniversaires > 0 else 0,
+            "presences_aperos": c['presences_aperos'],
+            "presences_repas": c['presences_repas'],
+            "presences_anniversaires": c['presences_anniversaires'],
+            "pct_aperos": custom_round(c['presences_aperos'] / nb_aperos * 100) if nb_aperos > 0 else 0,
+            "pct_repas": custom_round(c['presences_repas'] / nb_repas * 100) if nb_repas > 0 else 0,
+            "pct_anniversaires": custom_round(c['presences_anniversaires'] / nb_anniversaires * 100) if nb_anniversaires > 0 else 0,
             "pct_global": custom_round(total_pres / total_events * 100) if total_events > 0 else 0
         })
     
-    # Trier par numéro de membre
     stats.sort(key=lambda x: x["numero_membre"])
-    
-    return {
-        "saison": saison,
-        "config": config,
-        "membres": stats
-    }
+    return {"saison": saison, "config": config, "membres": stats}
 
 
 # ============ ADMIN - ÉDITION COMPLÈTE DES MEMBRES ============
