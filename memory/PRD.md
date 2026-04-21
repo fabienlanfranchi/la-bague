@@ -9,7 +9,24 @@ Application de gestion complète pour le club de cigares "La Bague Impériale". 
 - Winston - Assistant IA spécialiste des cigares (via Emergent LLM Key)
 - Événements et présences
 - Comptabilité et cotisations
-- Sondages et votes
+- Sondages et votes (anonymes)
+
+---
+
+## COMPLETED (Session 21 Avril 2026)
+
+### Sondages Génériques Anonymes sur le Dashboard (P0) - DONE
+- **Fonctionnalité** : Les sondages actifs s'affichent directement dans le Dashboard Membre pour voter sans changer de page
+- **Frontend Dashboard Membre** (`Dashboard.js`) :
+  - Section "Sondages en cours" avec badge "Anonyme"
+  - Avertissement visible : "Votre vote est strictement anonyme..."
+  - Support multi-questions (Oui/Non, Choix unique)
+  - Bouton "Envoyer mon vote anonyme" + feedback de confirmation
+- **Frontend Dashboard Admin** : Section "Sondages en cours" avec bouton WhatsApp sur chaque sondage actif
+- **Frontend Page Sondages admin** (`Sondages.js`) : Bouton Share2 WhatsApp sur chaque sondage actif + badge "Anonyme"
+- **Partage WhatsApp** : Message généré contient "*Sondage anonyme*", le titre, le nombre de questions et le lien `/dashboard`
+- **Anonymat backend** : `GET /api/sondages-generiques` ne retourne QUE les `vote_counts` agrégés - aucun `membre_id` exposé. Le `membre_id` est stocké en base pour bloquer les doubles votes uniquement
+- Tests validés à 100% (Backend: 8/8 pytest, Frontend: tous flux OK)
 
 ---
 
