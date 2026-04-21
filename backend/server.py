@@ -6713,108 +6713,21 @@ async def recalculer_presences_endpoint(saison: int):
 @app.on_event("startup")
 
 @app.on_event("startup")
-async def auto_restore_presences_s13():
-    """Restaurer les présences saison 13 + corriger les événements mal typés + supprimer doublons."""
+async def auto_fix_events():
+    """Corriger les types d'événements et supprimer les doublons connus."""
     try:
-        now = datetime.now(timezone.utc).isoformat()
-        
-        # 1. Corriger le type "simple" → "apero" pour l'événement du 20 avril
-        await db.evenements.update_many(
+        # Corriger le type "simple" → "apero"
+        result = await db.evenements.update_many(
             {"type_sondage": "simple"},
             {"$set": {"type_sondage": "apero"}}
         )
+        if result.modified_count > 0:
+            logging.info(f"Corrigé {result.modified_count} événements 'simple' → 'apero'")
         
-        # 2. Supprimer le doublon vide du 20 avril
+        # Supprimer le doublon vide connu
         await db.evenements.delete_one({"id": "42ff9fcc-7b3b-4479-b431-b9250d2215ec"})
-        
-        # 3. Restaurer le backup des présences (données AVANT TDO et apéro du 20)
-        restored = 0
-        for membre_id, counts in BACKUP_PRESENCES_S13.items():
-            existing = await db.presences_membres.find_one({"membre_id": membre_id, "saison": 13})
-            if existing:
-                current_total = existing.get("presences_aperos", 0) + existing.get("presences_repas", 0)
-                backup_total = counts["presences_aperos"] + counts["presences_repas"]
-                if current_total < backup_total:
-                    await db.presences_membres.update_one(
-                        {"membre_id": membre_id, "saison": 13},
-                        {"$set": {**counts, "updated_at": now}}
-                    )
-                    restored += 1
-            else:
-                await db.presences_membres.insert_one({
-                    "id": str(uuid.uuid4()), "membre_id": membre_id, "saison": 13,
-                    **counts, "created_at": now, "updated_at": now
-                })
-                restored += 1
-        
-        # 4. AJOUTER les présences des événements récents qui ont des réponses réelles
-        # (TDO et apéro du 20 avril - les seuls avec reponses_evenements)
-        events_with_responses = await db.evenements.find(
-            {"saison": 13, "statut": "terminé"},
-            {"_id": 0}
-        ).to_list(200)
-        
-        for evt in events_with_responses:
-            reponses_count = await db.reponses_evenements.count_documents({"evenement_id": evt["id"]})
-            if reponses_count == 0:
-                continue  # Ancien événement sans réponses individuelles - déjà dans le backup
-            
-            evt_type = evt.get("type_sondage", "").lower().replace("é", "e")
-            field_map = {"apero": "presences_aperos", "repas": "presences_repas", "anniversaire": "presences_anniversaires"}
-            field = field_map.get(evt_type)
-            if not field:
-                continue
-            
-            reponses = await db.reponses_evenements.find({"evenement_id": evt["id"]}, {"_id": 0}).to_list(1000)
-            manuelles = await db.reponses_manuelles.find({"evenement_id": evt["id"]}, {"_id": 0}).to_list(100)
-            direct_ids = set(r.get("membre_id") for r in reponses if r.get("membre_id"))
-            manuelles_uniques = [m for m in manuelles if m.get("membre_id") and m["membre_id"] not in direct_ids]
-            
-            for r in reponses + manuelles_uniques:
-                membre_id = r.get("membre_id")
-                if not membre_id or not r.get("present"):
-                    continue
-                
-                # Vérifier si déjà compté via presences_log
-                already = await db.presences_log.find_one({
-                    "evenement_id": evt["id"], "membre_id": membre_id
-                })
-                if already:
-                    continue
-                
-                # Incrémenter
-                existing = await db.presences_membres.find_one({"membre_id": membre_id, "saison": 13})
-                if existing:
-                    await db.presences_membres.update_one(
-                        {"membre_id": membre_id, "saison": 13},
-                        {"$inc": {field: 1}, "$set": {"updated_at": now}}
-                    )
-                else:
-                    await db.presences_membres.insert_one({
-                        "id": str(uuid.uuid4()), "membre_id": membre_id, "saison": 13,
-                        "presences_aperos": 1 if field == "presences_aperos" else 0,
-                        "presences_repas": 1 if field == "presences_repas" else 0,
-                        "presences_anniversaires": 0,
-                        "created_at": now, "updated_at": now
-                    })
-                
-                await db.presences_log.insert_one({
-                    "evenement_id": evt["id"], "membre_id": membre_id,
-                    "presence_field": field, "timestamp": now
-                })
-        
-        # 5. Mettre à jour saisons_config
-        nb_aperos = await db.evenements.count_documents({"saison": 13, "statut": "terminé", "type_sondage": {"$regex": "^ap", "$options": "i"}})
-        nb_repas = await db.evenements.count_documents({"saison": 13, "statut": "terminé", "type_sondage": "repas"})
-        await db.saisons_config.update_one(
-            {"saison": 13},
-            {"$set": {"nb_aperos": nb_aperos, "nb_repas": nb_repas, "updated_at": now}},
-            upsert=True
-        )
-        
-        logging.info(f"Restauration S13: {restored} backup + events avec réponses. Config: {nb_aperos} aperos, {nb_repas} repas")
     except Exception as e:
-        logging.error(f"Erreur restauration presences: {e}")
+        logging.error(f"Erreur fix events: {e}")
 
 
 async def normalize_event_types():
