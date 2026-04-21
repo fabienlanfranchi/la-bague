@@ -1302,8 +1302,9 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                       .map((evt, idx) => (
                         <tr 
                           key={evt.id}
-                          className={`border-b border-[#D4A024]/10 hover:bg-[#D4A024]/5 transition-colors ${isRowModified(evt.id) ? 'bg-yellow-900/20' : ''}`}
+                          className={`border-b border-[#D4A024]/10 hover:bg-[#D4A024]/5 transition-colors cursor-pointer ${isRowModified(evt.id) ? 'bg-yellow-900/20' : ''}`}
                           data-testid={`table-row-${evt.id}`}
+                          onClick={() => loadRepondants(evt)}
                         >
                           <td className="px-3 py-2 text-gray-500 text-sm">{idx + 1}</td>
                           <td className="px-3 py-2">
@@ -1312,6 +1313,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                               value={getTableValue(evt, 'lieu')}
                               onChange={(e) => hasAdminAccess && handleTableCellChange(evt.id, 'lieu', e.target.value)}
                               readOnly={!hasAdminAccess}
+                              onClick={(e) => e.stopPropagation()}
                               className={`w-full px-2 py-1 bg-transparent border border-transparent ${hasAdminAccess ? 'hover:border-[#D4A024]/30 focus:border-[#D4A024]' : 'cursor-default'} rounded text-white text-sm transition-colors`}
                               data-testid={`table-lieu-${evt.id}`}
                             />
@@ -1322,6 +1324,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                               value={getTableValue(evt, 'date')}
                               onChange={(e) => hasAdminAccess && handleTableCellChange(evt.id, 'date', e.target.value)}
                               readOnly={!hasAdminAccess}
+                              onClick={(e) => e.stopPropagation()}
                               className={`w-full px-2 py-1 bg-transparent border border-transparent ${hasAdminAccess ? 'hover:border-[#D4A024]/30 focus:border-[#D4A024]' : 'cursor-default'} rounded text-white text-sm transition-colors`}
                               data-testid={`table-date-${evt.id}`}
                             />
@@ -1331,6 +1334,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                               value={getTableValue(evt, 'type_sondage')}
                               onChange={(e) => hasAdminAccess && handleTableCellChange(evt.id, 'type_sondage', e.target.value)}
                               disabled={!hasAdminAccess}
+                              onClick={(e) => e.stopPropagation()}
                               className={`w-full px-2 py-1 bg-transparent border border-transparent ${hasAdminAccess ? 'hover:border-[#D4A024]/30 focus:border-[#D4A024]' : 'cursor-default'} rounded text-white text-sm transition-colors`}
                               data-testid={`table-type-${evt.id}`}
                             >
@@ -1346,6 +1350,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                               value={getTableValue(evt, 'total_presents')}
                               onChange={(e) => hasAdminAccess && handleTableCellChange(evt.id, 'total_presents', e.target.value)}
                               readOnly={!hasAdminAccess}
+                              onClick={(e) => e.stopPropagation()}
                               className={`w-full px-2 py-1 bg-transparent border border-transparent ${hasAdminAccess ? 'hover:border-[#D4A024]/30 focus:border-[#D4A024]' : 'cursor-default'} rounded text-[#D4A024] text-sm text-center font-bold transition-colors`}
                               data-testid={`table-presents-${evt.id}`}
                             />
@@ -1502,12 +1507,13 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                           {evtsTermines.map((evt, idx) => (
                             <div 
                               key={evt.id}
-                              className={`border rounded transition-all ${
+                              className={`border rounded transition-all cursor-pointer ${
                                 isRowModified(evt.id) 
                                   ? 'bg-yellow-900/20 border-yellow-500/50' 
                                   : 'bg-black/20 border-[#D4A024]/10 hover:border-[#D4A024]/30'
                               }`}
                               data-testid={`event-${evt.id}`}
+                              onClick={() => loadRepondants(evt)}
                             >
                               {/* MODE ÉDITION DIRECT - Tous les champs éditables */}
                               <div className="flex items-center justify-between p-2 sm:p-3 gap-2">
@@ -1521,6 +1527,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                                     value={getTableValue(evt, 'lieu')}
                                     onChange={(e) => hasAdminAccess && handleTableCellChange(evt.id, 'lieu', e.target.value)}
                                     readOnly={!hasAdminAccess}
+                                    onClick={(e) => e.stopPropagation()}
                                     className={`font-serif font-semibold w-16 sm:w-24 px-1 py-0.5 rounded text-xs sm:text-sm bg-transparent text-white border border-transparent ${hasAdminAccess ? 'hover:border-[#D4A024]/30 focus:border-[#D4A024] focus:bg-black/30' : 'cursor-default'}`}
                                     data-testid={`list-lieu-${evt.id}`}
                                   />
@@ -1531,6 +1538,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                                     value={getTableValue(evt, 'date')}
                                     onChange={(e) => hasAdminAccess && handleTableCellChange(evt.id, 'date', e.target.value)}
                                     readOnly={!hasAdminAccess}
+                                    onClick={(e) => e.stopPropagation()}
                                     className={`w-24 sm:w-28 px-1 py-0.5 rounded text-xs bg-transparent text-gray-400 border border-transparent ${hasAdminAccess ? 'hover:border-[#D4A024]/30 focus:border-[#D4A024] focus:bg-black/30' : 'cursor-default'}`}
                                     data-testid={`list-date-${evt.id}`}
                                   />
@@ -1539,6 +1547,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                                   <select
                                     value={getTableValue(evt, 'type_sondage')}
                                     onChange={(e) => hasAdminAccess && handleTableCellChange(evt.id, 'type_sondage', e.target.value)}
+                                    onClick={(e) => e.stopPropagation()}
                                     disabled={!hasAdminAccess}
                                     className={`hidden sm:block w-20 px-1 py-0.5 rounded text-xs bg-transparent text-gray-400 border border-transparent ${hasAdminAccess ? 'hover:border-[#D4A024]/30 focus:border-[#D4A024] focus:bg-black/30' : 'cursor-default'}`}
                                     data-testid={`list-type-${evt.id}`}
@@ -2045,12 +2054,17 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="text-xl font-serif text-white">
-                    Réponses au sondage
+                    Détail de l'événement
                   </CardTitle>
                   {repondantsData.evenement && (
-                    <p className="text-gray-400 text-sm mt-1">
-                      {repondantsData.evenement.objet} - {formatDateShort(repondantsData.evenement.date)}
-                    </p>
+                    <div className="mt-1">
+                      <p className="text-gray-400 text-sm">
+                        <Badge className={`mr-2 ${repondantsData.evenement.type_sondage === 'repas' ? 'bg-blue-600' : 'bg-amber-600'}`}>
+                          {repondantsData.evenement.type_sondage === 'repas' ? 'Repas' : 'Apéro'}
+                        </Badge>
+                        {repondantsData.evenement.lieu || repondantsData.evenement.objet} - {formatDateShort(repondantsData.evenement.date)}
+                      </p>
+                    </div>
                   )}
                 </div>
                 <Button
@@ -2072,7 +2086,14 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
               ) : repondantsData.reponses.length === 0 ? (
                 <div className="text-center py-8">
                   <Users className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-                  <p className="text-gray-400">Aucune réponse pour le moment</p>
+                  {repondantsData.evenement?.total_presents > 0 ? (
+                    <>
+                      <p className="text-white text-lg mb-2">{repondantsData.evenement.total_presents} présents</p>
+                      <p className="text-gray-500 text-sm">Le détail des présences n'est pas disponible pour cet événement (créé avant le système de suivi individuel)</p>
+                    </>
+                  ) : (
+                    <p className="text-gray-400">Aucune réponse pour le moment</p>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-2">
