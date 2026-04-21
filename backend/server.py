@@ -6792,20 +6792,14 @@ async def fix_cigares_personnels_pays():
 
 @app.on_event("startup")
 async def auto_terminer_evenements():
-    """Terminer automatiquement les événements dont la date est passée.
-    
-    AUTOMATISATION COMPLÈTE :
-    1. Passe le statut à "terminé"
-    2. Calcule le total_presents
-    3. Met à jour les presences_membres pour chaque membre (présent = +1)
-    4. Vérifie la cohérence saisons_config
-    """
+    """Terminer automatiquement les événements passés et recalculer les présences."""
     try:
         now = datetime.now(timezone.utc)
         evenements_a_venir = await db.evenements.find(
-            {"statut": "à venir"},
-            {"_id": 0}
+            {"statut": "à venir"}, {"_id": 0}
         ).to_list(100)
+        
+        saisons_a_recalculer = set()
         
         for evt in evenements_a_venir:
             evt_date = evt.get('date')
@@ -6814,100 +6808,35 @@ async def auto_terminer_evenements():
                     evt_date = datetime.fromisoformat(evt_date.replace('Z', '+00:00'))
                 except:
                     continue
-            
-            if evt_date.tzinfo is None:
+            if evt_date and evt_date.tzinfo is None:
                 evt_date = evt_date.replace(tzinfo=timezone.utc)
             
-            if evt_date and evt_date < now:
-                # Ne pas auto-terminer les événements de moins de 6h (laisser le temps au président)
-                hours_since = (now - evt_date).total_seconds() / 3600
-                if hours_since < 6:
-                    logging.info(f"Événement récent ignoré (< 6h): {evt.get('objet')} du {evt.get('date')}")
-                    continue
-                evt_id = evt['id']
-                evt_saison = evt.get('saison')
-                evt_type = evt.get('type_sondage', '').lower()
-                
-                # Collecter TOUTES les réponses (directes + manuelles)
-                reponses = await db.reponses_evenements.find(
-                    {"evenement_id": evt_id}, {"_id": 0}
-                ).to_list(1000)
-                
-                manuelles = await db.reponses_manuelles.find(
-                    {"evenement_id": evt_id}, {"_id": 0}
-                ).to_list(100)
-                
-                # Dédupliquer : si un membre a une réponse directe ET manuelle, prioriser la directe
-                direct_member_ids = set(r.get('membre_id') for r in reponses if r.get('membre_id'))
-                manuelles_uniques = [m for m in manuelles if m.get('membre_id') and m['membre_id'] not in direct_member_ids]
-                
-                toutes_reponses = reponses + manuelles_uniques
-                presents = [r for r in toutes_reponses if r.get('present')]
-                total = len(presents)
-                
-                # 1. Passer en "terminé"
-                await db.evenements.update_one(
-                    {"id": evt_id},
-                    {"$set": {"statut": "terminé", "total_presents": total}}
-                )
-                
-                # 2. Mettre à jour les presences_membres pour chaque membre présent
-                if evt_saison and evt_type:
-                    presence_field_map = {
-                        "apero": "presences_aperos",
-                        "apéro": "presences_aperos",
-                        "repas": "presences_repas",
-                        "anniversaire": "presences_anniversaires"
-                    }
-                    presence_field = presence_field_map.get(evt_type)
-                    
-                    if presence_field:
-                        for reponse in presents:
-                            membre_id = reponse.get('membre_id')
-                            if not membre_id:
-                                continue
-                            
-                            # Vérifier si ce membre a déjà été compté pour cet événement
-                            # via un marqueur dans la base
-                            already_counted = await db.presences_log.find_one({
-                                "evenement_id": evt_id,
-                                "membre_id": membre_id
-                            })
-                            
-                            if not already_counted:
-                                # Incrémenter la présence
-                                existing_presence = await db.presences_membres.find_one({
-                                    "membre_id": membre_id,
-                                    "saison": evt_saison
-                                })
-                                
-                                if existing_presence:
-                                    await db.presences_membres.update_one(
-                                        {"membre_id": membre_id, "saison": evt_saison},
-                                        {"$inc": {presence_field: 1}, "$set": {"updated_at": now.isoformat()}}
-                                    )
-                                else:
-                                    # Créer l'entrée de présence
-                                    await db.presences_membres.insert_one({
-                                        "id": str(uuid.uuid4()),
-                                        "membre_id": membre_id,
-                                        "saison": evt_saison,
-                                        "presences_aperos": 1 if presence_field == "presences_aperos" else 0,
-                                        "presences_repas": 1 if presence_field == "presences_repas" else 0,
-                                        "presences_anniversaires": 1 if presence_field == "presences_anniversaires" else 0,
-                                        "created_at": now.isoformat(),
-                                        "updated_at": now.isoformat()
-                                    })
-                                
-                                # Marquer comme compté pour éviter les doublons
-                                await db.presences_log.insert_one({
-                                    "evenement_id": evt_id,
-                                    "membre_id": membre_id,
-                                    "presence_field": presence_field,
-                                    "timestamp": now.isoformat()
-                                })
-                
-                logging.info(f"Auto-terminé: {evt.get('objet')} du {evt.get('date')} - {total} présents, presences_membres mis à jour")
+            if not evt_date or evt_date >= now:
+                continue
+            hours_since = (now - evt_date).total_seconds() / 3600
+            if hours_since < 3:
+                continue
+            
+            evt_id = evt['id']
+            reponses = await db.reponses_evenements.find({"evenement_id": evt_id}, {"_id": 0}).to_list(1000)
+            manuelles = await db.reponses_manuelles.find({"evenement_id": evt_id}, {"_id": 0}).to_list(100)
+            direct_ids = set(r.get('membre_id') for r in reponses if r.get('membre_id'))
+            manuelles_uniques = [m for m in manuelles if m.get('membre_id') and m['membre_id'] not in direct_ids]
+            presents = [r for r in (reponses + manuelles_uniques) if r.get('present')]
+            
+            await db.evenements.update_one(
+                {"id": evt_id},
+                {"$set": {"statut": "terminé", "total_presents": len(presents)}}
+            )
+            if evt.get('saison'):
+                saisons_a_recalculer.add(evt['saison'])
+            logging.info(f"Auto-terminé: {evt.get('objet')} du {evt.get('date')} - {len(presents)} présents")
+        
+        # TOUJOURS recalculer la saison 13 (saison en cours) à chaque démarrage
+        saisons_a_recalculer.add(13)
+        
+        for saison in saisons_a_recalculer:
+            await recalculer_presences_saison(saison)
     except Exception as e:
         logging.error(f"Erreur auto-terminaison: {e}")
 
