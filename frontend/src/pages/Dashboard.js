@@ -1165,9 +1165,8 @@ const Dashboard = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Auto-terminer les événements passés ET recalculer les présences
+    // Auto-terminer les événements passés
     axios.post(`${API}/auto-terminer`).catch(() => {});
-    axios.post(`${API}/recalculer-presences/13`).catch(() => {});
     loadDashboardData();
     loadProchainEvenement();
     loadProchainEvenementInfo();

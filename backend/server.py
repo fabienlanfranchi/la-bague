@@ -4446,97 +4446,60 @@ async def get_statistiques_moyennes_dashboard():
 
 @api_router.get("/statistiques/saison/{saison}")
 async def get_statistiques_saison(saison: int):
-    """Statistiques pour une saison - TOUJOURS recalculées à partir des données réelles."""
+    """Statistiques pour une saison - lit les presences_membres existantes.
+    Ne modifie JAMAIS les données existantes."""
     members = await db.members.find({}, {"_id": 0, "id": 1, "nom_complet": 1, "numero_membre": 1}).to_list(100)
     
-    # Compter les événements terminés DIRECTEMENT depuis la collection
-    evenements = await db.evenements.find(
-        {"saison": saison, "statut": "terminé"}, {"_id": 0}
-    ).to_list(200)
-    
-    nb_repas = 0
-    nb_aperos = 0
-    nb_anniversaires = 0
-    
-    # Compteurs de présences par membre recalculés en direct
-    compteurs = {}
-    
-    for evt in evenements:
-        evt_type = evt.get('type_sondage', '').lower().replace('é', 'e')
-        
-        if evt_type == 'repas':
-            nb_repas += 1
-            field = 'presences_repas'
-        elif evt_type == 'apero':
-            nb_aperos += 1
-            field = 'presences_aperos'
-        elif evt_type == 'anniversaire':
-            nb_anniversaires += 1
-            field = 'presences_anniversaires'
-        else:
-            continue
-        
-        # Compter les présents pour cet événement
-        reponses = await db.reponses_evenements.find({"evenement_id": evt['id']}, {"_id": 0}).to_list(1000)
-        manuelles = await db.reponses_manuelles.find({"evenement_id": evt['id']}, {"_id": 0}).to_list(100)
-        direct_ids = set(r.get('membre_id') for r in reponses if r.get('membre_id'))
-        manuelles_uniques = [m for m in manuelles if m.get('membre_id') and m['membre_id'] not in direct_ids]
-        
-        for r in reponses + manuelles_uniques:
-            membre_id = r.get('membre_id')
-            if not membre_id:
-                continue
-            if membre_id not in compteurs:
-                compteurs[membre_id] = {'presences_aperos': 0, 'presences_repas': 0, 'presences_anniversaires': 0}
-            if r.get('present'):
-                compteurs[membre_id][field] += 1
-    
-    # Mettre à jour saisons_config avec les vrais chiffres
+    # Config de la saison
     config = await db.saisons_config.find_one({"saison": saison}, {"_id": 0})
-    if config:
+    if not config:
+        config = {"saison": saison, "nb_aperos": 0, "nb_repas": 0, "nb_anniversaires": 0}
+    
+    # Compter les événements terminés réels pour auto-sync
+    evenements = await db.evenements.find({"saison": saison, "statut": "terminé"}, {"_id": 0, "type_sondage": 1}).to_list(200)
+    nb_repas_reel = len([e for e in evenements if e.get('type_sondage','').lower().replace('é','e') == 'repas'])
+    nb_aperos_reel = len([e for e in evenements if e.get('type_sondage','').lower().replace('é','e') == 'apero'])
+    nb_anniversaires_reel = len([e for e in evenements if e.get('type_sondage','').lower().replace('é','e') == 'anniversaire'])
+    
+    nb_aperos = max(config.get("nb_aperos", 0), nb_aperos_reel)
+    nb_repas = max(config.get("nb_repas", 0), nb_repas_reel)
+    nb_anniversaires = max(config.get("nb_anniversaires", 0), nb_anniversaires_reel)
+    
+    # Mettre à jour la config si les chiffres réels sont plus élevés
+    if nb_aperos != config.get("nb_aperos") or nb_repas != config.get("nb_repas") or nb_anniversaires != config.get("nb_anniversaires"):
         await db.saisons_config.update_one(
             {"saison": saison},
-            {"$set": {"nb_aperos": nb_aperos, "nb_repas": nb_repas, "nb_anniversaires": nb_anniversaires}}
+            {"$set": {"nb_aperos": nb_aperos, "nb_repas": nb_repas, "nb_anniversaires": nb_anniversaires}},
+            upsert=True
         )
-        config["nb_aperos"] = nb_aperos
-        config["nb_repas"] = nb_repas
-        config["nb_anniversaires"] = nb_anniversaires
-    else:
-        config = {"saison": saison, "nb_aperos": nb_aperos, "nb_repas": nb_repas, "nb_anniversaires": nb_anniversaires}
+    config["nb_aperos"] = nb_aperos
+    config["nb_repas"] = nb_repas
+    config["nb_anniversaires"] = nb_anniversaires
     
-    # Aussi sauvegarder les presences_membres recalculées
-    now = datetime.now(timezone.utc).isoformat()
-    for membre_id, counts in compteurs.items():
-        existing = await db.presences_membres.find_one({"membre_id": membre_id, "saison": saison})
-        if existing:
-            await db.presences_membres.update_one(
-                {"membre_id": membre_id, "saison": saison},
-                {"$set": {**counts, "updated_at": now}}
-            )
-        else:
-            await db.presences_membres.insert_one({
-                "id": str(uuid.uuid4()), "membre_id": membre_id, "saison": saison,
-                **counts, "created_at": now, "updated_at": now
-            })
+    # Lire les présences existantes (SANS les écraser)
+    presences = await db.presences_membres.find({"saison": saison}, {"_id": 0}).to_list(100)
+    presences_dict = {p["membre_id"]: p for p in presences}
     
-    # Construire les stats pour chaque membre
     total_events = nb_aperos + nb_repas + nb_anniversaires
     stats = []
     for member in members:
         mid = member["id"]
-        c = compteurs.get(mid, {'presences_aperos': 0, 'presences_repas': 0, 'presences_anniversaires': 0})
-        total_pres = c['presences_aperos'] + c['presences_repas'] + c['presences_anniversaires']
+        p = presences_dict.get(mid, {})
+        pa = p.get("presences_aperos", 0)
+        pr = p.get("presences_repas", 0)
+        pn = p.get("presences_anniversaires", 0)
+        total_pres = pa + pr + pn
         
         stats.append({
             "membre_id": mid,
             "nom_complet": member["nom_complet"],
             "numero_membre": member["numero_membre"],
-            "presences_aperos": c['presences_aperos'],
-            "presences_repas": c['presences_repas'],
-            "presences_anniversaires": c['presences_anniversaires'],
-            "pct_aperos": custom_round(c['presences_aperos'] / nb_aperos * 100) if nb_aperos > 0 else 0,
-            "pct_repas": custom_round(c['presences_repas'] / nb_repas * 100) if nb_repas > 0 else 0,
-            "pct_anniversaires": custom_round(c['presences_anniversaires'] / nb_anniversaires * 100) if nb_anniversaires > 0 else 0,
+            "presences_aperos": pa,
+            "presences_repas": pr,
+            "presences_anniversaires": pn,
+            "pct_aperos": custom_round(pa / nb_aperos * 100) if nb_aperos > 0 else 0,
+            "pct_repas": custom_round(pr / nb_repas * 100) if nb_repas > 0 else 0,
+            "pct_anniversaires": custom_round(pn / nb_anniversaires * 100) if nb_anniversaires > 0 else 0,
             "pct_global": custom_round(total_pres / total_events * 100) if total_events > 0 else 0
         })
     
@@ -6537,6 +6500,72 @@ async def diagnostic_saison(saison: int):
     
     # Check each event
     dates_seen = {}
+
+# Backup des présences saison 13 (avant écrasement accidentel)
+BACKUP_PRESENCES_S13 = {
+    "d6b30499-2c9b-43e4-9402-7234da4c9855": {"presences_aperos": 6, "presences_repas": 9, "presences_anniversaires": 0},
+    "de7f715f-c307-4168-9aed-ecb335634904": {"presences_aperos": 0, "presences_repas": 1, "presences_anniversaires": 0},
+    "c5d2dd00-ac99-44dd-94b2-aff8eb95a174": {"presences_aperos": 3, "presences_repas": 6, "presences_anniversaires": 0},
+    "56e5e14e-dd95-4f00-b0d4-5666c397ccdc": {"presences_aperos": 2, "presences_repas": 5, "presences_anniversaires": 0},
+    "56bc4a86-2046-4953-80ba-710d2c2acbfa": {"presences_aperos": 0, "presences_repas": 6, "presences_anniversaires": 0},
+    "09aa944f-16d4-4e38-9e9f-38618087c397": {"presences_aperos": 0, "presences_repas": 0, "presences_anniversaires": 0},
+    "04b70eff-51d5-447d-956d-7fd933fd92d7": {"presences_aperos": 2, "presences_repas": 3, "presences_anniversaires": 0},
+    "1895c48b-d32e-407c-af1b-e964fc5793c2": {"presences_aperos": 0, "presences_repas": 6, "presences_anniversaires": 0},
+    "8a43f3be-e5b3-4e26-aaa0-0ded9ad631b5": {"presences_aperos": 6, "presences_repas": 6, "presences_anniversaires": 0},
+    "335e9a34-352d-4427-aaea-43352709b54d": {"presences_aperos": 7, "presences_repas": 7, "presences_anniversaires": 0},
+    "ba8c5b0d-f350-4fc4-8672-753879016345": {"presences_aperos": 0, "presences_repas": 0, "presences_anniversaires": 0},
+    "bd080d3b-6d76-4c56-b147-de0714cfe3e7": {"presences_aperos": 0, "presences_repas": 6, "presences_anniversaires": 0},
+    "3ea411f8-c84b-4ccf-a453-4ff7f527cddb": {"presences_aperos": 1, "presences_repas": 5, "presences_anniversaires": 0},
+    "d101e02c-d5df-4b10-be00-93bc233d1afa": {"presences_aperos": 2, "presences_repas": 4, "presences_anniversaires": 0},
+    "c8ad1708-bdff-4825-9885-04ac18f77d01": {"presences_aperos": 7, "presences_repas": 7, "presences_anniversaires": 0},
+    "71f6794e-6445-41de-8e0f-7b6f77bb82ee": {"presences_aperos": 6, "presences_repas": 8, "presences_anniversaires": 0},
+    "eed07af7-9d17-4d60-90a8-71f4b4d220ba": {"presences_aperos": 1, "presences_repas": 6, "presences_anniversaires": 0},
+    "d2407ece-9f5a-4cc7-adb0-74f857888da3": {"presences_aperos": 1, "presences_repas": 8, "presences_anniversaires": 0},
+    "363b5a1e-d530-4b14-91fd-de6bb565f773": {"presences_aperos": 1, "presences_repas": 5, "presences_anniversaires": 0},
+    "5ba0ed36-db84-4685-88a6-bda97d2d2afc": {"presences_aperos": 0, "presences_repas": 3, "presences_anniversaires": 0},
+    "b001460c-a948-4eb1-930a-2b5eb55b4064": {"presences_aperos": 5, "presences_repas": 6, "presences_anniversaires": 0},
+    "b5691bbf-849e-47e9-87d0-0d4e518627c1": {"presences_aperos": 2, "presences_repas": 1, "presences_anniversaires": 0},
+    "6d6a0aac-2542-4a1c-9c66-89556dbb1d4b": {"presences_aperos": 1, "presences_repas": 4, "presences_anniversaires": 0},
+    "dbe889c0-a18d-44a3-bd3a-502a1c0cf5f6": {"presences_aperos": 0, "presences_repas": 6, "presences_anniversaires": 0},
+    "7e733d7b-425c-4764-92c6-f3aacf53ec2c": {"presences_aperos": 2, "presences_repas": 4, "presences_anniversaires": 0},
+    "a3d3362b-b9f9-43d5-ada2-f09d9eed93d8": {"presences_aperos": 0, "presences_repas": 6, "presences_anniversaires": 0},
+    "687f343b-9127-4301-b896-c0327435c3a0": {"presences_aperos": 4, "presences_repas": 6, "presences_anniversaires": 0},
+    "f5cedd16-1e43-495b-be65-cdc956f9f4e3": {"presences_aperos": 6, "presences_repas": 6, "presences_anniversaires": 0},
+    "0fee2bc8-1d73-4859-8407-b83e926683a6": {"presences_aperos": 5, "presences_repas": 7, "presences_anniversaires": 0},
+    "8ee32993-a386-462a-a5cc-e60c10c10a3b": {"presences_aperos": 0, "presences_repas": 4, "presences_anniversaires": 0},
+    "2eb72778-8ce2-470b-9cde-e2e53709b42d": {"presences_aperos": 3, "presences_repas": 7, "presences_anniversaires": 0},
+    "8041667e-4824-4602-a82f-067d49e6f04f": {"presences_aperos": 0, "presences_repas": 5, "presences_anniversaires": 0},
+    "a59e53d5-f8f1-4a02-bc4d-f47cd9944a42": {"presences_aperos": 4, "presences_repas": 4, "presences_anniversaires": 0},
+    "98df7daa-5fc0-48c8-959a-ae51502512f5": {"presences_aperos": 0, "presences_repas": 0, "presences_anniversaires": 0},
+    "ddc6d6a1-4104-48c1-b440-a0cc9ae132c8": {"presences_aperos": 6, "presences_repas": 7, "presences_anniversaires": 0},
+}
+
+@api_router.post("/restaurer-presences-s13")
+async def restaurer_presences_s13():
+    """Restaurer les données de présences saison 13 depuis le backup."""
+    now = datetime.now(timezone.utc).isoformat()
+    restored = 0
+    for membre_id, counts in BACKUP_PRESENCES_S13.items():
+        existing = await db.presences_membres.find_one({"membre_id": membre_id, "saison": 13})
+        if existing:
+            # Ne restaurer que si les données actuelles sont inférieures au backup
+            current_total = existing.get("presences_aperos", 0) + existing.get("presences_repas", 0) + existing.get("presences_anniversaires", 0)
+            backup_total = counts["presences_aperos"] + counts["presences_repas"] + counts["presences_anniversaires"]
+            if current_total < backup_total:
+                await db.presences_membres.update_one(
+                    {"membre_id": membre_id, "saison": 13},
+                    {"$set": {**counts, "updated_at": now, "restored_from_backup": True}}
+                )
+                restored += 1
+        else:
+            await db.presences_membres.insert_one({
+                "id": str(uuid.uuid4()), "membre_id": membre_id, "saison": 13,
+                **counts, "created_at": now, "updated_at": now, "restored_from_backup": True
+            })
+            restored += 1
+    return {"message": f"Restauré {restored} entrées pour la saison 13"}
+
+
     for evt in evenements:
         evt_type = evt.get("type_sondage", "?")
         evt_date = str(evt.get("date", ""))[:10]
@@ -6682,6 +6711,36 @@ async def recalculer_presences_endpoint(saison: int):
 
 
 @app.on_event("startup")
+
+@app.on_event("startup")
+async def auto_restore_presences_s13():
+    """Restaurer automatiquement les présences saison 13 si elles ont été écrasées."""
+    try:
+        now = datetime.now(timezone.utc).isoformat()
+        restored = 0
+        for membre_id, counts in BACKUP_PRESENCES_S13.items():
+            existing = await db.presences_membres.find_one({"membre_id": membre_id, "saison": 13})
+            if existing:
+                current_total = existing.get("presences_aperos", 0) + existing.get("presences_repas", 0) + existing.get("presences_anniversaires", 0)
+                backup_total = counts["presences_aperos"] + counts["presences_repas"] + counts["presences_anniversaires"]
+                if current_total < backup_total:
+                    await db.presences_membres.update_one(
+                        {"membre_id": membre_id, "saison": 13},
+                        {"$set": {**counts, "updated_at": now}}
+                    )
+                    restored += 1
+            else:
+                await db.presences_membres.insert_one({
+                    "id": str(uuid.uuid4()), "membre_id": membre_id, "saison": 13,
+                    **counts, "created_at": now, "updated_at": now
+                })
+                restored += 1
+        if restored > 0:
+            logging.info(f"Restauré {restored} presences saison 13 depuis backup")
+    except Exception as e:
+        logging.error(f"Erreur restauration presences: {e}")
+
+
 async def normalize_event_types():
     """Normaliser tous les type_sondage en minuscules sans accent"""
     try:
@@ -6913,11 +6972,7 @@ async def auto_terminer_evenements():
                 saisons_a_recalculer.add(evt['saison'])
             logging.info(f"Auto-terminé: {evt.get('objet')} du {evt.get('date')} - {len(presents)} présents")
         
-        # TOUJOURS recalculer la saison 13 (saison en cours) à chaque démarrage
-        saisons_a_recalculer.add(13)
-        
-        for saison in saisons_a_recalculer:
-            await recalculer_presences_saison(saison)
+        # Pas de recalcul global des saisons - on ne touche pas aux données historiques
     except Exception as e:
         logging.error(f"Erreur auto-terminaison: {e}")
 
