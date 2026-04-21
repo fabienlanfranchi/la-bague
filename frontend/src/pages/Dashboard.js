@@ -188,6 +188,12 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
   const [presenceDetailData, setPresenceDetailData] = useState([]);
   const [loadingPresenceDetail, setLoadingPresenceDetail] = useState(false);
 
+  // Sondages actifs à afficher sur le Dashboard
+  const [sondagesActifs, setSondagesActifs] = useState([]);
+  const [sondageVotes, setSondageVotes] = useState({}); // {sondage_id: {reponses}}
+  const [sondageAnswers, setSondageAnswers] = useState({}); // réponses en cours
+  const [votingInProgress, setVotingInProgress] = useState(false);
+
   // Charger les messages non lus et les stats perso
   useEffect(() => {
     // Auto-terminer les événements passés
@@ -230,6 +236,23 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
             });
           }
         }
+
+        // Charger les sondages actifs
+        const sondagesRes = await axios.get(`${API}/sondages-generiques`);
+        const actifs = (sondagesRes.data || []).filter(s => s.status === 'active');
+        setSondagesActifs(actifs);
+        
+        // Charger mes votes pour chaque sondage actif
+        const votes = {};
+        for (const s of actifs) {
+          try {
+            const voteRes = await axios.get(`${API}/sondages-generiques/${s.id}/mon-vote/${currentMember.id}`);
+            if (voteRes.data.hasVoted) {
+              votes[s.id] = voteRes.data;
+            }
+          } catch (e) {}
+        }
+        setSondageVotes(votes);
       } catch (error) {
         console.error('Erreur chargement données membre:', error);
       }
@@ -258,6 +281,45 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
       } catch (error) {
         // Pas de réponse existante, c'est normal
         console.log('Pas de réponse existante');
+
+  // Vote sur un sondage depuis le Dashboard
+  const setSondageAnswer = (sondageId, questionIndex, optionIndex) => {
+    const current = sondageAnswers[sondageId] || [];
+    const updated = current.filter(r => r.question_index !== questionIndex);
+    updated.push({ question_index: questionIndex, option_index: optionIndex });
+    setSondageAnswers({ ...sondageAnswers, [sondageId]: updated });
+  };
+
+  const handleVoteSondage = async (sondage) => {
+    if (!currentMember?.id) return;
+    setVotingInProgress(true);
+    try {
+      const answers = sondageAnswers[sondage.id] || [];
+      if (sondage.questions && sondage.questions.length > 0) {
+        if (answers.length < sondage.questions.length) {
+          toast.error('Répondez à toutes les questions');
+          setVotingInProgress(false);
+          return;
+        }
+        await axios.post(`${API}/sondages-generiques/${sondage.id}/vote?membre_id=${currentMember.id}`, answers);
+      } else {
+        // Legacy
+        const answer = answers[0];
+        if (!answer) {
+          toast.error('Sélectionnez une réponse');
+          setVotingInProgress(false);
+          return;
+        }
+        await axios.post(`${API}/sondages-generiques/${sondage.id}/vote?membre_id=${currentMember.id}&option_index=${answer.option_index}`);
+      }
+      toast.success('Vote anonyme enregistré !');
+      setSondageVotes({ ...sondageVotes, [sondage.id]: { hasVoted: true, reponses: answers } });
+    } catch (error) {
+      toast.error('Erreur lors du vote');
+    }
+    setVotingInProgress(false);
+  };
+
       }
     };
     
