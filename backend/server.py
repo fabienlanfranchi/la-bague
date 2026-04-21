@@ -2053,6 +2053,9 @@ async def create_evenement(input: EvenementCreate):
     """
     now = datetime.now(timezone.utc).isoformat()
     evt_obj = Evenement(**input.model_dump())
+    # Normaliser le type_sondage en minuscules sans accent
+    if evt_obj.type_sondage:
+        evt_obj.type_sondage = evt_obj.type_sondage.lower().replace('é', 'e')
     
     doc = evt_obj.model_dump()
     doc['date'] = doc['date'].isoformat()
@@ -2465,7 +2468,7 @@ async def create_evenement_simple(input: EvenementCreateSimple):
         date=input.date,
         objet=objet,
         lieu=input.lieu,
-        type_sondage=input.type_sondage,
+        type_sondage=input.type_sondage.lower().replace('é', 'e'),
         saison=input.saison,
         statut='terminé'
     )
@@ -4458,9 +4461,10 @@ async def get_statistiques_saison(saison: int):
         }
     
     # Auto-calculer le nombre réel d'événements terminés de la saison
-    nb_repas_reel = await db.evenements.count_documents({"saison": saison, "statut": "terminé", "type_sondage": "repas"})
-    nb_aperos_reel = await db.evenements.count_documents({"saison": saison, "statut": "terminé", "type_sondage": {"$in": ["apero", "apéro"]}})
-    nb_anniversaires_reel = await db.evenements.count_documents({"saison": saison, "statut": "terminé", "type_sondage": "anniversaire"})
+    # Utiliser regex insensible à la casse pour matcher toutes les variantes
+    nb_repas_reel = await db.evenements.count_documents({"saison": saison, "statut": "terminé", "type_sondage": {"$regex": "^repas$", "$options": "i"}})
+    nb_aperos_reel = await db.evenements.count_documents({"saison": saison, "statut": "terminé", "type_sondage": {"$regex": "^ap[eé]ro$", "$options": "i"}})
+    nb_anniversaires_reel = await db.evenements.count_documents({"saison": saison, "statut": "terminé", "type_sondage": {"$regex": "^anniversaire$", "$options": "i"}})
     
     # Utiliser le max entre la config manuelle et le comptage réel
     nb_aperos = max(config.get("nb_aperos", 0), nb_aperos_reel)
@@ -6598,6 +6602,23 @@ async def auto_terminer_evenements_endpoint():
     
     return {"terminated": len(terminated), "events": terminated}
 
+
+@app.on_event("startup")
+async def normalize_event_types():
+    """Normaliser tous les type_sondage en minuscules sans accent"""
+    try:
+        events = await db.evenements.find({}, {"_id": 0, "id": 1, "type_sondage": 1}).to_list(500)
+        fixed = 0
+        for evt in events:
+            ts = evt.get("type_sondage", "")
+            normalized = ts.lower().replace('é', 'e') if ts else ts
+            if normalized != ts:
+                await db.evenements.update_one({"id": evt["id"]}, {"$set": {"type_sondage": normalized}})
+                fixed += 1
+        if fixed > 0:
+            logging.info(f"Normalisé {fixed} type_sondage d'événements")
+    except Exception as e:
+        logging.error(f"Erreur normalisation: {e}")
 
 
 class ImportData(BaseModel):
