@@ -119,17 +119,26 @@ const LoginPage = () => {
   // Connexion par clé d'activation (prenomlabagueX)
   const handleKeyLogin = async (e) => {
     e.preventDefault();
-    
-    if (!cleActivation.trim()) {
+
+    // FIX Safari autofill : lire la valeur réelle du DOM si l'état React est vide
+    const domValue = document.getElementById('cle')?.value || '';
+    const effectiveKey = (cleActivation || domValue).trim();
+
+    if (!effectiveKey) {
       toast.error('Entrez votre clé d\'activation');
       return;
     }
-    
+
+    // Synchroniser l'état React avec la valeur réelle (au cas où l'autofill l'a contourné)
+    if (!cleActivation && domValue) {
+      setCleActivation(domValue);
+    }
+
     setKeyLoading(true);
-    
+
     try {
       const response = await axios.post(`${API_URL}/api/auth/key-login`, {
-        cle_activation: cleActivation.trim()
+        cle_activation: effectiveKey
       });
       
       if (response.data.success) {
@@ -293,7 +302,7 @@ const LoginPage = () => {
 
             <Button
               type="submit"
-              disabled={keyLoading || !cleActivation.trim()}
+              disabled={keyLoading}
               variant="outline"
               className="w-full h-12 border-[#D4A024] text-[#D4A024] hover:bg-[#D4A024]/10 font-serif font-bold text-lg"
               data-testid="login-btn"
