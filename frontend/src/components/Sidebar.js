@@ -45,7 +45,7 @@ const Sidebar = () => {
     { path: '/members', label: 'Membres', icon: Users, adminOnly: true },
     { path: '/tresorier', label: 'Trésorier', icon: ClipboardCheck, adminOnly: false, tresorierOnly: true },
     { path: '/evenements', label: 'Événements', icon: Calendar, adminOnly: false },
-    { path: '/jeux', label: 'Jeux', icon: Gamepad2, adminOnly: false },
+    { path: '/jeux', label: 'Jeux', icon: Gamepad2, adminOnly: false, external: true, externalUrl: 'https://game-lab.optizioni.app/PublicProfile?pseudo=La%20Bague%20Imp%C3%A9riale' },
     { path: '/boutique', label: 'Boutique', icon: ShoppingBag, adminOnly: false },
     { path: '/messages', label: 'Messages', icon: MessageSquare, adminOnly: true },
     { path: '/sondages', label: 'Sondages', icon: BarChart3, adminOnly: false },
@@ -54,7 +54,7 @@ const Sidebar = () => {
     { path: '/guide-cigare', label: 'Tout sur le cigare', icon: BookOpen, adminOnly: false },
     { path: '/assistant-ia', label: 'Winston', icon: Sparkles, adminOnly: false },
     { path: '/aide', label: 'Aide', icon: HelpCircle, adminOnly: false },
-    { path: '/instagram', label: 'Instagram', icon: InstagramIcon, adminOnly: false, external: true },
+    { path: '/instagram', label: 'Instagram', icon: InstagramIcon, adminOnly: false, external: true, externalUrl: 'https://instagram.com/labagueimperiale' },
     { path: '/profile', label: 'Profil', icon: User, adminOnly: false, memberOnly: true },
   ];
 
@@ -123,7 +123,7 @@ const Sidebar = () => {
                 return (
                   <a
                     key={item.path}
-                    href="https://instagram.com/labagueimperiale"
+                    href={item.externalUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center space-x-3 px-4 py-3 rounded-lg transition-all text-gray-400 hover:bg-[#D4A024]/10 hover:text-[#D4A024]"

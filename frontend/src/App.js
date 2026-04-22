@@ -14,6 +14,7 @@ import Messages from './pages/Messages';
 import Cigarotheque from './pages/Cigarotheque';
 import AdminCigarotheque from './pages/AdminCigarotheque';
 import AssistantIA from './pages/AssistantIA';
+import CompetencesWinston from './pages/CompetencesWinston';
 import Boutique from './pages/Boutique';
 import Sondages from './pages/Sondages';
 import Statistiques from './pages/Statistiques';
@@ -312,6 +313,16 @@ function App() {
                 <ProtectedRoute>
                   <AppLayout>
                     <AssistantIA />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/competences-winston"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <CompetencesWinston />
                   </AppLayout>
                 </ProtectedRoute>
               }

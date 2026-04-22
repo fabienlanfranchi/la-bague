@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useUser } from '../context/UserContext';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,13 +28,13 @@ const API = process.env.REACT_APP_BACKEND_URL + '/api';
 const AssistantIA = () => {
   const { currentMember, isAdmin } = useUser();
   const location = useLocation();
+  const navigate = useNavigate();
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [showGuideSommaire, setShowGuideSommaire] = useState(false);
   const [showCigarChoice, setShowCigarChoice] = useState(false);
-  const [showCapabilities, setShowCapabilities] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const hasInitializedFromGuide = useRef(false);
@@ -71,8 +71,8 @@ const AssistantIA = () => {
     { numero: 11, titre: "Parcours cigare : débutant, amateur, confirmé, expert" }
   ];
 
-  // Capacités de Winston
-  const winstonCapabilities = [
+  // Capacités de Winston (affichage détaillé sur /competences-winston)
+  const winstonCapabilities = [ // eslint-disable-line no-unused-vars
     { icon: GraduationCap, text: "Discuter selon votre niveau", description: "Débutant ? Amateur ? Confirmé ? Expert ? Je m'adapte !" },
     { icon: BookOpen, text: "Guide du Cigare", description: "Expert en terroirs, formats, marques et dégustation" },
     { icon: Heart, text: "Recommandations personnalisées", description: "Basées sur vos goûts, ceux de chaque membre" },
@@ -296,45 +296,18 @@ const AssistantIA = () => {
         </p>
       </div>
 
-      {/* Bouton pour afficher les cartes de compétences de Winston */}
+      {/* Bouton pour accéder à la page dédiée des compétences de Winston */}
       <div className="mb-3">
         <Button
-          onClick={() => setShowCapabilities(!showCapabilities)}
+          onClick={() => navigate('/competences-winston')}
           variant="ghost"
           className="w-full bg-black/40 border border-[#D4A024]/20 text-[#D4A024] hover:bg-[#D4A024]/10 py-2"
           data-testid="winston-capabilities-btn"
         >
           <Award className="w-4 h-4 mr-2" />
-          {showCapabilities ? 'Masquer les compétences' : 'Cartes de compétences de Winston'}
+          Cartes de compétences de Winston
         </Button>
       </div>
-
-      {/* Capacités de Winston */}
-      {showCapabilities && (
-        <>
-          {/* Version mobile */}
-          <div className="md:hidden mb-3 overflow-x-auto scrollbar-hide">
-            <div className="flex gap-2 pb-2 px-1" style={{ width: 'max-content' }}>
-              {winstonCapabilities.map((cap, i) => (
-                <div key={i} className="flex items-center gap-2 bg-black/40 border border-[#D4A024]/20 rounded-full px-3 py-1.5 whitespace-nowrap">
-                  <cap.icon className="w-4 h-4 text-[#D4A024] shrink-0" />
-                  <span className="text-white text-xs font-medium">{cap.text}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-          {/* Version desktop */}
-          <div className="hidden md:grid md:grid-cols-5 gap-3 mb-4">
-            {winstonCapabilities.map((cap, i) => (
-              <div key={i} className="bg-black/40 border border-[#D4A024]/20 rounded-lg p-3 text-center">
-                <cap.icon className="w-6 h-6 text-[#D4A024] mx-auto mb-2" />
-                <p className="text-white text-sm font-medium">{cap.text}</p>
-                <p className="text-gray-400 text-xs mt-1">{cap.description}</p>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
 
       {/* Zone de chat */}
       <Card className="flex-1 bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm flex flex-col overflow-hidden relative">
