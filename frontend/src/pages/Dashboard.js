@@ -658,17 +658,20 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
         </Card>
       )}
 
-      {/* SONDAGES GÉNÉRIQUES ACTIFS (ANONYMES) */}
-      {sondagesActifs.length > 0 && (
+      {/* SONDAGES GÉNÉRIQUES ACTIFS (ANONYMES) - Masqués une fois votés */}
+      {(() => {
+        const sondagesNonVotes = sondagesActifs.filter(s => !sondageVotes[s.id]?.hasVoted);
+        if (sondagesNonVotes.length === 0) return null;
+        return (
         <div className="space-y-4" data-testid="sondages-actifs-section">
           <h2 className="text-xl font-serif text-white flex items-center">
             <ScrollText className="w-5 h-5 mr-2 text-[#D4A024]" />
-            Sondages en cours ({sondagesActifs.length})
+            Sondages en cours ({sondagesNonVotes.length})
             <Badge className="ml-3 bg-black/40 border border-[#D4A024]/50 text-[#D4A024] text-xs">
               Anonyme
             </Badge>
           </h2>
-          {sondagesActifs.map((sondage) => {
+          {sondagesNonVotes.map((sondage) => {
             const hasVoted = sondageVotes[sondage.id]?.hasVoted;
             const answers = sondageAnswers[sondage.id] || [];
             const questions = sondage.questions && sondage.questions.length > 0
@@ -801,10 +804,11 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
             );
           })}
         </div>
-      )}
+        );
+      })()}
 
-      {/* SONDAGE EN COURS */}
-      {prochainEvenement && (
+      {/* SONDAGE EN COURS - Masqué une fois la réponse envoyée */}
+      {prochainEvenement && !reponseEnvoyee && (
         <Card className={`bg-black/40 border-2 backdrop-blur-sm ${
           reponseEnvoyee 
             ? 'border-green-500' 
