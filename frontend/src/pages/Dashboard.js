@@ -162,6 +162,8 @@ const CharteClub = ({ defaultExpanded = false }) => {
 
 // ============ COMPOSANT DASHBOARD MEMBRE ============
 const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMember }) => {
+  const { logout } = useUser();
+  const navigate = useNavigate();
   const [reponse, setReponse] = useState(null); // null, 'oui', 'non'
   const [reponseEnvoyee, setReponseEnvoyee] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -506,6 +508,49 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
 
   return (
     <div className="space-y-8">
+      {/* GARDE-FOU IDENTITÉ - Très visible, anti-contamination de session */}
+      <div
+        className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-4 rounded-lg bg-gradient-to-r from-[#7A2020]/30 to-black/40 border-2 border-[#D4A024]/40"
+        data-testid="identity-guard"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#D4A024] to-[#7A2020] flex items-center justify-center text-white font-serif font-bold text-sm shrink-0">
+            {(currentMember?.prenom || currentMember?.nom_complet || '?').charAt(0).toUpperCase()}
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs text-gray-400 tracking-widest font-serif uppercase">
+              Connecté en tant que
+            </p>
+            <p className="text-white font-serif text-lg truncate" data-testid="identity-guard-name">
+              {currentMember?.nom_complet || '—'}
+            </p>
+          </div>
+        </div>
+        <Button
+          onClick={() => {
+            if (window.confirm('Ce n\'est pas vous ? Confirmer la déconnexion pour vous reconnecter avec VOTRE clé d\'activation (labague + votre numéro de membre).')) {
+              // Purger localStorage et sessionStorage avant logout pour éviter toute session parasite
+              try {
+                localStorage.removeItem('labague_device_token');
+                localStorage.removeItem('currentMemberId');
+                localStorage.removeItem('currentMemberData');
+                sessionStorage.removeItem('currentMemberId');
+                sessionStorage.removeItem('currentMemberData');
+                sessionStorage.removeItem('appSessionActive');
+              } catch (e) { /* ignore */ }
+              logout();
+              navigate('/');
+            }
+          }}
+          variant="outline"
+          className="border-red-500/50 text-red-300 hover:bg-red-500/15 hover:text-red-200 font-serif"
+          data-testid="identity-guard-logout-btn"
+        >
+          <X className="w-4 h-4 mr-2" />
+          Ce n'est pas moi — Me déconnecter
+        </Button>
+      </div>
+
       <div className="mb-8">
         <h1 className="text-4xl font-serif font-bold text-white mb-2">
           {welcome.salutation}, {welcome.prenom}
