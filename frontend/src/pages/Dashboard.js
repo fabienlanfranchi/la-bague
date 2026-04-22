@@ -499,6 +499,11 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
 
   const welcome = getWelcomeMessage();
 
+  // Compteur d'actions en attente
+  const sondagesEnAttente = sondagesActifs.filter(s => !sondageVotes[s.id]?.hasVoted).length;
+  const evenementEnAttente = (prochainEvenement && !reponseEnvoyee) ? 1 : 0;
+  const nbActionsEnAttente = sondagesEnAttente + evenementEnAttente + messagesNonLus.length;
+
   return (
     <div className="space-y-8">
       <div className="mb-8">
@@ -508,16 +513,35 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
         <p className="text-[#D4A024] text-lg font-serif">
           Bienvenue à La Bague Impériale
         </p>
-        {welcome.eventInfo && (
-          <div className={`mt-3 inline-flex items-center px-4 py-2 rounded-full text-base font-serif ${
-            welcome.eventInfo.urgent
-              ? 'bg-[#D4A024]/20 text-[#D4A024] border border-[#D4A024]/50 animate-pulse'
-              : 'bg-white/5 text-gray-300 border border-white/10'
-          }`} data-testid="event-countdown">
-            <Calendar className="w-4 h-4 mr-2" />
-            {welcome.eventInfo.text}
-          </div>
-        )}
+        <div className="flex flex-wrap gap-2 mt-3">
+          {welcome.eventInfo && (
+            <div className={`inline-flex items-center px-4 py-2 rounded-full text-base font-serif ${
+              welcome.eventInfo.urgent
+                ? 'bg-[#D4A024]/20 text-[#D4A024] border border-[#D4A024]/50 animate-pulse'
+                : 'bg-white/5 text-gray-300 border border-white/10'
+            }`} data-testid="event-countdown">
+              <Calendar className="w-4 h-4 mr-2" />
+              {welcome.eventInfo.text}
+            </div>
+          )}
+          {nbActionsEnAttente > 0 ? (
+            <div
+              className="inline-flex items-center px-4 py-2 rounded-full text-base font-serif bg-red-500/15 text-red-300 border border-red-500/40 animate-pulse"
+              data-testid="actions-en-attente-badge"
+            >
+              <Bell className="w-4 h-4 mr-2" />
+              {nbActionsEnAttente} action{nbActionsEnAttente > 1 ? 's' : ''} en attente
+            </div>
+          ) : (
+            <div
+              className="inline-flex items-center px-4 py-2 rounded-full text-base font-serif bg-green-500/10 text-green-300 border border-green-500/30"
+              data-testid="actions-a-jour-badge"
+            >
+              <CheckCircle className="w-4 h-4 mr-2" />
+              Vous êtes à jour
+            </div>
+          )}
+        </div>
       </div>
 
       {/* MESSAGES NON LUS */}
