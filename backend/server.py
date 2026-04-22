@@ -586,10 +586,17 @@ def _clear_member_cookie(response: Response) -> None:
 
 
 async def get_current_member_from_jwt(request: Request) -> dict:
-    """Dépendance FastAPI : retourne le membre authentifié via le cookie JWT.
-    Lève 401 si le cookie est absent ou invalide.
+    """Dépendance FastAPI : retourne le membre authentifié via Authorization Bearer OU cookie JWT.
+    Lève 401 si absent ou invalide.
     """
-    token = request.cookies.get(JWT_COOKIE_NAME)
+    # 1) Essayer Authorization: Bearer <token>
+    token = None
+    auth_header = request.headers.get("authorization") or request.headers.get("Authorization")
+    if auth_header and auth_header.lower().startswith("bearer "):
+        token = auth_header[7:].strip()
+    # 2) Fallback cookie (utile pour les requêtes same-origin directes)
+    if not token:
+        token = request.cookies.get(JWT_COOKIE_NAME)
     if not token:
         raise HTTPException(status_code=401, detail="Non authentifié")
     try:
@@ -646,13 +653,15 @@ async def device_login(request: Request, response: Response, data: DeviceLoginRe
         {"$set": {"last_device_login": datetime.now(timezone.utc).isoformat()}}
     )
     
-    # Stocker en session + poser le cookie JWT serveur-autoritaire
+    # Stocker en session + poser le cookie JWT serveur-autoritaire + retourner le token
     request.session['member_id'] = member['id']
+    access_token = create_member_jwt(member['id'])
     _set_member_cookie(response, member['id'])
     
     return {
         "success": True,
-        "member": member
+        "member": member,
+        "access_token": access_token
     }
 
 
@@ -698,14 +707,16 @@ async def key_login(request: Request, response: Response, data: KeyLoginRequest)
     # Récupérer le membre mis à jour
     updated_member = await db.members.find_one({"id": member['id']}, {"_id": 0})
     
-    # Stocker en session + poser le cookie JWT serveur-autoritaire
+    # Stocker en session + poser le cookie JWT + retourner le token dans le body
     request.session['member_id'] = updated_member['id']
+    access_token = create_member_jwt(updated_member['id'])
     _set_member_cookie(response, updated_member['id'])
     
     return {
         "success": True,
         "member": updated_member,
-        "device_token": new_device_token  # À stocker côté client
+        "device_token": new_device_token,  # À stocker côté client
+        "access_token": access_token       # JWT pour Authorization Bearer
     }
 
 
@@ -6889,7 +6900,10 @@ app.include_router(api_router)
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    # allow_origins="*" + allow_credentials=True est rejeté par les navigateurs.
+    # On utilise allow_origin_regex pour autoriser toute origine TOUT EN supportant les credentials
+    # (le serveur renvoie alors l'origine de la requête dynamiquement).
+    allow_origin_regex=".*",
     allow_methods=["*"],
     allow_headers=["*"],
 )

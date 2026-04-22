@@ -51,6 +51,9 @@ const LoginPage = () => {
           });
           
           if (response.data.success) {
+            if (response.data.access_token) {
+              localStorage.setItem('lbi_access_token', response.data.access_token);
+            }
             setCurrentMember(response.data.member, true);
             toast.success(`Bienvenue ${response.data.member.nom_complet?.split(' ')[0] || 'membre'} !`);
             navigate('/dashboard');
@@ -97,6 +100,9 @@ const LoginPage = () => {
       });
 
       if (verifyResponse.data.success) {
+        if (verifyResponse.data.access_token) {
+          localStorage.setItem('lbi_access_token', verifyResponse.data.access_token);
+        }
         const member = verifyResponse.data.member;
         setCurrentMember(member, true);
         toast.success(`Bienvenue ${member.prenom || member.nom_complet} !`);
@@ -142,6 +148,10 @@ const LoginPage = () => {
       });
       
       if (response.data.success) {
+        // Stocker le JWT (Authorization Bearer)
+        if (response.data.access_token) {
+          localStorage.setItem('lbi_access_token', response.data.access_token);
+        }
         // Stocker le device token pour les connexions futures
         if (response.data.device_token) {
           localStorage.setItem(DEVICE_TOKEN_KEY, response.data.device_token);
@@ -210,6 +220,9 @@ const LoginPage = () => {
                   device_token: deviceToken
                 });
                 if (response.data.success) {
+                  if (response.data.access_token) {
+                    localStorage.setItem('lbi_access_token', response.data.access_token);
+                  }
                   setCurrentMember(response.data.member, true);
                   toast.success(`Bienvenue ${response.data.member.nom_complet?.split(' ')[0]} !`);
                   navigate('/dashboard');

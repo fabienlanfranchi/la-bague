@@ -534,6 +534,7 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
                 localStorage.removeItem('labague_device_token');
                 localStorage.removeItem('currentMemberId');
                 localStorage.removeItem('currentMemberData');
+                localStorage.removeItem('lbi_access_token');
                 sessionStorage.removeItem('currentMemberId');
                 sessionStorage.removeItem('currentMemberData');
                 sessionStorage.removeItem('appSessionActive');

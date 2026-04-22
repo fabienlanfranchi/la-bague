@@ -4,8 +4,21 @@ import axios from 'axios';
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-// Envoyer le cookie JWT httpOnly sur toutes les requêtes API
-axios.defaults.withCredentials = true;
+// Clé localStorage pour le JWT (Authorization Bearer)
+const ACCESS_TOKEN_KEY = 'lbi_access_token';
+
+// Intercepteur axios : ajoute Authorization: Bearer <token> sur toutes les requêtes API
+axios.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem(ACCESS_TOKEN_KEY);
+    if (token) {
+      config.headers = config.headers || {};
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 const UserContext = createContext();
 
@@ -110,6 +123,7 @@ export const UserProvider = ({ children }) => {
         localStorage.removeItem('currentMemberId');
         localStorage.removeItem('currentMemberData');
         localStorage.removeItem('labague_device_token');
+        localStorage.removeItem(ACCESS_TOKEN_KEY);
         sessionStorage.removeItem('currentMemberId');
         sessionStorage.removeItem('currentMemberData');
         sessionStorage.removeItem('appSessionActive');
@@ -204,6 +218,9 @@ export const UserProvider = ({ children }) => {
     } catch (e) {
       console.log('Erreur logout JWT:', e);
     }
+
+    // Effacer le JWT Bearer côté client
+    localStorage.removeItem(ACCESS_TOKEN_KEY);
     
     // Nettoyage COMPLET de tous les stockages possibles
     localStorage.removeItem('currentMemberId');

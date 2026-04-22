@@ -376,16 +376,19 @@ async def verify_authentication(request: Request, response: Response, data: Auth
         if f"discoverable_{rp_id}" in challenges_store:
             del challenges_store[f"discoverable_{rp_id}"]
         
-        # Poser le cookie JWT serveur-autoritaire
+        # Poser le cookie JWT serveur-autoritaire + retourner le token dans le body
+        access_token = None
         try:
-            from server import _set_member_cookie as _set_lbi_cookie
+            from server import _set_member_cookie as _set_lbi_cookie, create_member_jwt as _create_lbi_jwt
             _set_lbi_cookie(response, member['id'])
+            access_token = _create_lbi_jwt(member['id'])
         except Exception as _e:
             logger.warning(f"Impossible de poser le cookie JWT: {_e}")
         
         return {
             "success": True,
             "member": member,
+            "access_token": access_token,
             "message": "Authentification réussie"
         }
         
