@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Query, File, UploadFile
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Response, Query, File, UploadFile
 from fastapi.responses import JSONResponse, StreamingResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -11,7 +11,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from typing import List, Optional
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from passlib.context import CryptContext
 import base64
 import secrets
@@ -518,9 +518,9 @@ async def validate_account(request: Request, data: ValidateAccountRequest):
     }
 
 
-@api_router.get("/auth/me")
-async def get_me(request: Request):
-    """Obtenir l'utilisateur connecté"""
+@api_router.get("/auth/me-legacy")
+async def get_me_legacy(request: Request):
+    """[Deprecated] Obtenir l'utilisateur connecté via session cookie (ancien système)"""
     member = await get_current_user(request)
     return member
 
@@ -540,8 +540,95 @@ class DeviceLoginRequest(BaseModel):
 class KeyLoginRequest(BaseModel):
     cle_activation: str  # Format: prenomlabague1
 
+
+# ============ JWT TOKENS - Identité serveur-autoritaire ============
+import jwt as _jwt_lib
+
+JWT_ALGORITHM = "HS256"
+JWT_COOKIE_NAME = "lbi_session"
+JWT_COOKIE_MAX_AGE = 60 * 60 * 24 * 30  # 30 jours
+
+
+def _get_jwt_secret() -> str:
+    secret = os.environ.get("JWT_SECRET")
+    if not secret:
+        raise RuntimeError("JWT_SECRET manquant dans .env")
+    return secret
+
+
+def create_member_jwt(member_id: str) -> str:
+    """Crée un JWT lié à l'ID d'un membre (30 jours)."""
+    payload = {
+        "sub": member_id,
+        "exp": datetime.now(timezone.utc) + timedelta(days=30),
+        "iat": datetime.now(timezone.utc),
+        "type": "member",
+    }
+    return _jwt_lib.encode(payload, _get_jwt_secret(), algorithm=JWT_ALGORITHM)
+
+
+def _set_member_cookie(response: Response, member_id: str) -> None:
+    """Pose le cookie JWT httpOnly sur la réponse."""
+    token = create_member_jwt(member_id)
+    response.set_cookie(
+        key=JWT_COOKIE_NAME,
+        value=token,
+        httponly=True,
+        secure=True,  # HTTPS only (Emergent preview + prod sont HTTPS)
+        samesite="lax",
+        max_age=JWT_COOKIE_MAX_AGE,
+        path="/",
+    )
+
+
+def _clear_member_cookie(response: Response) -> None:
+    response.delete_cookie(key=JWT_COOKIE_NAME, path="/")
+
+
+async def get_current_member_from_jwt(request: Request) -> dict:
+    """Dépendance FastAPI : retourne le membre authentifié via le cookie JWT.
+    Lève 401 si le cookie est absent ou invalide.
+    """
+    token = request.cookies.get(JWT_COOKIE_NAME)
+    if not token:
+        raise HTTPException(status_code=401, detail="Non authentifié")
+    try:
+        payload = _jwt_lib.decode(token, _get_jwt_secret(), algorithms=[JWT_ALGORITHM])
+    except _jwt_lib.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Session expirée")
+    except _jwt_lib.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Session invalide")
+
+    if payload.get("type") != "member":
+        raise HTTPException(status_code=401, detail="Type de token invalide")
+
+    member_id = payload.get("sub")
+    if not member_id:
+        raise HTTPException(status_code=401, detail="Token mal formé")
+
+    member = await db.members.find_one({"id": member_id}, {"_id": 0, "password_hash": 0})
+    if not member:
+        raise HTTPException(status_code=401, detail="Membre introuvable")
+    return member
+
+
+@api_router.get("/auth/me")
+async def auth_me(member: dict = Depends(get_current_member_from_jwt)):
+    """Retourne le membre réellement authentifié côté serveur (source de vérité).
+    Utilisé par le frontend au démarrage pour éviter toute contamination de session."""
+    return {"success": True, "member": member}
+
+
+@api_router.post("/auth/logout-jwt")
+async def auth_logout_jwt(response: Response, request: Request):
+    """Efface le cookie JWT côté serveur (déconnexion propre)."""
+    _clear_member_cookie(response)
+    request.session.clear()
+    return {"success": True}
+
+
 @api_router.post("/auth/device-login")
-async def device_login(request: Request, data: DeviceLoginRequest):
+async def device_login(request: Request, response: Response, data: DeviceLoginRequest):
     """Connexion automatique par appareil mémorisé (device token)"""
     
     # Chercher le membre avec ce device token
@@ -559,8 +646,9 @@ async def device_login(request: Request, data: DeviceLoginRequest):
         {"$set": {"last_device_login": datetime.now(timezone.utc).isoformat()}}
     )
     
-    # Stocker en session
+    # Stocker en session + poser le cookie JWT serveur-autoritaire
     request.session['member_id'] = member['id']
+    _set_member_cookie(response, member['id'])
     
     return {
         "success": True,
@@ -569,7 +657,7 @@ async def device_login(request: Request, data: DeviceLoginRequest):
 
 
 @api_router.post("/auth/key-login")
-async def key_login(request: Request, data: KeyLoginRequest):
+async def key_login(request: Request, response: Response, data: KeyLoginRequest):
     """Connexion par clé d'activation (labagueX) - pour nouveaux appareils"""
     
     cle = data.cle_activation.lower().strip()
@@ -610,8 +698,9 @@ async def key_login(request: Request, data: KeyLoginRequest):
     # Récupérer le membre mis à jour
     updated_member = await db.members.find_one({"id": member['id']}, {"_id": 0})
     
-    # Stocker en session
+    # Stocker en session + poser le cookie JWT serveur-autoritaire
     request.session['member_id'] = updated_member['id']
+    _set_member_cookie(response, updated_member['id'])
     
     return {
         "success": True,

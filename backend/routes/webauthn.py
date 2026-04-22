@@ -1,7 +1,7 @@
 # WebAuthn / Passkeys routes for Face ID / Touch ID authentication
 # La Bague Impériale
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel
 from datetime import datetime, timezone, timedelta
 from typing import Optional
@@ -308,7 +308,7 @@ async def get_authentication_options(request: Request, data: AuthenticateOptions
 
 
 @webauthn_router.post("/authenticate/verify")
-async def verify_authentication(request: Request, data: AuthenticateVerifyRequest):
+async def verify_authentication(request: Request, response: Response, data: AuthenticateVerifyRequest):
     """Vérifie l'authentification par passkey et retourne le membre"""
     try:
         rp_id, origin = get_rp_id_and_origin(request)
@@ -375,6 +375,13 @@ async def verify_authentication(request: Request, data: AuthenticateVerifyReques
             del challenges_store[challenge_key]
         if f"discoverable_{rp_id}" in challenges_store:
             del challenges_store[f"discoverable_{rp_id}"]
+        
+        # Poser le cookie JWT serveur-autoritaire
+        try:
+            from server import _set_member_cookie as _set_lbi_cookie
+            _set_lbi_cookie(response, member['id'])
+        except Exception as _e:
+            logger.warning(f"Impossible de poser le cookie JWT: {_e}")
         
         return {
             "success": True,

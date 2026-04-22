@@ -4,6 +4,9 @@ import axios from 'axios';
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
+// Envoyer le cookie JWT httpOnly sur toutes les requêtes API
+axios.defaults.withCredentials = true;
+
 const UserContext = createContext();
 
 export const useUser = () => {
@@ -59,11 +62,11 @@ export const UserProvider = ({ children }) => {
   
   const [currentMemberState, setCurrentMemberState] = useState(getInitialMember);
   const [members, setMembers] = useState([]);
-  const [loading, setLoading] = useState(!getInitialMember()); // Pas de loading si déjà en cache
+  const [loading, setLoading] = useState(true); // Toujours valider côté serveur au démarrage
   const [error, setError] = useState(null);
   
-  // Ref pour savoir si un login manuel a eu lieu (évite d'écraser avec Fabien)
-  const hasManualLogin = useRef(!!getInitialMember());
+  // Ref pour savoir si un login manuel a eu lieu
+  const hasManualLogin = useRef(false);
 
   // Fonction pour définir le membre courant et persister en localStorage
   const setCurrentMember = useCallback((member, stayLoggedIn = true) => {
@@ -100,140 +103,79 @@ export const UserProvider = ({ children }) => {
     }
   }, []);
 
-  // Charger les membres au démarrage
+  // Charger les membres au démarrage + valider l'identité via /auth/me (JWT serveur-autoritaire)
   useEffect(() => {
-    const loadMembers = async () => {
-      // Si un login manuel a déjà eu lieu, ne pas recharger
+    const purgeAll = () => {
+      try {
+        localStorage.removeItem('currentMemberId');
+        localStorage.removeItem('currentMemberData');
+        localStorage.removeItem('labague_device_token');
+        sessionStorage.removeItem('currentMemberId');
+        sessionStorage.removeItem('currentMemberData');
+        sessionStorage.removeItem('appSessionActive');
+      } catch (e) { /* ignore */ }
+    };
+
+    const loadAuth = async () => {
+      // Si un login manuel en cours, ne pas interférer
       if (hasManualLogin.current) {
         setLoading(false);
         return;
       }
-      
-      // Petit délai pour laisser un login en cours se terminer
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Revérifier si un login a eu lieu pendant le délai
-      if (hasManualLogin.current) {
-        console.log('[AUTH] Login récent détecté, skip du chargement cache');
-        setLoading(false);
-        return;
-      }
-      
+
       setLoading(true);
       setError(null);
-      
-      // Vérifier localStorage ET sessionStorage AVANT l'appel async
-      const savedMemberId = localStorage.getItem('currentMemberId') || sessionStorage.getItem('currentMemberId');
-      const savedMemberData = localStorage.getItem('currentMemberData') || sessionStorage.getItem('currentMemberData');
-      
-      // Si on a les données du membre en cache, les utiliser immédiatement
-      if (savedMemberId && savedMemberData) {
-        try {
-          const cachedMember = JSON.parse(savedMemberData);
-          
-          // VÉRIFICATION DE COHÉRENCE: L'ID dans le cache doit correspondre à l'ID sauvegardé
-          if (cachedMember.id !== savedMemberId) {
-            console.warn('[AUTH] Incohérence détectée: ID cache != ID sauvegardé. Nettoyage...');
-            localStorage.removeItem('currentMemberId');
-            localStorage.removeItem('currentMemberData');
-            sessionStorage.removeItem('currentMemberId');
-            sessionStorage.removeItem('currentMemberData');
-            // Ne pas charger le cache corrompu, continuer vers le flow normal
-          } else {
-            // NE PAS utiliser le cache pour l'affichage initial
-            // TOUJOURS valider avec le serveur d'abord pour des raisons de sécurité
-            hasManualLogin.current = true;
-            
-            // Rafraîchir les données depuis le serveur ET valider les droits
-            axios.get(`${API}/members`, { timeout: 10000 }).then(response => {
-              const membersData = response.data || [];
-              setMembers(membersData);
-              
-              // Trouver le membre correspondant à l'ID sauvegardé
-              const serverMember = membersData.find(m => m.id === savedMemberId);
-              
-              if (serverMember) {
-                console.log('[AUTH] Membre validé depuis serveur:', serverMember.nom_complet, 'is_president:', serverMember.is_president);
-                // Utiliser les données du SERVEUR (pas du cache) pour les droits
-                setCurrentMemberState(serverMember);
-                setMode(serverMember.is_president ? 'admin' : 'member');
-                // Mettre à jour le cache avec les données du serveur
-                if (localStorage.getItem('currentMemberId')) {
-                  localStorage.setItem('currentMemberData', JSON.stringify(serverMember));
-                } else if (sessionStorage.getItem('currentMemberId')) {
-                  sessionStorage.setItem('currentMemberData', JSON.stringify(serverMember));
-                }
-              } else {
-                // Le membre n'existe plus - déconnexion
-                console.warn('[AUTH] Membre non trouvé sur le serveur, déconnexion');
-                localStorage.removeItem('currentMemberId');
-                localStorage.removeItem('currentMemberData');
-                sessionStorage.removeItem('currentMemberId');
-                sessionStorage.removeItem('currentMemberData');
-                setCurrentMemberState(null);
-              }
-              setLoading(false);
-            }).catch(err => {
-              console.error('Erreur rafraîchissement membres:', err);
-              // En cas d'erreur réseau, utiliser le cache mais avec les droits du cache
-              // (moins sécurisé mais permet de fonctionner hors ligne)
-              setCurrentMemberState(cachedMember);
-              setMode(cachedMember.is_president ? 'admin' : 'member');
-              setLoading(false);
-            });
-            
-            return;
-          }
-        } catch (e) {
-          // Si les données en cache sont corrompues, continuer normalement
-          console.error('Cache corrompu, nettoyage...', e);
-          localStorage.removeItem('currentMemberData');
-          localStorage.removeItem('currentMemberId');
-          sessionStorage.removeItem('currentMemberData');
-          sessionStorage.removeItem('currentMemberId');
-        }
-      }
-      
+
+      // 1) VÉRITÉ SERVEUR : /auth/me via cookie JWT httpOnly
+      let authoritativeMember = null;
       try {
-        // Ajouter un timeout de 10 secondes
-        const response = await axios.get(`${API}/members`, { timeout: 10000 });
-        const membersData = response.data || [];
-        setMembers(membersData);
-        
-        // Si un login manuel a eu lieu pendant le chargement, ne pas écraser
-        if (hasManualLogin.current) {
-          setLoading(false);
-          return;
+        const meRes = await axios.get(`${API}/auth/me`, { timeout: 8000 });
+        if (meRes.data?.success && meRes.data.member) {
+          authoritativeMember = meRes.data.member;
         }
-        
-        if (savedMemberId) {
-          // Restaurer le membre sauvegardé depuis localStorage
-          const savedMember = membersData.find(m => m.id === savedMemberId);
-          if (savedMember) {
-            setCurrentMember(savedMember);
-            setMode(savedMember.is_president ? 'admin' : 'member');
-            localStorage.setItem('currentMemberData', JSON.stringify(savedMember));
-          } else {
-            // Membre non trouvé, supprimer les données corrompues
-            localStorage.removeItem('currentMemberId');
-            localStorage.removeItem('currentMemberData');
-            // NE PAS charger de membre par défaut - rediriger vers login
-            setCurrentMember(null);
-          }
-        } else {
-          // Pas de session sauvegardée - NE PAS charger de membre par défaut
-          // L'utilisateur doit se connecter
-          setCurrentMember(null);
-        }
-        setLoading(false);
-      } catch (err) {
-        console.error('Erreur chargement membres:', err);
-        setError('Impossible de se connecter au serveur. Veuillez réessayer.');
-        setLoading(false);
+      } catch (_) {
+        // Pas de session JWT valide → on purgera
       }
+
+      // 2) Charger la liste des membres (pour le mode admin, etc.)
+      let membersData = [];
+      try {
+        const listRes = await axios.get(`${API}/members`, { timeout: 10000 });
+        membersData = listRes.data || [];
+        setMembers(membersData);
+      } catch (err) {
+        console.error('Erreur chargement liste membres:', err);
+        setError('Impossible de se connecter au serveur. Veuillez réessayer.');
+      }
+
+      if (authoritativeMember) {
+        // Le serveur confirme une identité. Prendre la version fraîche de la liste si disponible.
+        const fresh = membersData.find(m => m.id === authoritativeMember.id) || authoritativeMember;
+
+        // Réconcilier le cache local avec la vérité serveur
+        const cachedId = localStorage.getItem('currentMemberId') || sessionStorage.getItem('currentMemberId');
+        if (cachedId && cachedId !== fresh.id) {
+          console.warn('[AUTH] Incohérence détectée - cache=%s, serveur=%s. Purge.', cachedId, fresh.id);
+          purgeAll();
+        }
+        localStorage.setItem('currentMemberId', fresh.id);
+        localStorage.setItem('currentMemberData', JSON.stringify(fresh));
+        setCurrentMemberState(fresh);
+        setMode(fresh.is_president ? 'admin' : 'member');
+        hasManualLogin.current = true;
+      } else {
+        // Pas d'identité confirmée par le serveur → purger le cache et forcer login
+        const hadCache = localStorage.getItem('currentMemberId') || sessionStorage.getItem('currentMemberId');
+        if (hadCache) {
+          console.warn('[AUTH] Pas de session JWT valide, purge du cache obsolète.');
+          purgeAll();
+        }
+        setCurrentMemberState(null);
+      }
+      setLoading(false);
     };
-    
-    loadMembers();
+
+    loadAuth();
   }, []);
 
   const toggleMode = () => {
@@ -254,6 +196,13 @@ export const UserProvider = ({ children }) => {
       } catch (e) {
         console.log('Erreur suppression device token:', e);
       }
+    }
+
+    // Effacer le cookie JWT côté serveur (source de vérité)
+    try {
+      await axios.post(`${API}/auth/logout-jwt`);
+    } catch (e) {
+      console.log('Erreur logout JWT:', e);
     }
     
     // Nettoyage COMPLET de tous les stockages possibles
