@@ -22,9 +22,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { BarChart3, Plus, Trash2, CheckCircle2, Loader2, HelpCircle, Share2, Lock, Eye, Ban, Unlock, Calendar } from 'lucide-react';
+import { BarChart3, Plus, Trash2, CheckCircle2, Loader2, HelpCircle, Share2, Lock, Eye, Ban, Unlock, Calendar, FileDown } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
+import { generateSondagePdf } from '../utils/sondagePdf';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -276,6 +277,17 @@ const Sondages = () => {
     window.open(url, '_blank');
   };
 
+  // Export PDF officiel des résultats
+  const handleDownloadPdf = (sondage) => {
+    try {
+      generateSondagePdf(sondage);
+      toast.success('PDF téléchargé — prêt à partager !');
+    } catch (e) {
+      console.error(e);
+      toast.error('Erreur lors de la génération du PDF');
+    }
+  };
+
   const getTotalVotes = (votes) => votes ? votes.reduce((sum, v) => sum + v, 0) : 0;
   const getPercentage = (votes, index) => {
     const total = getTotalVotes(votes);
@@ -360,13 +372,24 @@ const Sondages = () => {
           <Button
             variant="ghost"
             size="sm"
+            className="text-purple-300 hover:text-purple-200 hover:bg-purple-900/20"
+            onClick={() => handleDownloadPdf(sondage)}
+            data-testid={`pdf-sondage-${sondage.id}`}
+            title="Télécharger le PDF officiel"
+          >
+            <FileDown className="w-4 h-4 mr-1" />
+            <span className="text-xs">PDF</span>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
             className="text-blue-300 hover:text-blue-200 hover:bg-blue-900/20"
             onClick={() => handleShareResultsWhatsApp(sondage)}
             data-testid={`share-results-${sondage.id}`}
-            title="Partager les résultats"
+            title="Partager les résultats sur WhatsApp"
           >
             <Share2 className="w-4 h-4 mr-1" />
-            <span className="text-xs">Résultats</span>
+            <span className="text-xs">WA</span>
           </Button>
           <Button
             variant="ghost"
