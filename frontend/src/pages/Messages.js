@@ -680,11 +680,11 @@ Le Bureau de La Bague Impériale`;
                 <Textarea
                   value={charteContent}
                   onChange={(e) => setCharteContent(e.target.value)}
-                  className="bg-black/30 border-[#D4A024]/30 text-white min-h-[500px] font-mono text-sm"
+                  className="bg-black/30 border-[#D4A024]/30 text-white min-h-[500px] font-mono text-base"
                 />
               ) : (
                 <div className="prose prose-invert max-w-none">
-                  <pre className="whitespace-pre-wrap text-gray-300 font-serif text-sm leading-relaxed">
+                  <pre className="whitespace-pre-wrap text-gray-300 font-serif text-base leading-relaxed">
                     {charteContent}
                   </pre>
                 </div>
@@ -821,8 +821,8 @@ Le Bureau de La Bague Impériale`;
 
               {/* Aperçu du message */}
               <div className="space-y-3">
-                <Label className="text-gray-400 text-sm">Aperçu du message</Label>
-                <div className="bg-black/40 rounded-lg p-4 border border-cyan-500/20 text-sm text-gray-300">
+                <Label className="text-gray-400 text-base">Aperçu du message</Label>
+                <div className="bg-black/40 rounded-lg p-4 border border-cyan-500/20 text-base text-gray-300">
                   <p className="font-semibold text-cyan-400 mb-2">
                     {infoTypeEvenement === 'repas' ? 'Prochain repas' : 'Prochain apéro'}
                   </p>

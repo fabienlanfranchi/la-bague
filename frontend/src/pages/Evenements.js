@@ -1306,7 +1306,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                           data-testid={`table-row-${evt.id}`}
                           onClick={() => loadRepondants(evt)}
                         >
-                          <td className="px-3 py-2 text-gray-500 text-sm">{idx + 1}</td>
+                          <td className="px-3 py-2 text-gray-500 text-base">{idx + 1}</td>
                           <td className="px-3 py-2">
                             <input
                               type="text"
@@ -1314,7 +1314,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                               onChange={(e) => hasAdminAccess && handleTableCellChange(evt.id, 'lieu', e.target.value)}
                               readOnly={!hasAdminAccess}
                               onClick={(e) => e.stopPropagation()}
-                              className={`w-full px-2 py-1 bg-transparent border border-transparent ${hasAdminAccess ? 'hover:border-[#D4A024]/30 focus:border-[#D4A024]' : 'cursor-default'} rounded text-white text-sm transition-colors`}
+                              className={`w-full px-2 py-1 bg-transparent border border-transparent ${hasAdminAccess ? 'hover:border-[#D4A024]/30 focus:border-[#D4A024]' : 'cursor-default'} rounded text-white text-base transition-colors`}
                               data-testid={`table-lieu-${evt.id}`}
                             />
                           </td>
@@ -1325,7 +1325,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                               onChange={(e) => hasAdminAccess && handleTableCellChange(evt.id, 'date', e.target.value)}
                               readOnly={!hasAdminAccess}
                               onClick={(e) => e.stopPropagation()}
-                              className={`w-full px-2 py-1 bg-transparent border border-transparent ${hasAdminAccess ? 'hover:border-[#D4A024]/30 focus:border-[#D4A024]' : 'cursor-default'} rounded text-white text-sm transition-colors`}
+                              className={`w-full px-2 py-1 bg-transparent border border-transparent ${hasAdminAccess ? 'hover:border-[#D4A024]/30 focus:border-[#D4A024]' : 'cursor-default'} rounded text-white text-base transition-colors`}
                               data-testid={`table-date-${evt.id}`}
                             />
                           </td>
@@ -1335,7 +1335,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                               onChange={(e) => hasAdminAccess && handleTableCellChange(evt.id, 'type_sondage', e.target.value)}
                               disabled={!hasAdminAccess}
                               onClick={(e) => e.stopPropagation()}
-                              className={`w-full px-2 py-1 bg-transparent border border-transparent ${hasAdminAccess ? 'hover:border-[#D4A024]/30 focus:border-[#D4A024]' : 'cursor-default'} rounded text-white text-sm transition-colors`}
+                              className={`w-full px-2 py-1 bg-transparent border border-transparent ${hasAdminAccess ? 'hover:border-[#D4A024]/30 focus:border-[#D4A024]' : 'cursor-default'} rounded text-white text-base transition-colors`}
                               data-testid={`table-type-${evt.id}`}
                             >
                               <option value="repas" className="bg-[#7A2020]">Repas</option>
@@ -1351,7 +1351,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                               onChange={(e) => hasAdminAccess && handleTableCellChange(evt.id, 'total_presents', e.target.value)}
                               readOnly={!hasAdminAccess}
                               onClick={(e) => e.stopPropagation()}
-                              className={`w-full px-2 py-1 bg-transparent border border-transparent ${hasAdminAccess ? 'hover:border-[#D4A024]/30 focus:border-[#D4A024]' : 'cursor-default'} rounded text-[#D4A024] text-sm text-center font-bold transition-colors`}
+                              className={`w-full px-2 py-1 bg-transparent border border-transparent ${hasAdminAccess ? 'hover:border-[#D4A024]/30 focus:border-[#D4A024]' : 'cursor-default'} rounded text-[#D4A024] text-base text-center font-bold transition-colors`}
                               data-testid={`table-presents-${evt.id}`}
                             />
                           </td>
@@ -1528,7 +1528,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                                     onChange={(e) => hasAdminAccess && handleTableCellChange(evt.id, 'lieu', e.target.value)}
                                     readOnly={!hasAdminAccess}
                                     onClick={(e) => e.stopPropagation()}
-                                    className={`font-serif font-semibold w-16 sm:w-24 px-1 py-0.5 rounded text-xs sm:text-sm bg-transparent text-white border border-transparent ${hasAdminAccess ? 'hover:border-[#D4A024]/30 focus:border-[#D4A024] focus:bg-black/30' : 'cursor-default'}`}
+                                    className={`font-serif font-semibold w-20 sm:w-32 px-1 py-0.5 rounded text-sm sm:text-base bg-transparent text-white border border-transparent ${hasAdminAccess ? 'hover:border-[#D4A024]/30 focus:border-[#D4A024] focus:bg-black/30' : 'cursor-default'}`}
                                     data-testid={`list-lieu-${evt.id}`}
                                   />
                                   
@@ -1539,7 +1539,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                                     onChange={(e) => hasAdminAccess && handleTableCellChange(evt.id, 'date', e.target.value)}
                                     readOnly={!hasAdminAccess}
                                     onClick={(e) => e.stopPropagation()}
-                                    className={`w-24 sm:w-28 px-1 py-0.5 rounded text-xs bg-transparent text-gray-400 border border-transparent ${hasAdminAccess ? 'hover:border-[#D4A024]/30 focus:border-[#D4A024] focus:bg-black/30' : 'cursor-default'}`}
+                                    className={`w-28 sm:w-32 px-1 py-0.5 rounded text-sm bg-transparent text-gray-400 border border-transparent ${hasAdminAccess ? 'hover:border-[#D4A024]/30 focus:border-[#D4A024] focus:bg-black/30' : 'cursor-default'}`}
                                     data-testid={`list-date-${evt.id}`}
                                   />
                                   
@@ -1549,7 +1549,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                                     onChange={(e) => hasAdminAccess && handleTableCellChange(evt.id, 'type_sondage', e.target.value)}
                                     onClick={(e) => e.stopPropagation()}
                                     disabled={!hasAdminAccess}
-                                    className={`hidden sm:block w-20 px-1 py-0.5 rounded text-xs bg-transparent text-gray-400 border border-transparent ${hasAdminAccess ? 'hover:border-[#D4A024]/30 focus:border-[#D4A024] focus:bg-black/30' : 'cursor-default'}`}
+                                    className={`hidden sm:block w-24 px-1 py-0.5 rounded text-sm bg-transparent text-gray-400 border border-transparent ${hasAdminAccess ? 'hover:border-[#D4A024]/30 focus:border-[#D4A024] focus:bg-black/30' : 'cursor-default'}`}
                                     data-testid={`list-type-${evt.id}`}
                                   >
                                     <option value="repas">Repas</option>

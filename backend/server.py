@@ -3411,7 +3411,9 @@ class SondageGenerique(BaseModel):
     question: str = ""  # Legacy: question unique (ancien format)
     options: List[str] = []  # Legacy: options uniques (ancien format)
     questions: List[dict] = []  # Nouveau: [{question, options, type}] - type: "choix_unique" ou "oui_non"
-    status: str = "active"  # "active" ou "terminé"
+    status: str = "active"  # "active" ou "termine"
+    is_anonyme: bool = True  # True = anonyme (défaut), False = public (admin voit qui a voté)
+    date_fin: Optional[str] = None  # ISO date optionnelle de clôture automatique
     created_by: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -3421,6 +3423,8 @@ class SondageGeneriqueCreate(BaseModel):
     question: str = ""  # Legacy
     options: List[str] = []  # Legacy
     questions: List[dict] = []  # Nouveau format multi-questions
+    is_anonyme: bool = True
+    date_fin: Optional[str] = None
 
 
 class VoteSondage(BaseModel):
@@ -3436,19 +3440,58 @@ class VoteSondage(BaseModel):
 
 
 @api_router.get("/sondages-generiques")
-async def get_sondages_generiques():
-    """Liste tous les sondages génériques avec leurs votes"""
+async def get_sondages_generiques(request: Request):
+    """Liste tous les sondages génériques avec leurs votes.
+    Pour les sondages publics (non anonymes), l'admin voit aussi qui a voté.
+    """
+    # Auto-clôture des sondages dont la date_fin est passée
+    now_iso = datetime.now(timezone.utc).isoformat()
+    await db.sondages_generiques.update_many(
+        {
+            "status": "active",
+            "date_fin": {"$ne": None, "$lt": now_iso}
+        },
+        {"$set": {"status": "termine"}}
+    )
+
     sondages = await db.sondages_generiques.find({}, {"_id": 0}).sort("created_at", -1).to_list(100)
-    
+
+    # Déterminer si le demandeur est admin (pour afficher les noms sur sondages publics)
+    is_admin_request = False
+    try:
+        auth_header = request.headers.get("authorization") or request.headers.get("Authorization")
+        token = None
+        if auth_header and auth_header.lower().startswith("bearer "):
+            token = auth_header[7:].strip()
+        if not token:
+            token = request.cookies.get(JWT_COOKIE_NAME)
+        if token:
+            payload = _jwt_lib.decode(token, _get_jwt_secret(), algorithms=[JWT_ALGORITHM])
+            m = await db.members.find_one({"id": payload.get("sub")}, {"_id": 0, "is_president": 1})
+            if m and m.get("is_president"):
+                is_admin_request = True
+    except Exception:
+        pass
+
+    # Préparer map id → nom pour sondages publics
+    members_map = {}
+    if is_admin_request or any(not s.get("is_anonyme", True) for s in sondages):
+        async for m in db.members.find({}, {"_id": 0, "id": 1, "nom_complet": 1}):
+            members_map[m["id"]] = m["nom_complet"]
+
     for sondage in sondages:
         votes = await db.votes_sondages.find({"sondage_id": sondage["id"]}, {"_id": 0}).to_list(1000)
-        
+        is_public = not sondage.get("is_anonyme", True)
+
         # Nouveau format multi-questions
         if sondage.get("questions"):
             questions = sondage["questions"]
             for qi, q in enumerate(questions):
                 q["vote_counts"] = [0] * len(q.get("options", []))
-            
+                # Pour sondages publics : liste de voters par option
+                if is_public:
+                    q["voters_by_option"] = [[] for _ in range(len(q.get("options", [])))]
+
             for vote in votes:
                 reponses = vote.get("reponses", [])
                 for rep in reponses:
@@ -3456,21 +3499,29 @@ async def get_sondages_generiques():
                     oi = rep.get("option_index", 0)
                     if 0 <= qi < len(questions) and 0 <= oi < len(questions[qi].get("options", [])):
                         questions[qi]["vote_counts"][oi] += 1
-            
+                        if is_public:
+                            nom = members_map.get(vote.get("membre_id"), "—")
+                            questions[qi]["voters_by_option"][oi].append(nom)
+
             sondage["total_votes"] = len(votes)
         else:
             # Legacy format
             vote_counts = [0] * len(sondage.get("options", []))
+            voters_by_option = [[] for _ in range(len(sondage.get("options", [])))] if is_public else None
             for vote in votes:
                 idx = vote.get("option_index", 0)
                 if 0 <= idx < len(vote_counts):
                     vote_counts[idx] += 1
+                    if voters_by_option is not None:
+                        voters_by_option[idx].append(members_map.get(vote.get("membre_id"), "—"))
             sondage["votes"] = vote_counts
             sondage["total_votes"] = sum(vote_counts)
-        
+            if voters_by_option is not None:
+                sondage["voters_by_option"] = voters_by_option
+
         if isinstance(sondage.get('created_at'), str):
             sondage['created_at'] = datetime.fromisoformat(sondage['created_at'])
-    
+
     return sondages
 
 
@@ -3520,12 +3571,38 @@ async def delete_sondage_generique(sondage_id: str):
     return {"message": "Sondage supprimé avec succès"}
 
 
+@api_router.post("/sondages-generiques/{sondage_id}/terminer")
+async def terminer_sondage_generique(sondage_id: str):
+    """Clôture un sondage : les membres ne peuvent plus voter mais les résultats restent consultables."""
+    result = await db.sondages_generiques.update_one(
+        {"id": sondage_id},
+        {"$set": {"status": "termine"}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Sondage non trouvé")
+    return {"message": "Sondage terminé", "status": "termine"}
+
+
+@api_router.post("/sondages-generiques/{sondage_id}/reouvrir")
+async def reouvrir_sondage_generique(sondage_id: str):
+    """Rouvre un sondage clôturé."""
+    result = await db.sondages_generiques.update_one(
+        {"id": sondage_id, "status": "termine"},
+        {"$set": {"status": "active"}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Sondage non trouvé ou déjà actif")
+    return {"message": "Sondage rouvert", "status": "active"}
+
+
 @api_router.post("/sondages-generiques/{sondage_id}/vote")
 async def voter_sondage_generique(sondage_id: str, request: Request, membre_id: str = None, option_index: int = -1):
     """Voter sur un sondage générique (simple ou multi-questions)"""
     sondage = await db.sondages_generiques.find_one({"id": sondage_id}, {"_id": 0})
     if not sondage:
         raise HTTPException(status_code=404, detail="Sondage non trouvé")
+    if sondage.get("status") == "termine":
+        raise HTTPException(status_code=400, detail="Ce sondage est terminé, vous ne pouvez plus voter")
     
     # Lire les réponses du body si c'est un sondage multi-questions
     reponses = []

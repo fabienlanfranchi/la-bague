@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { BarChart3, Plus, Trash2, CheckCircle2, Loader2, HelpCircle, Share2 } from 'lucide-react';
+import { BarChart3, Plus, Trash2, CheckCircle2, Loader2, HelpCircle, Share2, Lock, Eye, Ban, Unlock, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
 
@@ -39,6 +39,8 @@ const Sondages = () => {
   // Formulaire de création multi-questions
   const [newSondage, setNewSondage] = useState({
     titre: '',
+    is_anonyme: true,
+    date_fin: '',
     questions: [{ question: '', options: ['', ''], type: 'choix_unique' }]
   });
 
@@ -148,13 +150,17 @@ const Sondages = () => {
 
       await axios.post(`${API}/sondages-generiques`, {
         titre: newSondage.titre,
-        questions: cleanQuestions
+        questions: cleanQuestions,
+        is_anonyme: newSondage.is_anonyme,
+        date_fin: newSondage.date_fin ? new Date(newSondage.date_fin).toISOString() : null
       });
 
       toast.success('Sondage créé !');
       setDialogOpen(false);
       setNewSondage({
         titre: '',
+        is_anonyme: true,
+        date_fin: '',
         questions: [{ question: '', options: ['', ''], type: 'choix_unique' }]
       });
       loadSondages();
@@ -221,6 +227,55 @@ const Sondages = () => {
     }
   };
 
+  const handleTerminerSondage = async (sondageId) => {
+    if (!window.confirm('Clôturer ce sondage ? Les membres ne pourront plus voter mais les résultats resteront consultables.')) return;
+    try {
+      await axios.post(`${API}/sondages-generiques/${sondageId}/terminer`);
+      toast.success('Sondage clôturé — vous pouvez maintenant partager les résultats.');
+      loadSondages();
+    } catch (error) {
+      toast.error('Erreur lors de la clôture');
+    }
+  };
+
+  const handleReouvrirSondage = async (sondageId) => {
+    try {
+      await axios.post(`${API}/sondages-generiques/${sondageId}/reouvrir`);
+      toast.success('Sondage rouvert');
+      loadSondages();
+    } catch (error) {
+      toast.error('Erreur lors de la réouverture');
+    }
+  };
+
+  // Partage WhatsApp du TABLEAU DE RÉSULTATS d'un sondage terminé
+  const handleShareResultsWhatsApp = (sondage) => {
+    const isAnonyme = sondage.is_anonyme !== false;
+    const titre = sondage.titre || sondage.question || 'Sondage';
+    let msg = `*La Bague Impériale — Résultats du sondage*\n\n*${titre}*\n`;
+    msg += `Total : ${sondage.total_votes || 0} vote(s)\n`;
+    msg += isAnonyme ? `(Sondage anonyme)\n\n` : `(Sondage public)\n\n`;
+
+    const questions = sondage.questions?.length > 0
+      ? sondage.questions
+      : [{ question: sondage.question || titre, options: sondage.options || [], vote_counts: sondage.votes || [] }];
+
+    questions.forEach((q, qi) => {
+      msg += `*${qi + 1}. ${q.question}*\n`;
+      const votes = q.vote_counts || [];
+      const total = votes.reduce((s, v) => s + v, 0);
+      (q.options || []).forEach((opt, oi) => {
+        const count = votes[oi] || 0;
+        const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+        msg += `  • ${opt} : ${count} (${pct}%)\n`;
+      });
+      msg += `\n`;
+    });
+
+    const url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+    window.open(url, '_blank');
+  };
+
   const getTotalVotes = (votes) => votes ? votes.reduce((sum, v) => sum + v, 0) : 0;
   const getPercentage = (votes, index) => {
     const total = getTotalVotes(votes);
@@ -242,6 +297,100 @@ const Sondages = () => {
     window.open(url, '_blank');
   };
 
+  const formatDateFin = (iso) => {
+    if (!iso) return null;
+    try {
+      const d = new Date(iso);
+      return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+    } catch (e) { return null; }
+  };
+
+  const renderStatusBadges = (sondage) => {
+    const isAnonyme = sondage.is_anonyme !== false;
+    const dateFinStr = formatDateFin(sondage.date_fin);
+    const isTermine = sondage.status === 'termine';
+    return (
+      <>
+        <Badge className={isTermine ? 'bg-gray-600 text-base' : 'bg-green-600 text-base'}>
+          {isTermine ? 'Terminé' : 'Actif'}
+        </Badge>
+        <Badge className={isAnonyme
+          ? 'bg-black/40 border border-[#D4A024]/50 text-[#D4A024] text-sm'
+          : 'bg-blue-600/30 border border-blue-400/40 text-blue-200 text-sm'
+        }>
+          {isAnonyme ? (<><Lock className="w-3 h-3 mr-1" />Anonyme</>) : (<><Eye className="w-3 h-3 mr-1" />Public</>)}
+        </Badge>
+        {dateFinStr && (
+          <Badge className="bg-black/40 border border-gray-500 text-gray-300 text-sm">
+            <Calendar className="w-3 h-3 mr-1" />
+            Fin: {dateFinStr}
+          </Badge>
+        )}
+      </>
+    );
+  };
+
+  const renderAdminActions = (sondage) => (
+    <div className="flex items-center flex-wrap gap-1 shrink-0">
+      {sondage.status === 'active' ? (
+        <>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-green-400 hover:text-green-500 hover:bg-green-900/20"
+            onClick={() => handleShareSondageWhatsApp(sondage)}
+            data-testid={`share-whatsapp-sondage-${sondage.id}`}
+            title="Partager le sondage sur WhatsApp"
+          >
+            <Share2 className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-amber-400 hover:text-amber-500 hover:bg-amber-900/20"
+            onClick={() => handleTerminerSondage(sondage.id)}
+            data-testid={`terminer-sondage-${sondage.id}`}
+            title="Clôturer ce sondage"
+          >
+            <Ban className="w-4 h-4" />
+          </Button>
+        </>
+      ) : (
+        <>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-blue-300 hover:text-blue-200 hover:bg-blue-900/20"
+            onClick={() => handleShareResultsWhatsApp(sondage)}
+            data-testid={`share-results-${sondage.id}`}
+            title="Partager les résultats"
+          >
+            <Share2 className="w-4 h-4 mr-1" />
+            <span className="text-xs">Résultats</span>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-green-400 hover:text-green-500 hover:bg-green-900/20"
+            onClick={() => handleReouvrirSondage(sondage.id)}
+            data-testid={`reouvrir-sondage-${sondage.id}`}
+            title="Rouvrir le sondage"
+          >
+            <Unlock className="w-4 h-4" />
+          </Button>
+        </>
+      )}
+      <Button
+        variant="ghost"
+        size="sm"
+        className="text-red-400 hover:text-red-500 hover:bg-red-900/20"
+        onClick={() => handleDeleteSondage(sondage.id)}
+      >
+        <Trash2 className="w-4 h-4" />
+      </Button>
+    </div>
+  );
+
   // Déterminer si un sondage est multi-questions ou legacy
   const isMultiQuestion = (sondage) => sondage.questions && sondage.questions.length > 0;
 
@@ -259,38 +408,21 @@ const Sondages = () => {
       <CardHeader>
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <CardTitle className="text-xl font-serif text-white mb-2">{sondage.titre || 'Sondage'}</CardTitle>
-            <div className="flex items-center space-x-2">
-              <Badge className="bg-green-600">{sondage.status === 'active' ? 'Actif' : 'Terminé'}</Badge>
-              <span className="text-sm text-gray-400">{sondage.total_votes || 0} vote(s)</span>
-              <Badge className="bg-blue-600/50 text-xs">{sondage.questions.length} question(s)</Badge>
-              <Badge className="bg-black/40 border border-[#D4A024]/50 text-[#D4A024] text-xs">Anonyme</Badge>
+            <CardTitle className="text-2xl font-serif text-white mb-2">{sondage.titre || 'Sondage'}</CardTitle>
+            <div className="flex items-center flex-wrap gap-2">
+              {renderStatusBadges(sondage)}
+              <span className="text-base text-gray-400">{sondage.total_votes || 0} vote(s)</span>
+              <Badge className="bg-blue-600/50 text-sm">{sondage.questions.length} question(s)</Badge>
             </div>
           </div>
-          <div className="flex items-center space-x-1">
-            {sondage.status === 'active' && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-green-400 hover:text-green-500 hover:bg-green-900/20"
-                onClick={() => handleShareSondageWhatsApp(sondage)}
-                data-testid={`share-whatsapp-sondage-${sondage.id}`}
-                title="Partager sur WhatsApp"
-              >
-                <Share2 className="w-4 h-4" />
-              </Button>
-            )}
-            <Button variant="ghost" size="sm" className="text-red-400 hover:text-red-500 hover:bg-red-900/20" onClick={() => handleDeleteSondage(sondage.id)}>
-              <Trash2 className="w-4 h-4" />
-            </Button>
-          </div>
+          {renderAdminActions(sondage)}
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
         {sondage.questions.map((q, qi) => (
           <div key={qi} className="border border-[#D4A024]/20 rounded-lg p-4">
-            <h4 className="text-white font-semibold mb-3 flex items-center">
-              <HelpCircle className="w-4 h-4 mr-2 text-[#D4A024]" />
+            <h4 className="text-white font-semibold mb-3 flex items-center text-lg">
+              <HelpCircle className="w-5 h-5 mr-2 text-[#D4A024]" />
               {q.question}
             </h4>
             <div className="space-y-2">
@@ -299,15 +431,21 @@ const Sondages = () => {
                 const total = votes.reduce((s, v) => s + v, 0);
                 const count = votes[oi] || 0;
                 const pct = total > 0 ? ((count / total) * 100).toFixed(0) : 0;
+                const voters = !sondage.is_anonyme && q.voters_by_option ? q.voters_by_option[oi] : null;
                 return (
                   <div key={oi} className="space-y-1">
-                    <div className="flex justify-between text-sm">
+                    <div className="flex justify-between text-base">
                       <span className="text-white">{opt}</span>
                       <span className="text-[#D4A024] font-semibold">{count} ({pct}%)</span>
                     </div>
                     <div className="w-full bg-gray-700 rounded-full h-2">
                       <div className="bg-[#D4A024] h-2 rounded-full transition-all" style={{ width: `${pct}%` }} />
                     </div>
+                    {voters && voters.length > 0 && (
+                      <p className="text-sm text-blue-200/80 italic pl-1">
+                        {voters.join(' · ')}
+                      </p>
+                    )}
                   </div>
                 );
               })}
@@ -324,45 +462,36 @@ const Sondages = () => {
       <CardHeader>
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <CardTitle className="text-xl font-serif text-white mb-2">{sondage.question}</CardTitle>
-            <div className="flex items-center space-x-2">
-              <Badge className="bg-green-600">{sondage.status === 'active' ? 'Actif' : 'Terminé'}</Badge>
-              <span className="text-sm text-gray-400">{getTotalVotes(sondage.votes)} vote(s)</span>
-              <Badge className="bg-black/40 border border-[#D4A024]/50 text-[#D4A024] text-xs">Anonyme</Badge>
+            <CardTitle className="text-2xl font-serif text-white mb-2">{sondage.question}</CardTitle>
+            <div className="flex items-center flex-wrap gap-2">
+              {renderStatusBadges(sondage)}
+              <span className="text-base text-gray-400">{getTotalVotes(sondage.votes)} vote(s)</span>
             </div>
           </div>
-          <div className="flex items-center space-x-1">
-            {sondage.status === 'active' && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-green-400 hover:text-green-500 hover:bg-green-900/20"
-                onClick={() => handleShareSondageWhatsApp(sondage)}
-                data-testid={`share-whatsapp-sondage-legacy-${sondage.id}`}
-                title="Partager sur WhatsApp"
-              >
-                <Share2 className="w-4 h-4" />
-              </Button>
-            )}
-            <Button variant="ghost" size="sm" className="text-red-400 hover:text-red-500 hover:bg-red-900/20" onClick={() => handleDeleteSondage(sondage.id)}>
-              <Trash2 className="w-4 h-4" />
-            </Button>
-          </div>
+          {renderAdminActions(sondage)}
         </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
-          {sondage.options.map((option, index) => (
-            <div key={index} className="space-y-1">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-white">{option}</span>
-                <span className="text-[#D4A024] font-semibold">{sondage.votes?.[index] || 0} ({getPercentage(sondage.votes, index)}%)</span>
+          {sondage.options.map((option, index) => {
+            const voters = !sondage.is_anonyme && sondage.voters_by_option ? sondage.voters_by_option[index] : null;
+            return (
+              <div key={index} className="space-y-1">
+                <div className="flex items-center justify-between text-base">
+                  <span className="text-white">{option}</span>
+                  <span className="text-[#D4A024] font-semibold">{sondage.votes?.[index] || 0} ({getPercentage(sondage.votes, index)}%)</span>
+                </div>
+                <div className="w-full bg-gray-700 rounded-full h-2">
+                  <div className="bg-[#D4A024] h-2 rounded-full transition-all" style={{ width: `${getPercentage(sondage.votes, index)}%` }} />
+                </div>
+                {voters && voters.length > 0 && (
+                  <p className="text-sm text-blue-200/80 italic pl-1">
+                    {voters.join(' · ')}
+                  </p>
+                )}
               </div>
-              <div className="w-full bg-gray-700 rounded-full h-2">
-                <div className="bg-[#D4A024] h-2 rounded-full transition-all" style={{ width: `${getPercentage(sondage.votes, index)}%` }} />
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </CardContent>
     </Card>
@@ -536,28 +665,69 @@ const Sondages = () => {
               <div className="space-y-4 py-4">
                 {/* Titre du sondage */}
                 <div>
-                  <Label className="text-white">Titre du sondage *</Label>
+                  <Label className="text-white text-base">Titre du sondage *</Label>
                   <Input
                     value={newSondage.titre}
                     onChange={(e) => setNewSondage({ ...newSondage, titre: e.target.value })}
                     placeholder="Ex: Cigares Puro Dominicano"
-                    className="mt-1 bg-black/40 border-[#D4A024]/30 text-white"
+                    className="mt-1 bg-black/40 border-[#D4A024]/30 text-white text-base"
+                    data-testid="sondage-titre-input"
                   />
+                </div>
+
+                {/* Options de configuration : Anonyme/Public + Date de fin */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 rounded-lg bg-black/30 border border-[#D4A024]/20">
+                  <div>
+                    <Label className="text-white text-base flex items-center gap-2 mb-2">
+                      <Lock className="w-4 h-4 text-[#D4A024]" />
+                      Confidentialité
+                    </Label>
+                    <Select
+                      value={newSondage.is_anonyme ? 'anonyme' : 'public'}
+                      onValueChange={(v) => setNewSondage({ ...newSondage, is_anonyme: v === 'anonyme' })}
+                    >
+                      <SelectTrigger className="bg-black/60 border-[#D4A024]/30 text-white text-base" data-testid="sondage-anonymat-select">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#1a1a1a] border-[#D4A024]/30">
+                        <SelectItem value="anonyme" className="text-white text-base">
+                          Anonyme (personne ne voit qui a voté)
+                        </SelectItem>
+                        <SelectItem value="public" className="text-white text-base">
+                          Public (l'admin voit les votes nominativement)
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-white text-base flex items-center gap-2 mb-2">
+                      <Calendar className="w-4 h-4 text-[#D4A024]" />
+                      Date de fin (optionnelle)
+                    </Label>
+                    <Input
+                      type="date"
+                      value={newSondage.date_fin}
+                      onChange={(e) => setNewSondage({ ...newSondage, date_fin: e.target.value })}
+                      className="bg-black/60 border-[#D4A024]/30 text-white text-base"
+                      data-testid="sondage-date-fin-input"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Clôture automatique passée cette date</p>
+                  </div>
                 </div>
 
                 {/* Questions */}
                 {newSondage.questions.map((q, qi) => (
                   <div key={qi} className="border border-[#D4A024]/30 rounded-lg p-4 space-y-3">
                     <div className="flex items-center justify-between">
-                      <Label className="text-[#D4A024] font-semibold">Question {qi + 1}</Label>
+                      <Label className="text-[#D4A024] font-semibold text-base">Question {qi + 1}</Label>
                       <div className="flex items-center gap-2">
                         <Select value={q.type} onValueChange={(v) => updateQuestion(qi, 'type', v)}>
-                          <SelectTrigger className="w-[140px] bg-black/40 border-[#D4A024]/30 text-white h-8 text-xs">
+                          <SelectTrigger className="w-[160px] bg-black/40 border-[#D4A024]/30 text-white h-9 text-sm">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent className="bg-[#1a1a1a] border-[#D4A024]/30">
-                            <SelectItem value="choix_unique" className="text-white text-sm">Choix unique</SelectItem>
-                            <SelectItem value="oui_non" className="text-white text-sm">Oui / Non</SelectItem>
+                            <SelectItem value="choix_unique" className="text-white text-base">Choix unique</SelectItem>
+                            <SelectItem value="oui_non" className="text-white text-base">Oui / Non</SelectItem>
                           </SelectContent>
                         </Select>
                         {newSondage.questions.length > 1 && (
@@ -572,7 +742,7 @@ const Sondages = () => {
                       value={q.question}
                       onChange={(e) => updateQuestion(qi, 'question', e.target.value)}
                       placeholder="Ex: Avez-vous aimé le Short Robusto ?"
-                      className="bg-black/40 border-[#D4A024]/30 text-white"
+                      className="bg-black/40 border-[#D4A024]/30 text-white text-base"
                     />
 
                     {/* Options */}
@@ -584,7 +754,7 @@ const Sondages = () => {
                               value={opt}
                               onChange={(e) => updateOption(qi, oi, e.target.value)}
                               placeholder={`Option ${oi + 1}`}
-                              className="bg-black/60 border-gray-600 text-white text-sm"
+                              className="bg-black/60 border-gray-600 text-white text-base"
                             />
                             {q.options.length > 2 && (
                               <Button variant="ghost" size="sm" onClick={() => removeOption(qi, oi)} className="text-red-400 h-8 px-2">
@@ -593,13 +763,13 @@ const Sondages = () => {
                             )}
                           </div>
                         ))}
-                        <Button variant="outline" size="sm" onClick={() => addOption(qi)} className="border-[#D4A024]/30 text-[#D4A024] text-xs">
+                        <Button variant="outline" size="sm" onClick={() => addOption(qi)} className="border-[#D4A024]/30 text-[#D4A024] text-sm">
                           <Plus className="w-3 h-3 mr-1" />
                           Ajouter une option
                         </Button>
                       </div>
                     ) : (
-                      <p className="text-gray-500 text-sm">Les membres répondront Oui ou Non</p>
+                      <p className="text-gray-500 text-base">Les membres répondront Oui ou Non</p>
                     )}
                   </div>
                 ))}
