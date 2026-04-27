@@ -1,5 +1,12 @@
 # La Bague Impériale - PRD
 
+## SESSION 28 Avril 2026 - Halo blanc Winston définitivement résolu
+- Diagnostic correct après capture utilisateur : les PNG avaient une zone BEIGE/CRÈME rectangulaire autour du médaillon (pas un simple halo d'anti-aliasing)
+- Fix : masque circulaire strict à 93% du rayon appliqué aux 5 PNG (/app/frontend/public/assets/winston-certificates/) via PIL
+- Cache-buster `?v=20260428` ajouté sur src={comp.logo} dans CompetencesWinston.js pour forcer rechargement Safari
+- Vérification analyseur d'image : les 5 médaillons apparaissent comme disques parfaits sans fond beige autour
+- Backup des anciens PNG : /tmp/winston-backup/
+
 ## Application Overview
 Application de gestion complète pour le club de cigares "La Bague Impériale". Full-stack React + FastAPI app using MongoDB for state/users and external OVH MySQL database for cigar catalog.
 
