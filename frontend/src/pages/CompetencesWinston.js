@@ -23,13 +23,13 @@ const competences = [
   {
     id: 'guide-cigare',
     titre: 'Guide du Cigare',
-    sousTitre: 'Cigar Specialist',
+    sousTitre: '',
     description:
       "Terroirs, formats, marques, histoire, vocabulaire, fabrication, défauts et corrections : Winston maîtrise l'ensemble du guide officiel La Bague Impériale pour vous accompagner pas à pas dans la dégustation.",
     logo: '/assets/winston-certificates/guide-cigare.png',
     fallbackIcon: BookOpen,
     accent: '#D4A024',
-    certifieLabel: 'Cigar Specialist',
+    certifieLabel: '',
   },
   {
     id: 'recommandations',
@@ -115,9 +115,11 @@ const CertificateCard = ({ comp }) => {
         <h2 className="text-2xl md:text-3xl font-serif font-bold text-white mb-1">
           {comp.titre}
         </h2>
-        <p className="text-[#D4A024] text-base font-serif italic mb-6">
-          {comp.sousTitre}
-        </p>
+        {comp.sousTitre && (
+          <p className="text-[#D4A024] text-base font-serif italic mb-6">
+            {comp.sousTitre}
+          </p>
+        )}
 
         {/* Séparateur orné */}
         <div className="flex items-center gap-3 w-full max-w-xs mb-6">
@@ -131,13 +133,15 @@ const CertificateCard = ({ comp }) => {
           {comp.description}
         </p>
 
-        {/* Label certification */}
-        <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-[#D4A024]/50 bg-black/40">
-          <Award className="w-4 h-4 text-[#D4A024]" />
-          <span className="text-[#D4A024] text-xs tracking-widest font-serif">
-            {comp.certifieLabel.toUpperCase()}
-          </span>
-        </div>
+        {/* Label certification (masqué si vide) */}
+        {comp.certifieLabel && (
+          <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-[#D4A024]/50 bg-black/40">
+            <Award className="w-4 h-4 text-[#D4A024]" />
+            <span className="text-[#D4A024] text-xs tracking-widest font-serif">
+              {comp.certifieLabel.toUpperCase()}
+            </span>
+          </div>
+        )}
 
         {/* Signature */}
         <div className="mt-8 pt-6 border-t border-[#D4A024]/20 w-full max-w-xs">
