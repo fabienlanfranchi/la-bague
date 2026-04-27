@@ -96,18 +96,18 @@ const CertificateCard = ({ comp }) => {
       </div>
 
       <div className="relative z-10 px-8 py-10 md:px-12 md:py-14 flex flex-col items-center text-center">
-        {/* Logo / Illustration */}
-        <div className="certificate-medal w-32 h-32 md:w-40 md:h-40 mb-6 flex items-center justify-center rounded-full bg-gradient-to-br from-[#D4A024]/10 to-[#7A2020]/10 border border-[#D4A024]/30 p-6 transition-transform duration-500">
+        {/* Logo / Illustration - médaillon plein cercle */}
+        <div className="certificate-medal w-40 h-40 md:w-48 md:h-48 mb-6 flex items-center justify-center rounded-full bg-gradient-to-br from-[#D4A024]/10 to-[#7A2020]/10 border border-[#D4A024]/30 overflow-hidden transition-transform duration-500">
           {!logoError ? (
             <img
               src={comp.logo}
               alt={comp.titre}
-              className="w-full h-full object-contain"
+              className="w-full h-full object-cover"
               onError={() => setLogoError(true)}
               data-testid={`competence-logo-${comp.id}`}
             />
           ) : (
-            <Fallback className="w-full h-full text-[#D4A024]" strokeWidth={1.2} />
+            <Fallback className="w-3/4 h-3/4 text-[#D4A024]" strokeWidth={1.2} />
           )}
         </div>
 
