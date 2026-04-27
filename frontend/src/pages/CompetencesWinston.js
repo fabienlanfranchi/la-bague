@@ -34,13 +34,13 @@ const competences = [
   {
     id: 'recommandations',
     titre: 'Recommandations Personnalisées',
-    sousTitre: 'Profil Membre par Membre',
+    sousTitre: '',
     description:
       "Winston connaît les goûts et l'historique de chaque membre du club. Ses recommandations sont fondées sur vos préférences réelles et celles des 35 membres de La Bague Impériale.",
     logo: '/assets/winston-certificates/recommandations.png',
     fallbackIcon: Heart,
     accent: '#D4A024',
-    certifieLabel: 'Personnalisation Club',
+    certifieLabel: '',
   },
   {
     id: 'accords',
