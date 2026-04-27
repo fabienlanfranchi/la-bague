@@ -97,7 +97,7 @@ const CertificateCard = ({ comp }) => {
 
       <div className="relative z-10 px-8 py-10 md:px-12 md:py-14 flex flex-col items-center text-center">
         {/* Logo / Illustration - médaillon plein cercle */}
-        <div className="certificate-medal w-40 h-40 md:w-48 md:h-48 mb-6 flex items-center justify-center rounded-full bg-gradient-to-br from-[#D4A024]/10 to-[#7A2020]/10 border border-[#D4A024]/30 overflow-hidden transition-transform duration-500">
+        <div className="certificate-medal w-40 h-40 md:w-48 md:h-48 mb-6 flex items-center justify-center rounded-full overflow-hidden transition-transform duration-500">
           {!logoError ? (
             <img
               src={comp.logo}
