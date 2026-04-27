@@ -56,13 +56,13 @@ const competences = [
   {
     id: 'bague-specialist',
     titre: 'Bague Specialist',
-    sousTitre: 'Mémoire du Club',
+    sousTitre: '',
     description:
       "Statistiques de présence, préférences, anniversaires, événements passés et à venir : Winston est la mémoire vivante de La Bague Impériale depuis sa création en 2013.",
     logo: '/assets/winston-certificates/bague-specialist.png',
     fallbackIcon: Award,
     accent: '#D4A024',
-    certifieLabel: 'Bague Specialist',
+    certifieLabel: '',
   },
 ];
 
