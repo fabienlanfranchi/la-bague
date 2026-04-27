@@ -45,13 +45,13 @@ const competences = [
   {
     id: 'accords',
     titre: 'Conca Specialist',
-    sousTitre: 'Conseil & Accords',
+    sousTitre: '',
     description:
       "Quel whisky, rhum, cognac ou armagnac avec votre cigare ? Winston s'appuie sur la Carte du Bar A Conca D'Oru pour vous suggérer les meilleurs accords selon le moment de la journée.",
     logo: '/assets/winston-certificates/accords.png',
     fallbackIcon: GlassWater,
     accent: '#D4A024',
-    certifieLabel: 'Conca Specialist',
+    certifieLabel: '',
   },
   {
     id: 'bague-specialist',
