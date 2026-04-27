@@ -72,17 +72,20 @@ const CertificateCard = ({ comp }) => {
 
   return (
     <article
-      className="relative overflow-hidden rounded-lg border-2 border-[#D4A024]/40 bg-gradient-to-b from-[#1a0a0a] via-black to-[#0a0606] shadow-[0_20px_60px_-15px_rgba(212,160,36,0.25)] transition-transform duration-300 hover:-translate-y-1"
+      className="certificate-card group relative overflow-hidden rounded-lg border-2 border-[#D4A024]/40 bg-gradient-to-b from-[#1a0a0a] via-black to-[#0a0606] shadow-[0_20px_60px_-15px_rgba(212,160,36,0.25)]"
       data-testid={`competence-card-${comp.id}`}
     >
+      {/* Effet brillance qui balaye la carte au survol */}
+      <span aria-hidden="true" className="certificate-shine pointer-events-none absolute inset-0 z-20" />
+
       {/* Filigrane coin haut gauche */}
-      <div className="absolute top-0 left-0 w-24 h-24 border-t-2 border-l-2 border-[#D4A024]/40 rounded-tl-lg" />
+      <div className="absolute top-0 left-0 w-24 h-24 border-t-2 border-l-2 border-[#D4A024]/40 rounded-tl-lg z-10 transition-colors duration-500 group-hover:border-[#D4A024]" />
       {/* Filigrane coin bas droit */}
-      <div className="absolute bottom-0 right-0 w-24 h-24 border-b-2 border-r-2 border-[#D4A024]/40 rounded-br-lg" />
+      <div className="absolute bottom-0 right-0 w-24 h-24 border-b-2 border-r-2 border-[#D4A024]/40 rounded-br-lg z-10 transition-colors duration-500 group-hover:border-[#D4A024]" />
 
       {/* Sceau certification (haut droit) */}
-      <div className="absolute top-4 right-4 flex flex-col items-center pointer-events-none">
-        <div className="relative w-16 h-16">
+      <div className="absolute top-4 right-4 z-10 flex flex-col items-center pointer-events-none">
+        <div className="relative w-16 h-16 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-6">
           <div className="absolute inset-0 rounded-full border-2 border-[#D4A024]/60 bg-[#7A2020]/30 backdrop-blur-sm flex items-center justify-center">
             <span className="text-[9px] font-serif text-[#D4A024] text-center leading-tight px-1">
               LA BAGUE<br/>IMPÉRIALE
@@ -92,9 +95,9 @@ const CertificateCard = ({ comp }) => {
         <span className="mt-1 text-[8px] tracking-widest text-[#D4A024]/80 font-serif">CERTIFIÉ</span>
       </div>
 
-      <div className="px-8 py-10 md:px-12 md:py-14 flex flex-col items-center text-center">
+      <div className="relative z-10 px-8 py-10 md:px-12 md:py-14 flex flex-col items-center text-center">
         {/* Logo / Illustration */}
-        <div className="w-32 h-32 md:w-40 md:h-40 mb-6 flex items-center justify-center rounded-full bg-gradient-to-br from-[#D4A024]/10 to-[#7A2020]/10 border border-[#D4A024]/30 p-6">
+        <div className="certificate-medal w-32 h-32 md:w-40 md:h-40 mb-6 flex items-center justify-center rounded-full bg-gradient-to-br from-[#D4A024]/10 to-[#7A2020]/10 border border-[#D4A024]/30 p-6 transition-transform duration-500">
           {!logoError ? (
             <img
               src={comp.logo}

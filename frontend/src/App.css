@@ -248,3 +248,60 @@ p, span, div {
     font-size: 1.25rem !important;
   }
 }
+
+/* ============ Cartes de compétences Winston : effet "carte de collection" ============ */
+.certificate-card {
+  perspective: 1200px;
+  transform-style: preserve-3d;
+  transition:
+    transform 600ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 600ms ease-out,
+    border-color 400ms ease-out;
+  will-change: transform;
+}
+
+.certificate-card:hover {
+  transform: translateY(-8px) rotateX(4deg) rotateY(-6deg) scale(1.01);
+  border-color: rgba(212, 160, 36, 0.85);
+  box-shadow:
+    0 30px 80px -20px rgba(212, 160, 36, 0.45),
+    0 0 0 1px rgba(212, 160, 36, 0.2) inset,
+    0 0 60px -10px rgba(212, 160, 36, 0.25);
+}
+
+/* Brillance dorée qui balaye la carte au survol */
+.certificate-shine {
+  background: linear-gradient(
+    115deg,
+    transparent 30%,
+    rgba(212, 160, 36, 0.08) 45%,
+    rgba(255, 220, 130, 0.22) 50%,
+    rgba(212, 160, 36, 0.08) 55%,
+    transparent 70%
+  );
+  transform: translateX(-120%);
+  transition: transform 1100ms cubic-bezier(0.22, 1, 0.36, 1);
+  mix-blend-mode: screen;
+}
+
+.certificate-card:hover .certificate-shine {
+  transform: translateX(120%);
+}
+
+/* Médaillon qui brille et monte légèrement */
+.certificate-card:hover .certificate-medal {
+  transform: translateZ(40px) scale(1.05);
+  box-shadow: 0 0 40px -5px rgba(212, 160, 36, 0.5);
+}
+
+/* Préférence utilisateur : pas de mouvement */
+@media (prefers-reduced-motion: reduce) {
+  .certificate-card,
+  .certificate-card:hover,
+  .certificate-shine,
+  .certificate-card:hover .certificate-medal {
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
