@@ -96,13 +96,14 @@ const CertificateCard = ({ comp }) => {
       </div>
 
       <div className="relative z-10 px-8 py-10 md:px-12 md:py-14 flex flex-col items-center text-center">
-        {/* Logo / Illustration - médaillon plein cercle */}
-        <div className="certificate-medal w-40 h-40 md:w-48 md:h-48 mb-6 flex items-center justify-center rounded-full overflow-hidden transition-transform duration-500">
+        {/* Logo / Illustration - médaillon PNG circulaire, pas de cadre CSS (évite tout halo) */}
+        <div className="certificate-medal w-40 h-40 md:w-48 md:h-48 mb-6 flex items-center justify-center transition-transform duration-500">
           {!logoError ? (
             <img
               src={comp.logo}
               alt={comp.titre}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain"
+              style={{ imageRendering: 'auto' }}
               onError={() => setLogoError(true)}
               data-testid={`competence-logo-${comp.id}`}
             />
