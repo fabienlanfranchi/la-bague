@@ -100,7 +100,7 @@ const CertificateCard = ({ comp }) => {
         <div className="certificate-medal w-40 h-40 md:w-48 md:h-48 mb-6 flex items-center justify-center transition-transform duration-500">
           {!logoError ? (
             <img
-              src={`${comp.logo}?v=20260428`}
+              src={`${comp.logo}?v=20260428b`}
               alt={comp.titre}
               className="w-full h-full object-contain"
               style={{ imageRendering: 'auto' }}
