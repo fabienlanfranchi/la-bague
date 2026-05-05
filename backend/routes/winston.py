@@ -505,6 +505,111 @@ Encourage-le aussi à enrichir sa Cigarthèque pour que tu puisses mieux le cons
     
     return "\n".join(context_parts), analyse_gouts, profil_fumeur
 
+
+# ============ MÉMOIRE PERSISTANTE DES PRÉFÉRENCES ============
+
+async def get_member_preferences(membre_id: str) -> list:
+    """Charge les préférences mémorisées d'un membre."""
+    if not membre_id:
+        return []
+    doc = await db.winston_preferences.find_one({"membre_id": membre_id}, {"_id": 0})
+    if not doc:
+        return []
+    return doc.get("preferences", [])
+
+
+async def save_member_preferences(membre_id: str, new_prefs: list) -> None:
+    """Ajoute de nouvelles préférences à la mémoire d'un membre (sans doublons)."""
+    if not membre_id or not new_prefs:
+        return
+    existing = await get_member_preferences(membre_id)
+    existing_texts = {p.get("texte", "").strip().lower() for p in existing}
+    to_add = []
+    for txt in new_prefs:
+        clean = txt.strip()
+        if clean and clean.lower() not in existing_texts:
+            to_add.append({
+                "id": str(uuid.uuid4()),
+                "texte": clean,
+                "added_at": datetime.now(timezone.utc).isoformat(),
+            })
+    if not to_add:
+        return
+    await db.winston_preferences.update_one(
+        {"membre_id": membre_id},
+        {
+            "$push": {"preferences": {"$each": to_add}},
+            "$set": {"updated_at": datetime.now(timezone.utc).isoformat()},
+        },
+        upsert=True,
+    )
+
+
+async def extract_new_preferences(user_message: str, assistant_response: str) -> list:
+    """Extrait via LLM les NOUVELLES préférences déclarées par le membre dans son dernier message.
+    Renvoie une liste de courtes phrases (FR), ou [] si rien de pertinent.
+    """
+    if not user_message or len(user_message.strip()) < 3:
+        return []
+    try:
+        api_key = os.environ.get('EMERGENT_LLM_KEY')
+        extractor = LlmChat(
+            api_key=api_key,
+            session_id=f"prefs-extract-{uuid.uuid4()}",
+            system_message=(
+                "Tu es un extracteur de préférences. Le membre d'un club de cigares vient "
+                "d'écrire un message à son assistant Winston. Identifie UNIQUEMENT les "
+                "préférences DURABLES qu'il déclare sur ses goûts ou habitudes (ex : moments "
+                "de la journée, marques aimées/évitées, profils aromatiques aimés/refusés, "
+                "alcools préférés, contexte récurrent, allergies, etc.).\n"
+                "RÈGLES :\n"
+                "- IGNORE les questions, demandes ponctuelles, remerciements, opinions sur un cigare précis testé une fois.\n"
+                "- N'INVENTE PAS. Si rien de durable n'est exprimé, réponds exactement : NONE\n"
+                "- Sinon, réponds UNIQUEMENT avec une liste, une préférence par ligne, "
+                "  formulée à la 1ère personne en français, courte (≤ 18 mots), sans puce ni tiret.\n"
+                "Exemples bons : \"J'aime fumer léger le matin et un Montecristo le soir\" ou "
+                "\"Je n'aime pas les cigares trop vanillés\".\n"
+                "Exemples à IGNORER : \"Quel cigare ce soir ?\", \"Merci\", \"OK je vais essayer\"."
+            ),
+        ).with_model("anthropic", "claude-haiku-4-5-20251001")
+        prompt = (
+            f"MESSAGE DU MEMBRE :\n{user_message.strip()}\n\n"
+            f"(Pour contexte, réponse de Winston : {assistant_response.strip()[:400]})\n\n"
+            "Liste des préférences durables exprimées dans le MESSAGE DU MEMBRE :"
+        )
+        result = await extractor.send_message(UserMessage(text=prompt))
+        text = getattr(result, "text", None) or getattr(result, "content", None) or str(result)
+        text = text.strip()
+        if not text or text.upper().startswith("NONE"):
+            return []
+        prefs = []
+        for line in text.split("\n"):
+            line = line.strip().lstrip("-•*0123456789. ").strip()
+            if not line or line.upper() == "NONE":
+                continue
+            if len(line) > 200:
+                line = line[:200]
+            prefs.append(line)
+        return prefs[:5]
+    except Exception as e:
+        logger.warning(f"Extraction préférences échouée: {e}")
+        return []
+
+
+def format_preferences_for_context(prefs: list) -> str:
+    """Met en forme les préférences pour injection dans le system prompt."""
+    if not prefs:
+        return ""
+    lines = [f"  • {p.get('texte','')}" for p in prefs if p.get('texte')]
+    if not lines:
+        return ""
+    return (
+        "\n--- MÉMOIRE PERSISTANTE DU MEMBRE (préférences déjà déclarées) ---\n"
+        + "\n".join(lines)
+        + "\nRespecte STRICTEMENT ces préférences déclarées. Cite-les naturellement quand "
+        "c'est pertinent ('comme vous me l'aviez dit, …')."
+    )
+
 # ============ ROUTES ============
 
 @winston_router.post("/assistant/chat", response_model=ChatMessageResponse)
@@ -513,17 +618,26 @@ async def chat_with_assistant(request: ChatMessageRequest):
     try:
         user_id = request.user_id
         session_id = f"chat_{user_id}"
-        
-        # IMPORTANT: Toujours reconstruire le contexte pour le Président 
-        # pour s'assurer que les instructions d'appellation sont respectées
         is_president_mode = user_id.endswith('_president')
-        if is_president_mode and session_id in chat_sessions:
-            # Supprimer la session pour forcer la reconstruction du contexte
+        actual_user_id = user_id.replace('_president', '') if is_president_mode else user_id
+
+        # Charger les préférences mémorisées du membre
+        member_prefs = await get_member_preferences(actual_user_id)
+        prefs_block = format_preferences_for_context(member_prefs)
+
+        # Toujours reconstruire la session pour que le mode Président
+        # ET la mémoire des préférences soient à jour
+        if session_id in chat_sessions:
+            cached_prefs_count = chat_sessions[session_id].get("_prefs_count", -1) if isinstance(chat_sessions[session_id], dict) else -1
+        else:
+            cached_prefs_count = -1
+        prefs_changed = cached_prefs_count != len(member_prefs)
+        if (is_president_mode or prefs_changed) and session_id in chat_sessions:
             del chat_sessions[session_id]
-        
+
         if session_id not in chat_sessions:
             context, analyse_gouts, profil_fumeur = await build_assistant_context(user_id)
-            
+
             system_message = f"""Tu es Winston, le concierge et assistant IA personnel du club de cigares "La Bague Impériale".
 
 Tu possèdes deux certifications :
@@ -533,6 +647,7 @@ Tu possèdes deux certifications :
 {context}
 
 {analyse_gouts}
+{prefs_block}
 
 PROFIL FUMEUR DU MEMBRE ACTUEL : {profil_fumeur.upper()}
 
@@ -776,9 +891,17 @@ INSTRUCTIONS COMPORTEMENTALES ABSOLUES
    - Apéro → cigare doux + rhum léger (Havana Club 7)
    - After dinner → cigare puissant + whisky ou rhum vieux (Lagavulin / Zacapa)
 
-7. MÉMOIRE DE CONVERSATION - Tu te souviens de TOUT ce qui a été dit dans cette conversation.
-   Si le membre t'a dit "c'est trop léger", tu retiens et proposes plus corsé.
-   Tu apprends et t'adaptes à chaque échange.
+7. MÉMOIRE DURABLE DU MEMBRE :
+   - Tu disposes plus haut d'un bloc "MÉMOIRE PERSISTANTE DU MEMBRE" (s'il existe).
+     Ce sont des préférences DURABLES déjà déclarées par le membre lors de précédentes
+     conversations (moments de la journée, marques aimées/évitées, profils refusés, etc.).
+   - Tu DOIS les respecter strictement et les utiliser naturellement dans tes conseils.
+   - Tu peux y faire référence sobrement : "comme vous me l'aviez dit, vous évitez les
+     vanillés…", "vous m'aviez précisé qu'au matin vous fumez léger, donc je vous propose…".
+   - Tu te souviens AUSSI de TOUT ce qui se dit dans la conversation en cours.
+   - Quand un membre t'exprime une nouvelle préférence durable ("je n'aime pas X",
+     "le matin je fume Y", "j'évite Z"), confirme brièvement que tu en prends note
+     ("Noté, je m'en souviendrai") — la sauvegarde se fait automatiquement côté système.
 
 8. SOIS CONCIS ET PERCUTANT : 2-4 phrases maximum sauf demande explicite de détails.
 
@@ -807,9 +930,10 @@ INSTRUCTIONS COMPORTEMENTALES ABSOLUES
                 system_message=system_message
             ).with_model("anthropic", "claude-sonnet-4-5-20250929")
             
-            chat_sessions[session_id] = chat
+            chat_sessions[session_id] = {"chat": chat, "_prefs_count": len(member_prefs)}
         
-        chat = chat_sessions[session_id]
+        chat_entry = chat_sessions[session_id]
+        chat = chat_entry["chat"] if isinstance(chat_entry, dict) else chat_entry
         
         user_message = UserMessage(text=request.message)
         response = await chat.send_message(user_message)
@@ -820,7 +944,22 @@ INSTRUCTIONS COMPORTEMENTALES ABSOLUES
             response = response.content
         else:
             response = str(response)
-        
+
+        # Extraction asynchrone des nouvelles préférences (ne bloque pas la réponse)
+        import asyncio as _asyncio
+
+        async def _extract_and_persist():
+            try:
+                new_prefs = await extract_new_preferences(request.message, response)
+                if new_prefs:
+                    await save_member_preferences(actual_user_id, new_prefs)
+                    # Forcer reconstruction du contexte au prochain message
+                    chat_sessions.pop(session_id, None)
+            except Exception as ex:
+                logger.warning(f"Persist prefs failed: {ex}")
+
+        _asyncio.create_task(_extract_and_persist())
+
         return ChatMessageResponse(
             response=response,
             session_id=session_id
@@ -829,6 +968,40 @@ INSTRUCTIONS COMPORTEMENTALES ABSOLUES
     except Exception as e:
         logger.error(f"Erreur assistant IA: {e}")
         raise HTTPException(status_code=500, detail=f"Erreur de l'assistant: {str(e)}")
+
+
+# ============ ROUTES MÉMOIRE PRÉFÉRENCES ============
+
+@winston_router.get("/assistant/preferences/{membre_id}")
+async def list_member_preferences(membre_id: str):
+    """Liste les préférences mémorisées par Winston pour un membre."""
+    prefs = await get_member_preferences(membre_id)
+    return {"membre_id": membre_id, "preferences": prefs, "total": len(prefs)}
+
+
+@winston_router.delete("/assistant/preferences/{membre_id}/{pref_id}")
+async def delete_member_preference(membre_id: str, pref_id: str):
+    """Supprime une préférence spécifique."""
+    result = await db.winston_preferences.update_one(
+        {"membre_id": membre_id},
+        {"$pull": {"preferences": {"id": pref_id}},
+         "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    # Invalider la session pour rebâtir le contexte
+    for sid in list(chat_sessions.keys()):
+        if sid.startswith(f"chat_{membre_id}"):
+            chat_sessions.pop(sid, None)
+    return {"deleted": result.modified_count > 0, "pref_id": pref_id}
+
+
+@winston_router.delete("/assistant/preferences/{membre_id}")
+async def clear_member_preferences(membre_id: str):
+    """Efface toutes les préférences mémorisées pour un membre."""
+    await db.winston_preferences.delete_one({"membre_id": membre_id})
+    for sid in list(chat_sessions.keys()):
+        if sid.startswith(f"chat_{membre_id}"):
+            chat_sessions.pop(sid, None)
+    return {"cleared": True, "membre_id": membre_id}
 
 
 @winston_router.post("/assistant/reset")
