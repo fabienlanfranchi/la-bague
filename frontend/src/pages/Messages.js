@@ -798,7 +798,17 @@ Le Bureau de La Bague Impériale`;
                       onSelect={setInfoDate}
                       locale={fr}
                       disabled={(date) => date < new Date()}
-                      className="rounded-md border-cyan-500/30"
+                      className="rounded-md border-cyan-500/30 text-white"
+                      classNames={{
+                        caption_label: "text-base font-medium text-white",
+                        nav_button: "h-7 w-7 bg-transparent p-0 text-cyan-300 hover:text-white hover:bg-cyan-500/20 border border-cyan-500/40 rounded-md",
+                        head_cell: "text-cyan-300 rounded-md w-8 font-normal text-[0.8rem]",
+                        day: "h-8 w-8 p-0 font-normal text-white hover:bg-cyan-500/20 rounded-md",
+                        day_selected: "bg-cyan-600 text-white hover:bg-cyan-600 focus:bg-cyan-600",
+                        day_today: "bg-white/10 text-white border border-cyan-400/40",
+                        day_outside: "text-gray-500 opacity-60",
+                        day_disabled: "text-gray-600 opacity-40",
+                      }}
                     />
                   </PopoverContent>
                 </Popover>
