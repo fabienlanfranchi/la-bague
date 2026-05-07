@@ -433,7 +433,16 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
     // Si c'est un repas et présent, vérifier les choix de menu
     const isRepas = prochainEvenement.type_sondage === 'repas';
     if (isRepas && reponse === 'oui') {
-      if (!choixEntree || !choixPlat || !choixDessert) {
+      const opts = prochainEvenement.options_sondage || {};
+      const entrees = opts.entrees || [];
+      const plats = opts.plats || [];
+      const desserts = opts.desserts || [];
+      // Un choix n'est requis QUE si le cours a 2+ options à voter.
+      // Si 0 (aucun) ou 1 (unique) → pas de vote nécessaire.
+      const needEntree = entrees.length > 1;
+      const needPlat = plats.length > 1;
+      const needDessert = desserts.length > 1;
+      if ((needEntree && !choixEntree) || (needPlat && !choixPlat) || (needDessert && !choixDessert)) {
         toast.error('Veuillez sélectionner vos choix de menu');
         return;
       }
@@ -449,9 +458,14 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
       
       // Ajouter les choix de menu si présent à un repas
       if (isRepas && reponse === 'oui') {
-        payload.choix_entree = choixEntree;
-        payload.choix_plat = choixPlat;
-        payload.choix_dessert = choixDessert;
+        const opts = prochainEvenement.options_sondage || {};
+        const entrees = opts.entrees || [];
+        const plats = opts.plats || [];
+        const desserts = opts.desserts || [];
+        // Pour chaque cours : choix du membre si vote, sinon le plat unique, sinon null
+        payload.choix_entree = entrees.length > 1 ? choixEntree : (entrees.length === 1 ? entrees[0] : null);
+        payload.choix_plat = plats.length > 1 ? choixPlat : (plats.length === 1 ? plats[0] : null);
+        payload.choix_dessert = desserts.length > 1 ? choixDessert : (desserts.length === 1 ? desserts[0] : null);
       }
       
       await axios.post(`${API}/reponses-sondages`, payload);
