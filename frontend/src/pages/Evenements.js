@@ -32,6 +32,144 @@ import { useUser } from '../context/UserContext';
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
+/**
+ * Éditeur d'un cours du menu (entrée / plat / dessert).
+ * 3 modes :
+ *  - 'multi'  : plusieurs options proposées au vote (>= 2 items)
+ *  - 'unique' : 1 seul plat fixe (pas de vote, juste l'info)
+ *  - 'none'   : aucun (pas de cours servi)
+ */
+const MealCourseEditor = ({ label, items = [], placeholder, defaultPrefix, onChange }) => {
+  const initialMode = items.length === 0 ? 'none' : items.length === 1 ? 'unique' : 'multi';
+  const [mode, setMode] = React.useState(initialMode);
+
+  const switchMode = (newMode) => {
+    setMode(newMode);
+    if (newMode === 'none') {
+      onChange([]);
+    } else if (newMode === 'unique') {
+      onChange(items.length >= 1 ? [items[0]] : ['']);
+    } else if (newMode === 'multi') {
+      // s'assurer d'avoir au moins 2 lignes
+      if (items.length >= 2) onChange(items);
+      else onChange([
+        items[0] || `${defaultPrefix} A`,
+        `${defaultPrefix} B`,
+      ]);
+    }
+  };
+
+  const updateItem = (idx, value) => {
+    const next = [...items];
+    next[idx] = value;
+    onChange(next);
+  };
+
+  const addItem = () => {
+    const letter = String.fromCharCode(65 + items.length);
+    onChange([...items, `${defaultPrefix} ${letter}`]);
+  };
+
+  const removeItem = (idx) => {
+    const next = items.filter((_, i) => i !== idx);
+    onChange(next);
+  };
+
+  const ModeBtn = ({ value, children }) => {
+    const active = mode === value;
+    let cls = '';
+    if (value === 'multi') {
+      cls = active
+        ? 'bg-amber-600 text-white'
+        : 'border border-amber-500/40 text-amber-300 hover:bg-amber-500/10';
+    } else if (value === 'unique') {
+      cls = active
+        ? 'bg-blue-600 text-white'
+        : 'border border-blue-500/40 text-blue-300 hover:bg-blue-500/10';
+    } else {
+      cls = active
+        ? 'bg-gray-600 text-white'
+        : 'border border-gray-500/40 text-gray-300 hover:bg-gray-500/10';
+    }
+    return (
+      <button
+        type="button"
+        onClick={() => switchMode(value)}
+        className={`px-3 py-1.5 rounded text-xs font-medium transition-all ${cls}`}
+        data-testid={`meal-${defaultPrefix.toLowerCase()}-mode-${value}`}
+      >
+        {children}
+      </button>
+    );
+  };
+
+  return (
+    <div className="border border-[#D4A024]/15 rounded-lg p-3 bg-black/20">
+      <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+        <label className="block text-sm font-semibold text-gray-200">{label}</label>
+        <div className="flex space-x-2">
+          <ModeBtn value="multi">Choix au vote</ModeBtn>
+          <ModeBtn value="unique">Unique</ModeBtn>
+          <ModeBtn value="none">Aucun</ModeBtn>
+        </div>
+      </div>
+
+      {mode === 'none' && (
+        <p className="text-xs text-gray-500 italic">Aucun {label.toLowerCase()} ne sera proposé.</p>
+      )}
+
+      {mode === 'unique' && (
+        <input
+          type="text"
+          value={items[0] && !items[0].startsWith(defaultPrefix) ? items[0] : ''}
+          placeholder={placeholder}
+          onChange={(e) => onChange([e.target.value || `${defaultPrefix} unique`])}
+          className="w-full px-3 py-2 bg-black/40 border border-blue-500/30 rounded text-white text-sm placeholder:text-gray-500"
+        />
+      )}
+
+      {mode === 'multi' && (
+        <div className="space-y-2">
+          {items.map((item, i) => {
+            const isPlaceholder = item === `${defaultPrefix} ${String.fromCharCode(65 + i)}`;
+            return (
+              <div key={i} className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={isPlaceholder ? '' : item}
+                  placeholder={placeholder}
+                  onChange={(e) => updateItem(i, e.target.value || `${defaultPrefix} ${String.fromCharCode(65 + i)}`)}
+                  onFocus={() => { if (isPlaceholder) updateItem(i, ''); }}
+                  className="flex-1 px-3 py-2 bg-black/40 border border-[#D4A024]/30 rounded text-white text-sm placeholder:text-gray-500"
+                />
+                {items.length > 2 && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => removeItem(i)}
+                    className="text-red-400 hover:text-red-300 hover:bg-red-500/10 px-2"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+            );
+          })}
+          <Button
+            onClick={addItem}
+            size="sm"
+            type="button"
+            className="bg-[#D4A024]/20 hover:bg-[#D4A024]/30 text-[#D4A024]"
+          >
+            <Plus className="w-4 h-4 mr-1" /> Ajouter un choix
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const Evenements = () => {
   const { isAdmin, currentMember } = useUser();
   
@@ -311,33 +449,45 @@ ${objetText}`;
     if (event.type_sondage === 'repas') {
       message += `
 
-🍽️ *MENU AU CHOIX*
+🍽️ *MENU*
 ━━━━━━━━━━━━━━━━━━━━`;
       
-      if (entrees.length > 0) {
+      if (entrees.length === 1) {
         message += `
 
-🥗 *Entrées :*`;
+🥗 *Entrée :* ${entrees[0]}`;
+      } else if (entrees.length > 1) {
+        message += `
+
+🥗 *Entrées au choix :*`;
         entrees.forEach((entree, idx) => {
           message += `
   ${idx + 1}. ${entree}`;
         });
       }
       
-      if (plats.length > 0) {
+      if (plats.length === 1) {
         message += `
 
-🍖 *Plats :*`;
+🍖 *Plat :* ${plats[0]}`;
+      } else if (plats.length > 1) {
+        message += `
+
+🍖 *Plats au choix :*`;
         plats.forEach((plat, idx) => {
           message += `
   ${idx + 1}. ${plat}`;
         });
       }
       
-      if (desserts.length > 0) {
+      if (desserts.length === 1) {
         message += `
 
-🍰 *Desserts :*`;
+🍰 *Dessert :* ${desserts[0]}`;
+      } else if (desserts.length > 1) {
+        message += `
+
+🍰 *Desserts au choix :*`;
         desserts.forEach((dessert, idx) => {
           message += `
   ${idx + 1}. ${dessert}`;
@@ -1873,126 +2023,47 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
               {newEvent.objet_type === 'repas' && (
                 <div className="space-y-4 bg-black/30 p-4 rounded-lg border border-[#D4A024]/20">
                   <h3 className="text-[#D4A024] font-serif font-semibold">Options du repas</h3>
-                  
+                  <p className="text-xs text-gray-400 -mt-2">
+                    Pour chaque cours, choisissez : <span className="text-amber-400">"Choix"</span> (les membres votent),
+                    <span className="text-blue-400"> "Unique"</span> (1 seul plat fixe, pas de vote) ou
+                    <span className="text-gray-400"> "Aucun"</span>.
+                  </p>
+
                   {/* Entrées */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Entrées</label>
-                    {newEvent.options_sondage.entrees.map((entree, i) => (
-                      <input
-                        key={i}
-                        type="text"
-                        value={entree === `Entrée ${String.fromCharCode(65 + i)}` ? '' : entree}
-                        placeholder={`Ex: Salade César, Foie gras...`}
-                        onChange={(e) => {
-                          const newEntrees = [...newEvent.options_sondage.entrees];
-                          newEntrees[i] = e.target.value || `Entrée ${String.fromCharCode(65 + i)}`;
-                          setNewEvent({
-                            ...newEvent,
-                            options_sondage: { ...newEvent.options_sondage, entrees: newEntrees }
-                          });
-                        }}
-                        onFocus={(e) => {
-                          if (entree === `Entrée ${String.fromCharCode(65 + i)}`) {
-                            const newEntrees = [...newEvent.options_sondage.entrees];
-                            newEntrees[i] = '';
-                            setNewEvent({
-                              ...newEvent,
-                              options_sondage: { ...newEvent.options_sondage, entrees: newEntrees }
-                            });
-                          }
-                        }}
-                        className="w-full px-3 py-2 mb-2 bg-black/40 border border-[#D4A024]/30 rounded text-white text-sm placeholder:text-gray-500"
-                      />
-                    ))}
-                    <Button
-                      onClick={() => addOption('entrees')}
-                      size="sm"
-                      type="button"
-                      className="bg-[#D4A024]/20 hover:bg-[#D4A024]/30 text-[#D4A024]"
-                    >
-                      <Plus className="w-4 h-4 mr-1" /> Ajouter entrée
-                    </Button>
-                  </div>
+                  <MealCourseEditor
+                    label="Entrée"
+                    items={newEvent.options_sondage.entrees}
+                    placeholder="Ex: Salade César, Foie gras..."
+                    defaultPrefix="Entrée"
+                    onChange={(newItems) => setNewEvent({
+                      ...newEvent,
+                      options_sondage: { ...newEvent.options_sondage, entrees: newItems }
+                    })}
+                  />
 
                   {/* Plats */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Plats</label>
-                    {newEvent.options_sondage.plats.map((plat, i) => (
-                      <input
-                        key={i}
-                        type="text"
-                        value={plat === `Plat ${String.fromCharCode(65 + i)}` ? '' : plat}
-                        placeholder={`Ex: Filet de bœuf, Loup grillé...`}
-                        onChange={(e) => {
-                          const newPlats = [...newEvent.options_sondage.plats];
-                          newPlats[i] = e.target.value || `Plat ${String.fromCharCode(65 + i)}`;
-                          setNewEvent({
-                            ...newEvent,
-                            options_sondage: { ...newEvent.options_sondage, plats: newPlats }
-                          });
-                        }}
-                        onFocus={(e) => {
-                          if (plat === `Plat ${String.fromCharCode(65 + i)}`) {
-                            const newPlats = [...newEvent.options_sondage.plats];
-                            newPlats[i] = '';
-                            setNewEvent({
-                              ...newEvent,
-                              options_sondage: { ...newEvent.options_sondage, plats: newPlats }
-                            });
-                          }
-                        }}
-                        className="w-full px-3 py-2 mb-2 bg-black/40 border border-[#D4A024]/30 rounded text-white text-sm placeholder:text-gray-500"
-                      />
-                    ))}
-                    <Button
-                      onClick={() => addOption('plats')}
-                      size="sm"
-                      type="button"
-                      className="bg-[#D4A024]/20 hover:bg-[#D4A024]/30 text-[#D4A024]"
-                    >
-                      <Plus className="w-4 h-4 mr-1" /> Ajouter plat
-                    </Button>
-                  </div>
+                  <MealCourseEditor
+                    label="Plat"
+                    items={newEvent.options_sondage.plats}
+                    placeholder="Ex: Filet de bœuf, Loup grillé..."
+                    defaultPrefix="Plat"
+                    onChange={(newItems) => setNewEvent({
+                      ...newEvent,
+                      options_sondage: { ...newEvent.options_sondage, plats: newItems }
+                    })}
+                  />
 
                   {/* Desserts */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Desserts</label>
-                    {newEvent.options_sondage.desserts.map((dessert, i) => (
-                      <input
-                        key={i}
-                        type="text"
-                        value={dessert === `Dessert ${String.fromCharCode(65 + i)}` ? '' : dessert}
-                        placeholder={`Ex: Tarte aux fruits, Fondant chocolat...`}
-                        onChange={(e) => {
-                          const newDesserts = [...newEvent.options_sondage.desserts];
-                          newDesserts[i] = e.target.value || `Dessert ${String.fromCharCode(65 + i)}`;
-                          setNewEvent({
-                            ...newEvent,
-                            options_sondage: { ...newEvent.options_sondage, desserts: newDesserts }
-                          });
-                        }}
-                        onFocus={(e) => {
-                          if (dessert === `Dessert ${String.fromCharCode(65 + i)}`) {
-                            const newDesserts = [...newEvent.options_sondage.desserts];
-                            newDesserts[i] = '';
-                            setNewEvent({
-                              ...newEvent,
-                              options_sondage: { ...newEvent.options_sondage, desserts: newDesserts }
-                            });
-                          }
-                        }}
-                        className="w-full px-3 py-2 mb-2 bg-black/40 border border-[#D4A024]/30 rounded text-white text-sm placeholder:text-gray-500"
-                      />
-                    ))}
-                    <Button
-                      onClick={() => addOption('desserts')}
-                      size="sm"
-                      type="button"
-                      className="bg-[#D4A024]/20 hover:bg-[#D4A024]/30 text-[#D4A024]"
-                    >
-                      <Plus className="w-4 h-4 mr-1" /> Ajouter dessert
-                    </Button>
-                  </div>
+                  <MealCourseEditor
+                    label="Dessert"
+                    items={newEvent.options_sondage.desserts}
+                    placeholder="Ex: Tarte aux fruits, Fondant chocolat..."
+                    defaultPrefix="Dessert"
+                    onChange={(newItems) => setNewEvent({
+                      ...newEvent,
+                      options_sondage: { ...newEvent.options_sondage, desserts: newItems }
+                    })}
+                  />
                 </div>
               )}
             </CardContent>

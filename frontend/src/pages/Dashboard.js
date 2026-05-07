@@ -1119,13 +1119,24 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
                   <div className="mb-4 p-4 bg-blue-900/20 border border-blue-500/30 rounded-lg space-y-4">
                     <h5 className="text-blue-400 font-semibold flex items-center text-lg">
                       <span className="mr-2">🍽️</span>
-                      Vos choix de menu
+                      {(() => {
+                        const e = prochainEvenement.options_sondage.entrees || [];
+                        const p = prochainEvenement.options_sondage.plats || [];
+                        const d = prochainEvenement.options_sondage.desserts || [];
+                        const hasVote = e.length > 1 || p.length > 1 || d.length > 1;
+                        return hasVote ? 'Vos choix de menu' : 'Le menu';
+                      })()}
                     </h5>
                     
                     {/* Entrées */}
                     {prochainEvenement.options_sondage.entrees && prochainEvenement.options_sondage.entrees.length > 0 && (
                       <div>
                         <p className="text-base text-gray-400 mb-2 font-medium">Entrée :</p>
+                        {prochainEvenement.options_sondage.entrees.length === 1 ? (
+                          <div className="bg-amber-900/30 border border-amber-600/40 rounded-lg px-4 py-3 text-amber-200 text-base">
+                            {prochainEvenement.options_sondage.entrees[0]}
+                          </div>
+                        ) : (
                         <div className="space-y-2">
                           {prochainEvenement.options_sondage.entrees.map((entree, idx) => (
                             <div key={idx}>
@@ -1144,6 +1155,7 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
                             </div>
                           ))}
                         </div>
+                        )}
                       </div>
                     )}
                     
@@ -1151,6 +1163,11 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
                     {prochainEvenement.options_sondage.plats && prochainEvenement.options_sondage.plats.length > 0 && (
                       <div>
                         <p className="text-base text-gray-400 mb-2 font-medium">Plat :</p>
+                        {prochainEvenement.options_sondage.plats.length === 1 ? (
+                          <div className="bg-blue-900/30 border border-blue-600/40 rounded-lg px-4 py-3 text-blue-200 text-base">
+                            {prochainEvenement.options_sondage.plats[0]}
+                          </div>
+                        ) : (
                         <div className="space-y-2">
                           {prochainEvenement.options_sondage.plats.map((plat, idx) => (
                             <div key={idx}>
@@ -1169,6 +1186,7 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
                             </div>
                           ))}
                         </div>
+                        )}
                       </div>
                     )}
                     
@@ -1176,6 +1194,11 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
                     {prochainEvenement.options_sondage.desserts && prochainEvenement.options_sondage.desserts.length > 0 && (
                       <div>
                         <p className="text-base text-gray-400 mb-2 font-medium">Dessert :</p>
+                        {prochainEvenement.options_sondage.desserts.length === 1 ? (
+                          <div className="bg-purple-900/30 border border-purple-600/40 rounded-lg px-4 py-3 text-purple-200 text-base">
+                            {prochainEvenement.options_sondage.desserts[0]}
+                          </div>
+                        ) : (
                         <div className="space-y-2">
                           {prochainEvenement.options_sondage.desserts.map((dessert, idx) => (
                             <div key={idx}>
@@ -1194,6 +1217,7 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
                             </div>
                           ))}
                         </div>
+                        )}
                       </div>
                     )}
                   </div>
