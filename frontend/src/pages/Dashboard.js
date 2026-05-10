@@ -1850,12 +1850,29 @@ const Dashboard = () => {
         ).length;
         const presentsInvites = manualResponsesData.filter(r => r.type === 'invite' && r.present).length;
         const totalPresentsMembres = presentsDirects + presentsManuels;
-        
+        const totalPresentsAll = totalPresentsMembres + presentsInvites;
+
         const absentsDirects = reponses.filter(r => !r.present).length;
         const absentsManuels = manualResponsesData.filter(r => 
           r.type === 'membre_manuel' && !r.present && !directMemberIds.has(r.membre_id)
         ).length;
         const totalAbsents = absentsDirects + absentsManuels;
+
+        // Forcer le total pour les cours en mode "Unique" : tous les présents
+        // (sinon les invités/ajouts manuels sans choix saisi ne sont pas comptés)
+        const opts = (prochainEvenement && prochainEvenement.options_sondage) || {};
+        const entreesOpts = opts.entrees || [];
+        const platsOpts = opts.plats || [];
+        const dessertsOpts = opts.desserts || [];
+        if (entreesOpts.length === 1) {
+          choixEntrees[entreesOpts[0]] = totalPresentsAll;
+        }
+        if (platsOpts.length === 1) {
+          choixPlats[platsOpts[0]] = totalPresentsAll;
+        }
+        if (dessertsOpts.length === 1) {
+          choixDesserts[dessertsOpts[0]] = totalPresentsAll;
+        }
         
         // Mettre à jour les stats du sondage
         setNextEvent(prev => ({
