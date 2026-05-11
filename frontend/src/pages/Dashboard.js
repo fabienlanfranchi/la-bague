@@ -198,12 +198,16 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
 
   // Répartition par étoiles (visible aussi côté membre — motivant)
   const [membersByStars, setMembersByStars] = useState({ 4: 0, 3: 0, 2: 0, 1: 0 });
+  const [allMembers, setAllMembers] = useState([]);
+  const [showStarsModal, setShowStarsModal] = useState(false);
+  const [selectedStarsBucket, setSelectedStarsBucket] = useState(null);
 
   useEffect(() => {
     (async () => {
       try {
         const res = await axios.get(`${API}/members`);
         const list = res.data || [];
+        setAllMembers(list);
         const buckets = { 4: 0, 3: 0, 2: 0, 1: 0 };
         list.forEach((m) => {
           const p = Number(m.pourcentage_presences) || 0;
@@ -218,6 +222,24 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
       }
     })();
   }, []);
+
+  const openStarsBucket = (stars) => {
+    setSelectedStarsBucket(stars);
+    setShowStarsModal(true);
+  };
+
+  const filteredStarMembers = selectedStarsBucket
+    ? allMembers
+        .filter((m) => {
+          const p = Number(m.pourcentage_presences) || 0;
+          if (selectedStarsBucket === 4) return p >= 75;
+          if (selectedStarsBucket === 3) return p >= 50 && p < 75;
+          if (selectedStarsBucket === 2) return p >= 25 && p < 50;
+          if (selectedStarsBucket === 1) return p < 25;
+          return false;
+        })
+        .sort((a, b) => (Number(b.pourcentage_presences) || 0) - (Number(a.pourcentage_presences) || 0))
+    : [];
 
   // Charger les messages non lus et les stats perso
   useEffect(() => {
@@ -780,7 +802,8 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
             {[4, 3, 2, 1].map((stars) => (
               <div
                 key={stars}
-                className="bg-black/30 rounded-lg p-4 border border-[#D4A024]/20"
+                onClick={() => openStarsBucket(stars)}
+                className="bg-black/30 rounded-lg p-4 border border-[#D4A024]/20 cursor-pointer hover:bg-[#D4A024]/10 hover:border-[#D4A024]/50 transition-all"
                 data-testid={`stars-${stars}-card`}
               >
                 <div className="flex items-center justify-center space-x-1 mb-2">
@@ -1469,6 +1492,94 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
                 </div>
               )}
             </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Modal : détail des membres par bucket d'étoiles (accessible aux membres) */}
+      {showStarsModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setShowStarsModal(false)}>
+          <Card
+            className="bg-[#7A2020] border-2 border-[#D4A024] max-w-2xl w-full max-h-[80vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <CardHeader className="flex-shrink-0 border-b border-[#D4A024]/30">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-2xl font-serif text-[#D4A024] flex items-center">
+                  <div className="flex items-center space-x-1 mr-3">
+                    {[...Array(selectedStarsBucket || 0)].map((_, i) => (
+                      <Star key={i} className="w-5 h-5 text-[#D4A024] fill-[#D4A024]" />
+                    ))}
+                  </div>
+                  Membres avec {selectedStarsBucket} étoile{selectedStarsBucket > 1 ? 's' : ''}
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowStarsModal(false)}
+                  className="text-[#D4A024] hover:bg-[#D4A024]/10"
+                  data-testid="close-stars-modal"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+              <p className="text-sm text-gray-300 mt-2">
+                {selectedStarsBucket === 4 && '100-75% de présence'}
+                {selectedStarsBucket === 3 && '75-50% de présence'}
+                {selectedStarsBucket === 2 && '50-25% de présence'}
+                {selectedStarsBucket === 1 && '25-0% de présence'}
+              </p>
+            </CardHeader>
+            <CardContent className="flex-1 overflow-y-auto p-6">
+              <div className="space-y-3">
+                {filteredStarMembers.length === 0 ? (
+                  <p className="text-gray-400 text-center py-8">Aucun membre dans cette catégorie</p>
+                ) : (
+                  filteredStarMembers.map((m) => (
+                    <div
+                      key={m.id}
+                      className={`bg-black/40 border rounded-lg p-4 transition-all ${
+                        m.id === currentMember?.id
+                          ? 'border-[#D4A024] ring-1 ring-[#D4A024]/60'
+                          : 'border-[#D4A024]/20'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="text-white font-serif font-semibold text-lg flex items-center gap-2">
+                            {m.nom_complet}
+                            {m.id === currentMember?.id && (
+                              <Badge className="bg-[#D4A024] text-[#7A2020] text-xs">Vous</Badge>
+                            )}
+                          </h3>
+                          <p className="text-sm text-gray-400">
+                            {m.fonction || 'Membre'}{m.saison_entree ? ` • Entrée ${m.saison_entree}` : ''}{m.annee_entree ? ` ${m.annee_entree}` : ''}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <div className="flex items-center space-x-1 justify-end mb-1">
+                            {[...Array(m.etoiles || 0)].map((_, i) => (
+                              <Star key={i} className="w-4 h-4 text-[#D4A024] fill-[#D4A024]" />
+                            ))}
+                          </div>
+                          <p className="text-[#D4A024] font-bold text-xl">
+                            {m.pourcentage_presences}%
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+            <div className="flex-shrink-0 p-4 border-t border-[#D4A024]/30">
+              <Button
+                onClick={() => setShowStarsModal(false)}
+                className="w-full bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020] font-serif font-bold"
+              >
+                Fermer
+              </Button>
+            </div>
           </Card>
         </div>
       )}
