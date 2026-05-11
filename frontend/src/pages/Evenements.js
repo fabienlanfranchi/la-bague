@@ -375,6 +375,13 @@ const Evenements = () => {
     return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
   };
 
+  // Calcule heure de début + 2h (pour apéros)
+  const formatHeurePlus2h = (dateStr) => {
+    const date = new Date(dateStr);
+    date.setHours(date.getHours() + 2);
+    return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  };
+
   // URL de production de l'app
   const APP_BASE_URL = 'https://labagueimperiale.optizioni.app';
 
@@ -390,7 +397,7 @@ const Evenements = () => {
     if (objet.includes('repas') || event.type_sondage === 'repas') {
       objetText = `🍽️ *Repas du Club* au ${lieu}`;
     } else if (objet.includes('apéro') || objet.includes('apero')) {
-      objetText = `🥃 *Apéro du Club* à ${lieu} de 19h à 21h`;
+      objetText = `🥃 *Apéro du Club* à ${lieu} de ${heure} à ${formatHeurePlus2h(event.date)}`;
     } else if (objet.includes('anniversaire')) {
       objetText = `🎂 *Anniversaire du Club* à ${lieu}`;
     } else {
@@ -401,7 +408,7 @@ const Evenements = () => {
     
     const message = `🎩 *La Bague Impériale*
 
-📅 *${dateFormatted}* à 19h
+📅 *${dateFormatted}* à ${heure}
 
 ${objetText}
 
@@ -436,7 +443,7 @@ _Merci de confirmer votre présence !_`;
     let message = `🎩 *La Bague Impériale*
 ━━━━━━━━━━━━━━━━━━━━
 
-📅 *${dateFormatted}* à 19h
+📅 *${dateFormatted}* à ${heure}
 
 ${objetText}`;
 
@@ -1887,9 +1894,11 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
             </CardHeader>
             
             <CardContent className="space-y-4 py-6 overflow-y-auto flex-1">
-              {/* Date */}
+              {/* Date & heure */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Date *</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Date & heure * <span className="text-xs text-gray-500">(par défaut 19h00, modifiable)</span>
+                </label>
                 <input
                   type="datetime-local"
                   value={newEvent.date}
