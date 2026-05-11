@@ -196,6 +196,29 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
   const [sondageAnswers, setSondageAnswers] = useState({}); // réponses en cours
   const [votingInProgress, setVotingInProgress] = useState(false);
 
+  // Répartition par étoiles (visible aussi côté membre — motivant)
+  const [membersByStars, setMembersByStars] = useState({ 4: 0, 3: 0, 2: 0, 1: 0 });
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await axios.get(`${API}/members`);
+        const list = res.data || [];
+        const buckets = { 4: 0, 3: 0, 2: 0, 1: 0 };
+        list.forEach((m) => {
+          const p = Number(m.pourcentage_presences) || 0;
+          if (p >= 75) buckets[4]++;
+          else if (p >= 50) buckets[3]++;
+          else if (p >= 25) buckets[2]++;
+          else buckets[1]++;
+        });
+        setMembersByStars(buckets);
+      } catch (e) {
+        // silencieux : pas critique
+      }
+    })();
+  }, []);
+
   // Charger les messages non lus et les stats perso
   useEffect(() => {
     // Auto-terminer les événements passés
@@ -741,6 +764,46 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
           </CardContent>
         </Card>
       )}
+
+      {/* RÉPARTITION PAR ÉTOILES (visible par tous — motivant) */}
+      <Card className="bg-black/40 border-2 border-[#D4A024]/30 backdrop-blur-sm">
+        <CardHeader>
+          <CardTitle className="text-xl font-serif text-white">
+            Répartition par Étoiles du club
+          </CardTitle>
+          <p className="text-sm text-gray-400 mt-1">
+            Calcul automatique : 4⭐ (100-75%) • 3⭐ (75-50%) • 2⭐ (50-25%) • 1⭐ (25-0%)
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[4, 3, 2, 1].map((stars) => (
+              <div
+                key={stars}
+                className="bg-black/30 rounded-lg p-4 border border-[#D4A024]/20"
+                data-testid={`stars-${stars}-card`}
+              >
+                <div className="flex items-center justify-center space-x-1 mb-2">
+                  {[...Array(stars)].map((_, i) => (
+                    <Star key={i} className="w-6 h-6 text-[#D4A024] fill-[#D4A024]" />
+                  ))}
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-serif font-bold text-white">
+                    {membersByStars[stars]}
+                  </div>
+                  <div className="text-base text-gray-400 mt-1">
+                    {stars === 4 && '100-75%'}
+                    {stars === 3 && '75-50%'}
+                    {stars === 2 && '50-25%'}
+                    {stars === 1 && '25-0%'}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* SONDAGES GÉNÉRIQUES ACTIFS (ANONYMES) - Masqués une fois votés */}
       {(() => {

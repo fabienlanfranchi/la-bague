@@ -198,6 +198,9 @@ const Evenements = () => {
   
   // État pour l'édition
   const [editingEvent, setEditingEvent] = useState(null);
+  
+  // Réponse personnelle du membre pour le prochain événement (visible jusqu'au lendemain)
+  const [maReponse, setMaReponse] = useState(null);
   const [editForm, setEditForm] = useState({
     lieu: '',
     date: '',
@@ -251,6 +254,29 @@ const Evenements = () => {
     loadEvenements();
     loadProchainEvenementInfo();
   }, []);
+
+  // Charger la réponse personnelle du membre pour le prochain événement
+  useEffect(() => {
+    const loadMaReponse = async () => {
+      if (!currentMember?.id || !evenements.length) return;
+      const now2 = new Date();
+      const tm = new Date(now2.getFullYear(), now2.getMonth(), now2.getDate() + 1);
+      const prochain = evenements
+        .filter(e => e.statut === 'à venir' && new Date(e.date) < tm)
+        .sort((a, b) => new Date(a.date) - new Date(b.date))[0];
+      if (!prochain) {
+        setMaReponse(null);
+        return;
+      }
+      try {
+        const res = await axios.get(`${API}/reponses-sondages/${prochain.id}/${currentMember.id}`);
+        setMaReponse(res.data || null);
+      } catch (e) {
+        setMaReponse(null);
+      }
+    };
+    loadMaReponse();
+  }, [evenements, currentMember]);
 
   const loadEvenements = async () => {
     try {
@@ -975,9 +1001,17 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
   });
 
   // Trouver le prochain événement (statut "à venir")
+  // On garde l'événement visible jusqu'à minuit du LENDEMAIN pour que le membre
+  // puisse retrouver son menu et son choix le jour même, après l'heure de début.
   const now = new Date();
+  const tomorrowMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 0);
   const prochainEvenement = evenements
-    .filter(e => e.statut === 'à venir' && new Date(e.date) >= now)
+    .filter(e => {
+      if (e.statut !== 'à venir') return false;
+      const d = new Date(e.date);
+      // visible si la date >= maintenant OU si la date est encore "ce soir" (avant minuit du lendemain)
+      return d >= now || d >= new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0) && d < tomorrowMidnight;
+    })
     .sort((a, b) => new Date(a.date) - new Date(b.date))[0];
 
   // Événements historiques (terminés)
@@ -1108,6 +1142,46 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                         ))}
                       </div>
                     </div>
+                  </div>
+                )}
+
+                {/* Votre réponse personnelle (visible jusqu'au lendemain) */}
+                {maReponse && (
+                  <div
+                    className={`mt-4 rounded-lg p-4 border ${
+                      maReponse.present
+                        ? 'bg-green-900/20 border-green-500/40'
+                        : 'bg-red-900/20 border-red-500/40'
+                    }`}
+                    data-testid="ma-reponse-prochain"
+                  >
+                    <p className={`font-semibold text-lg flex items-center ${maReponse.present ? 'text-green-300' : 'text-red-300'}`}>
+                      {maReponse.present ? '✅ Vous êtes PRÉSENT' : '❌ Vous êtes ABSENT'}
+                    </p>
+                    {maReponse.present && prochainEvenement.type_sondage === 'repas' && (
+                      (maReponse.choix_entree || maReponse.choix_plat || maReponse.choix_dessert) ? (
+                        <div className="mt-3 pt-3 border-t border-green-500/20">
+                          <p className="text-green-200 text-sm mb-2">Votre menu :</p>
+                          <div className="flex flex-wrap gap-2">
+                            {maReponse.choix_entree && (
+                              <Badge className="bg-amber-600/80 text-white text-base px-3 py-1">
+                                🥗 {maReponse.choix_entree}
+                              </Badge>
+                            )}
+                            {maReponse.choix_plat && (
+                              <Badge className="bg-blue-600/80 text-white text-base px-3 py-1">
+                                🍖 {maReponse.choix_plat}
+                              </Badge>
+                            )}
+                            {maReponse.choix_dessert && (
+                              <Badge className="bg-purple-600/80 text-white text-base px-3 py-1">
+                                🍰 {maReponse.choix_dessert}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      ) : null
+                    )}
                   </div>
                 )}
 
