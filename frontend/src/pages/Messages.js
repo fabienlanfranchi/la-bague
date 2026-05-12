@@ -214,6 +214,8 @@ const Messages = () => {
   const [membres, setMembres] = useState([]);
   const [selectedMembres, setSelectedMembres] = useState([]);
   const [sendToAll, setSendToAll] = useState(true);
+  // Mode "uniquement les retardataires" — pertinent pour le template Rappel de cotisation
+  const [sendToUnpaid, setSendToUnpaid] = useState(false);
 
   // États pour "Info - Prochain événement"
   const [infoTypeEvenement, setInfoTypeEvenement] = useState('apero'); // 'repas' ou 'apero'
@@ -269,6 +271,14 @@ const Messages = () => {
       message = message.replace('{{PROFILE_URL}}', `https://labagueimperiale.optizioni.app/profil`);
       message = message.replace('{{DASHBOARD_URL}}', `https://labagueimperiale.optizioni.app/dashboard`);
       setMessageContent(message);
+      // Par défaut pour le rappel de cotisation : cibler les retardataires
+      if (template.id === 'rappel_cotisation') {
+        setSendToAll(false);
+        setSendToUnpaid(true);
+      } else {
+        setSendToAll(true);
+        setSendToUnpaid(false);
+      }
     }
   };
 
@@ -278,6 +288,7 @@ const Messages = () => {
     setMessageTitle('');
     setSelectedMembres([]);
     setSendToAll(true);
+    setSendToUnpaid(false);
   };
 
   const closeInfoModal = () => {
@@ -347,9 +358,27 @@ Le Bureau de La Bague Impériale`;
 
     setSending(true);
     try {
-      const destinataires = sendToAll 
-        ? membres.map(m => m.id)
-        : selectedMembres;
+      let destinataires;
+      if (sendToUnpaid) {
+        destinataires = membres
+          .filter(m => Number(m.situation_cotisation || 0) > 0)
+          .map(m => m.id);
+        if (destinataires.length === 0) {
+          toast.info('Aucun membre n\'a de cotisation en retard. Message non envoyé.');
+          setSending(false);
+          return;
+        }
+      } else if (sendToAll) {
+        destinataires = membres.map(m => m.id);
+      } else {
+        destinataires = selectedMembres;
+      }
+
+      if (destinataires.length === 0) {
+        toast.error('Veuillez sélectionner au moins un destinataire');
+        setSending(false);
+        return;
+      }
 
       await axios.post(`${API}/messages`, {
         type: selectedTemplate?.id || 'message_libre',
@@ -358,7 +387,7 @@ Le Bureau de La Bague Impériale`;
         destinataires: destinataires
       });
 
-      toast.success('Message envoyé avec succès !');
+      toast.success(`Message envoyé à ${destinataires.length} membre${destinataires.length > 1 ? 's' : ''} !`);
       closeTemplate();
     } catch (error) {
       console.error('Erreur:', error);
@@ -551,19 +580,73 @@ Le Bureau de La Bague Impériale`;
               {/* Destinataires */}
               <div>
                 <label className="text-gray-300 text-sm mb-2 block">Destinataires</label>
-                <div className="flex items-center space-x-4 mb-3">
-                  <label className="flex items-center space-x-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={sendToAll}
-                      onChange={(e) => setSendToAll(e.target.checked)}
-                      className="w-4 h-4 accent-[#D4A024]"
-                    />
-                    <span className="text-white">Tous les membres ({membres.length})</span>
-                  </label>
-                </div>
+                {(() => {
+                  const unpaid = membres.filter(m => Number(m.situation_cotisation || 0) > 0);
+                  return (
+                    <div className="space-y-2 mb-3">
+                      <label className="flex items-center space-x-2 cursor-pointer" data-testid="dest-all">
+                        <input
+                          type="radio"
+                          name="destinataires-mode"
+                          checked={sendToAll && !sendToUnpaid}
+                          onChange={() => { setSendToAll(true); setSendToUnpaid(false); }}
+                          className="w-4 h-4 accent-[#D4A024]"
+                        />
+                        <span className="text-white">Tous les membres ({membres.length})</span>
+                      </label>
+
+                      {selectedTemplate?.id === 'rappel_cotisation' && (
+                        <label
+                          className={`flex items-center space-x-2 cursor-pointer ${unpaid.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          data-testid="dest-unpaid"
+                        >
+                          <input
+                            type="radio"
+                            name="destinataires-mode"
+                            checked={sendToUnpaid}
+                            onChange={() => { setSendToUnpaid(true); setSendToAll(false); }}
+                            disabled={unpaid.length === 0}
+                            className="w-4 h-4 accent-yellow-500"
+                          />
+                          <span className="text-yellow-300">
+                            Uniquement les membres en retard de cotisation ({unpaid.length})
+                          </span>
+                        </label>
+                      )}
+
+                      <label className="flex items-center space-x-2 cursor-pointer" data-testid="dest-manual">
+                        <input
+                          type="radio"
+                          name="destinataires-mode"
+                          checked={!sendToAll && !sendToUnpaid}
+                          onChange={() => { setSendToAll(false); setSendToUnpaid(false); }}
+                          className="w-4 h-4 accent-[#D4A024]"
+                        />
+                        <span className="text-white">Sélection manuelle</span>
+                      </label>
+                    </div>
+                  );
+                })()}
+
+                {sendToUnpaid && (
+                  <div className="max-h-40 overflow-y-auto bg-yellow-900/10 border border-yellow-500/30 rounded-lg p-3 space-y-1">
+                    {membres
+                      .filter(m => Number(m.situation_cotisation || 0) > 0)
+                      .map((m) => (
+                        <div key={m.id} className="flex items-center justify-between text-sm">
+                          <span className="text-gray-200">{m.nom_complet}</span>
+                          <span className="text-yellow-400 text-xs">
+                            {m.situation_cotisation} saison{m.situation_cotisation > 1 ? 's' : ''} · {Number(m.situation_cotisation) * 200}€
+                          </span>
+                        </div>
+                      ))}
+                    {membres.filter(m => Number(m.situation_cotisation || 0) > 0).length === 0 && (
+                      <p className="text-gray-400 text-sm italic">Aucun membre en retard 🎉</p>
+                    )}
+                  </div>
+                )}
                 
-                {!sendToAll && (
+                {!sendToAll && !sendToUnpaid && (
                   <div className="max-h-40 overflow-y-auto bg-black/30 rounded-lg p-3 space-y-2">
                     {membres.map((membre) => (
                       <label key={membre.id} className="flex items-center space-x-2 cursor-pointer">
