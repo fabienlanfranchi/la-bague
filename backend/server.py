@@ -6892,6 +6892,26 @@ async def recalculer_presences_endpoint(saison: int):
 
 
 @app.on_event("startup")
+async def start_auto_terminer_scheduler():
+    """Background task : termine automatiquement les événements passés toutes les heures.
+    Cela rend l'automatisation indépendante de l'ouverture du Dashboard."""
+    import asyncio
+
+    async def loop():
+        # Petit délai au démarrage pour laisser l'app finir de booter
+        await asyncio.sleep(60)
+        while True:
+            try:
+                result = await auto_terminer_evenements_endpoint()
+                if result.get("terminated", 0) > 0:
+                    logging.info(f"[scheduler] auto-terminer : {result['terminated']} événement(s) clôturé(s)")
+            except Exception as ex:
+                logging.error(f"[scheduler] auto-terminer KO : {ex}")
+            # Rejoue toutes les heures
+            await asyncio.sleep(3600)
+
+    asyncio.create_task(loop())
+
 
 @app.on_event("startup")
 async def auto_fix_events():
