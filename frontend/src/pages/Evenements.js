@@ -1014,8 +1014,17 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
     })
     .sort((a, b) => new Date(a.date) - new Date(b.date))[0];
 
-  // Événements historiques (terminés)
-  const evenementsHistorique = evenements.filter(e => e.statut === 'terminé');
+  // Événements historiques (terminés OU à venir mais déjà passés et auto-terminer
+  // n'a pas encore tourné — filet de sécurité pour ne JAMAIS perdre un événement passé)
+  const evenementsHistorique = evenements.filter(e => {
+    if (e.statut === 'terminé') return true;
+    if (e.statut === 'à venir') {
+      const d = new Date(e.date);
+      // si la date est strictement passée → traiter comme historique
+      return d < new Date();
+    }
+    return false;
+  });
 
   // Badge de type avec couleur
   const getTypeBadge = (type) => {
@@ -1468,13 +1477,13 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                   <div className="flex items-center space-x-4 text-sm">
                     <span className="text-gray-400">
                       <span className="text-[#D4A024] font-bold">
-                        {(evenementsParSaison[selectedSeason] || []).filter(e => e.statut === 'terminé').length}
+                        {(evenementsParSaison[selectedSeason] || []).filter(e => e.statut === 'terminé' || (e.statut === 'à venir' && new Date(e.date) < new Date())).length}
                       </span> événement(s)
                     </span>
                     <span className="text-gray-500">|</span>
                     <span className="text-gray-400">
                       Total présences : <span className="text-[#D4A024] font-bold">
-                        {(evenementsParSaison[selectedSeason] || []).filter(e => e.statut === 'terminé').reduce((sum, e) => sum + (e.total_presents || 0), 0)}
+                        {(evenementsParSaison[selectedSeason] || []).filter(e => e.statut === 'terminé' || (e.statut === 'à venir' && new Date(e.date) < new Date())).reduce((sum, e) => sum + (e.total_presents || 0), 0)}
                       </span>
                     </span>
                   </div>

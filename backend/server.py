@@ -6658,6 +6658,10 @@ async def export_all_data():
 
 
 @api_router.post("/auto-terminer")
+async def auto_terminer_route():
+    """Endpoint HTTP qui déclenche la terminaison auto des événements passés."""
+    return await auto_terminer_evenements_endpoint()
+
 
 @api_router.get("/diagnostic/saison/{saison}")
 async def diagnostic_saison(saison: int):
