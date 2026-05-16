@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useUser } from '../context/UserContext';
+import { personalizeMessage } from '../utils/personalizeMessage';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -48,9 +49,9 @@ const MESSAGE_TEMPLATES = [
     color: 'text-yellow-500',
     bgColor: 'bg-yellow-500/10',
     borderColor: 'border-yellow-500/30',
-    defaultMessage: `Cher membre,
+    defaultMessage: `Bonjour {{NOM_COMPLET}},
 
-Nous vous rappelons que votre cotisation pour la saison en cours n'a pas encore été réglée.
+Notre comptabilité indique que vous avez actuellement {{NB_COTISATIONS}} cotisation(s) en retard, pour un total de {{MONTANT_DU}} €.
 
 👉 Voir mon profil et payer : {{PROFILE_URL}}
 
@@ -216,6 +217,8 @@ const Messages = () => {
   const [sendToAll, setSendToAll] = useState(true);
   // Mode "uniquement les retardataires" — pertinent pour le template Rappel de cotisation
   const [sendToUnpaid, setSendToUnpaid] = useState(false);
+  // Modal WhatsApp pour envoi personnalisé aux retardataires
+  const [showWhatsAppUnpaidModal, setShowWhatsAppUnpaidModal] = useState(false);
 
   // États pour "Info - Prochain événement"
   const [infoTypeEvenement, setInfoTypeEvenement] = useState('apero'); // 'repas' ou 'apero'
@@ -671,6 +674,21 @@ Le Bureau de La Bague Impériale`;
             </CardContent>
             
             <div className="flex-shrink-0 p-4 border-t border-[#D4A024]/30 space-y-3">
+              {/* Mode retardataires : un bouton WhatsApp dédié */}
+              {sendToUnpaid && (
+                <Button
+                  onClick={() => setShowWhatsAppUnpaidModal(true)}
+                  disabled={membres.filter(m => Number(m.situation_cotisation || 0) > 0).length === 0}
+                  className="w-full bg-green-600 hover:bg-green-700 text-white font-serif font-bold"
+                  data-testid="whatsapp-retardataires-btn"
+                >
+                  <Phone className="w-5 h-5 mr-2" />
+                  WhatsApp personnalisé aux retardataires (
+                  {membres.filter(m => Number(m.situation_cotisation || 0) > 0).length}
+                  )
+                </Button>
+              )}
+
               <div className="flex space-x-3">
                 <Button
                   onClick={sendMessage}
@@ -951,6 +969,110 @@ Le Bureau de La Bague Impériale`;
                     Envoyer l'info
                   </>
                 )}
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Modal WhatsApp personnalisé aux retardataires */}
+      {showWhatsAppUnpaidModal && (
+        <div
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4"
+          onClick={() => setShowWhatsAppUnpaidModal(false)}
+        >
+          <Card
+            className="bg-[#1C1917] border-2 border-green-500 w-full max-w-3xl max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <CardHeader className="border-b border-green-500/30 flex-shrink-0">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xl font-serif text-white flex items-center">
+                  <Phone className="w-5 h-5 mr-2 text-green-400" />
+                  Envoi WhatsApp personnalisé aux retardataires
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowWhatsAppUnpaidModal(false)}
+                  className="text-gray-400 hover:text-white"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+              <p className="text-sm text-gray-400 mt-2">
+                Chaque message est pré-rempli avec le nom, le nombre de saisons dues et le montant total.
+                Cliquez sur "Ouvrir WhatsApp" pour envoyer un par un (ou copiez le message à la main).
+              </p>
+            </CardHeader>
+            <CardContent className="flex-1 overflow-y-auto p-4">
+              <div className="space-y-3">
+                {membres
+                  .filter(m => Number(m.situation_cotisation || 0) > 0)
+                  .map((m) => {
+                    const cleanPhone = (m.telephone || '').replace(/[^0-9+]/g, '');
+                    const persoText = personalizeMessage(messageContent, m, []);
+                    const fullMsg = `🎩 *La Bague Impériale*\n\n${persoText}`;
+                    const waUrl = cleanPhone
+                      ? `https://wa.me/${cleanPhone.replace(/^\+/, '')}?text=${encodeURIComponent(fullMsg)}`
+                      : `https://wa.me/?text=${encodeURIComponent(fullMsg)}`;
+                    return (
+                      <div
+                        key={m.id}
+                        className="bg-black/30 border border-yellow-500/30 rounded-lg p-3"
+                        data-testid={`wa-row-${m.id}`}
+                      >
+                        <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+                          <div>
+                            <h3 className="text-white font-serif font-semibold text-base">{m.nom_complet}</h3>
+                            <p className="text-yellow-400 text-sm">
+                              {m.situation_cotisation} saison{m.situation_cotisation > 1 ? 's' : ''} · {Number(m.situation_cotisation) * 200} €
+                              {m.telephone ? ` · 📱 ${m.telephone}` : ' · ⚠️ pas de téléphone'}
+                            </p>
+                          </div>
+                          <div className="flex space-x-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={async () => {
+                                await navigator.clipboard.writeText(fullMsg);
+                                toast.success(`Message pour ${m.nom_complet} copié`);
+                              }}
+                              className="border-gray-500 text-gray-300"
+                              data-testid={`wa-copy-${m.id}`}
+                            >
+                              Copier
+                            </Button>
+                            <a
+                              href={waUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm rounded font-semibold"
+                              data-testid={`wa-open-${m.id}`}
+                            >
+                              <Phone className="w-4 h-4 mr-1" /> Ouvrir WhatsApp
+                            </a>
+                          </div>
+                        </div>
+                        <details>
+                          <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-300">
+                            Voir le message
+                          </summary>
+                          <pre className="mt-2 text-xs text-gray-300 whitespace-pre-wrap bg-black/40 p-2 rounded">
+                            {persoText}
+                          </pre>
+                        </details>
+                      </div>
+                    );
+                  })}
+              </div>
+            </CardContent>
+            <div className="flex-shrink-0 p-4 border-t border-green-500/30">
+              <Button
+                onClick={() => setShowWhatsAppUnpaidModal(false)}
+                className="w-full bg-gray-700 hover:bg-gray-600 text-white"
+              >
+                Fermer
               </Button>
             </div>
           </Card>

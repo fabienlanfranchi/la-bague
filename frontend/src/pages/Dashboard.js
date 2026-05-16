@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Users, TrendingUp, Star, Calendar, DollarSign, MessageSquare, Download, X, Bell, RefreshCw, Check, CheckCircle, ScrollText, ChevronDown, ChevronUp, UserPlus, Trash2, CreditCard, Key, Eye, EyeOff, Copy, ExternalLink, Phone, Send, UserX, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
+import { personalizeMessage } from '../utils/personalizeMessage';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -201,6 +202,20 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
   const [allMembers, setAllMembers] = useState([]);
   const [showStarsModal, setShowStarsModal] = useState(false);
   const [selectedStarsBucket, setSelectedStarsBucket] = useState(null);
+
+  // Dettes du membre — utilisées pour personnaliser le rappel de cotisation
+  const [mesDettes, setMesDettes] = useState([]);
+  useEffect(() => {
+    if (!currentMember?.id) return;
+    (async () => {
+      try {
+        const res = await axios.get(`${API}/dettes/membre/${currentMember.id}`);
+        setMesDettes(res.data || []);
+      } catch (_) {
+        setMesDettes([]);
+      }
+    })();
+  }, [currentMember]);
 
   useEffect(() => {
     (async () => {
@@ -669,7 +684,7 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
                     <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse mt-2" />
                     <div>
                       <h3 className="text-white font-semibold">{msg.titre}</h3>
-                      <p className="text-gray-400 text-sm line-clamp-2 mt-1">{msg.contenu}</p>
+                      <p className="text-gray-400 text-sm line-clamp-2 mt-1">{personalizeMessage(msg.contenu, currentMember, mesDettes)}</p>
                       <p className="text-gray-500 text-xs mt-2">{formatDate(msg.created_at)}</p>
                     </div>
                   </div>
@@ -711,8 +726,45 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
               </p>
             </CardHeader>
             <CardContent className="pt-6">
+              {/* Si rappel de cotisation, montrer un récap de la situation personnelle */}
+              {messageOuvert.type === 'rappel_cotisation' && Number(currentMember?.situation_cotisation || 0) > 0 && (
+                <div className="mb-5 p-4 bg-yellow-900/20 border border-yellow-500/40 rounded-lg">
+                  <h4 className="text-yellow-300 font-semibold mb-2 flex items-center text-lg">
+                    <CreditCard className="w-5 h-5 mr-2" /> Votre situation
+                  </h4>
+                  <div className="space-y-1 text-base text-gray-100">
+                    <p>
+                      <span className="text-gray-400">Cotisations en retard :</span>{' '}
+                      <strong>{currentMember.situation_cotisation}</strong> saison(s) ×&nbsp;200 € ={' '}
+                      <strong className="text-yellow-200">{Number(currentMember.situation_cotisation) * 200} €</strong>
+                    </p>
+                    {mesDettes.length > 0 && (
+                      <>
+                        {mesDettes.map((d) => (
+                          <p key={d.id}>
+                            <span className="text-gray-400">{d.libelle || 'Dette'} :</span>{' '}
+                            <strong className="text-yellow-200">{Number(d.montant || 0)} €</strong>
+                          </p>
+                        ))}
+                        <p className="pt-2 border-t border-yellow-500/30 mt-2">
+                          <span className="text-gray-300">Total dû :</span>{' '}
+                          <strong className="text-2xl text-yellow-200">
+                            {Number(currentMember.situation_cotisation) * 200 + mesDettes.reduce((s, d) => s + Number(d.montant || 0), 0)} €
+                          </strong>
+                        </p>
+                      </>
+                    )}
+                  </div>
+                  <a
+                    href="/profil"
+                    className="mt-3 inline-flex items-center px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded font-semibold transition-colors"
+                  >
+                    Régler ma cotisation →
+                  </a>
+                </div>
+              )}
               <p className="text-gray-200 whitespace-pre-wrap text-base leading-relaxed">
-                {messageOuvert.contenu}
+                {personalizeMessage(messageOuvert.contenu, currentMember, mesDettes)}
               </p>
               <div className="mt-6 flex justify-end">
                 <Button
