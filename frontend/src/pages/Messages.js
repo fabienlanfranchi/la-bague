@@ -30,7 +30,8 @@ import {
   Copy,
   MapPin,
   Info,
-  Share2
+  Share2,
+  Phone
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
