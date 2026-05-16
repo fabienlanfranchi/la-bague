@@ -1260,6 +1260,7 @@ class PaiementEnAttente(BaseModel):
     montant: float
     endroit: str  # Compte, Chez Fabien, Chez Jacques, PayPal, Asso Connect, Chèque
     detail: Optional[str] = None
+    dette_id: Optional[str] = None  # Si lié à une dette spécifique (validation cible cette dette)
     statut: str = "en_attente"  # en_attente, validé, refusé
     date_signalement: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     date_validation: Optional[datetime] = None
@@ -1274,6 +1275,7 @@ class PaiementEnAttenteCreate(BaseModel):
     montant: float
     endroit: str
     detail: Optional[str] = None
+    dette_id: Optional[str] = None
 
 
 # ============ ÉVÉNEMENTS - MODELS ============
@@ -2002,7 +2004,8 @@ async def create_paiement_en_attente(input: PaiementEnAttenteCreate):
         objet=input.objet,
         montant=input.montant,
         endroit=input.endroit,
-        detail=input.detail
+        detail=input.detail,
+        dette_id=input.dette_id,
     )
     
     doc = paiement.model_dump()
@@ -2061,7 +2064,10 @@ async def valider_paiement(paiement_id: str, validateur_id: str = None):
             )
     
     # Si c'est un autre objet avec dette, supprimer la dette correspondante
-    if paiement['objet'] in ['tombola', 'album', 'anniversaire']:
+    # Si dette_id est fourni → ciblage précis, sinon fallback sur cause
+    if paiement.get('dette_id'):
+        await db.dettes.delete_one({"id": paiement['dette_id']})
+    elif paiement['objet'] in ['tombola', 'album', 'anniversaire', 'autres']:
         await db.dettes.delete_one({
             "membre_id": paiement['membre_id'],
             "cause": paiement['objet']

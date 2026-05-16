@@ -26,6 +26,11 @@ const ProfilePage = () => {
   
   // Modal signalement de paiement
   const [showPaiementModal, setShowPaiementModal] = useState(false);
+
+  // Sélection facture : Set de keys ("cot-13", "cot-12", "dette-{id}")
+  const [selectedInvoiceLines, setSelectedInvoiceLines] = useState(new Set());
+  const [endroitPaiement, setEndroitPaiement] = useState('Compte');
+  const [submittingInvoice, setSubmittingInvoice] = useState(false);
   
   // États pour les paramètres
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -544,55 +549,235 @@ const ProfilePage = () => {
               </CardContent>
             </Card>
 
-            {/* Situation Financière - Dettes */}
-            {(currentMember.situation_cotisation > 0 || dettes.length > 0) && (
-              <Card className="bg-black/40 border-2 border-red-600/30 backdrop-blur-sm">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg font-serif text-white flex items-center">
-                    <AlertTriangle className="w-5 h-5 mr-2 text-red-400" />
-                    Situation Financière
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {/* Cotisations dues */}
-                    {currentMember.situation_cotisation > 0 && (
-                      <div className="bg-orange-900/20 border border-orange-600/30 rounded-lg p-3">
-                        <p className="text-white">
-                          <span className="text-orange-400 font-bold">DOIT :</span>{' '}
-                          <span className="text-white">{currentMember.situation_cotisation} cotisation{currentMember.situation_cotisation > 1 ? 's' : ''}</span>{' '}
-                          <span className="text-gray-400">({currentMember.situation_cotisation * 200}€)</span>
-                        </p>
-                      </div>
-                    )}
-                    
-                    {/* Autres dettes */}
-                    {dettes.map((dette) => (
-                      <div key={dette.id} className="bg-red-900/20 border border-red-600/30 rounded-lg p-3">
-                        <p className="text-white">
-                          <span className="text-red-400 font-bold">DOIT :</span>{' '}
-                          <span className="text-white">{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(dette.montant)}</span>{' '}
-                          <span className="text-red-400 font-bold">POUR</span>{' '}
-                          <span className="text-gray-300">{dette.cause}</span>
-                        </p>
-                      </div>
-                    ))}
-                    
-                    {/* Total */}
-                    <div className="pt-2 border-t border-red-600/30">
-                      <div className="flex items-center justify-between">
+            {/* Situation Financière - Facture interactive */}
+            {(currentMember.situation_cotisation > 0 || dettes.length > 0) && (() => {
+              const currentSeason = 13;
+              // Paiements en attente (pour griser les lignes déjà déclarées)
+              const pendingDetteIds = new Set(
+                mesPaiements
+                  .filter((p) => p.statut === 'en_attente' && p.dette_id)
+                  .map((p) => p.dette_id)
+              );
+              const pendingCotisationsCount = mesPaiements.filter(
+                (p) => p.statut === 'en_attente' && p.objet === 'cotisation'
+              ).length;
+
+              // Construire les lignes de facture
+              const lignes = [];
+              const nbCot = Number(currentMember.situation_cotisation || 0);
+              for (let i = 0; i < nbCot; i++) {
+                const saison = currentSeason - i;
+                lignes.push({
+                  key: `cot-${saison}`,
+                  objet: 'cotisation',
+                  description: `Cotisation saison ${saison}`,
+                  montant: 200,
+                  detail: `Cotisation saison ${saison}`,
+                  // Les `pendingCotisationsCount` premières lignes sont déjà déclarées
+                  pending: i < pendingCotisationsCount,
+                });
+              }
+              dettes.forEach((d) => {
+                lignes.push({
+                  key: `dette-${d.id}`,
+                  objet: d.cause || 'autres',
+                  description: d.libelle || d.cause || 'Dette',
+                  montant: Number(d.montant || 0),
+                  detail: d.libelle || d.cause || 'Dette',
+                  dette_id: d.id,
+                  pending: pendingDetteIds.has(d.id),
+                });
+              });
+
+              const totalGlobal = lignes.reduce((s, l) => s + l.montant, 0);
+              const totalSelectionne = lignes
+                .filter((l) => selectedInvoiceLines.has(l.key))
+                .reduce((s, l) => s + l.montant, 0);
+
+              const toggleLine = (key) => {
+                const next = new Set(selectedInvoiceLines);
+                if (next.has(key)) next.delete(key); else next.add(key);
+                setSelectedInvoiceLines(next);
+              };
+
+              const selectableLignes = lignes.filter((l) => !l.pending);
+              const toggleAll = () => {
+                if (selectedInvoiceLines.size === selectableLignes.length) {
+                  setSelectedInvoiceLines(new Set());
+                } else {
+                  setSelectedInvoiceLines(new Set(selectableLignes.map((l) => l.key)));
+                }
+              };
+
+              const submitInvoice = async () => {
+                const selected = lignes.filter((l) => selectedInvoiceLines.has(l.key));
+                if (selected.length === 0) {
+                  toast.error('Sélectionnez au moins une ligne à régler');
+                  return;
+                }
+                setSubmittingInvoice(true);
+                try {
+                  await Promise.all(selected.map((l) =>
+                    fetch(`${API_URL}/api/paiements-en-attente`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        membre_id: currentMember.id,
+                        date_paiement: new Date().toISOString().split('T')[0],
+                        type: 'recette',
+                        objet: l.objet,
+                        montant: l.montant,
+                        endroit: endroitPaiement,
+                        detail: l.detail,
+                        dette_id: l.dette_id || null,
+                      }),
+                    })
+                  ));
+                  toast.success(
+                    `${selected.length} paiement${selected.length > 1 ? 's' : ''} déclaré${selected.length > 1 ? 's' : ''} (${new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(totalSelectionne)}). En attente de validation par le président.`
+                  );
+                  setSelectedInvoiceLines(new Set());
+                  // Recharger les paiements pour griser les lignes déclarées
+                  const paiementsRes = await fetch(`${API_URL}/api/paiements-en-attente/membre/${currentMember.id}`);
+                  setMesPaiements((await paiementsRes.json()) || []);
+                } catch (e) {
+                  toast.error('Erreur lors de la déclaration');
+                } finally {
+                  setSubmittingInvoice(false);
+                }
+              };
+
+              return (
+                <Card className="bg-black/40 border-2 border-red-600/30 backdrop-blur-sm" data-testid="situation-financiere-facture">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg font-serif text-white flex items-center justify-between">
+                      <span className="flex items-center">
+                        <AlertTriangle className="w-5 h-5 mr-2 text-red-400" />
+                        Situation Financière
+                      </span>
+                      {selectableLignes.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={toggleAll}
+                          className="text-xs text-[#D4A024] underline hover:text-[#E5B544]"
+                        >
+                          {selectedInvoiceLines.size === selectableLignes.length ? 'Tout désélectionner' : 'Tout sélectionner'}
+                        </button>
+                      )}
+                    </CardTitle>
+                    <p className="text-sm text-gray-400">
+                      Cochez les lignes que vous souhaitez régler. Le total se met à jour automatiquement.
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    {/* En-tête de la facture */}
+                    <div className="grid grid-cols-[24px_1fr_auto] items-center gap-3 pb-2 mb-2 border-b border-red-600/30 text-xs uppercase tracking-wider text-gray-400">
+                      <span></span>
+                      <span>Désignation</span>
+                      <span className="text-right">Montant</span>
+                    </div>
+
+                    {/* Lignes */}
+                    <div className="space-y-1">
+                      {lignes.map((l) => {
+                        const checked = selectedInvoiceLines.has(l.key);
+                        if (l.pending) {
+                          return (
+                            <div
+                              key={l.key}
+                              className="grid grid-cols-[24px_1fr_auto] items-center gap-3 py-2 px-2 rounded bg-yellow-900/20 border border-yellow-500/30"
+                              data-testid={`invoice-line-${l.key}-pending`}
+                            >
+                              <span className="text-yellow-400 text-lg">⏳</span>
+                              <span className="text-yellow-200 text-base">
+                                {l.description}
+                                <span className="text-xs text-yellow-400/80 ml-2">(en attente de validation)</span>
+                              </span>
+                              <span className="text-yellow-300 text-base font-bold">
+                                {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(l.montant)}
+                              </span>
+                            </div>
+                          );
+                        }
+                        return (
+                          <label
+                            key={l.key}
+                            className={`grid grid-cols-[24px_1fr_auto] items-center gap-3 py-2 px-2 rounded cursor-pointer transition-colors ${
+                              checked ? 'bg-green-900/30 ring-1 ring-green-500/40' : 'hover:bg-white/5'
+                            }`}
+                            data-testid={`invoice-line-${l.key}`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleLine(l.key)}
+                              className="w-4 h-4 accent-green-500"
+                              data-testid={`invoice-check-${l.key}`}
+                            />
+                            <span className={`text-base ${checked ? 'text-green-200' : 'text-gray-200'}`}>
+                              {l.description}
+                            </span>
+                            <span className={`text-base font-bold ${checked ? 'text-green-300' : 'text-red-300'}`}>
+                              {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(l.montant)}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+
+                    {/* Totaux */}
+                    <div className="mt-4 pt-3 border-t border-red-600/30 space-y-1">
+                      <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-400">Total dû :</span>
-                        <span className="text-xl font-bold text-red-400">
-                          {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(
-                            (currentMember.situation_cotisation * 200) + dettes.reduce((sum, d) => sum + d.montant, 0)
-                          )}
+                        <span className="text-gray-200 font-semibold">
+                          {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(totalGlobal)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-base">
+                        <span className="text-green-300 font-semibold">Total sélectionné à régler :</span>
+                        <span className="text-2xl font-bold text-green-300" data-testid="invoice-total-selected">
+                          {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(totalSelectionne)}
                         </span>
                       </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+
+                    {/* Mode de paiement + bouton */}
+                    {selectedInvoiceLines.size > 0 && (
+                      <div className="mt-4 space-y-3">
+                        <div>
+                          <Label className="text-gray-300 text-sm mb-1 block">Moyen / lieu de paiement</Label>
+                          <select
+                            value={endroitPaiement}
+                            onChange={(e) => setEndroitPaiement(e.target.value)}
+                            className="w-full bg-black/40 border border-[#D4A024]/30 rounded px-3 py-2 text-white"
+                            data-testid="invoice-endroit"
+                          >
+                            <option value="Compte">Virement / chèque sur le compte</option>
+                            <option value="Fabien">Espèces remises à Fabien</option>
+                            <option value="Jacques">Espèces remises à Jacques</option>
+                            <option value="Enveloppe bar">Enveloppe au bar</option>
+                          </select>
+                        </div>
+                        <Button
+                          onClick={submitInvoice}
+                          disabled={submittingInvoice}
+                          className="w-full bg-green-700 hover:bg-green-600 text-white font-bold py-3"
+                          data-testid="invoice-declarer-btn"
+                        >
+                          <CreditCard className="w-5 h-5 mr-2" />
+                          {submittingInvoice
+                            ? 'Envoi en cours…'
+                            : `Déclarer le paiement de ${new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(totalSelectionne)}`}
+                        </Button>
+                        <p className="text-xs text-gray-400 text-center">
+                          Le président validera votre paiement et les lignes seront retirées automatiquement.
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })()}
 
             {/* Bouton Signaler un paiement */}
             <Card className="bg-black/40 border-2 border-green-600/30 backdrop-blur-sm">
