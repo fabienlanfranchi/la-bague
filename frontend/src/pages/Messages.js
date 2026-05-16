@@ -49,6 +49,39 @@ const MESSAGE_TEMPLATES = [
     color: 'text-yellow-500',
     bgColor: 'bg-yellow-500/10',
     borderColor: 'border-yellow-500/30',
+    // Plusieurs variantes : l'admin choisit le ton du message
+    variants: [
+      {
+        id: 'rappel_classique',
+        label: 'Rappel classique',
+        titre: 'Rappel de cotisation',
+        message: `Bonjour {{NOM_COMPLET}},
+
+Notre comptabilité indique que vous avez actuellement {{NB_COTISATIONS}} cotisation(s) en retard, pour un total de {{MONTANT_DU}} €.
+
+👉 Voir mon profil et payer : {{PROFILE_URL}}
+
+Merci de régulariser votre situation dans les meilleurs délais.
+
+Cordialement,
+Le Bureau de La Bague Impériale`,
+      },
+      {
+        id: 'suivi_financier',
+        label: 'Mon suivi financier',
+        titre: 'Mon suivi financier auprès du club',
+        message: `Bonjour {{NOM_COMPLET}},
+
+Mon suivi financier auprès du club (cotisations & autres règlements) est désormais accessible directement sur mon profil.
+
+👉 Consulter mon suivi & régler : {{PROFILE_URL}}
+
+Vous y retrouverez le détail de vos cotisations et règlements en attente, et pourrez déclarer un paiement en quelques clics.
+
+Cordialement,
+Le Bureau de La Bague Impériale`,
+      },
+    ],
     defaultMessage: `Bonjour {{NOM_COMPLET}},
 
 Notre comptabilité indique que vous avez actuellement {{NB_COTISATIONS}} cotisation(s) en retard, pour un total de {{MONTANT_DU}} €.
@@ -219,6 +252,8 @@ const Messages = () => {
   const [sendToUnpaid, setSendToUnpaid] = useState(false);
   // Modal WhatsApp pour envoi personnalisé aux retardataires
   const [showWhatsAppUnpaidModal, setShowWhatsAppUnpaidModal] = useState(false);
+  // Variante choisie pour les templates avec plusieurs versions
+  const [activeVariantId, setActiveVariantId] = useState(null);
 
   // États pour "Info - Prochain événement"
   const [infoTypeEvenement, setInfoTypeEvenement] = useState('apero'); // 'repas' ou 'apero'
@@ -268,9 +303,14 @@ const Messages = () => {
       setInfoLieu('');
     } else {
       setSelectedTemplate(template);
-      setMessageTitle(template.titre);
+      // Si le template a des variantes, on prend la première par défaut
+      const variant = (template.variants && template.variants[0]) || null;
+      const baseTitle = variant ? variant.titre : template.titre;
+      const baseMessage = variant ? variant.message : template.defaultMessage;
+      setActiveVariantId(variant ? variant.id : null);
+      setMessageTitle(baseTitle);
       // Remplacer les placeholders par les vraies URLs
-      let message = template.defaultMessage;
+      let message = baseMessage;
       message = message.replace('{{PROFILE_URL}}', `https://labagueimperiale.optizioni.app/profil`);
       message = message.replace('{{DASHBOARD_URL}}', `https://labagueimperiale.optizioni.app/dashboard`);
       setMessageContent(message);
@@ -285,6 +325,19 @@ const Messages = () => {
     }
   };
 
+  // Bascule entre les variantes d'un même template
+  const switchVariant = (variantId) => {
+    if (!selectedTemplate?.variants) return;
+    const v = selectedTemplate.variants.find((x) => x.id === variantId);
+    if (!v) return;
+    setActiveVariantId(variantId);
+    setMessageTitle(v.titre);
+    let msg = v.message
+      .replace('{{PROFILE_URL}}', 'https://labagueimperiale.optizioni.app/profil')
+      .replace('{{DASHBOARD_URL}}', 'https://labagueimperiale.optizioni.app/dashboard');
+    setMessageContent(msg);
+  };
+
   const closeTemplate = () => {
     setSelectedTemplate(null);
     setMessageContent('');
@@ -292,6 +345,7 @@ const Messages = () => {
     setSelectedMembres([]);
     setSendToAll(true);
     setSendToUnpaid(false);
+    setActiveVariantId(null);
   };
 
   const closeInfoModal = () => {
@@ -558,6 +612,30 @@ Le Bureau de La Bague Impériale`;
             </CardHeader>
             
             <CardContent className="flex-1 overflow-y-auto py-6 space-y-4">
+              {/* Sélecteur de variante si le template en a plusieurs */}
+              {selectedTemplate.variants && selectedTemplate.variants.length > 1 && (
+                <div>
+                  <label className="text-gray-300 text-sm mb-2 block">Type de message</label>
+                  <div className="flex flex-wrap gap-2" data-testid="variant-selector">
+                    {selectedTemplate.variants.map((v) => (
+                      <button
+                        key={v.id}
+                        type="button"
+                        onClick={() => switchVariant(v.id)}
+                        className={`px-3 py-2 rounded text-sm font-medium transition-all ${
+                          activeVariantId === v.id
+                            ? 'bg-[#D4A024] text-[#7A2020]'
+                            : 'border border-[#D4A024]/40 text-[#D4A024] hover:bg-[#D4A024]/10'
+                        }`}
+                        data-testid={`variant-${v.id}`}
+                      >
+                        {v.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Titre du message */}
               <div>
                 <label className="text-gray-300 text-sm mb-2 block">Titre du message</label>
