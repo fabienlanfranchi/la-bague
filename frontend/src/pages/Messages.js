@@ -53,8 +53,8 @@ const MESSAGE_TEMPLATES = [
     // Plusieurs variantes : l'admin choisit le ton du message
     variants: [
       {
-        id: 'rappel_classique',
-        label: 'Rappel classique',
+        id: 'rappel_personnalise',
+        label: 'Rappel personnalisé',
         titre: 'Rappel de cotisation',
         message: `Bonjour {{NOM_COMPLET}},
 
@@ -68,16 +68,16 @@ Cordialement,
 Le Bureau de La Bague Impériale`,
       },
       {
-        id: 'suivi_financier',
-        label: 'Mon suivi financier',
-        titre: 'Mon suivi financier auprès du club',
-        message: `Bonjour {{NOM_COMPLET}},
+        id: 'rappel_general',
+        label: 'Rappel général',
+        titre: 'Rappel de cotisation',
+        message: `Chers membres,
 
-Mon suivi financier auprès du club (cotisations & autres règlements) est désormais accessible directement sur mon profil.
+Nous vous rappelons que les cotisations et règlements de la saison en cours sont à jour à régulariser dans les meilleurs délais.
 
-👉 Consulter mon suivi & régler : {{PROFILE_URL}}
+Chaque membre peut consulter son suivi financier et déclarer un paiement directement depuis son profil.
 
-Vous y retrouverez le détail de vos cotisations et règlements en attente, et pourrez déclarer un paiement en quelques clics.
+👉 Mon suivi financier & règlements : {{PROFILE_URL}}
 
 Cordialement,
 Le Bureau de La Bague Impériale`,
@@ -412,6 +412,16 @@ const Messages = () => {
       .replaceAll('{{PROFILE_URL}}', 'https://labagueimperiale.optizioni.app/profil')
       .replaceAll('{{DASHBOARD_URL}}', 'https://labagueimperiale.optizioni.app/dashboard');
     setMessageContent(msg);
+    // Adapter le ciblage par défaut selon la variante
+    if (selectedTemplate.id === 'rappel_cotisation') {
+      if (variantId === 'rappel_personnalise') {
+        setSendToAll(false);
+        setSendToUnpaid(true);
+      } else if (variantId === 'rappel_general') {
+        setSendToAll(true);
+        setSendToUnpaid(false);
+      }
+    }
   };
 
   const closeTemplate = () => {
