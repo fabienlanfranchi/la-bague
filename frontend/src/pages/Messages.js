@@ -784,7 +784,16 @@ Le Bureau de La Bague Impériale`;
                 </Button>
                 <Button
                   onClick={async () => {
-                    const messageExterne = `🎩 *La Bague Impériale*\n\n📩 *${messageTitle}*\n\n👉 Lire le message : https://labagueimperiale.optizioni.app/dashboard`;
+                    // Envoi du message complet (avec les liens déjà embarqués dans le texte).
+                    // Les placeholders {{PROFILE_URL}}/{{DASHBOARD_URL}} sont déjà résolus.
+                    // Les placeholders restants ({{NOM_COMPLET}}, {{NB_COTISATIONS}}, {{MONTANT_DU}})
+                    // sont neutralisés ici car on partage à plusieurs membres en même temps.
+                    const cleanContent = messageContent
+                      .replaceAll('{{NOM_COMPLET}}', 'Cher membre')
+                      .replaceAll('{{NB_COTISATIONS}}', '—')
+                      .replaceAll('{{MONTANT_DU}}', '—')
+                      .replaceAll('{{DETAIL_DETTES}}', '');
+                    const messageExterne = `🎩 *La Bague Impériale*\n\n*${messageTitle}*\n\n${cleanContent}`;
                     if (navigator.share) {
                       try {
                         await navigator.share({
@@ -804,7 +813,7 @@ Le Bureau de La Bague Impériale`;
                       toast.error('Erreur de partage');
                     }
                   }}
-                  disabled={!messageTitle.trim()}
+                  disabled={!messageContent.trim()}
                   className="flex-1 bg-green-600 hover:bg-green-700 text-white font-serif font-bold"
                   data-testid="partager-externe-btn"
                 >
