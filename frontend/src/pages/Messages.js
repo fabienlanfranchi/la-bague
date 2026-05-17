@@ -255,6 +255,9 @@ const Messages = () => {
   const [showWhatsAppUnpaidModal, setShowWhatsAppUnpaidModal] = useState(false);
   // Variante choisie pour les templates avec plusieurs versions
   const [activeVariantId, setActiveVariantId] = useState(null);
+  // Overrides utilisateur des textes par défaut (chargés depuis la DB)
+  const [templateOverrides, setTemplateOverrides] = useState({}); // { "templateId|variantId": {titre,message} }
+  const [savingDefault, setSavingDefault] = useState(false);
 
   // États pour "Info - Prochain événement"
   const [infoTypeEvenement, setInfoTypeEvenement] = useState('apero'); // 'repas' ou 'apero'
@@ -284,6 +287,7 @@ const Messages = () => {
 
   useEffect(() => {
     loadMembres();
+    loadTemplateOverrides();
   }, []);
 
   const loadMembres = async () => {
@@ -292,6 +296,72 @@ const Messages = () => {
       setMembres(response.data || []);
     } catch (error) {
       console.error('Erreur:', error);
+    }
+  };
+
+  const loadTemplateOverrides = async () => {
+    try {
+      const res = await axios.get(`${API}/message-template-overrides`);
+      const map = {};
+      (res.data || []).forEach((o) => {
+        const key = `${o.template_id}|${o.variant_id || ''}`;
+        map[key] = { titre: o.titre, message: o.message };
+      });
+      setTemplateOverrides(map);
+    } catch (e) {
+      // non bloquant
+    }
+  };
+
+  const overrideKey = (templateId, variantId) => `${templateId}|${variantId || ''}`;
+
+  const saveCurrentAsDefault = async () => {
+    if (!selectedTemplate || !messageContent.trim()) return;
+    setSavingDefault(true);
+    try {
+      await axios.put(`${API}/message-template-overrides`, {
+        template_id: selectedTemplate.id,
+        variant_id: activeVariantId,
+        titre: messageTitle,
+        message: messageContent,
+      });
+      setTemplateOverrides({
+        ...templateOverrides,
+        [overrideKey(selectedTemplate.id, activeVariantId)]: {
+          titre: messageTitle,
+          message: messageContent,
+        },
+      });
+      toast.success('Modèle enregistré comme défaut ✅');
+    } catch (e) {
+      toast.error('Erreur lors de l\'enregistrement');
+    } finally {
+      setSavingDefault(false);
+    }
+  };
+
+  const resetCurrentToFactory = async () => {
+    if (!selectedTemplate) return;
+    try {
+      await axios.delete(`${API}/message-template-overrides`, {
+        params: { template_id: selectedTemplate.id, variant_id: activeVariantId || undefined },
+      });
+      const map = { ...templateOverrides };
+      delete map[overrideKey(selectedTemplate.id, activeVariantId)];
+      setTemplateOverrides(map);
+      // Restaurer le texte d'usine
+      const variant = selectedTemplate.variants?.find((v) => v.id === activeVariantId);
+      const factoryTitre = variant ? variant.titre : selectedTemplate.titre;
+      const factoryMsg = variant ? variant.message : selectedTemplate.defaultMessage;
+      setMessageTitle(factoryTitre);
+      setMessageContent(
+        factoryMsg
+          .replaceAll('{{PROFILE_URL}}', 'https://labagueimperiale.optizioni.app/profil')
+          .replaceAll('{{DASHBOARD_URL}}', 'https://labagueimperiale.optizioni.app/dashboard')
+      );
+      toast.success('Modèle réinitialisé');
+    } catch (e) {
+      toast.error('Erreur lors de la réinitialisation');
     }
   };
 
@@ -306,14 +376,17 @@ const Messages = () => {
       setSelectedTemplate(template);
       // Si le template a des variantes, on prend la première par défaut
       const variant = (template.variants && template.variants[0]) || null;
-      const baseTitle = variant ? variant.titre : template.titre;
-      const baseMessage = variant ? variant.message : template.defaultMessage;
-      setActiveVariantId(variant ? variant.id : null);
+      const variantId = variant ? variant.id : null;
+      // Override stocké en DB ?
+      const ov = templateOverrides[overrideKey(template.id, variantId)];
+      const baseTitle = ov?.titre ?? (variant ? variant.titre : template.titre);
+      const baseMessage = ov?.message ?? (variant ? variant.message : template.defaultMessage);
+      setActiveVariantId(variantId);
       setMessageTitle(baseTitle);
-      // Remplacer les placeholders par les vraies URLs
+      // Remplacer les placeholders URL par les vraies URLs
       let message = baseMessage;
-      message = message.replace('{{PROFILE_URL}}', `https://labagueimperiale.optizioni.app/profil`);
-      message = message.replace('{{DASHBOARD_URL}}', `https://labagueimperiale.optizioni.app/dashboard`);
+      message = message.replaceAll('{{PROFILE_URL}}', `https://labagueimperiale.optizioni.app/profil`);
+      message = message.replaceAll('{{DASHBOARD_URL}}', `https://labagueimperiale.optizioni.app/dashboard`);
       setMessageContent(message);
       // Par défaut pour le rappel de cotisation : cibler les retardataires
       if (template.id === 'rappel_cotisation') {
@@ -332,10 +405,12 @@ const Messages = () => {
     const v = selectedTemplate.variants.find((x) => x.id === variantId);
     if (!v) return;
     setActiveVariantId(variantId);
-    setMessageTitle(v.titre);
-    let msg = v.message
-      .replace('{{PROFILE_URL}}', 'https://labagueimperiale.optizioni.app/profil')
-      .replace('{{DASHBOARD_URL}}', 'https://labagueimperiale.optizioni.app/dashboard');
+    const ov = templateOverrides[overrideKey(selectedTemplate.id, variantId)];
+    setMessageTitle(ov?.titre ?? v.titre);
+    const baseMsg = ov?.message ?? v.message;
+    const msg = baseMsg
+      .replaceAll('{{PROFILE_URL}}', 'https://labagueimperiale.optizioni.app/profil')
+      .replaceAll('{{DASHBOARD_URL}}', 'https://labagueimperiale.optizioni.app/dashboard');
     setMessageContent(msg);
   };
 
@@ -753,6 +828,38 @@ Le Bureau de La Bague Impériale`;
             </CardContent>
             
             <div className="flex-shrink-0 p-4 border-t border-[#D4A024]/30 space-y-3">
+              {/* Outils du modèle : enregistrer / réinitialiser le texte par défaut */}
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <p className="text-xs text-gray-400 italic">
+                  {templateOverrides[overrideKey(selectedTemplate.id, activeVariantId)]
+                    ? '📝 Texte personnalisé chargé depuis vos modèles'
+                    : '✨ Texte d\'usine — vous pouvez le modifier et l\'enregistrer'}
+                </p>
+                <div className="flex space-x-2">
+                  <Button
+                    onClick={saveCurrentAsDefault}
+                    disabled={savingDefault || !messageContent.trim()}
+                    size="sm"
+                    className="bg-[#D4A024]/20 hover:bg-[#D4A024]/40 text-[#D4A024] border border-[#D4A024]/50"
+                    data-testid="save-template-default"
+                  >
+                    <Save className="w-4 h-4 mr-1" />
+                    {savingDefault ? 'Enregistrement…' : 'Enregistrer comme défaut'}
+                  </Button>
+                  {templateOverrides[overrideKey(selectedTemplate.id, activeVariantId)] && (
+                    <Button
+                      onClick={resetCurrentToFactory}
+                      size="sm"
+                      variant="ghost"
+                      className="text-gray-400 hover:text-white"
+                      data-testid="reset-template-default"
+                    >
+                      Réinitialiser
+                    </Button>
+                  )}
+                </div>
+              </div>
+
               {/* Mode retardataires : un bouton WhatsApp dédié */}
               {sendToUnpaid && (
                 <Button

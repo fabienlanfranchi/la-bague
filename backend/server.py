@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Response, Query, File, UploadFile
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Response, Query, File, UploadFile, Body
 from fastapi.responses import JSONResponse, StreamingResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -3171,6 +3171,46 @@ async def get_message(message_id: str):
     if not message:
         raise HTTPException(status_code=404, detail="Message non trouvé")
     return message
+
+
+# ============ OVERRIDES DES TEMPLATES (textes éditables par le bureau) ============
+
+@api_router.get("/message-template-overrides")
+async def get_template_overrides():
+    """Retourne tous les overrides de textes par défaut des templates de messages."""
+    overrides = await db.message_template_overrides.find({}, {"_id": 0}).to_list(200)
+    return overrides
+
+
+@api_router.put("/message-template-overrides")
+async def upsert_template_override(payload: dict = Body(...)):
+    """Sauvegarder l'override d'un template (ou d'une variante).
+    Payload : { template_id, variant_id (optionnel), titre, message }"""
+    template_id = payload.get("template_id")
+    if not template_id:
+        raise HTTPException(status_code=400, detail="template_id requis")
+    variant_id = payload.get("variant_id") or None
+    titre = payload.get("titre", "")
+    message = payload.get("message", "")
+    if not message.strip():
+        raise HTTPException(status_code=400, detail="Le message ne peut pas être vide")
+
+    key = {"template_id": template_id, "variant_id": variant_id}
+    update = {
+        **key,
+        "titre": titre,
+        "message": message,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.message_template_overrides.update_one(key, {"$set": update}, upsert=True)
+    return {"saved": True, **key}
+
+
+@api_router.delete("/message-template-overrides")
+async def delete_template_override(template_id: str, variant_id: Optional[str] = None):
+    """Réinitialise un template à sa valeur d'usine."""
+    await db.message_template_overrides.delete_one({"template_id": template_id, "variant_id": variant_id})
+    return {"reset": True}
 
 
 @api_router.delete("/messages/{message_id}")
