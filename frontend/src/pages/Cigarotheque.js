@@ -100,6 +100,11 @@ const Cigarotheque = () => {
   const [maCollectionPays, setMaCollectionPays] = useState('');
   const [maCollectionMarque, setMaCollectionMarque] = useState('');
   const [maCollectionModule, setMaCollectionModule] = useState('');
+  // Filtres avancés liés aux notations personnelles
+  const [filterTerroir, setFilterTerroir] = useState('all'); // 'all' | 'cubain' | 'non-cubain'
+  const [filterNoteGlobaleMin, setFilterNoteGlobaleMin] = useState(0);
+  const [filterPuissanceMin, setFilterPuissanceMin] = useState(0);
+  const [filterQualitePrixMin, setFilterQualitePrixMin] = useState(0);
   
   // Accordéons ouverts dans Ma Cigarothèque (hiérarchie Terroir > Marque > Gamme)
   const [openTerroirs, setOpenTerroirs] = useState([]);
@@ -541,40 +546,82 @@ const Cigarotheque = () => {
   };
 
   // ===== FILTRAGE ET TRI MA CIGARTHÈQUE =====
-  
+
+  // Extrait une note numérique d'un champ structuré ("Puissance: 3.5/5", "Qualité/Prix: 4/5")
+  const extractRatingFromComment = (commentaire, label) => {
+    if (!commentaire) return null;
+    // Échapper les caractères spéciaux dans le label
+    const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(`${escaped}\\s*:\\s*([0-9]+(?:[.,][0-9]+)?)\\s*/\\s*5`, 'i');
+    const m = commentaire.match(re);
+    if (!m) return null;
+    return parseFloat(m[1].replace(',', '.'));
+  };
+
   const filteredMaCigarotheque = useMemo(() => {
     let filtered = [...maCigarotheque];
-    
+
     // Filtrer par favoris uniquement
     if (showFavorisOnly) {
       filtered = filtered.filter(c => c.favori === true);
     }
-    
+
     // Filtrer par recherche
     if (maCollectionSearch) {
       const searchLower = maCollectionSearch.toLowerCase();
-      filtered = filtered.filter(c => 
+      filtered = filtered.filter(c =>
         (c.marque || '').toLowerCase().includes(searchLower) ||
         (c.gamme || '').toLowerCase().includes(searchLower) ||
         (c.vitole || '').toLowerCase().includes(searchLower)
       );
     }
-    
+
     // Filtrer par pays
     if (maCollectionPays && maCollectionPays !== 'all') {
       filtered = filtered.filter(c => c.pays === maCollectionPays);
     }
-    
+
     // Filtrer par marque
     if (maCollectionMarque && maCollectionMarque !== 'all') {
       filtered = filtered.filter(c => c.marque === maCollectionMarque);
     }
-    
+
     // Filtrer par module
     if (maCollectionModule && maCollectionModule !== 'all') {
       filtered = filtered.filter(c => c.vitole === maCollectionModule);
     }
-    
+
+    // Filtre Terroir
+    if (filterTerroir === 'cubain') {
+      filtered = filtered.filter(c => (c.pays || '').toLowerCase().includes('cuba'));
+    } else if (filterTerroir === 'non-cubain') {
+      filtered = filtered.filter(c => c.pays && !c.pays.toLowerCase().includes('cuba'));
+    }
+
+    // Filtre Note globale (personnelle)
+    if (filterNoteGlobaleMin > 0) {
+      filtered = filtered.filter(c => {
+        const n = Number(c.note_bagues || c.note_globale || 0);
+        return n >= filterNoteGlobaleMin;
+      });
+    }
+
+    // Filtre Puissance ressentie (extrait du commentaire)
+    if (filterPuissanceMin > 0) {
+      filtered = filtered.filter(c => {
+        const n = extractRatingFromComment(c.commentaire, 'Puissance');
+        return n !== null && n >= filterPuissanceMin;
+      });
+    }
+
+    // Filtre Rapport qualité/prix (extrait du commentaire)
+    if (filterQualitePrixMin > 0) {
+      filtered = filtered.filter(c => {
+        const n = extractRatingFromComment(c.commentaire, 'Qualité/Prix');
+        return n !== null && n >= filterQualitePrixMin;
+      });
+    }
+
     // Trier par pays > marque > gamme pour la hiérarchie
     filtered.sort((a, b) => {
       const paysCompare = (a.pays || '').localeCompare(b.pays || '');
@@ -583,9 +630,9 @@ const Cigarotheque = () => {
       if (marqueCompare !== 0) return marqueCompare;
       return (a.gamme || '').localeCompare(b.gamme || '');
     });
-    
+
     return filtered;
-  }, [maCigarotheque, maCollectionSearch, maCollectionPays, maCollectionMarque, maCollectionModule, showFavorisOnly]);
+  }, [maCigarotheque, maCollectionSearch, maCollectionPays, maCollectionMarque, maCollectionModule, showFavorisOnly, filterTerroir, filterNoteGlobaleMin, filterPuissanceMin, filterQualitePrixMin]);
 
   // Extraire les options de filtres de Ma Cigarothèque (en cascade)
   const maCollectionFilterOptions = useMemo(() => {
@@ -2060,6 +2107,103 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
                       )}
                     </Button>
                   </div>
+
+                  {/* Filtres par notation personnelle */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-3 border-t border-[#D4A024]/20">
+                    {/* Terroir */}
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">🌍 Terroir</label>
+                      <select
+                        value={filterTerroir}
+                        onChange={(e) => setFilterTerroir(e.target.value)}
+                        className="w-full bg-black/60 border border-[#D4A024]/30 rounded px-2 py-2 text-white text-sm"
+                        data-testid="filter-terroir"
+                      >
+                        <option value="all">Tous</option>
+                        <option value="cubain">Cubain</option>
+                        <option value="non-cubain">Non cubain</option>
+                      </select>
+                    </div>
+
+                    {/* Note globale */}
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">⭐ Note globale ≥</label>
+                      <select
+                        value={filterNoteGlobaleMin}
+                        onChange={(e) => setFilterNoteGlobaleMin(Number(e.target.value))}
+                        className="w-full bg-black/60 border border-[#D4A024]/30 rounded px-2 py-2 text-white text-sm"
+                        data-testid="filter-note-globale"
+                      >
+                        <option value={0}>Toutes</option>
+                        <option value={1}>≥ 1</option>
+                        <option value={2}>≥ 2</option>
+                        <option value={3}>≥ 3</option>
+                        <option value={3.5}>≥ 3,5</option>
+                        <option value={4}>≥ 4</option>
+                        <option value={4.5}>≥ 4,5</option>
+                        <option value={5}>= 5</option>
+                      </select>
+                    </div>
+
+                    {/* Puissance ressentie */}
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">🔥 Puissance ≥</label>
+                      <select
+                        value={filterPuissanceMin}
+                        onChange={(e) => setFilterPuissanceMin(Number(e.target.value))}
+                        className="w-full bg-black/60 border border-[#D4A024]/30 rounded px-2 py-2 text-white text-sm"
+                        data-testid="filter-puissance"
+                      >
+                        <option value={0}>Toutes</option>
+                        <option value={1}>≥ 1</option>
+                        <option value={2}>≥ 2</option>
+                        <option value={3}>≥ 3</option>
+                        <option value={3.5}>≥ 3,5</option>
+                        <option value={4}>≥ 4</option>
+                        <option value={4.5}>≥ 4,5</option>
+                        <option value={5}>= 5</option>
+                      </select>
+                    </div>
+
+                    {/* Rapport qualité/prix */}
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">💲 Qualité/Prix ≥</label>
+                      <select
+                        value={filterQualitePrixMin}
+                        onChange={(e) => setFilterQualitePrixMin(Number(e.target.value))}
+                        className="w-full bg-black/60 border border-[#D4A024]/30 rounded px-2 py-2 text-white text-sm"
+                        data-testid="filter-qualite-prix"
+                      >
+                        <option value={0}>Tous</option>
+                        <option value={1}>≥ 1</option>
+                        <option value={2}>≥ 2</option>
+                        <option value={3}>≥ 3</option>
+                        <option value={3.5}>≥ 3,5</option>
+                        <option value={4}>≥ 4</option>
+                        <option value={4.5}>≥ 4,5</option>
+                        <option value={5}>= 5</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {(filterTerroir !== 'all' || filterNoteGlobaleMin > 0 || filterPuissanceMin > 0 || filterQualitePrixMin > 0) && (
+                    <div className="flex justify-end">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setFilterTerroir('all');
+                          setFilterNoteGlobaleMin(0);
+                          setFilterPuissanceMin(0);
+                          setFilterQualitePrixMin(0);
+                        }}
+                        className="text-gray-400 hover:text-white"
+                        data-testid="reset-filters-notes"
+                      >
+                        <X className="w-4 h-4 mr-1" /> Réinitialiser les filtres
+                      </Button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Liste hiérarchique avec accordéons */}
