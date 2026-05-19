@@ -2136,7 +2136,9 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
                       >
                         <option value={0}>Toutes</option>
                         <option value={1}>≥ 1</option>
+                        <option value={1.5}>≥ 1,5</option>
                         <option value={2}>≥ 2</option>
+                        <option value={2.5}>≥ 2,5</option>
                         <option value={3}>≥ 3</option>
                         <option value={3.5}>≥ 3,5</option>
                         <option value={4}>≥ 4</option>
@@ -2156,7 +2158,9 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
                       >
                         <option value={0}>Toutes</option>
                         <option value={1}>≥ 1</option>
+                        <option value={1.5}>≥ 1,5</option>
                         <option value={2}>≥ 2</option>
+                        <option value={2.5}>≥ 2,5</option>
                         <option value={3}>≥ 3</option>
                         <option value={3.5}>≥ 3,5</option>
                         <option value={4}>≥ 4</option>
@@ -2176,7 +2180,9 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
                       >
                         <option value={0}>Tous</option>
                         <option value={1}>≥ 1</option>
+                        <option value={1.5}>≥ 1,5</option>
                         <option value={2}>≥ 2</option>
+                        <option value={2.5}>≥ 2,5</option>
                         <option value={3}>≥ 3</option>
                         <option value={3.5}>≥ 3,5</option>
                         <option value={4}>≥ 4</option>
