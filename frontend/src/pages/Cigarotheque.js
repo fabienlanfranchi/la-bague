@@ -2127,7 +2127,7 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
 
                     {/* Note globale */}
                     <div>
-                      <label className="block text-xs text-gray-400 mb-1">⭐ Note globale ≥</label>
+                      <label className="block text-xs text-gray-400 mb-1">⭐ Note globale</label>
                       <select
                         value={filterNoteGlobaleMin}
                         onChange={(e) => setFilterNoteGlobaleMin(Number(e.target.value))}
@@ -2135,21 +2135,21 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
                         data-testid="filter-note-globale"
                       >
                         <option value={0}>Toutes</option>
-                        <option value={1}>≥ 1</option>
-                        <option value={1.5}>≥ 1,5</option>
-                        <option value={2}>≥ 2</option>
-                        <option value={2.5}>≥ 2,5</option>
-                        <option value={3}>≥ 3</option>
-                        <option value={3.5}>≥ 3,5</option>
-                        <option value={4}>≥ 4</option>
-                        <option value={4.5}>≥ 4,5</option>
-                        <option value={5}>= 5</option>
+                        <option value={1}>1</option>
+                        <option value={1.5}>1,5</option>
+                        <option value={2}>2</option>
+                        <option value={2.5}>2,5</option>
+                        <option value={3}>3</option>
+                        <option value={3.5}>3,5</option>
+                        <option value={4}>4</option>
+                        <option value={4.5}>4,5</option>
+                        <option value={5}>5</option>
                       </select>
                     </div>
 
                     {/* Puissance ressentie */}
                     <div>
-                      <label className="block text-xs text-gray-400 mb-1">🔥 Puissance ≥</label>
+                      <label className="block text-xs text-gray-400 mb-1">🔥 Puissance</label>
                       <select
                         value={filterPuissanceMin}
                         onChange={(e) => setFilterPuissanceMin(Number(e.target.value))}
@@ -2157,21 +2157,21 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
                         data-testid="filter-puissance"
                       >
                         <option value={0}>Toutes</option>
-                        <option value={1}>≥ 1</option>
-                        <option value={1.5}>≥ 1,5</option>
-                        <option value={2}>≥ 2</option>
-                        <option value={2.5}>≥ 2,5</option>
-                        <option value={3}>≥ 3</option>
-                        <option value={3.5}>≥ 3,5</option>
-                        <option value={4}>≥ 4</option>
-                        <option value={4.5}>≥ 4,5</option>
-                        <option value={5}>= 5</option>
+                        <option value={1}>1</option>
+                        <option value={1.5}>1,5</option>
+                        <option value={2}>2</option>
+                        <option value={2.5}>2,5</option>
+                        <option value={3}>3</option>
+                        <option value={3.5}>3,5</option>
+                        <option value={4}>4</option>
+                        <option value={4.5}>4,5</option>
+                        <option value={5}>5</option>
                       </select>
                     </div>
 
                     {/* Rapport qualité/prix */}
                     <div>
-                      <label className="block text-xs text-gray-400 mb-1">💲 Qualité/Prix ≥</label>
+                      <label className="block text-xs text-gray-400 mb-1">💲 Qualité/Prix</label>
                       <select
                         value={filterQualitePrixMin}
                         onChange={(e) => setFilterQualitePrixMin(Number(e.target.value))}
@@ -2179,15 +2179,15 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
                         data-testid="filter-qualite-prix"
                       >
                         <option value={0}>Tous</option>
-                        <option value={1}>≥ 1</option>
-                        <option value={1.5}>≥ 1,5</option>
-                        <option value={2}>≥ 2</option>
-                        <option value={2.5}>≥ 2,5</option>
-                        <option value={3}>≥ 3</option>
-                        <option value={3.5}>≥ 3,5</option>
-                        <option value={4}>≥ 4</option>
-                        <option value={4.5}>≥ 4,5</option>
-                        <option value={5}>= 5</option>
+                        <option value={1}>1</option>
+                        <option value={1.5}>1,5</option>
+                        <option value={2}>2</option>
+                        <option value={2.5}>2,5</option>
+                        <option value={3}>3</option>
+                        <option value={3.5}>3,5</option>
+                        <option value={4}>4</option>
+                        <option value={4.5}>4,5</option>
+                        <option value={5}>5</option>
                       </select>
                     </div>
                   </div>
