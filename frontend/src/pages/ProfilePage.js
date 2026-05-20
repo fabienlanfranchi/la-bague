@@ -29,7 +29,7 @@ const ProfilePage = () => {
 
   // Sélection facture : Set de keys ("cot-13", "cot-12", "dette-{id}")
   const [selectedInvoiceLines, setSelectedInvoiceLines] = useState(new Set());
-  const [endroitPaiement, setEndroitPaiement] = useState('Compte');
+  const [endroitPaiement, setEndroitPaiement] = useState('');
   const [submittingInvoice, setSubmittingInvoice] = useState(false);
   
   // États pour les paramètres
@@ -615,6 +615,10 @@ const ProfilePage = () => {
                   toast.error('Sélectionnez au moins une ligne à régler');
                   return;
                 }
+                if (!endroitPaiement) {
+                  toast.error('Veuillez choisir le moyen / lieu de paiement avant de valider');
+                  return;
+                }
                 setSubmittingInvoice(true);
                 try {
                   await Promise.all(selected.map((l) =>
@@ -745,23 +749,36 @@ const ProfilePage = () => {
                     {selectedInvoiceLines.size > 0 && (
                       <div className="mt-4 space-y-3">
                         <div>
-                          <Label className="text-gray-300 text-sm mb-1 block">Moyen / lieu de paiement</Label>
+                          <Label className="text-gray-300 text-sm mb-1 block">
+                            Moyen / lieu de paiement <span className="text-red-400">*</span>
+                          </Label>
                           <select
                             value={endroitPaiement}
                             onChange={(e) => setEndroitPaiement(e.target.value)}
-                            className="w-full bg-black/40 border border-[#D4A024]/30 rounded px-3 py-2 text-white"
+                            className={`w-full bg-black/40 border rounded px-3 py-2 text-white ${
+                              endroitPaiement
+                                ? 'border-[#D4A024]/30'
+                                : 'border-red-500/60 ring-1 ring-red-500/40'
+                            }`}
                             data-testid="invoice-endroit"
+                            required
                           >
+                            <option value="" disabled>— Choisissez où / comment vous payez —</option>
                             <option value="Compte">Virement / chèque sur le compte</option>
                             <option value="Fabien">Espèces remises à Fabien</option>
                             <option value="Jacques">Espèces remises à Jacques</option>
                             <option value="Enveloppe bar">Enveloppe au bar</option>
                           </select>
+                          {!endroitPaiement && (
+                            <p className="text-xs text-red-400 mt-1">
+                              Précisez le moyen de paiement pour pouvoir valider
+                            </p>
+                          )}
                         </div>
                         <Button
                           onClick={submitInvoice}
-                          disabled={submittingInvoice}
-                          className="w-full bg-green-700 hover:bg-green-600 text-white font-bold py-3"
+                          disabled={submittingInvoice || !endroitPaiement}
+                          className="w-full bg-green-700 hover:bg-green-600 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-bold py-3"
                           data-testid="invoice-declarer-btn"
                         >
                           <CreditCard className="w-5 h-5 mr-2" />
