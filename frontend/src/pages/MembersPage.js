@@ -1042,12 +1042,36 @@ const MembersPage = () => {
                               {lignes.map((l) => (
                                 <div
                                   key={l.key}
-                                  className="grid grid-cols-[1fr_auto] items-center gap-3 py-2 px-2 rounded bg-black/20"
+                                  className="grid grid-cols-[1fr_auto_auto] items-center gap-3 py-2 px-2 rounded bg-black/20"
                                 >
                                   <span className="text-gray-200 text-base">{l.description}</span>
                                   <span className="text-red-300 text-base font-bold">
                                     {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(l.montant)}
                                   </span>
+                                  {l.key.startsWith('dette-') && (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={async () => {
+                                        if (!window.confirm(`Effacer la dette « ${l.description} » (${l.montant} €) ?\n\nÀ utiliser uniquement si le paiement a déjà été reçu hors de l'app.`)) return;
+                                        try {
+                                          const detteId = l.key.replace('dette-', '');
+                                          const res = await fetch(`${API_URL}/api/dettes/${detteId}`, { method: 'DELETE' });
+                                          if (!res.ok) throw new Error('http');
+                                          toast.success('Dette effacée');
+                                          const r = await fetch(`${API_URL}/api/dettes/membre/${selectedMember.id}`);
+                                          setSelectedMemberDettes((await r.json()) || []);
+                                        } catch (_) {
+                                          toast.error('Erreur lors de la suppression');
+                                        }
+                                      }}
+                                      className="text-red-400 hover:text-red-200 hover:bg-red-500/10 px-2"
+                                      data-testid={`del-dette-${l.key.replace('dette-', '')}`}
+                                      title="Effacer cette dette (paiement reçu hors app)"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  )}
                                 </div>
                               ))}
                             </div>

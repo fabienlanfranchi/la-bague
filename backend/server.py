@@ -2064,14 +2064,28 @@ async def valider_paiement(paiement_id: str, validateur_id: str = None):
             )
     
     # Si c'est un autre objet avec dette, supprimer la dette correspondante
-    # Si dette_id est fourni → ciblage précis, sinon fallback sur cause
+    # Si dette_id est fourni → ciblage précis, sinon fallback sur cause / detail
     if paiement.get('dette_id'):
         await db.dettes.delete_one({"id": paiement['dette_id']})
-    elif paiement['objet'] in ['tombola', 'album', 'anniversaire', 'autres']:
-        await db.dettes.delete_one({
+    elif paiement['objet'] != 'cotisation':
+        # Fallback robuste : trouver la dette qui correspond le mieux
+        # 1) exact match sur cause = objet
+        deleted = await db.dettes.delete_one({
             "membre_id": paiement['membre_id'],
             "cause": paiement['objet']
         })
+        # 2) si rien supprimé et detail est rempli, match sur libelle = detail
+        if deleted.deleted_count == 0 and paiement.get('detail'):
+            deleted = await db.dettes.delete_one({
+                "membre_id": paiement['membre_id'],
+                "libelle": paiement['detail']
+            })
+        # 3) toujours rien : match approximatif sur cause CONTIENT detail
+        if deleted.deleted_count == 0 and paiement.get('detail'):
+            await db.dettes.delete_one({
+                "membre_id": paiement['membre_id'],
+                "cause": {"$regex": paiement['detail'][:30], "$options": "i"}
+            })
     
     # Mapping des noms de compte (formulaire -> base de données)
     compte_mapping = {
