@@ -2065,27 +2065,42 @@ async def valider_paiement(paiement_id: str, validateur_id: str = None):
     
     # Si c'est un autre objet avec dette, supprimer la dette correspondante
     # Si dette_id est fourni → ciblage précis, sinon fallback sur cause / detail
+    dette_cible = None
     if paiement.get('dette_id'):
-        await db.dettes.delete_one({"id": paiement['dette_id']})
+        dette_cible = await db.dettes.find_one({"id": paiement['dette_id']}, {"_id": 0})
     elif paiement['objet'] != 'cotisation':
         # Fallback robuste : trouver la dette qui correspond le mieux
         # 1) exact match sur cause = objet
-        deleted = await db.dettes.delete_one({
+        dette_cible = await db.dettes.find_one({
             "membre_id": paiement['membre_id'],
             "cause": paiement['objet']
-        })
-        # 2) si rien supprimé et detail est rempli, match sur libelle = detail
-        if deleted.deleted_count == 0 and paiement.get('detail'):
-            deleted = await db.dettes.delete_one({
+        }, {"_id": 0})
+        # 2) si rien trouvé et detail est rempli, match sur libelle = detail
+        if not dette_cible and paiement.get('detail'):
+            dette_cible = await db.dettes.find_one({
                 "membre_id": paiement['membre_id'],
                 "libelle": paiement['detail']
-            })
+            }, {"_id": 0})
         # 3) toujours rien : match approximatif sur cause CONTIENT detail
-        if deleted.deleted_count == 0 and paiement.get('detail'):
-            await db.dettes.delete_one({
+        if not dette_cible and paiement.get('detail'):
+            dette_cible = await db.dettes.find_one({
                 "membre_id": paiement['membre_id'],
                 "cause": {"$regex": paiement['detail'][:30], "$options": "i"}
-            })
+            }, {"_id": 0})
+
+    if dette_cible:
+        montant_paye = float(paiement['montant'])
+        montant_du = float(dette_cible.get('montant', 0))
+        if montant_paye >= montant_du - 0.005:
+            # Paiement complet (ou supérieur) → la dette est effacée
+            await db.dettes.delete_one({"id": dette_cible['id']})
+        else:
+            # Paiement partiel → on déduit du restant dû
+            restant = round(montant_du - montant_paye, 2)
+            await db.dettes.update_one(
+                {"id": dette_cible['id']},
+                {"$set": {"montant": restant}}
+            )
     
     # Mapping des noms de compte (formulaire -> base de données)
     compte_mapping = {
