@@ -2089,18 +2089,9 @@ async def valider_paiement(paiement_id: str, validateur_id: str = None):
             }, {"_id": 0})
 
     if dette_cible:
-        montant_paye = float(paiement['montant'])
-        montant_du = float(dette_cible.get('montant', 0))
-        if montant_paye >= montant_du - 0.005:
-            # Paiement complet (ou supérieur) → la dette est effacée
-            await db.dettes.delete_one({"id": dette_cible['id']})
-        else:
-            # Paiement partiel → on déduit du restant dû
-            restant = round(montant_du - montant_paye, 2)
-            await db.dettes.update_one(
-                {"id": dette_cible['id']},
-                {"$set": {"montant": restant}}
-            )
+        # Règle métier : une dette est toujours réglée intégralement (pas de paiement partiel).
+        # On efface donc la dette dès qu'un paiement lui est rattaché.
+        await db.dettes.delete_one({"id": dette_cible['id']})
     
     # Mapping des noms de compte (formulaire -> base de données)
     compte_mapping = {
