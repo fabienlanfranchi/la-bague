@@ -50,6 +50,8 @@ const MembersPage = () => {
   
   // Pour la vue profil détaillé
   const [selectedMember, setSelectedMember] = useState(null);
+  // Dettes du membre sélectionné (facture identique à celle du profil membre)
+  const [selectedMemberDettes, setSelectedMemberDettes] = useState([]);
   const [memberStats, setMemberStats] = useState(null);
   const [loadingStats, setLoadingStats] = useState(false);
   const [showPresenceDetail, setShowPresenceDetail] = useState(false);
@@ -204,13 +206,22 @@ const MembersPage = () => {
   const handleViewMember = async (member) => {
     setSelectedMember(member);
     setShowPresenceDetail(false);  // Réinitialiser
+    setSelectedMemberDettes([]);
     await loadMemberStats(member.id);
+    // Charger les dettes du membre pour afficher la facture détaillée
+    try {
+      const res = await fetch(`${API_URL}/api/dettes/membre/${member.id}`);
+      setSelectedMemberDettes(await res.json() || []);
+    } catch (_) {
+      setSelectedMemberDettes([]);
+    }
   };
 
   // Fermer le profil détaillé
   const handleCloseMemberView = () => {
     setSelectedMember(null);
     setMemberStats(null);
+    setSelectedMemberDettes([]);
   };
 
   // Calculer les étoiles selon le %
@@ -982,24 +993,84 @@ const MembersPage = () => {
                     })()}
                   </div>
 
-                  {/* ========== COTISATIONS ========== */}
-                  <div className="bg-gradient-to-r from-gray-800/50 to-transparent rounded-lg p-5 border border-gray-600/30">
-                    <h3 className="text-lg font-serif text-gray-300 mb-3">Cotisations</h3>
-                    <div className="flex items-center gap-4">
-                      {selectedMember.situation_cotisation === 0 ? (
-                        <span className="text-green-400 font-semibold">✓ À jour</span>
-                      ) : (
-                        <span className="text-red-400 font-semibold">
-                          {selectedMember.situation_cotisation} saison(s) en attente
-                        </span>
-                      )}
-                    </div>
-                    {selectedMember.autres_infos && (
-                      <p className="text-gray-500 text-sm mt-3 italic">
-                        {selectedMember.autres_infos}
-                      </p>
-                    )}
-                  </div>
+                  {/* ========== COTISATIONS — Facture (identique au profil membre) ========== */}
+                  {(() => {
+                    const currentSeason = 13;
+                    const lignes = [];
+                    const nbCot = Number(selectedMember.situation_cotisation || 0);
+                    for (let i = 0; i < nbCot; i++) {
+                      const saison = currentSeason - i;
+                      lignes.push({
+                        key: `cot-${saison}`,
+                        description: `Cotisation saison ${saison}`,
+                        montant: 200,
+                      });
+                    }
+                    selectedMemberDettes.forEach((d) => {
+                      lignes.push({
+                        key: `dette-${d.id}`,
+                        description: d.libelle || d.cause || 'Dette',
+                        montant: Number(d.montant || 0),
+                      });
+                    });
+                    const totalDu = lignes.reduce((s, l) => s + l.montant, 0);
+
+                    return (
+                      <div
+                        className={`rounded-lg p-5 border ${
+                          lignes.length > 0
+                            ? 'bg-gradient-to-r from-red-900/30 to-transparent border-red-600/40'
+                            : 'bg-gradient-to-r from-green-900/20 to-transparent border-green-600/30'
+                        }`}
+                        data-testid="cotisations-facture-president"
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="text-lg font-serif text-gray-200">Cotisations & Dettes</h3>
+                          {lignes.length === 0 && (
+                            <span className="text-green-400 font-semibold text-base">✓ À jour</span>
+                          )}
+                        </div>
+
+                        {lignes.length > 0 && (
+                          <>
+                            {/* En-tête */}
+                            <div className="grid grid-cols-[1fr_auto] items-center gap-3 pb-2 mb-2 border-b border-red-600/30 text-xs uppercase tracking-wider text-gray-400">
+                              <span>Désignation</span>
+                              <span className="text-right">Montant</span>
+                            </div>
+                            <div className="space-y-1">
+                              {lignes.map((l) => (
+                                <div
+                                  key={l.key}
+                                  className="grid grid-cols-[1fr_auto] items-center gap-3 py-2 px-2 rounded bg-black/20"
+                                >
+                                  <span className="text-gray-200 text-base">{l.description}</span>
+                                  <span className="text-red-300 text-base font-bold">
+                                    {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(l.montant)}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                            <div className="mt-3 pt-3 border-t border-red-600/30 flex items-center justify-between">
+                              <span className="text-gray-300 font-semibold">Total dû</span>
+                              <span className="text-2xl font-bold text-red-300" data-testid="facture-total-president">
+                                {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(totalDu)}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-500 italic mt-2">
+                              Cette facture est partagée avec {selectedMember.nom_complet} sur son profil.
+                              Toute évolution (paiement, ajout de dette) y est répercutée automatiquement.
+                            </p>
+                          </>
+                        )}
+                        {selectedMember.autres_infos && (
+                          <p className="text-gray-500 text-sm mt-3 italic">
+                            {selectedMember.autres_infos}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </>
               )}
               
