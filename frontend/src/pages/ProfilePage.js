@@ -627,6 +627,7 @@ const ProfilePage = () => {
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({
                         membre_id: currentMember.id,
+                        declarant_id: currentMember.id,
                         date_paiement: new Date().toISOString().split('T')[0],
                         type: 'recette',
                         objet: l.objet,

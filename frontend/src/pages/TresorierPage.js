@@ -94,7 +94,8 @@ const TresorierPage = () => {
           objet: form.objet,
           montant: parseFloat(form.montant),
           endroit: form.endroit,
-          detail: form.detail || null
+          detail: form.detail || null,
+          declarant_id: currentMember?.id || null,
         })
       });
 

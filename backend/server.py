@@ -1254,6 +1254,7 @@ class PaiementEnAttente(BaseModel):
     
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     membre_id: str  # Qui signale le paiement
+    declarant_id: Optional[str] = None  # ID du membre qui a déclaré (membre lui-même ou trésorier)
     date_paiement: str  # Date du paiement
     type: str = "recette"  # recette ou dépense
     objet: str  # cotisation, album, tombola, anniversaire, autres
@@ -1269,6 +1270,7 @@ class PaiementEnAttente(BaseModel):
 
 class PaiementEnAttenteCreate(BaseModel):
     membre_id: str
+    declarant_id: Optional[str] = None
     date_paiement: str
     type: str = "recette"
     objet: str
@@ -1999,6 +2001,7 @@ async def create_paiement_en_attente(input: PaiementEnAttenteCreate):
     """Signaler un paiement (par un membre)"""
     paiement = PaiementEnAttente(
         membre_id=input.membre_id,
+        declarant_id=input.declarant_id or input.membre_id,
         date_paiement=input.date_paiement,
         type=input.type,
         objet=input.objet,

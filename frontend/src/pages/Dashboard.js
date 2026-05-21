@@ -1643,6 +1643,8 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
 const Dashboard = () => {
   const { isAdmin, currentMember } = useUser();
   const [members, setMembers] = useState([]);
+  // Modal "membres avec cotisation en attente"
+  const [showUnpaidModal, setShowUnpaidModal] = useState(false);
   const [prochainEvenement, setProchainEvenement] = useState(null);
   const [prochainEvenementInfo, setProchainEvenementInfo] = useState(null); // Info préliminaire (avant création événement)
   const [nonRepondants, setNonRepondants] = useState([]);
@@ -2965,10 +2967,8 @@ Le Président`;
                 <Button
                   variant="outline"
                   className="border-[#D4A024] text-[#D4A024] hover:bg-[#D4A024]/10 text-base"
-                  onClick={() => {
-                    // Rediriger vers la page Membres
-                    window.location.href = '/members';
-                  }}
+                  onClick={() => setShowUnpaidModal(true)}
+                  data-testid="open-unpaid-modal"
                 >
                   <MessageSquare className="w-5 h-5 mr-2" />
                   Voir les membres concernés
@@ -2978,6 +2978,92 @@ Le Président`;
           </CardContent>
         </Card>
       </div>
+
+      {/* Modal : membres avec cotisation(s) en attente */}
+      {showUnpaidModal && (
+        <div
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowUnpaidModal(false)}
+        >
+          <Card
+            className="bg-[#7A2020] border-2 border-yellow-500 max-w-2xl w-full max-h-[85vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <CardHeader className="flex-shrink-0 border-b border-yellow-500/30">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xl font-serif text-yellow-200 flex items-center">
+                  <CreditCard className="w-5 h-5 mr-2" />
+                  Membres avec cotisation(s) en attente
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowUnpaidModal(false)}
+                  className="text-yellow-200 hover:bg-yellow-500/10"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="flex-1 overflow-y-auto p-4">
+              {(() => {
+                const unpaid = (members || [])
+                  .filter((m) => Number(m.situation_cotisation || 0) > 0)
+                  .sort((a, b) => Number(b.situation_cotisation) - Number(a.situation_cotisation));
+                if (unpaid.length === 0) {
+                  return (
+                    <p className="text-gray-200 text-center py-10">
+                      🎉 Aucun membre n'a de cotisation en retard
+                    </p>
+                  );
+                }
+                const totalSaisons = unpaid.reduce((s, m) => s + Number(m.situation_cotisation), 0);
+                return (
+                  <>
+                    <p className="text-yellow-200 mb-3 text-sm">
+                      <strong>{unpaid.length}</strong> membre(s) — <strong>{totalSaisons}</strong> saison(s) dues — total{' '}
+                      <strong>{totalSaisons * 200} €</strong>
+                    </p>
+                    <div className="space-y-2">
+                      {unpaid.map((m) => (
+                        <div
+                          key={m.id}
+                          className="bg-black/40 border border-yellow-500/30 rounded-lg p-3 flex items-center justify-between"
+                          data-testid={`unpaid-row-${m.id}`}
+                        >
+                          <div>
+                            <h3 className="text-white font-serif font-semibold text-base">{m.nom_complet}</h3>
+                            <p className="text-yellow-300 text-sm">
+                              {m.situation_cotisation} saison{m.situation_cotisation > 1 ? 's' : ''} · {Number(m.situation_cotisation) * 200} €
+                              {m.telephone ? ` · 📱 ${m.telephone}` : ''}
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => { window.location.href = '/members'; }}
+                            className="border-yellow-500/40 text-yellow-200 hover:bg-yellow-500/10"
+                          >
+                            Profil
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                );
+              })()}
+            </CardContent>
+            <div className="flex-shrink-0 p-4 border-t border-yellow-500/30">
+              <Button
+                onClick={() => setShowUnpaidModal(false)}
+                className="w-full bg-yellow-600 hover:bg-yellow-700 text-white"
+              >
+                Fermer
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
 
       {/* ========== SECTION 3.5 : PAIEMENTS EN ATTENTE ========== */}
       {paiementsEnAttente.length > 0 && (
@@ -3007,9 +3093,25 @@ Le Président`;
                           <p className="text-gray-400 text-sm mt-1">
                             Payé le {paiement.date_paiement} • {paiement.endroit}
                           </p>
-                          <p className="text-gray-500 text-xs mt-1">
-                            Signalé le {paiement.date_signalement?.split('T')[0]}
-                          </p>
+                          {(() => {
+                            const declarantId = paiement.declarant_id;
+                            const isSelf = !declarantId || declarantId === paiement.membre_id;
+                            const declarant = isSelf
+                              ? null
+                              : members.find((m) => m.id === declarantId);
+                            return (
+                              <p className="text-gray-500 text-xs mt-1">
+                                Signalé le {paiement.date_signalement?.split('T')[0]}
+                                {isSelf ? (
+                                  <span className="ml-2 text-blue-300">par le membre lui-même</span>
+                                ) : (
+                                  <span className="ml-2 text-emerald-300">
+                                    par le trésorier{declarant ? ` (${declarant.nom_complet})` : ''}
+                                  </span>
+                                )}
+                              </p>
+                            );
+                          })()}
                         </div>
                         <div className="flex gap-2">
                           <Button
