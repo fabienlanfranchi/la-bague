@@ -1650,6 +1650,7 @@ const Dashboard = () => {
   const [nonRepondants, setNonRepondants] = useState([]);
   const [loadingRelance, setLoadingRelance] = useState(false);
   const [showRelanceModal, setShowRelanceModal] = useState(false);  // Modal de relance WhatsApp
+  const [showRelanceCotisationModal, setShowRelanceCotisationModal] = useState(false);  // Modal de relance cotisation
   const [stats, setStats] = useState({
     totalMembers: 0,
     avgPresenceGlobal: 0,
@@ -2202,6 +2203,61 @@ Le Président`;
   const copyMessage = () => {
     navigator.clipboard.writeText(getMessageRelance());
     toast.success('Message copié !');
+  };
+
+  // ====== RELANCE COTISATIONS (même pattern que sondage) ======
+  // Liste des membres en retard de cotisation
+  const membresEnRetardCotisation = (members || [])
+    .filter((m) => Number(m.situation_cotisation || 0) > 0)
+    .sort((a, b) => Number(b.situation_cotisation) - Number(a.situation_cotisation));
+
+  // Message générique de rappel de cotisation
+  const getMessageRelanceCotisation = () => {
+    const appUrl = `https://labagueimperiale.optizioni.app/profil`;
+    return `💰 *Rappel - La Bague Impériale*
+
+Bonjour,
+
+Notre comptabilité indique que votre cotisation n'a pas été réglée. Merci de régulariser votre situation dans les meilleurs délais.
+
+Une cotisation = 200 € par saison.
+
+👉 Voir mon profil et payer : ${appUrl}
+
+Cordialement,
+Le Bureau de La Bague Impériale`;
+  };
+
+  // Copier les numéros des membres en retard
+  const copyTelephonesCotisation = () => {
+    const telephones = membresEnRetardCotisation
+      .filter((m) => m.telephone)
+      .map((m) => m.telephone.replace(/\s/g, ''))
+      .join('\n');
+    if (!telephones) {
+      toast.warning('Aucun numéro de téléphone enregistré pour les retardataires');
+      return;
+    }
+    navigator.clipboard.writeText(telephones);
+    toast.success(
+      `${membresEnRetardCotisation.filter((m) => m.telephone).length} numéro(s) copié(s)`
+    );
+  };
+
+  // Copier le message de rappel cotisation
+  const copyMessageCotisation = () => {
+    navigator.clipboard.writeText(getMessageRelanceCotisation());
+    toast.success('Message copié !');
+  };
+
+  // Ouvrir la modal de relance cotisation
+  const handleRelanceCotisation = () => {
+    if (membresEnRetardCotisation.length === 0) {
+      toast.info('Aucun membre en retard de cotisation 🎉');
+      return;
+    }
+    setShowUnpaidModal(false);
+    setShowRelanceCotisationModal(true);
   };
 
   // Copier numéros ET message pour SMS (solution simple et fiable)
@@ -3053,14 +3109,134 @@ Le Président`;
                 );
               })()}
             </CardContent>
-            <div className="flex-shrink-0 p-4 border-t border-yellow-500/30">
+            <div className="flex-shrink-0 p-4 border-t border-yellow-500/30 space-y-2">
+              <Button
+                onClick={handleRelanceCotisation}
+                disabled={membresEnRetardCotisation.length === 0}
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-serif font-bold"
+                data-testid="open-relance-cotisation-btn"
+              >
+                <Phone className="w-5 h-5 mr-2" />
+                Relancer par WhatsApp ({membresEnRetardCotisation.length})
+              </Button>
               <Button
                 onClick={() => setShowUnpaidModal(false)}
-                className="w-full bg-yellow-600 hover:bg-yellow-700 text-white"
+                variant="outline"
+                className="w-full border-yellow-500/40 text-yellow-200 hover:bg-yellow-500/10"
               >
                 Fermer
               </Button>
             </div>
+          </Card>
+        </div>
+      )}
+
+      {/* ========== MODAL RELANCE COTISATION (copie du flow sondage) ========== */}
+      {showRelanceCotisationModal && (
+        <div
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowRelanceCotisationModal(false)}
+        >
+          <Card
+            className="bg-[#7A2020] border-2 border-[#D4A024] max-w-2xl w-full max-h-[85vh] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <CardHeader className="border-b border-[#D4A024]/30">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-2xl font-serif text-[#D4A024] flex items-center">
+                  <Send className="w-6 h-6 mr-2" />
+                  Relance Cotisation WhatsApp
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowRelanceCotisationModal(false)}
+                  className="text-[#D4A024] hover:bg-[#D4A024]/10"
+                  data-testid="close-relance-cotisation-btn"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+              <p className="text-sm text-gray-300 mt-2">
+                {membresEnRetardCotisation.length} membre(s) en retard de cotisation
+              </p>
+            </CardHeader>
+            <CardContent className="pt-4 overflow-y-auto max-h-[60vh]">
+              {/* Liste des membres en retard */}
+              <div className="mb-6">
+                <h3 className="text-white font-semibold mb-3 flex items-center">
+                  <Users className="w-4 h-4 mr-2 text-[#D4A024]" />
+                  Membres à relancer
+                </h3>
+                <div className="bg-black/30 rounded-lg p-3 max-h-40 overflow-y-auto">
+                  {membresEnRetardCotisation.map((m) => (
+                    <div
+                      key={m.id}
+                      className="flex items-center justify-between py-1 border-b border-gray-700 last:border-0"
+                    >
+                      <span className="text-white text-sm">
+                        {m.nom_complet}
+                        <span className="text-yellow-400 text-xs ml-2">
+                          · {m.situation_cotisation} sais. · {Number(m.situation_cotisation) * 200} €
+                        </span>
+                      </span>
+                      <span className="text-gray-400 text-xs font-mono">
+                        {m.telephone || 'Pas de tel.'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Bouton copier numéros */}
+                <Button
+                  onClick={copyTelephonesCotisation}
+                  variant="outline"
+                  className="w-full mt-3 border-green-600/50 text-green-400 hover:bg-green-600/10"
+                  data-testid="copy-tels-cotisation-btn"
+                >
+                  <Phone className="w-4 h-4 mr-2" />
+                  Copier tous les numéros (
+                  {membresEnRetardCotisation.filter((m) => m.telephone).length}
+                  )
+                </Button>
+              </div>
+
+              {/* Message pré-formaté */}
+              <div className="mb-6">
+                <h3 className="text-white font-semibold mb-3 flex items-center">
+                  <MessageSquare className="w-4 h-4 mr-2 text-[#D4A024]" />
+                  Message à envoyer
+                </h3>
+                <div className="bg-black/30 rounded-lg p-4 text-gray-300 text-sm whitespace-pre-wrap">
+                  {getMessageRelanceCotisation()}
+                </div>
+
+                {/* Bouton copier message */}
+                <Button
+                  onClick={copyMessageCotisation}
+                  variant="outline"
+                  className="w-full mt-3 border-blue-600/50 text-blue-400 hover:bg-blue-600/10"
+                  data-testid="copy-msg-cotisation-btn"
+                >
+                  <Copy className="w-4 h-4 mr-2" />
+                  Copier le message
+                </Button>
+              </div>
+
+              {/* Instructions */}
+              <div className="bg-[#D4A024]/10 border border-[#D4A024]/30 rounded-lg p-4">
+                <h4 className="text-[#D4A024] font-semibold mb-2">📱 Comment envoyer ?</h4>
+                <ol className="text-sm text-gray-300 space-y-2">
+                  <li>1. Cliquez sur <strong>"Copier tous les numéros"</strong></li>
+                  <li>2. Sur WhatsApp, créez une <strong>Liste de diffusion</strong> avec ces numéros</li>
+                  <li>3. Cliquez sur <strong>"Copier le message"</strong></li>
+                  <li>4. Collez et envoyez dans la liste de diffusion</li>
+                </ol>
+                <p className="text-xs text-gray-500 mt-3">
+                  💡 Une liste de diffusion permet d'envoyer un message à plusieurs contacts sans créer de groupe.
+                </p>
+              </div>
+            </CardContent>
           </Card>
         </div>
       )}
