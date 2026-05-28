@@ -5944,33 +5944,132 @@ PHOTOS_BASE_URL = "http://51.68.122.192/cigares/photos_cigares/"
 
 @api_router.get("/cigare-photo/{photo_name:path}")
 async def get_cigare_photo(photo_name: str):
-    """Proxy pour servir les photos de cigares depuis le serveur externe"""
+    """Proxy pour servir les photos de cigares :
+    - Si le nom commence par 'custom_<id>' : sert depuis MongoDB (photos uploadées)
+    - Sinon : proxy vers le serveur externe historique
+    """
     try:
-        # Nettoyer le nom du fichier
         clean_name = photo_name.replace('./photos_cigares/', '').replace('photos_cigares/', '')
+
+        # 1) Photo custom uploadée (stockée en base64 dans MongoDB)
+        if clean_name.startswith('custom_'):
+            # Extraire l'id du cigare (ex: custom_863 ou custom_863.jpg)
+            cigare_id_str = clean_name.replace('custom_', '').split('.')[0]
+            doc = await db.cigares_photos_uploaded.find_one({"cigare_id": cigare_id_str})
+            if not doc:
+                raise HTTPException(status_code=404, detail="Photo custom non trouvée")
+            raw_b64 = doc.get('base64_data', '')
+            content_type = doc.get('content_type', 'image/jpeg')
+            # Si stocké au format data URI, extraire la partie base64
+            if raw_b64.startswith('data:'):
+                try:
+                    header, raw_b64 = raw_b64.split(',', 1)
+                    if 'base64' in header and ';' in header:
+                        content_type = header.split(':', 1)[1].split(';')[0] or content_type
+                except Exception:
+                    pass
+            binary = base64.b64decode(raw_b64)
+            return StreamingResponse(
+                iter([binary]),
+                media_type=content_type,
+                headers={
+                    "Cache-Control": "public, max-age=3600",
+                    "Access-Control-Allow-Origin": "*"
+                }
+            )
+
+        # 2) Photo historique (serveur externe)
         photo_url = f"{PHOTOS_BASE_URL}{clean_name}"
-        
         async with httpx.AsyncClient(verify=False, timeout=10.0) as client:
             response = await client.get(photo_url)
-            
             if response.status_code != 200:
                 raise HTTPException(status_code=404, detail="Photo non trouvée")
-            
-            # Déterminer le type de contenu
             content_type = response.headers.get('content-type', 'image/jpeg')
-            
             return StreamingResponse(
                 iter([response.content]),
                 media_type=content_type,
                 headers={
-                    "Cache-Control": "public, max-age=86400",  # Cache 24h
+                    "Cache-Control": "public, max-age=86400",
                     "Access-Control-Allow-Origin": "*"
                 }
             )
+    except HTTPException:
+        raise
     except httpx.RequestError as e:
         raise HTTPException(status_code=502, detail=f"Erreur de connexion au serveur de photos: {str(e)}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
+
+
+@api_router.post("/cigares/{cigare_id}/upload-photo")
+async def upload_cigare_photo(cigare_id: str, file: UploadFile = File(...)):
+    """Uploader une photo custom pour un cigare.
+    L'image est stockée en base64 dans MongoDB (collection cigares_photos_uploaded)
+    et la colonne MySQL `cigares.photo` est mise à jour avec 'custom_<id>'."""
+    # Vérifier le type de fichier
+    if not file.content_type or not file.content_type.startswith('image/'):
+        raise HTTPException(status_code=400, detail="Le fichier doit être une image")
+
+    contents = await file.read()
+    # Limite 5 Mo
+    if len(contents) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Image trop grande (max 5 Mo)")
+
+    # Vérifier que le cigare existe
+    try:
+        cigare_id_int = int(cigare_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="cigare_id invalide")
+
+    with get_mysql_connection() as conn:
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        cursor.execute("SELECT id FROM cigares WHERE id = %s", (cigare_id_int,))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="Cigare non trouvé")
+
+        # Stocker en MongoDB
+        b64 = base64.b64encode(contents).decode('utf-8')
+        await db.cigares_photos_uploaded.update_one(
+            {"cigare_id": str(cigare_id_int)},
+            {"$set": {
+                "cigare_id": str(cigare_id_int),
+                "base64_data": b64,
+                "content_type": file.content_type,
+                "size_bytes": len(contents),
+                "uploaded_at": datetime.now(timezone.utc).isoformat(),
+            }},
+            upsert=True
+        )
+
+        # Mettre à jour MySQL pour pointer vers la photo custom
+        photo_ref = f"custom_{cigare_id_int}"
+        cursor.execute("UPDATE cigares SET photo = %s WHERE id = %s", (photo_ref, cigare_id_int))
+        conn.commit()
+
+    return {
+        "success": True,
+        "message": "Photo uploadée avec succès",
+        "photo": photo_ref,
+        "size_bytes": len(contents),
+    }
+
+
+@api_router.delete("/cigares/{cigare_id}/photo")
+async def delete_cigare_photo(cigare_id: str):
+    """Supprimer la photo custom d'un cigare (réinitialise la colonne photo)."""
+    try:
+        cigare_id_int = int(cigare_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="cigare_id invalide")
+
+    await db.cigares_photos_uploaded.delete_one({"cigare_id": str(cigare_id_int)})
+
+    with get_mysql_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("UPDATE cigares SET photo = NULL WHERE id = %s", (cigare_id_int,))
+        conn.commit()
+
+    return {"success": True, "message": "Photo supprimée"}
 
 
 @api_router.get("/cigares-filtres")

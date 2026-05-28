@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useUser } from '../context/UserContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -128,6 +128,10 @@ const Cigarotheque = () => {
   // Modal détail
   const [selectedCigare, setSelectedCigare] = useState(null);
   const [showDetail, setShowDetail] = useState(false);
+
+  // Upload photo cigare (admin)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const photoFileInputRef = useRef(null);
   
   // Modal édition (admin)
   const [showEditModal, setShowEditModal] = useState(false);
@@ -1077,6 +1081,55 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
       console.error(error);
     } finally {
       setEditLoading(false);
+    }
+  };
+
+  // Upload d'une photo custom pour un cigare (admin)
+  const handleUploadCigarePhoto = async (cigareId, file) => {
+    if (!cigareId || !file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Le fichier doit être une image');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image trop grande (max 5 Mo)');
+      return;
+    }
+    setUploadingPhoto(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await axios.post(`${API}/cigares/${cigareId}/upload-photo`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      toast.success('Photo uploadée avec succès');
+      // Mettre à jour le cigare sélectionné + busting cache via timestamp
+      const newPhoto = res.data.photo;
+      setSelectedCigare((prev) => prev ? { ...prev, photo: newPhoto, _photo_v: Date.now() } : prev);
+      loadCigares();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Erreur lors de l'upload");
+      console.error(error);
+    } finally {
+      setUploadingPhoto(false);
+      if (photoFileInputRef.current) photoFileInputRef.current.value = '';
+    }
+  };
+
+  // Supprimer la photo custom d'un cigare
+  const handleDeleteCigarePhoto = async (cigareId) => {
+    if (!window.confirm('Supprimer la photo de ce cigare ?')) return;
+    setUploadingPhoto(true);
+    try {
+      await axios.delete(`${API}/cigares/${cigareId}/photo`);
+      toast.success('Photo supprimée');
+      setSelectedCigare((prev) => prev ? { ...prev, photo: null } : prev);
+      loadCigares();
+    } catch (error) {
+      toast.error("Erreur lors de la suppression");
+      console.error(error);
+    } finally {
+      setUploadingPhoto(false);
     }
   };
 
@@ -2385,11 +2438,65 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
                 {selectedCigare.photo && (
                   <div className="relative rounded-lg overflow-hidden bg-black/60">
                     <img 
-                      src={getPhotoUrl(selectedCigare.photo)} 
+                      src={`${getPhotoUrl(selectedCigare.photo)}${selectedCigare._photo_v ? `?v=${selectedCigare._photo_v}` : ''}`} 
                       alt={`${selectedCigare.marque || ''} ${selectedCigare.gamme || ''}`}
                       className="w-full max-h-[300px] object-contain mx-auto"
-                      onError={(e) => { e.target.parentElement.style.display = 'none'; }}
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                      data-testid="cigare-detail-photo"
                     />
+                  </div>
+                )}
+
+                {/* Upload photo (admin uniquement) */}
+                {isAdmin && (
+                  <div className="bg-black/40 rounded-lg p-4 border border-[#D4A024]/30">
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <div>
+                        <p className="text-[#D4A024] font-semibold text-sm">
+                          {selectedCigare.photo ? 'Photo du cigare' : 'Aucune photo'}
+                        </p>
+                        <p className="text-gray-400 text-xs">
+                          {selectedCigare.photo
+                            ? 'Remplacer ou supprimer la photo'
+                            : 'Ajouter une photo pour ce cigare (JPG/PNG, max 5 Mo)'}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          ref={photoFileInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) handleUploadCigarePhoto(selectedCigare.id, f);
+                          }}
+                          data-testid="upload-cigare-photo-input"
+                        />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-[#D4A024]/40 text-[#D4A024] hover:bg-[#D4A024]/10"
+                          onClick={() => photoFileInputRef.current?.click()}
+                          disabled={uploadingPhoto}
+                          data-testid="upload-cigare-photo-btn"
+                        >
+                          {uploadingPhoto ? 'Envoi…' : (selectedCigare.photo ? 'Remplacer' : 'Uploader')}
+                        </Button>
+                        {selectedCigare.photo && String(selectedCigare.photo).startsWith('custom_') && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-red-500/40 text-red-400 hover:bg-red-500/10"
+                            onClick={() => handleDeleteCigarePhoto(selectedCigare.id)}
+                            disabled={uploadingPhoto}
+                            data-testid="delete-cigare-photo-btn"
+                          >
+                            Supprimer
+                          </Button>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 )}
 
