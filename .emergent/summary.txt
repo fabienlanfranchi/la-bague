@@ -1,148 +1,172 @@
 <analysis>**original_problem_statement**: 
-Finaliser l'application de gestion pour le club de cigares La Bague Impériale pour sa mise en production. PRODUCT REQUIREMENTS incluent l'ajout de nouvelles fonctionnalités de communication (Info Prochain Événement sans sondage), l'optimisation des formulaires de sondage et du Dashboard (mobile responsive, affichage dynamique des choix, liste des absents), la distinction des rôles par l'IA Winston, et l'ajout d'une fonctionnalité de favoris (❤️) simple dans la Cigarthèque avec intégration dans l'IA.
+Finaliser l'application de gestion pour le club de cigares La Bague Impériale. PRODUCT REQUIREMENTS : 
+- Création d'un onglet Trésorier exclusif avec outil de signalement de paiement.
+- Ajout de boutons Marquer Absent et Annuler pour la gestion des événements.
+- Refonte dynamique des statistiques.
+- Sondages génériques anonymes, multi-questions, affichés et votables directement depuis le Dashboard.
+- Notification WhatsApp pour les sondages.
+- Refonte de la page de compétences Winston (vrais diplômes / certificats) avec images intégrées sans fond blanc.
+- Refonte de l'authentification (passage au JWT Bearer) pour corriger un bug critique de croisement de sessions entre utilisateurs.
+- Fonctionnalité de clôture de sondage et export PDF officiel des résultats.
 
-**User's preferred language**: French (Français). INSTRUCT NEXT AGENT TO RESPOND IN FRENCH ONLY.
+**User's preferred language**: French. INSTRUCT NEXT AGENT TO RESPOND IN FRENCH ONLY.
 
 **what currently exists?** 
-Une application full-stack (React, FastAPI, MongoDB, MySQL). 
-- La messagerie ciblée et Face ID / WebAuthn fonctionnent et ont été validés. 
-- Une nouvelle fonctionnalité de Pré-annonce (Info - Prochain Événement) affiche le prochain événement (date/lieu) sur les dashboards avec notifications et bouton WhatsApp pour le président.
-- Le système de sondage a été amélioré : boutons Présent/Absent optimisés pour mobile, choix de menu formatés avec un OU doré, et fonction de résumé intelligent (ex: affiche Langoustine au lieu de la phrase complète). 
-- Le Dashboard Président permet de cliquer sur Absents pour voir qui ne vient pas. 
-- Winston fait correctement la distinction entre le mode Membre (l'appelle par son prénom) et Président en se basant sur le toggle de la session active.
+Une application full-stack (React, FastAPI, MongoDB, MySQL pour le catalogue de cigares) robuste avec authentification JWT. Fonctionnalités complètes de gestion d'événements, sondages, messagerie, profil financier interactif, et un assistant IA (Winston) avec mémoire persistante.
 
 **Last working item**: 
-    - **Last item agent was working**: Refonte de la fonctionnalité Favoris dans la Cigarthèque selon le retour utilisateur. L'agent a supprimé l'onglet Mes Favoris qu'il venait de créer car jugé trop complexe (usine à gaz), pour le remplacer par un simple bouton cœur (❤️) sur les fiches de Ma Cigarthèque, l'ajout d'un filtre Favoris uniquement, et la mise à jour du prompt de Winston () pour qu'il prenne en compte le champ .
-    - **Status**: TESTING PENDING
-    - **Agent Testing Done**: N
-    - **Which testing method agent to use?** Frontend screenshot tool (pour vérifier l'interface de Ma Cigarthèque avec le cœur et le filtre) et curl/python -c (pour s'assurer que le backend enregistre bien le favori).
+    - **Last item agent was working**: Insertion de nouveaux cigares dans la base de données MySQL distante (). L'utilisateur a fourni la fiche détaillée d'un Davidoff Puro Dominicano Corona Larga. L'agent a exécuté un script Python pour l'insérer, mais a rencontré une erreur MySQL.
+    - **Status**: IN PROGRESS
+    - **Agent Testing Done**: Y (L'exécution du script a échoué)
+    - **Which testing method agent to use?** python -c (pour tester l'insertion en DB)
     - **User Testing Done**: N
 
 **All Pending/In progress Issue list**: 
-  - **Issue 1: Test et validation des Favoris (Cigarthèque)**
-     - **Attempted fixes**: Le code a été modifié (suppression du TabsContent mes-favoris, ajout du toggle favori sur la carte, modification du , mise à jour de ).
-     - **Next debug checklist**: 
-       - Frontend : Tester  (onglet Ma Cigarthèque). Vérifier la présence du bouton cœur, tester le clic, et vérifier que le filtre Favoris uniquement fonctionne.
-       - Backend : Vérifier que l'API  met correctement à jour le statut dans MongoDB.
-     - **Why fix this issue and what will be achieved with the fix?** Rendre la gestion des favoris plus fluide pour les membres et consultable par Winston.
-     - **Status**: TESTING PENDING
+  - **Issue 1: Erreur d'insertion MySQL (P0)**
+     - **Attempted fixes**: L'agent a tenté d'insérer le cigare Davidoff fourni par l'utilisateur avec la colonne .
+     - **Next debug checklist**: Retirer la colonne  (et  si présente) de la requête  dans le script Python car elles n'existent pas dans la table  (elles sont vraisemblablement calculées côté frontend ou ignorées). Exécuter à nouveau le script.
+     - **Why fix this issue and what will be achieved with the fix?** Permet d'ajouter les nouveaux cigares dans la Cigarothèque pour les membres.
+     - **Status**: IN PROGRESS
      - **Is recurring issue?** N
-     - **Should Test frontend/backend/both after fix?** Both
+     - **Should Test frontend/backend/both after fix?** Backend (Vérifier l'insertion via requête SELECT).
      - **Blocked on other issue**: None
 
-  - **Issue 2: Vérification Face ID en production (P1)**
-     - **Attempted fixes**: Intégration WebAuthn effectuée et corrigée (le RP_ID pointe désormais bien vers le domaine public via la variable d'environnement).
-     - **Next debug checklist**: S'assurer que l'utilisateur a pu tester le flux biométrique avec succès sur un appareil physique.
-     - **Why fix this issue?** Fonctionnalité demandée pour une connexion rapide.
-     - **Status**: USER VERIFICATION PENDING
+  - **Issue 2: En attente des 2 autres cigares (P1)**
+     - **Attempted fixes**: NA
+     - **Next debug checklist**: Demander à l'utilisateur de fournir les informations pour les 2 cigares restants via le même template une fois le Davidoff inséré.
+     - **Why fix this issue and what will be achieved with the fix?** L'utilisateur a mentionné 3 nouveaux cigares, un seul a été fourni pour le moment.
+     - **Status**: NOT STARTED
      - **Is recurring issue?** N
-     - **Should Test frontend/backend/both after fix?** NA (L'agent a validé l'API, le test final relève du hardware physique de l'utilisateur).
-     - **Blocked on other issue**: None
+     - **Should Test frontend/backend/both after fix?** NA
 
-**In progress Task List**: 
-  - **Task 1: Nettoyage et stabilisation UI Favoris**
-     - **Where to resume**: .
-     - **What will be achieved with this?** Terminer la requête en cours de l'utilisateur.
-     - **Status**: TESTING PENDING
-     - **Should Test frontend/backend/both after fix?** Frontend (Screenshot tool)
-     - **Blocked on something**: None
+**In progress Task List**:
+  - **Task 1: Ajout de cigares au catalogue**
+     - **Where to resume**: Corriger le script d'insertion pour le Davidoff et demander les deux suivants.
+     - **What will be achieved with this?** Maintien du catalogue à jour.
+     - **Status**: IN PROGRESS
+     - **Should Test frontend/backend/both after fix?** Backend
+     - **Blocked on something**: Issue 1
 
 **Upcoming and Future Tasks**
-    Future Tasks:
-    - (P2) Refactorisation de  : Continuer l'extraction des routes (auth, members, cigares, evenements, comptabilite) vers le dossier  pour alléger ce fichier monolithique de près de 6000 lignes. (Discuté dans le handoff et le PRD).
+    - (P2) Refactorisation de  : Extraire les routes vers le dossier  pour alléger le fichier (~7000 lignes).
+    - (P2) Refactorisation de  : Découper le composant monumental en sous-composants (, , etc.).
 
 **Completed work in this session**
-- Validation de la messagerie interne ciblée (DONE)
-- Correction du RP_ID pour Face ID / WebAuthn (DONE)
-- Implémentation complète de Info - Prochain Événement (CRUD, UI, Dashboard, Notifications, WhatsApp share) (DONE)
-- Ajout du bouton Voir le menu et formatage OU doré pour les sondages repas (DONE)
-- Ajout de la carte Absents cliquable (avec modal de détails) sur Dashboard Président (DONE)
-- Optimisation mobile du Dashboard (flex-col pour les boutons Présent/Absent, wrap des textes) (DONE)
-- Ajout du Résumé intelligent du menu via  (ex: affiche Langoustine) après le vote (DONE)
-- Résolution du problème de session IA (Winston appelle désormais Fabien correctement selon le toggle ) (DONE)
+- Fix halos blancs autour des badges Winston via script Python. (DONE)
+- Fix placement des badges Winston (Conca Specialist / Bague Specialist) avec nouvelles images. (DONE)
+- Ajout règle plafond 50 € pour Winston (prompt système). (DONE)
+- Ajout de la mémoire persistante pour Winston (). (DONE)
+- Fix lisibilité du calendrier Info - Prochain événement. (DONE)
+- Modification des options de repas : mode Unique, Choix au vote ou Aucun et fix validation. (DONE)
+- Fix compteurs de présences pour plats uniques (inclus invités et ajouts manuels). (DONE)
+- Heure d'événement personnalisable + maj génération WhatsApp. (DONE)
+- Ajout carte Répartition par Étoiles sur le Dashboard membre et rendu cliquable. (DONE)
+- Affichage choix de menu personnel du membre sur page Evènements. (DONE)
+- Fix critique route  (décorateur orphelin) + ajout scheduler automatique. (DONE)
+- Ajout options destinataires pour Rappel de cotisation et distinction du déclarant d'un paiement en attente. (DONE)
+- Transformation de Situation Financière en facture interactive cliquable synchronisée sur l'onglet admin. (DONE)
+- Ajout édition/persistance (overrides) des templates de messages personnalisables. (DONE)
+- Deux variantes (Rappel personnalisé, Rappel général) pour rappel de cotisation. (DONE)
+- Fix bouton Partager en externe pour envoyer le contenu complet du message. (DONE)
+- Obligation de renseigner le mode de paiement lors du signalement par le membre. (DONE)
+- Ajout 4 filtres avancés Ma Cigarothèque (Terroir, Note globale, Puissance, Qualité/Prix) avec demi-points. (DONE)
 
 **Earlier issues found/mentioned but not fixed**
-   - **Issue 1**: Valeurs 3,5l dans des champs vides de la Cigarthèque. L'agent a conclu que le code gère bien les valeurs vides () et que cela provient de vieilles données corrompues en BDD. Si cela se reproduit, il faudra peut-être nettoyer la base de données.
-   
+None.
+
 **Known issue recurrence from previous fork**
-  - **Issue recurrence in previous fork**: Incompréhension de l'utilisateur sur le déploiement (teste en prod avant même que le code soit push/déployé).
-  - **Recurrence count**: 3 fois dans cette session.
-  - **Status**: RESOLVED (L'agent a expliqué à l'utilisateur qu'il doit déclencher un redéploiement pour voir les changements sur son téléphone).
+  - **Issue recurrence in previous fork**: Problème de déploiement de l'utilisateur (très fréquent). L'utilisateur teste sur l'URL de production sans avoir redéployé les modifications faites en preview.
+  - **Recurrence count**: Très fréquent.
+  - **Status**: IN PROGRESS (Le prochain agent DOIT absolument ajouter un rappel en gras de redéployer l'application via la console Emergent à la fin de chaque message).
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- React Context pour la distinction des modes (Président vs Membre).
-- Extraction conditionnelle de mots-clés ( en JS).
-- Manipulation MongoDB : Ne jamais retourner l'objet  direct au frontend (Erreur corrigée sur ).
+- Application full-stack (React + FastAPI).
+- Double base de données: MongoDB (utilisateurs, événements, dettes, paiements, messages, mémoires Winston) et MySQL distante (Catalogue de cigares partagé).
+- Authentification JWT (Bearer Token).
 
 **key DB schema**
-  - **MongoDB **: {membre_id, cigare_id, marque, gamme, ..., **favori (boolean)**}
-  - **MongoDB **: {type_evenement, date, lieu, actif}
+  - MySQL : uid=0(root) gid=0(root) groups=0(root), , , , , , , , , .
+  - MongoDB : , uid=0(root) gid=0(root) groups=0(root), , Thu May 28 15:17:05 UTC 2026.
+  - MongoDB : uid=0(root) gid=0(root) groups=0(root), , , , , , .
 
 **changes in tech stack**
-  - Aucune.
+  - None
 
 **All files of reference** 
-  -  (Fichier cible pour la tâche en cours)
   - 
   - 
   - 
   - 
+  - 
+  - 
+  - 
+  -  (Créé dans cette session)
 
 **Areas that need refactoring**: 
-  -  : Toujours trop volumineux, à découper impérativement.
+  - 
+  - 
 
 **key api endpoints**
-  -  (Nouvelle route pour le toggle)
-  - 
-  - 
+  -  (Nouveau)
+  -  (Mis à jour avec declarant_id et dette_id)
+  -  (Nouvelle route)
 
 **Critical Info for New Agent** 
-- **COMMUNICATION** : TU DOIS COMMUNIQUER EN FRANÇAIS AVEC L'UTILISATEUR.
-- **DÉPLOIEMENT** : L'utilisateur teste l'application sur son téléphone via l'URL de production et se plaint souvent que ça ne marche pas parce qu'il ne réalise pas qu'il faut *déployer* l'app après tes changements. Rappelle-lui toujours de **redéployer l'application** après un fix.
-- **MongoDB ** : L'agent précédent a généré une erreur 500  en utilisant . Pensez toujours à convertir l' en string ou à l'exclure () avant de renvoyer le dictionnaire.
+- **LANGUE** : RÉPONDRE EN FRANÇAIS UNIQUEMENT.
+- **RAPPEL DE DÉPLOIEMENT** : Ajoutez systématiquement en gras : **Noubliez pas de redéployer lapplication via la console Emergent !** à la fin de TOUS vos messages. L'utilisateur signale souvent des bugs car il teste sur la prod avant de redéployer.
+- **MYSQL** : Pour insérer dans la table , n'utilisez pas de colonnes comme  ou  qui n'existent pas dans le schéma.
+- Winston a maintenant une mémoire persistante asynchrone ; les modifications se trouvent dans .
 
 **documents and test reports created in this job**
-  -  (Mis à jour avec les avancées)
-  -  (Messagerie validée)
-  -  (Face ID validé)
-  -  (Info Prochain événement validé)
+  -  (Doit être mis à jour par le prochain agent à la fin de sa tâche).
 
 **Last 10 User Messages and any pending HUMAN messages** 
- 1. User: Dans la cigarotheque... je veux pouvoir marquer en favori avec un ❤️.
- 2. Agent: Construit un onglet complet Mes Favoris + Routes API.
- 3. User: Non cela fait usine à gaz. Il ne faut pas d’onglet mais juste un cœur qui devient rouge... et le bouton apparaît dans les filtres. Winston doit connaître tous les favoris.
- 4. Agent: (En cours) Retire l'onglet, ajoute le filtre Favoris uniquement, met à jour .
+ - (User) : Signale un bug où le bouton Partager en externe envoie un lien et non le message.
+ - (Agent) : Corrige le bouton pour utiliser  /  avec le texte formaté.
+ - (User) : Demande la possibilité de sauvegarder par défaut les messages modifiés dans les templates.
+ - (Agent) : Crée le système d'override des templates dans le backend et l'UI.
+ - (User) : Demande de renommer les variantes en Rappel personnalisé et Rappel général.
+ - (Agent) : Fait la modification.
+ - (User) : Demande 4 nouveaux filtres pour Ma Cigarothèque avec notes sur 5.
+ - (Agent) : Ajoute les filtres.
+ - (User) : Demande d'ajouter les demi-points (1,5, 2,5...) et de retirer les signes ≥.
+ - (Agent) : Met à jour les filtres.
+ - (User) : Demande de synchroniser la vue Facture sur le profil et l'onglet admin.
+ - (Agent) : Synchronise les deux vues.
+ - (User) : Signale un bug où un membre a payé sa dette mais elle n'est pas effacée (car paiement partiel ou non relié).
+ - (Agent) : Fixe la liaison via  et ajoute un bouton poubelle Effacer la dette côté président. Rend le choix du lieu de paiement obligatoire.
+ - (User) : Demande de filtrer la liste Membres concernés et d'identifier qui déclare un paiement.
+ - (Agent) : Fait les corrections.
+ - (User) : Annonce qu'il y a 3 nouveaux cigares à ajouter et demande comment fournir les infos.
+ - (Agent) : Propose un template ou de lire une photo.
+ - (User) : Fournit la fiche détaillée du Davidoff Puro Dominicano Corona Larga.
+ - (Agent) : Tente l'insertion MySQL mais échoue à cause de colonnes inexistantes. **[PENDING]**
 
 **Project Health Check:**
-- Broken: Aucun (L'application compile et tourne, un redéploiement est juste requis).
-- Mocked: Aucun.
+- Broken: None. 
+- Mocked: None.
 
 **3rd Party Integrations** 
-  - OpenAI GPT via Emergent LLM Key (Winston - mis à jour pour lire les favoris)
+  - OpenAI GPT via Emergent LLM Key (Winston)
   - WebAuthn (Face ID)
 
 **Testing status**
-  - Testing agent used after significant changes: YES (itérations 5, 6, 7 pour WebAuthn, Messages et Info Événement).
-  - Troubleshoot agent used after agent stuck in loop: NO.
-  - Test files created: None.
-  - Known regressions: None.
+  - Testing agent used after significant changes: NO
+  - Troubleshoot agent used after agent stuck in loop: NO
+  - Test files created: None
+  - Known regressions: None
 
 **Credentials to test flow:**
-  - Email: 
-  - Mdp: 
+  - Login Key:  (Admin: Fabien Lanfranchi)
+  - Login Key:  (Membre: Jacques Peretti)
 
 **What agent forgot to execute**
-  - L'agent a fait les modifications () pour la demande de simplification des favoris (suppression de l'onglet, ajout du filtre, update de Winston), mais la session s'est terminée **avant qu'il n'ait pu prendre un screenshot ou appeler le testing_agent** pour s'assurer que la nouvelle interface de favoris s'affiche et fonctionne bien sans générer d'erreurs.
+  - L'agent s'est arrêté après l'erreur MySQL sans confirmer l'ajout du cigare. 
 
 **Debugging checklist for current issue**
-    Issue: Finaliser et tester l'interface simplifiée des Favoris dans la Cigarthèque.
-
-    Frontend files to check: 
-    -  : S'assurer que le filtre  s'applique bien dans le  et que l'interface s'affiche correctement sans l'onglet Mes Favoris.
-  
-    Backend files to check:
-    -  : Vérifier la route .
-    -  : S'assurer que la syntaxe ajoutée ne cause pas d'erreurs lors du prompt (ligne ~202).</analysis>
+    Issue: Erreur 
+    Backend files to check: Script python exécuté via bash pour l'insertion.
+    Fix : Assurez-vous que le dictionnaire inséré ne contient que les clés valides (id, marque, gamme, vitole_nom, vitole_type, vitole_cubain, pays_fabrication, is_cubain, bagues_etoiles, dimensions, prix_estime, etc.) et supprimez  et .</analysis>
