@@ -347,6 +347,35 @@ const Comptabilite = () => {
     }
   };
 
+  // Modal de correction de caisse (admin)
+  const [editingCaisseTrans, setEditingCaisseTrans] = useState(null);  // transaction en cours d'édition
+  const [newCaisse, setNewCaisse] = useState('');
+  const [savingCaisse, setSavingCaisse] = useState(false);
+
+  const openEditCaisse = (trans) => {
+    setEditingCaisseTrans(trans);
+    setNewCaisse('');
+  };
+
+  const submitEditCaisse = async () => {
+    if (!editingCaisseTrans || !newCaisse) return;
+    setSavingCaisse(true);
+    try {
+      const res = await axios.patch(`${API}/transactions/${editingCaisseTrans.id}/caisse`, {
+        caisse: newCaisse,
+      });
+      toast.success(res.data?.message || 'Caisse corrigée');
+      setEditingCaisseTrans(null);
+      setNewCaisse('');
+      await loadData();
+    } catch (error) {
+      console.error(error);
+      toast.error(error.response?.data?.detail || 'Erreur lors de la correction');
+    } finally {
+      setSavingCaisse(false);
+    }
+  };
+
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -827,9 +856,18 @@ const Comptabilite = () => {
                             {trans.detail || '-'}
                           </td>
                           <td className="p-3">
-                            <Badge className="bg-[#7A2020]/50 text-[#D4A024] border border-[#D4A024]/30 text-sm px-2 py-1">
-                              {trans.endroit}
-                            </Badge>
+                            <button
+                              type="button"
+                              onClick={() => openEditCaisse(trans)}
+                              className="group inline-flex items-center gap-1"
+                              data-testid={`edit-caisse-${trans.id}`}
+                              title="Cliquer pour corriger la caisse"
+                            >
+                              <Badge className="bg-[#7A2020]/50 text-[#D4A024] border border-[#D4A024]/30 text-sm px-2 py-1 group-hover:bg-[#D4A024]/20 cursor-pointer transition">
+                                {trans.endroit}
+                              </Badge>
+                              <span className="text-[10px] text-gray-500 group-hover:text-[#D4A024] transition">✎</span>
+                            </button>
                           </td>
                           <td className="p-3">
                             <Button
@@ -1273,6 +1311,102 @@ const Comptabilite = () => {
                 >
                   <DollarSign className="w-4 h-4 mr-2" />
                   Confirmer le règlement
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Modal : corriger la caisse d'une transaction */}
+      {editingCaisseTrans && (
+        <div
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+          onClick={() => setEditingCaisseTrans(null)}
+        >
+          <Card
+            className="bg-[#1a1a1a] border-2 border-[#D4A024] max-w-md w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <CardHeader className="border-b border-[#D4A024]/30">
+              <CardTitle className="text-[#D4A024] flex items-center justify-between">
+                <span>Corriger la caisse</span>
+                <button
+                  type="button"
+                  onClick={() => setEditingCaisseTrans(null)}
+                  className="text-gray-400 hover:text-white"
+                  data-testid="close-edit-caisse"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4 space-y-4">
+              <div className="bg-black/40 rounded-lg p-3 text-sm">
+                <p className="text-gray-300">
+                  <span className="text-gray-500">Transaction :</span>{' '}
+                  <span className="text-white font-semibold">
+                    {editingCaisseTrans.type === 'recette' ? '+' : '-'}
+                    {formatMontant(editingCaisseTrans.montant)}
+                  </span>{' '}
+                  <span className="text-gray-400">
+                    · {editingCaisseTrans.objet} · {getMemberName(editingCaisseTrans.membre_id)}
+                  </span>
+                </p>
+                <p className="text-gray-300 mt-1">
+                  <span className="text-gray-500">Caisse actuelle :</span>{' '}
+                  <Badge className="bg-red-900/30 text-red-300 border border-red-600/40">
+                    {editingCaisseTrans.endroit}
+                  </Badge>
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">
+                  Nouvelle caisse créditée *
+                </label>
+                <div className="space-y-1">
+                  {['Compte Bancaire', 'Chez Fabien', 'Chez Jacques', 'PayPal', 'Asso Connect'].map(
+                    (c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setNewCaisse(c)}
+                        className={`w-full text-left px-3 py-2 rounded border transition ${
+                          newCaisse === c
+                            ? 'bg-[#D4A024]/30 border-[#D4A024] text-[#D4A024]'
+                            : 'bg-black/40 border-[#D4A024]/30 text-white hover:bg-[#D4A024]/10'
+                        }`}
+                        data-testid={`select-new-caisse-${c}`}
+                      >
+                        {c}
+                      </button>
+                    )
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-yellow-900/20 border border-yellow-600/30 rounded p-3 text-xs text-yellow-200">
+                ⚠️ Le solde de l'ancienne caisse sera décrédité (si elle existe) et la nouvelle
+                caisse sera créditée du montant correspondant.
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setEditingCaisseTrans(null)}
+                  className="flex-1 border-gray-600 text-gray-300 hover:bg-gray-800"
+                  disabled={savingCaisse}
+                >
+                  Annuler
+                </Button>
+                <Button
+                  onClick={submitEditCaisse}
+                  disabled={!newCaisse || savingCaisse}
+                  className="flex-1 bg-green-700 hover:bg-green-600 text-white font-bold disabled:opacity-50"
+                  data-testid="confirm-edit-caisse-btn"
+                >
+                  {savingCaisse ? 'Correction…' : 'Corriger'}
                 </Button>
               </div>
             </CardContent>

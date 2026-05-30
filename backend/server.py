@@ -1713,6 +1713,79 @@ async def get_transactions_summary():
     }
 
 
+@api_router.patch("/transactions/{transaction_id}/caisse")
+async def update_transaction_caisse(transaction_id: str, payload: dict = Body(...)):
+    """Corriger la caisse d'une transaction validée (ex: bug d'attribution).
+    Décrédite l'ancienne caisse (si elle existe) et crédite la nouvelle.
+    """
+    nouvelle_caisse = (payload or {}).get('caisse')
+    if not nouvelle_caisse:
+        raise HTTPException(status_code=400, detail="Le champ 'caisse' est requis")
+
+    transaction = await db.transactions.find_one({"id": transaction_id}, {"_id": 0})
+    if not transaction:
+        raise HTTPException(status_code=404, detail="Transaction non trouvée")
+
+    compte_mapping = {
+        "Compte": "Compte Bancaire",
+        "Compte Bancaire": "Compte Bancaire",
+        "Compte bancaire": "Compte Bancaire",
+        "chèque": "Compte Bancaire",
+        "Chèque": "Compte Bancaire",
+        "Fabien": "Chez Fabien",
+        "Chez Fabien": "Chez Fabien",
+        "Jacques": "Chez Jacques",
+        "Chez Jacques": "Chez Jacques",
+        "Enveloppe bar": "Dehors",
+        "Dehors": "Dehors",
+        "PayPal": "PayPal",
+        "Asso Connect": "Asso Connect",
+    }
+
+    ancien_endroit = transaction.get('endroit')
+    ancien_nom = compte_mapping.get(ancien_endroit, ancien_endroit)
+    nouveau_nom = compte_mapping.get(nouvelle_caisse, nouvelle_caisse)
+
+    if ancien_nom == nouveau_nom:
+        return {"message": "Aucun changement (caisse identique)", "transaction": transaction}
+
+    montant = float(transaction.get('montant') or 0)
+    sens = 1 if transaction.get('type') == 'recette' else -1
+
+    # 1) Décrédite l'ancienne caisse (si elle existe en DB)
+    ancien_compte = await db.comptes.find_one({"nom": ancien_nom}, {"_id": 0})
+    if ancien_compte:
+        nouveau_solde_anc = ancien_compte['solde'] - (sens * montant)
+        await db.comptes.update_one(
+            {"nom": ancien_nom},
+            {"$set": {"solde": nouveau_solde_anc, "updated_at": datetime.now(timezone.utc).isoformat()}}
+        )
+
+    # 2) Crédite la nouvelle caisse
+    nouveau_compte = await db.comptes.find_one({"nom": nouveau_nom}, {"_id": 0})
+    if not nouveau_compte:
+        raise HTTPException(status_code=400, detail=f"Caisse inconnue: {nouvelle_caisse}")
+    nouveau_solde_nv = nouveau_compte['solde'] + (sens * montant)
+    await db.comptes.update_one(
+        {"nom": nouveau_nom},
+        {"$set": {"solde": nouveau_solde_nv, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+
+    # 3) Mettre à jour la transaction
+    await db.transactions.update_one(
+        {"id": transaction_id},
+        {"$set": {"endroit": nouveau_nom}}
+    )
+
+    transaction['endroit'] = nouveau_nom
+    return {
+        "message": f"Caisse corrigée : {ancien_endroit} → {nouveau_nom}",
+        "transaction": transaction,
+        "ancien_solde_avant": ancien_compte['solde'] if ancien_compte else None,
+        "nouveau_solde_caisse_cible": nouveau_solde_nv,
+    }
+
+
 @api_router.delete("/transactions/{transaction_id}")
 async def delete_transaction(transaction_id: str):
     """Supprimer une transaction (et ajuster le solde du compte)
