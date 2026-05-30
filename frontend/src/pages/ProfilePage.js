@@ -30,6 +30,7 @@ const ProfilePage = () => {
   // Sélection facture : Set de keys ("cot-13", "cot-12", "dette-{id}")
   const [selectedInvoiceLines, setSelectedInvoiceLines] = useState(new Set());
   const [endroitPaiement, setEndroitPaiement] = useState('');
+  const [modePaiement, setModePaiement] = useState('');
   const [submittingInvoice, setSubmittingInvoice] = useState(false);
   
   // États pour les paramètres
@@ -55,6 +56,7 @@ const ProfilePage = () => {
     objet: '',
     montant: '',
     endroit: '',
+    mode_paiement: '',
     detail: ''
   });
   const [mesPaiements, setMesPaiements] = useState([]);
@@ -238,8 +240,8 @@ const ProfilePage = () => {
 
   // Soumettre un signalement de paiement
   const handleSubmitPaiement = async () => {
-    if (!paiementForm.objet || !paiementForm.montant || !paiementForm.endroit) {
-      toast.error('Veuillez remplir tous les champs obligatoires');
+    if (!paiementForm.objet || !paiementForm.montant || !paiementForm.endroit || !paiementForm.mode_paiement) {
+      toast.error('Veuillez remplir tous les champs obligatoires (caisse + mode de paiement)');
       return;
     }
     
@@ -255,6 +257,7 @@ const ProfilePage = () => {
           objet: paiementForm.objet,
           montant: parseFloat(paiementForm.montant),
           endroit: paiementForm.endroit,
+          mode_paiement: paiementForm.mode_paiement,
           detail: paiementForm.detail || null
         })
       });
@@ -268,6 +271,7 @@ const ProfilePage = () => {
           objet: '',
           montant: '',
           endroit: '',
+          mode_paiement: '',
           detail: ''
         });
         // Recharger les paiements
@@ -616,7 +620,11 @@ const ProfilePage = () => {
                   return;
                 }
                 if (!endroitPaiement) {
-                  toast.error('Veuillez choisir le moyen / lieu de paiement avant de valider');
+                  toast.error('Veuillez choisir la caisse créditée avant de valider');
+                  return;
+                }
+                if (!modePaiement) {
+                  toast.error('Veuillez choisir le mode de paiement avant de valider');
                   return;
                 }
                 setSubmittingInvoice(true);
@@ -633,6 +641,7 @@ const ProfilePage = () => {
                         objet: l.objet,
                         montant: l.montant,
                         endroit: endroitPaiement,
+                        mode_paiement: modePaiement,
                         detail: l.detail,
                         dette_id: l.dette_id || null,
                       }),
@@ -642,6 +651,8 @@ const ProfilePage = () => {
                     `${selected.length} paiement${selected.length > 1 ? 's' : ''} déclaré${selected.length > 1 ? 's' : ''} (${new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(totalSelectionne)}). En attente de validation par le président.`
                   );
                   setSelectedInvoiceLines(new Set());
+                  setEndroitPaiement('');
+                  setModePaiement('');
                   // Recharger les paiements pour griser les lignes déclarées
                   const paiementsRes = await fetch(`${API_URL}/api/paiements-en-attente/membre/${currentMember.id}`);
                   setMesPaiements((await paiementsRes.json()) || []);
@@ -746,12 +757,12 @@ const ProfilePage = () => {
                       </div>
                     </div>
 
-                    {/* Mode de paiement + bouton */}
+                    {/* Caisse + Mode de paiement + bouton */}
                     {selectedInvoiceLines.size > 0 && (
                       <div className="mt-4 space-y-3">
                         <div>
                           <Label className="text-gray-300 text-sm mb-1 block">
-                            Moyen / lieu de paiement <span className="text-red-400">*</span>
+                            Caisse créditée <span className="text-red-400">*</span>
                           </Label>
                           <select
                             value={endroitPaiement}
@@ -764,21 +775,49 @@ const ProfilePage = () => {
                             data-testid="invoice-endroit"
                             required
                           >
-                            <option value="" disabled>— Choisissez où / comment vous payez —</option>
-                            <option value="Compte">Virement / chèque sur le compte</option>
-                            <option value="Fabien">Espèces remises à Fabien</option>
-                            <option value="Jacques">Espèces remises à Jacques</option>
-                            <option value="Enveloppe bar">Enveloppe au bar</option>
+                            <option value="" disabled>— Où va l'argent ? —</option>
+                            <option value="Compte bancaire">Compte bancaire</option>
+                            <option value="Chez Fabien">Chez Fabien</option>
+                            <option value="Chez Jacques">Chez Jacques</option>
+                            <option value="PayPal">PayPal</option>
+                            <option value="Asso Connect">Asso Connect</option>
                           </select>
                           {!endroitPaiement && (
                             <p className="text-xs text-red-400 mt-1">
-                              Précisez le moyen de paiement pour pouvoir valider
+                              Précisez la caisse créditée
+                            </p>
+                          )}
+                        </div>
+                        <div>
+                          <Label className="text-gray-300 text-sm mb-1 block">
+                            Mode de paiement <span className="text-red-400">*</span>
+                          </Label>
+                          <div className="grid grid-cols-4 gap-2">
+                            {['Virement', 'Espèces', 'Chèque', 'CB'].map((mode) => (
+                              <button
+                                key={mode}
+                                type="button"
+                                onClick={() => setModePaiement(mode)}
+                                className={`px-2 py-2 rounded border text-xs font-semibold transition ${
+                                  modePaiement === mode
+                                    ? 'bg-[#D4A024]/30 border-[#D4A024] text-[#D4A024]'
+                                    : 'bg-black/40 border-[#D4A024]/30 text-white hover:bg-[#D4A024]/10'
+                                }`}
+                                data-testid={`invoice-mode-${mode}`}
+                              >
+                                {mode}
+                              </button>
+                            ))}
+                          </div>
+                          {!modePaiement && (
+                            <p className="text-xs text-red-400 mt-1">
+                              Précisez comment vous avez payé
                             </p>
                           )}
                         </div>
                         <Button
                           onClick={submitInvoice}
-                          disabled={submittingInvoice || !endroitPaiement}
+                          disabled={submittingInvoice || !endroitPaiement || !modePaiement}
                           className="w-full bg-green-700 hover:bg-green-600 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-bold py-3"
                           data-testid="invoice-declarer-btn"
                         >
@@ -867,7 +906,10 @@ const ProfilePage = () => {
                               {paiement.objet} - {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(paiement.montant)}
                             </p>
                             <p className="text-sm text-gray-400">
-                              {paiement.date_paiement} • {paiement.endroit}
+                              {paiement.date_paiement} • Caisse : {paiement.endroit}
+                              {paiement.mode_paiement && (
+                                <span className="ml-2 text-gray-500">• {paiement.mode_paiement}</span>
+                              )}
                             </p>
                           </div>
                           <Badge className={
@@ -1249,11 +1291,11 @@ const ProfilePage = () => {
                 />
               </div>
 
-              {/* Où / À qui */}
+              {/* Caisse (où l'argent a été versé) */}
               <div>
-                <Label className="text-gray-300 mb-2 block">Remis à / Où *</Label>
+                <Label className="text-gray-300 mb-2 block">Caisse créditée *</Label>
                 <div className="max-h-40 overflow-y-auto border border-[#D4A024]/30 rounded-lg bg-black/50">
-                  {['Compte', 'Chez Fabien', 'Chez Jacques', 'PayPal', 'Asso Connect', 'Chèque', 'Espèces'].map((lieu) => (
+                  {['Compte bancaire', 'Chez Fabien', 'Chez Jacques', 'PayPal', 'Asso Connect'].map((lieu) => (
                     <button
                       key={lieu}
                       type="button"
@@ -1263,6 +1305,7 @@ const ProfilePage = () => {
                           ? 'bg-[#D4A024]/30 text-[#D4A024]' 
                           : 'text-white hover:bg-[#D4A024]/10'
                       }`}
+                      data-testid={`paiement-caisse-${lieu}`}
                     >
                       {lieu}
                     </button>
@@ -1270,16 +1313,39 @@ const ProfilePage = () => {
                 </div>
               </div>
 
+              {/* Mode de paiement */}
+              <div>
+                <Label className="text-gray-300 mb-2 block">Mode de paiement *</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {['Virement', 'Espèces', 'Chèque', 'CB'].map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setPaiementForm(prev => ({ ...prev, mode_paiement: mode }))}
+                      className={`px-3 py-3 rounded-lg border text-sm font-semibold transition ${
+                        paiementForm.mode_paiement === mode
+                          ? 'bg-[#D4A024]/30 border-[#D4A024] text-[#D4A024]'
+                          : 'bg-black/50 border-[#D4A024]/30 text-white hover:bg-[#D4A024]/10'
+                      }`}
+                      data-testid={`paiement-mode-${mode}`}
+                    >
+                      {mode}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Résumé */}
-              {paiementForm.objet && paiementForm.montant && paiementForm.endroit && (
+              {paiementForm.objet && paiementForm.montant && paiementForm.endroit && paiementForm.mode_paiement && (
                 <div className="bg-[#D4A024]/10 border border-[#D4A024]/30 rounded-lg p-4">
                   <p className="text-[#D4A024] font-semibold mb-2">Résumé :</p>
                   <p className="text-white">
                     Paiement de <span className="text-[#D4A024] font-bold">{paiementForm.montant}€</span> pour{' '}
                     <span className="text-[#D4A024] font-bold">{paiementForm.objet}</span>
                     {paiementForm.objet === 'autres' && paiementForm.detail && ` (${paiementForm.detail})`}
-                    , remis à <span className="text-[#D4A024] font-bold">{paiementForm.endroit}</span> le{' '}
-                    <span className="text-[#D4A024] font-bold">{paiementForm.date_paiement}</span>
+                    , versé à la caisse <span className="text-[#D4A024] font-bold">{paiementForm.endroit}</span>
+                    , par <span className="text-[#D4A024] font-bold">{paiementForm.mode_paiement}</span>
+                    , le <span className="text-[#D4A024] font-bold">{paiementForm.date_paiement}</span>
                   </p>
                 </div>
               )}
@@ -1297,7 +1363,7 @@ const ProfilePage = () => {
                 <Button
                   onClick={handleSubmitPaiement}
                   className="flex-1 bg-green-700 hover:bg-green-600 text-white font-bold"
-                  disabled={submittingPaiement || !paiementForm.objet || !paiementForm.montant || !paiementForm.endroit}
+                  disabled={submittingPaiement || !paiementForm.objet || !paiementForm.montant || !paiementForm.endroit || !paiementForm.mode_paiement}
                 >
                   {submittingPaiement ? (
                     <RefreshCw className="w-4 h-4 mr-2 animate-spin" />

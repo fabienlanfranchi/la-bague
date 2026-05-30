@@ -1259,7 +1259,8 @@ class PaiementEnAttente(BaseModel):
     type: str = "recette"  # recette ou dépense
     objet: str  # cotisation, album, tombola, anniversaire, autres
     montant: float
-    endroit: str  # Compte, Chez Fabien, Chez Jacques, PayPal, Asso Connect, Chèque
+    endroit: str  # Caisse : Compte bancaire, Chez Fabien, Chez Jacques, PayPal, Asso Connect
+    mode_paiement: Optional[str] = None  # Virement, Espèces, Chèque, CB
     detail: Optional[str] = None
     dette_id: Optional[str] = None  # Si lié à une dette spécifique (validation cible cette dette)
     statut: str = "en_attente"  # en_attente, validé, refusé
@@ -1276,6 +1277,7 @@ class PaiementEnAttenteCreate(BaseModel):
     objet: str
     montant: float
     endroit: str
+    mode_paiement: Optional[str] = None
     detail: Optional[str] = None
     dette_id: Optional[str] = None
 
@@ -1564,7 +1566,9 @@ async def create_transaction(input: TransactionCreate):
     compte_mapping = {
         "Compte": "Compte Bancaire",
         "Compte Bancaire": "Compte Bancaire",
+        "Compte bancaire": "Compte Bancaire",
         "chèque": "Compte Bancaire",
+        "Chèque": "Compte Bancaire",
         "Fabien": "Chez Fabien",
         "Chez Fabien": "Chez Fabien",
         "Jacques": "Chez Jacques",
@@ -1723,11 +1727,14 @@ async def delete_transaction(transaction_id: str):
     # Trouver le compte correspondant
     compte_mapping = {
         "Compte": "Compte Bancaire",
+        "Compte bancaire": "Compte Bancaire",
         "chèque": "Compte Bancaire",
+        "Chèque": "Compte Bancaire",
         "Fabien": "Chez Fabien",
         "Jacques": "Chez Jacques",
         "Enveloppe bar": "Dehors",
-        "PayPal": "PayPal"
+        "PayPal": "PayPal",
+        "Asso Connect": "Asso Connect"
     }
     
     compte_nom = compte_mapping.get(transaction['endroit'], transaction['endroit'])
@@ -2007,6 +2014,7 @@ async def create_paiement_en_attente(input: PaiementEnAttenteCreate):
         objet=input.objet,
         montant=input.montant,
         endroit=input.endroit,
+        mode_paiement=input.mode_paiement,
         detail=input.detail,
         dette_id=input.dette_id,
     )
@@ -2050,6 +2058,7 @@ async def valider_paiement(paiement_id: str, validateur_id: str = None):
         "objet": paiement['objet'],
         "montant": paiement['montant'],
         "endroit": paiement['endroit'],
+        "mode_paiement": paiement.get('mode_paiement'),
         "detail": detail_complet,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "pending_payment_id": paiement_id  # Lien vers le paiement d'origine pour logique inverse
@@ -2098,8 +2107,13 @@ async def valider_paiement(paiement_id: str, validateur_id: str = None):
     
     # Mapping des noms de compte (formulaire -> base de données)
     compte_mapping = {
+        # Nouveaux libellés (caisse explicite)
+        "Compte bancaire": "Compte Bancaire",
+        # Anciens libellés (rétrocompatibilité)
         "Compte": "Compte Bancaire",
         "chèque": "Compte Bancaire",
+        "Chèque": "Compte Bancaire",
+        "Espèces": "Chez Fabien",  # fallback ancien : si pas précisé, on garde Fabien
         "Fabien": "Chez Fabien",
         "Jacques": "Chez Jacques",
         "Enveloppe bar": "Dehors"

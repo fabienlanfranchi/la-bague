@@ -3267,7 +3267,10 @@ Le Bureau de La Bague Impériale`;
                             {paiement.detail && ` (${paiement.detail})`}
                           </p>
                           <p className="text-gray-400 text-sm mt-1">
-                            Payé le {paiement.date_paiement} • {paiement.endroit}
+                            Payé le {paiement.date_paiement} • Caisse : {paiement.endroit}
+                            {paiement.mode_paiement && (
+                              <span className="ml-2 text-gray-500">• {paiement.mode_paiement}</span>
+                            )}
                           </p>
                           {(() => {
                             const declarantId = paiement.declarant_id;
