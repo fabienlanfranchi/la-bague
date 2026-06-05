@@ -6627,32 +6627,39 @@ async def get_ma_cigarotheque(membre_id: str):
 @api_router.post("/ma-cigarotheque")
 async def add_cigare_personnel(cigare: CigarePersonnel):
     """Ajouter un cigare à sa collection personnelle.
-    Si un cigare avec le même cigare_id existe déjà pour ce membre,
+    Anti-doublon : si une fiche identique existe déjà pour ce membre
+      (même cigare_id OU même marque+gamme+vitole),
     on met à jour la fiche existante au lieu de créer un doublon."""
     doc = cigare.model_dump()
-    # Anti-doublon : si cigare_id présent, vérifier l'existant
+    existing = None
     if doc.get("cigare_id") is not None:
         existing = await db.cigares_personnels.find_one(
             {"membre_id": doc["membre_id"], "cigare_id": doc["cigare_id"]},
             {"_id": 0}
         )
-        if existing:
-            # Fusionner : ne mettre à jour que les champs non vides
-            updates = {}
-            for k, v in doc.items():
-                if k in ("id", "created_at", "membre_id", "cigare_id"):
-                    continue
-                if v is not None and v != "":
-                    updates[k] = v
-            if updates:
-                updates["updated_at"] = datetime.now(timezone.utc).isoformat()
-                await db.cigares_personnels.update_one(
-                    {"id": existing["id"]},
-                    {"$set": updates}
-                )
-            merged = await db.cigares_personnels.find_one({"id": existing["id"]}, {"_id": 0})
-            return {"message": "Cigare déjà présent - fiche mise à jour", "cigare": merged}
-    # Sinon insertion normale
+    if not existing:
+        # Fallback : matcher sur signature marque/gamme/vitole
+        existing = await db.cigares_personnels.find_one({
+            "membre_id": doc["membre_id"],
+            "marque": doc.get("marque"),
+            "gamme": doc.get("gamme"),
+            "vitole": doc.get("vitole"),
+        }, {"_id": 0})
+    if existing:
+        updates = {}
+        for k, v in doc.items():
+            if k in ("id", "created_at", "membre_id"):
+                continue
+            if v is not None and v != "":
+                updates[k] = v
+        if updates:
+            updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+            await db.cigares_personnels.update_one(
+                {"id": existing["id"]},
+                {"$set": updates}
+            )
+        merged = await db.cigares_personnels.find_one({"id": existing["id"]}, {"_id": 0})
+        return {"message": "Cigare déjà présent - fiche mise à jour", "cigare": merged}
     await db.cigares_personnels.insert_one(doc)
     return {"message": "Cigare ajouté à votre collection", "cigare": {k: v for k, v in doc.items() if k != '_id'}}
 
@@ -6660,31 +6667,57 @@ async def add_cigare_personnel(cigare: CigarePersonnel):
 @api_router.post("/ma-cigarotheque/{membre_id}/dedupe")
 async def dedupe_ma_cigarotheque(membre_id: str):
     """Nettoyer les doublons de la cigarthèque personnelle d'un membre.
-    Pour chaque cigare_id, garde l'entrée la plus 'riche' (la plus de champs
-    remplis) et supprime les autres. Les entrées sans cigare_id ne sont pas
-    dédupliquées (elles peuvent être des cigares manuels distincts).
+    Deux niveaux de regroupement :
+      1) Par cigare_id (si renseigné)
+      2) Par signature (marque + gamme + vitole) normalisée (case-insensitive, sans espaces)
+    On garde l'entrée la plus 'riche' et on fusionne les champs manquants.
     """
     cigares = await db.cigares_personnels.find(
         {"membre_id": membre_id},
         {"_id": 0}
     ).to_list(2000)
 
-    # Regrouper par cigare_id
-    by_id = {}
+    def norm(s):
+        return (s or "").strip().lower()
+
+    def signature(c):
+        return f"{norm(c.get('marque'))}|{norm(c.get('gamme'))}|{norm(c.get('vitole'))}"
+
+    # Regroupement : préfère cigare_id ; sinon signature
+    groups = {}
     for c in cigares:
         cid = c.get("cigare_id")
-        if cid is None:
+        key = f"id:{cid}" if cid is not None else f"sig:{signature(c)}"
+        # Ne pas regrouper sur signature vide (sans aucune info)
+        if key == "sig:||":
             continue
-        by_id.setdefault(cid, []).append(c)
+        groups.setdefault(key, []).append(c)
+
+    # Si une entrée a cigare_id ET une autre a la même signature mais sans cigare_id,
+    # il faut les fusionner aussi. On fait une passe de consolidation.
+    sig_to_idkey = {}
+    for key, entries in groups.items():
+        if key.startswith("id:"):
+            for e in entries:
+                sig = f"sig:{signature(e)}"
+                if sig != "sig:||":
+                    sig_to_idkey[sig] = key
+
+    # Fusionner les groupes "sig:..." vers les groupes "id:..." correspondants
+    consolidated = {}
+    for key, entries in groups.items():
+        target = sig_to_idkey.get(key, key) if key.startswith("sig:") else key
+        consolidated.setdefault(target, []).extend(entries)
 
     removed = 0
     kept_summary = []
-    for cid, entries in by_id.items():
+    for key, entries in consolidated.items():
         if len(entries) < 2:
             continue
-        # Calculer un score de richesse : nb de champs renseignés + bonus si note/commentaire
         def score(e):
             s = sum(1 for k, v in e.items() if v not in (None, "", []) and k not in ("id", "created_at"))
+            if e.get("cigare_id") is not None:
+                s += 10  # privilégier celle liée au catalogue
             if e.get("note_personnelle") is not None:
                 s += 5
             if e.get("commentaire"):
@@ -6695,11 +6728,10 @@ async def dedupe_ma_cigarotheque(membre_id: str):
 
         entries_sorted = sorted(entries, key=score, reverse=True)
         keeper = entries_sorted[0]
-        # Fusion : remplir les trous du keeper avec les autres entrées
         merged_updates = {}
         for other in entries_sorted[1:]:
             for k, v in other.items():
-                if k in ("id", "created_at", "membre_id", "cigare_id"):
+                if k in ("id", "created_at", "membre_id"):
                     continue
                 if (keeper.get(k) in (None, "", [])) and v not in (None, "", []):
                     merged_updates[k] = v
@@ -6710,16 +6742,16 @@ async def dedupe_ma_cigarotheque(membre_id: str):
                 {"id": keeper["id"]},
                 {"$set": merged_updates}
             )
-        # Supprimer les autres
         ids_to_delete = [e["id"] for e in entries_sorted[1:]]
         if ids_to_delete:
             res = await db.cigares_personnels.delete_many({"id": {"$in": ids_to_delete}})
             removed += res.deleted_count
             kept_summary.append({
-                "cigare_id": cid,
+                "key": key,
                 "kept_id": keeper["id"],
                 "removed_count": res.deleted_count,
                 "marque": keeper.get("marque"),
+                "gamme": keeper.get("gamme"),
                 "vitole": keeper.get("vitole"),
             })
 
