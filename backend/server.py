@@ -6626,10 +6626,108 @@ async def get_ma_cigarotheque(membre_id: str):
 
 @api_router.post("/ma-cigarotheque")
 async def add_cigare_personnel(cigare: CigarePersonnel):
-    """Ajouter un cigare à sa collection personnelle"""
+    """Ajouter un cigare à sa collection personnelle.
+    Si un cigare avec le même cigare_id existe déjà pour ce membre,
+    on met à jour la fiche existante au lieu de créer un doublon."""
     doc = cigare.model_dump()
+    # Anti-doublon : si cigare_id présent, vérifier l'existant
+    if doc.get("cigare_id") is not None:
+        existing = await db.cigares_personnels.find_one(
+            {"membre_id": doc["membre_id"], "cigare_id": doc["cigare_id"]},
+            {"_id": 0}
+        )
+        if existing:
+            # Fusionner : ne mettre à jour que les champs non vides
+            updates = {}
+            for k, v in doc.items():
+                if k in ("id", "created_at", "membre_id", "cigare_id"):
+                    continue
+                if v is not None and v != "":
+                    updates[k] = v
+            if updates:
+                updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+                await db.cigares_personnels.update_one(
+                    {"id": existing["id"]},
+                    {"$set": updates}
+                )
+            merged = await db.cigares_personnels.find_one({"id": existing["id"]}, {"_id": 0})
+            return {"message": "Cigare déjà présent - fiche mise à jour", "cigare": merged}
+    # Sinon insertion normale
     await db.cigares_personnels.insert_one(doc)
     return {"message": "Cigare ajouté à votre collection", "cigare": {k: v for k, v in doc.items() if k != '_id'}}
+
+
+@api_router.post("/ma-cigarotheque/{membre_id}/dedupe")
+async def dedupe_ma_cigarotheque(membre_id: str):
+    """Nettoyer les doublons de la cigarthèque personnelle d'un membre.
+    Pour chaque cigare_id, garde l'entrée la plus 'riche' (la plus de champs
+    remplis) et supprime les autres. Les entrées sans cigare_id ne sont pas
+    dédupliquées (elles peuvent être des cigares manuels distincts).
+    """
+    cigares = await db.cigares_personnels.find(
+        {"membre_id": membre_id},
+        {"_id": 0}
+    ).to_list(2000)
+
+    # Regrouper par cigare_id
+    by_id = {}
+    for c in cigares:
+        cid = c.get("cigare_id")
+        if cid is None:
+            continue
+        by_id.setdefault(cid, []).append(c)
+
+    removed = 0
+    kept_summary = []
+    for cid, entries in by_id.items():
+        if len(entries) < 2:
+            continue
+        # Calculer un score de richesse : nb de champs renseignés + bonus si note/commentaire
+        def score(e):
+            s = sum(1 for k, v in e.items() if v not in (None, "", []) and k not in ("id", "created_at"))
+            if e.get("note_personnelle") is not None:
+                s += 5
+            if e.get("commentaire"):
+                s += 3
+            if e.get("favori"):
+                s += 2
+            return s
+
+        entries_sorted = sorted(entries, key=score, reverse=True)
+        keeper = entries_sorted[0]
+        # Fusion : remplir les trous du keeper avec les autres entrées
+        merged_updates = {}
+        for other in entries_sorted[1:]:
+            for k, v in other.items():
+                if k in ("id", "created_at", "membre_id", "cigare_id"):
+                    continue
+                if (keeper.get(k) in (None, "", [])) and v not in (None, "", []):
+                    merged_updates[k] = v
+                    keeper[k] = v
+        if merged_updates:
+            merged_updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+            await db.cigares_personnels.update_one(
+                {"id": keeper["id"]},
+                {"$set": merged_updates}
+            )
+        # Supprimer les autres
+        ids_to_delete = [e["id"] for e in entries_sorted[1:]]
+        if ids_to_delete:
+            res = await db.cigares_personnels.delete_many({"id": {"$in": ids_to_delete}})
+            removed += res.deleted_count
+            kept_summary.append({
+                "cigare_id": cid,
+                "kept_id": keeper["id"],
+                "removed_count": res.deleted_count,
+                "marque": keeper.get("marque"),
+                "vitole": keeper.get("vitole"),
+            })
+
+    return {
+        "message": f"{removed} doublon(s) supprimé(s)",
+        "removed": removed,
+        "details": kept_summary,
+    }
 
 
 @api_router.put("/ma-cigarotheque/{cigare_id}")

@@ -2096,14 +2096,35 @@ ${cigare.module ? `📐 Module: ${cigare.module}` : ''}`;
                     </CardTitle>
                     <p className="text-gray-400">{maCigarotheque.length} cigare(s) dans votre collection</p>
                   </div>
-                  <Button
-                    onClick={() => setShowSearchModal(true)}
-                    className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020]"
-                    data-testid="add-cigare-btn"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Ajouter un cigare
-                  </Button>
+                  <div className="flex gap-2 flex-wrap">
+                    <Button
+                      onClick={async () => {
+                        if (!currentMember?.id) return;
+                        if (!window.confirm("Rechercher et fusionner les doublons de votre Cigarothèque ?")) return;
+                        try {
+                          const res = await axios.post(`${API}/ma-cigarotheque/${currentMember.id}/dedupe`);
+                          toast.success(res.data?.message || 'Nettoyage terminé');
+                          loadMaCigarotheque();
+                        } catch (e) {
+                          console.error(e);
+                          toast.error('Erreur lors du nettoyage');
+                        }
+                      }}
+                      variant="outline"
+                      className="border-orange-500/50 text-orange-300 hover:bg-orange-500/10"
+                      data-testid="dedupe-ma-cigarotheque-btn"
+                    >
+                      Nettoyer les doublons
+                    </Button>
+                    <Button
+                      onClick={() => setShowSearchModal(true)}
+                      className="bg-[#D4A024] hover:bg-[#C8941D] text-[#7A2020]"
+                      data-testid="add-cigare-btn"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Ajouter un cigare
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
