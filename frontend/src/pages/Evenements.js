@@ -547,12 +547,13 @@ ${objetText}`;
       }
     }
 
+    const isRepas = event.type_sondage === 'repas';
     message += `
 
 ━━━━━━━━━━━━━━━━━━━━
 👉 *Répondre sur l'app :* ${appUrl}
 
-_Merci de confirmer votre présence et vos choix de menu !_`;
+_Merci de confirmer votre présence${isRepas ? ' et vos choix de menu' : ''} !_`;
 
     return message;
   };
