@@ -102,7 +102,7 @@ const Comptabilite = () => {
       filtered = filtered.filter(t => t.type === filterType);
     }
     if (filterMembre !== 'tous') {
-      filtered = filtered.filter(t => t.membre === filterMembre);
+      filtered = filtered.filter(t => t.membre_id === filterMembre);
     }
     if (filterObjet !== 'tous') {
       filtered = filtered.filter(t => t.objet?.toLowerCase() === filterObjet.toLowerCase());
@@ -616,9 +616,19 @@ const Comptabilite = () => {
             </SelectTrigger>
             <SelectContent className="bg-[#1a1a1a] border-[#D4A024]/30 max-h-[300px]">
               <SelectItem value="tous" className="text-gray-400 text-sm py-2">Tous membres</SelectItem>
-              {[...new Set(transactions.map(t => t.membre))].filter(Boolean).sort().map(m => (
-                <SelectItem key={m} value={m} className="text-white text-sm py-2">{m}</SelectItem>
-              ))}
+              {(() => {
+                // Liste unique des membre_id présents dans les transactions, triés par nom
+                const ids = [...new Set(transactions.map(t => t.membre_id).filter(Boolean))];
+                const entries = ids
+                  .map(id => ({ id, nom: getMemberName(id) }))
+                  .filter(e => e.nom && e.nom !== '-')
+                  .sort((a, b) => a.nom.localeCompare(b.nom));
+                return entries.map(e => (
+                  <SelectItem key={e.id} value={e.id} className="text-white text-sm py-2">
+                    {e.nom}
+                  </SelectItem>
+                ));
+              })()}
             </SelectContent>
           </Select>
 
