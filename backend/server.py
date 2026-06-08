@@ -1297,6 +1297,7 @@ class Evenement(BaseModel):
     
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     date: datetime
+    heure_precisee: bool = True  # False = pas d'heure définie (afficher uniquement la date)
     objet: str  # "Repas de printemps", "Apéro été", etc.
     lieu: str
     type_sondage: str  # "repas", "apéro", "libre"
@@ -1305,17 +1306,20 @@ class Evenement(BaseModel):
     total_presents: int = 0  # Nombre de présents (pour historique)
     options_sondage: Optional[dict] = None  # Pour "repas": {entrees: [], plats: [], desserts: []}
     image_url: Optional[str] = None  # URL ou base64 de l'image (menu, affiche, etc.)
+    detail: Optional[str] = None  # Texte libre (ex: heure de RDV, infos pratiques)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class EvenementCreate(BaseModel):
     date: datetime
+    heure_precisee: bool = True
     objet: str
     lieu: str
     type_sondage: str
     saison: int
     options_sondage: Optional[dict] = None
     image_url: Optional[str] = None  # Image optionnelle
+    detail: Optional[str] = None
 
 
 class ReponseSondage(BaseModel):

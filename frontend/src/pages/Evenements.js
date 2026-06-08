@@ -215,6 +215,8 @@ const Evenements = () => {
     objet: '',
     lieu: '',
     date: '',
+    heure: '',
+    detail: '',
     type_sondage: 'repas',
   });
 
@@ -229,10 +231,12 @@ const Evenements = () => {
 
   // Formulaire de création (événement à venir)
   const [newEvent, setNewEvent] = useState({
-    date: '',
+    date_only: '',   // YYYY-MM-DD (obligatoire)
+    heure_only: '',  // HH:MM (optionnel)
     objet_type: 'repas',
     objet_texte: '',
     lieu: '',
+    detail: '',
     type_sondage: 'repas',
     saison: 13,
     statut: 'à venir',
@@ -395,14 +399,22 @@ const Evenements = () => {
     return formatted.charAt(0).toUpperCase() + formatted.slice(1);
   };
 
-  // Formater l'heure
-  const formatHeure = (dateStr) => {
-    const date = new Date(dateStr);
+  // Formater l'heure (vide si pas précisée)
+  const formatHeure = (event) => {
+    // Tolère la signature (dateStr) ou (event) pour rétrocompatibilité
+    if (typeof event === 'string') {
+      const date = new Date(event);
+      return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    }
+    if (!event || event.heure_precisee === false) return '';
+    const date = new Date(event.date);
     return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
   };
 
   // Calcule heure de début + 2h (pour apéros)
-  const formatHeurePlus2h = (dateStr) => {
+  const formatHeurePlus2h = (event) => {
+    if (!event || event.heure_precisee === false) return '';
+    const dateStr = typeof event === 'string' ? event : event.date;
     const date = new Date(dateStr);
     date.setHours(date.getHours() + 2);
     return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
@@ -414,7 +426,8 @@ const Evenements = () => {
   // Construire le message WhatsApp pour un événement
   const buildEventWhatsAppMessage = (event) => {
     const dateFormatted = formatDateComplete(event.date);
-    const heure = formatHeure(event.date);
+    const heure = formatHeure(event);
+    const heurePlus2 = formatHeurePlus2h(event);
     
     let objetText = '';
     const objet = event.objet?.toLowerCase() || '';
@@ -423,7 +436,9 @@ const Evenements = () => {
     if (objet.includes('repas') || event.type_sondage === 'repas') {
       objetText = `🍽️ *Repas du Club* au ${lieu}`;
     } else if (objet.includes('apéro') || objet.includes('apero')) {
-      objetText = `🥃 *Apéro du Club* à ${lieu} de ${heure} à ${formatHeurePlus2h(event.date)}`;
+      objetText = heure
+        ? `🥃 *Apéro du Club* à ${lieu} de ${heure}${heurePlus2 ? ` à ${heurePlus2}` : ''}`
+        : `🥃 *Apéro du Club* à ${lieu}`;
     } else if (objet.includes('anniversaire')) {
       objetText = `🎂 *Anniversaire du Club* à ${lieu}`;
     } else {
@@ -431,11 +446,13 @@ const Evenements = () => {
     }
     
     const appUrl = `${APP_BASE_URL}/dashboard`;
+    const dateLine = heure ? `📅 *${dateFormatted}* à ${heure}` : `📅 *${dateFormatted}*`;
+    const detailLine = event.detail ? `\nℹ️ ${event.detail}\n` : '';
     
     const message = `🎩 *La Bague Impériale*
 
-📅 *${dateFormatted}* à ${heure}
-
+${dateLine}
+${detailLine}
 ${objetText}
 
 👉 Répondre : ${appUrl}
@@ -448,7 +465,7 @@ _Merci de confirmer votre présence !_`;
   // Message complet de l'événement (avec menu entier) pour les membres sans accès
   const buildFullEventMessage = (event) => {
     const dateFormatted = formatDateComplete(event.date);
-    const heure = formatHeure(event.date);
+    const heure = formatHeure(event);
     
     let objetText = '';
     const objet = event.objet?.toLowerCase() || '';
@@ -465,12 +482,14 @@ _Merci de confirmer votre présence !_`;
     }
     
     const appUrl = `${APP_BASE_URL}/dashboard`;
+    const dateLine = heure ? `📅 *${dateFormatted}* à ${heure}` : `📅 *${dateFormatted}*`;
+    const detailLine = event.detail ? `\nℹ️ ${event.detail}\n` : '';
     
     let message = `🎩 *La Bague Impériale*
 ━━━━━━━━━━━━━━━━━━━━
 
-📅 *${dateFormatted}* à ${heure}
-
+${dateLine}
+${detailLine}
 ${objetText}`;
 
     // Récupérer les options du menu (dans options_sondage ou directement sur l'event)
@@ -624,8 +643,8 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
 
   const handleCreateEvent = async () => {
     try {
-      if (!newEvent.date || !newEvent.lieu) {
-        toast.error('Veuillez remplir tous les champs obligatoires');
+      if (!newEvent.date_only || !newEvent.lieu) {
+        toast.error('Veuillez remplir la date et le lieu');
         return;
       }
 
@@ -642,13 +661,21 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
 
       const type_sondage = newEvent.objet_type === 'repas' ? 'repas' : 'simple';
 
+      // Date : combine date + heure (si fournie) ; sinon midi local pour éviter timezone
+      const heurePrecisee = !!newEvent.heure_only;
+      const dateString = heurePrecisee
+        ? `${newEvent.date_only}T${newEvent.heure_only}:00`
+        : `${newEvent.date_only}T12:00:00`;
+
       const eventData = {
-        date: new Date(newEvent.date).toISOString(),
+        date: new Date(dateString).toISOString(),
+        heure_precisee: heurePrecisee,
         objet: objet,
         lieu: newEvent.lieu,
         type_sondage: type_sondage,
         statut: newEvent.statut,
         saison: newEvent.saison,
+        detail: newEvent.detail || null,
         options_sondage: type_sondage === 'repas' ? newEvent.options_sondage : null
       };
 
@@ -657,10 +684,12 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
       
       setShowCreateModal(false);
       setNewEvent({
-        date: '',
+        date_only: '',
+        heure_only: '',
         objet_type: 'repas',
         objet_texte: '',
         lieu: '',
+        detail: '',
         type_sondage: 'repas',
         saison: 13,
         statut: 'à venir',
@@ -700,11 +729,17 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
     setEditModalEvent(evt);
     const dateObj = new Date(evt.date);
     const dateStr = dateObj.toISOString().split('T')[0];
+    // Si heure non précisée, on laisse vide
+    const heureStr = evt.heure_precisee === false
+      ? ''
+      : dateObj.toTimeString().slice(0, 5);
     
     setEditModalForm({
       objet: evt.objet || '',
       lieu: evt.lieu || '',
       date: dateStr,
+      heure: heureStr,
+      detail: evt.detail || '',
       type_sondage: evt.type_sondage || 'repas',
     });
     setShowEditModal(true);
@@ -719,12 +754,16 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
     if (!editModalEvent) return;
     
     try {
-      const dateWithTime = new Date(editModalForm.date + 'T19:00:00');
+      const heurePrecisee = !!editModalForm.heure;
+      const timeSegment = heurePrecisee ? `T${editModalForm.heure}:00` : 'T12:00:00';
+      const dateWithTime = new Date(editModalForm.date + timeSegment);
       
       await axios.put(`${API}/evenements/${editModalEvent.id}`, {
         objet: editModalForm.objet,
         lieu: editModalForm.lieu,
         date: dateWithTime.toISOString(),
+        heure_precisee: heurePrecisee,
+        detail: editModalForm.detail || null,
         type_sondage: editModalForm.type_sondage,
       });
       
@@ -1091,16 +1130,27 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                   <CardTitle className="text-3xl font-serif text-[#D4A024] mb-2">
                     {prochainEvenement.objet}
                   </CardTitle>
-                  <div className="flex items-center space-x-6 text-gray-300">
+                  <div className="flex items-center flex-wrap gap-x-6 gap-y-2 text-gray-300">
                     <div className="flex items-center">
                       <Calendar className="w-5 h-5 mr-2 text-[#D4A024]" />
-                      <span className="text-lg">{formatDate(prochainEvenement.date)}</span>
+                      <span className="text-lg">
+                        {formatDate(prochainEvenement.date)}
+                        {formatHeure(prochainEvenement) && (
+                          <span className="ml-2 text-gray-400">à {formatHeure(prochainEvenement)}</span>
+                        )}
+                      </span>
                     </div>
                     <div className="flex items-center">
                       <MapPin className="w-5 h-5 mr-2 text-[#D4A024]" />
                       <span className="text-lg font-semibold">{prochainEvenement.lieu}</span>
                     </div>
                   </div>
+                  {prochainEvenement.detail && (
+                    <div className="mt-2 px-3 py-2 bg-[#D4A024]/10 border border-[#D4A024]/30 rounded text-gray-300 text-sm">
+                      <span className="text-[#D4A024] font-semibold">ℹ️ </span>
+                      {prochainEvenement.detail}
+                    </div>
+                  )}
                 </div>
                 <Badge className="bg-green-600 text-white text-lg px-4 py-2">
                   À venir
@@ -1978,17 +2028,32 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
             
             <CardContent className="space-y-4 py-6 overflow-y-auto flex-1">
               {/* Date & heure */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Date & heure * <span className="text-xs text-gray-500">(par défaut 19h00, modifiable)</span>
-                </label>
-                <input
-                  type="datetime-local"
-                  value={newEvent.date}
-                  onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })}
-                  className="w-full px-3 py-2 bg-black/40 border border-[#D4A024]/30 rounded text-white"
-                  data-testid="create-event-date"
-                />
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Date *
+                  </label>
+                  <input
+                    type="date"
+                    value={newEvent.date_only}
+                    onChange={(e) => setNewEvent({ ...newEvent, date_only: e.target.value })}
+                    className="w-full px-3 py-2 bg-black/40 border border-[#D4A024]/30 rounded text-white"
+                    data-testid="create-event-date"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Heure <span className="text-xs text-gray-500">(facultatif)</span>
+                  </label>
+                  <input
+                    type="time"
+                    value={newEvent.heure_only}
+                    onChange={(e) => setNewEvent({ ...newEvent, heure_only: e.target.value })}
+                    placeholder="-- : --"
+                    className="w-full px-3 py-2 bg-black/40 border border-[#D4A024]/30 rounded text-white"
+                    data-testid="create-event-heure"
+                  />
+                </div>
               </div>
 
               {/* Objet */}
@@ -2030,6 +2095,21 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                   placeholder="Ex: Restaurant Le Club"
                   className="w-full px-3 py-2 bg-black/40 border border-[#D4A024]/30 rounded text-white"
                   data-testid="create-event-lieu"
+                />
+              </div>
+
+              {/* Détail libre (heure, instructions, etc.) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Détail <span className="text-xs text-gray-500">(facultatif - heure de RDV, info pratique...)</span>
+                </label>
+                <textarea
+                  value={newEvent.detail}
+                  onChange={(e) => setNewEvent({ ...newEvent, detail: e.target.value })}
+                  placeholder="Ex: RDV à 19h30 au bar, Apporter un cadeau..."
+                  rows={2}
+                  className="w-full px-3 py-2 bg-black/40 border border-[#D4A024]/30 rounded text-white resize-none"
+                  data-testid="create-event-detail"
                 />
               </div>
 
@@ -2369,15 +2449,28 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                 />
               </div>
               
-              {/* Date */}
-              <div>
-                <label className="text-gray-300 text-sm mb-2 block">Date</label>
-                <Input
-                  type="date"
-                  value={editModalForm.date}
-                  onChange={(e) => setEditModalForm({ ...editModalForm, date: e.target.value })}
-                  className="bg-black/30 border-[#D4A024]/30 text-white"
-                />
+              {/* Date + Heure */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-gray-300 text-sm mb-2 block">Date</label>
+                  <Input
+                    type="date"
+                    value={editModalForm.date}
+                    onChange={(e) => setEditModalForm({ ...editModalForm, date: e.target.value })}
+                    className="bg-black/30 border-[#D4A024]/30 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="text-gray-300 text-sm mb-2 block">
+                    Heure <span className="text-xs text-gray-500">(facultatif)</span>
+                  </label>
+                  <Input
+                    type="time"
+                    value={editModalForm.heure}
+                    onChange={(e) => setEditModalForm({ ...editModalForm, heure: e.target.value })}
+                    className="bg-black/30 border-[#D4A024]/30 text-white"
+                  />
+                </div>
               </div>
               
               {/* Lieu */}
@@ -2388,6 +2481,20 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                   onChange={(e) => setEditModalForm({ ...editModalForm, lieu: e.target.value })}
                   className="bg-black/30 border-[#D4A024]/30 text-white"
                   placeholder="Ex: Restaurant XYZ"
+                />
+              </div>
+
+              {/* Détail libre */}
+              <div>
+                <label className="text-gray-300 text-sm mb-2 block">
+                  Détail <span className="text-xs text-gray-500">(facultatif - heure de RDV, info pratique...)</span>
+                </label>
+                <textarea
+                  value={editModalForm.detail}
+                  onChange={(e) => setEditModalForm({ ...editModalForm, detail: e.target.value })}
+                  placeholder="Ex: RDV à 19h30 au bar, Apporter un cadeau..."
+                  rows={2}
+                  className="w-full bg-black/30 border border-[#D4A024]/30 text-white rounded-md px-3 py-2 resize-none"
                 />
               </div>
               
