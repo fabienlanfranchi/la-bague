@@ -578,7 +578,9 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
   // Compteur d'actions en attente
   const sondagesEnAttente = sondagesActifs.filter(s => !sondageVotes[s.id]?.hasVoted).length;
   const evenementEnAttente = (prochainEvenement && !reponseEnvoyee) ? 1 : 0;
-  const nbActionsEnAttente = sondagesEnAttente + evenementEnAttente + messagesNonLus.length;
+  const cotisationsDues = Number(currentMember?.situation_cotisation || 0) > 0 ? 1 : 0;
+  const dettesEnAttente = (mesDettes || []).length > 0 ? 1 : 0;
+  const nbActionsEnAttente = sondagesEnAttente + evenementEnAttente + messagesNonLus.length + cotisationsDues + dettesEnAttente;
 
   return (
     <div className="space-y-8">
