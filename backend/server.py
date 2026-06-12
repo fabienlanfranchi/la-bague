@@ -1238,6 +1238,8 @@ class Dette(BaseModel):
     nom_invite: Optional[str] = None  # nom libre de l'invité non membre
     montant: float
     cause: str  # Ex: "tombola", "repas", etc.
+    statut: str = "active"  # active | offerte (réglée → supprimée)
+    date_offerte: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -2011,9 +2013,10 @@ async def effectuer_virement(input: VirementInput):
 # ============ DETTES - ROUTES ============
 
 @api_router.get("/dettes", response_model=List[Dette])
-async def get_dettes():
-    """Obtenir toutes les dettes"""
-    dettes = await db.dettes.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+async def get_dettes(include_offered: bool = False):
+    """Obtenir toutes les dettes actives (par défaut, exclut les offertes)."""
+    q = {} if include_offered else {"statut": {"$ne": "offerte"}}
+    dettes = await db.dettes.find(q, {"_id": 0}).sort("created_at", -1).to_list(1000)
     
     for dette in dettes:
         if isinstance(dette.get('created_at'), str):
@@ -2025,9 +2028,12 @@ async def get_dettes():
 
 
 @api_router.get("/dettes/membre/{membre_id}", response_model=List[Dette])
-async def get_dettes_membre(membre_id: str):
-    """Obtenir les dettes d'un membre spécifique"""
-    dettes = await db.dettes.find({"membre_id": membre_id}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+async def get_dettes_membre(membre_id: str, include_offered: bool = False):
+    """Obtenir les dettes d'un membre spécifique (par défaut, exclut les offertes)."""
+    q = {"membre_id": membre_id}
+    if not include_offered:
+        q["statut"] = {"$ne": "offerte"}
+    dettes = await db.dettes.find(q, {"_id": 0}).sort("created_at", -1).to_list(1000)
     
     for dette in dettes:
         if isinstance(dette.get('created_at'), str):
@@ -2036,6 +2042,27 @@ async def get_dettes_membre(membre_id: str):
             dette['updated_at'] = datetime.fromisoformat(dette['updated_at'])
     
     return dettes
+
+
+@api_router.post("/dettes/{dette_id}/offrir")
+async def offrir_dette(dette_id: str):
+    """Marquer une dette comme 'offerte' par le club (exonération avec trace conservée).
+    La dette est retirée de la liste active mais reste en base avec statut='offerte'.
+    """
+    dette = await db.dettes.find_one({"id": dette_id}, {"_id": 0})
+    if not dette:
+        raise HTTPException(status_code=404, detail="Dette non trouvée")
+    if dette.get('statut') == 'offerte':
+        return {"message": "Dette déjà offerte"}
+    await db.dettes.update_one(
+        {"id": dette_id},
+        {"$set": {
+            "statut": "offerte",
+            "date_offerte": datetime.now(timezone.utc).strftime('%Y-%m-%d'),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }}
+    )
+    return {"message": "Dette offerte par le club"}
 
 
 @api_router.post("/dettes", response_model=Dette)

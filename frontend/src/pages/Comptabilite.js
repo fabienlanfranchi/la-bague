@@ -1773,15 +1773,59 @@ const Comptabilite = () => {
                                   {dette.cause}
                                 </p>
                               </div>
-                              <Button
-                                onClick={() => openReglementModal(dette)}
-                                variant="outline"
-                                size="sm"
-                                className="border-green-600 text-green-400 hover:bg-green-900/20"
-                                data-testid={`reglement-dette-${dette.id}`}
-                              >
-                                ✓ Réglé
-                              </Button>
+                              <div className="flex gap-1 flex-wrap">
+                                <Button
+                                  onClick={() => openReglementModal(dette)}
+                                  variant="outline"
+                                  size="sm"
+                                  className="border-green-600 text-green-400 hover:bg-green-900/20"
+                                  data-testid={`reglement-dette-${dette.id}`}
+                                  title="Encaisser le règlement de la dette"
+                                >
+                                  ✓ Réglé
+                                </Button>
+                                <Button
+                                  onClick={async () => {
+                                    const nom = isInvite ? dette.nom_invite : (membre?.nom_complet || 'le membre');
+                                    if (!window.confirm(`Offrir la dette de ${nom} (${dette.montant} € · ${dette.cause}) ?\n\nLa dette est annulée mais une trace "offerte par le club" sera conservée.`)) return;
+                                    try {
+                                      await axios.post(`${API}/dettes/${dette.id}/offrir`);
+                                      toast.success('Dette offerte');
+                                      loadData();
+                                    } catch (e) {
+                                      console.error(e);
+                                      toast.error("Erreur lors de l'offre");
+                                    }
+                                  }}
+                                  variant="outline"
+                                  size="sm"
+                                  className="border-purple-500/40 text-purple-300 hover:bg-purple-500/10"
+                                  data-testid={`offrir-dette-${dette.id}`}
+                                  title="Offert par le club (trace conservée)"
+                                >
+                                  🎁 Offert
+                                </Button>
+                                <Button
+                                  onClick={async () => {
+                                    if (!window.confirm(`Annuler définitivement la dette (${dette.montant} € · ${dette.cause}) ?\n\nÀ utiliser uniquement pour corriger une erreur de saisie (aucune trace).`)) return;
+                                    try {
+                                      await axios.delete(`${API}/dettes/${dette.id}`);
+                                      toast.success('Dette supprimée');
+                                      loadData();
+                                    } catch (e) {
+                                      console.error(e);
+                                      toast.error("Erreur lors de la suppression");
+                                    }
+                                  }}
+                                  variant="outline"
+                                  size="sm"
+                                  className="border-red-500/40 text-red-400 hover:bg-red-500/10"
+                                  data-testid={`annuler-dette-${dette.id}`}
+                                  title="Annuler (erreur de saisie, aucune trace)"
+                                >
+                                  🗑️
+                                </Button>
+                              </div>
                             </div>
                           </div>
                         );
