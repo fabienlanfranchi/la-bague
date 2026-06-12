@@ -383,7 +383,7 @@ const Comptabilite = () => {
 
   // ====== COTISATIONS - LISTE ET ACTIONS ======
   const handleAnnulerCotisation = async (membreId, nbSaisons = 1) => {
-    if (!window.confirm(`Annuler ${nbSaisons} saison(s) de cotisation pour ce membre ?\n\nÀ utiliser si le paiement a été reçu hors de l'app ou pour exonérer.`)) {
+    if (!window.confirm(`Annuler ${nbSaisons} saison(s) de cotisation pour ce membre ?\n\nÀ utiliser uniquement pour corriger une erreur de saisie (ne laisse aucune trace).`)) {
       return;
     }
     try {
@@ -393,6 +393,20 @@ const Comptabilite = () => {
     } catch (e) {
       console.error(e);
       toast.error("Erreur lors de l'annulation");
+    }
+  };
+
+  const handleOffrirCotisation = async (membreId, nbSaisons = 1) => {
+    if (!window.confirm(`Offrir ${nbSaisons} saison(s) de cotisation à ce membre ?\n\nLe club exonère officiellement le membre. La trace "cotisation offerte" sera conservée.`)) {
+      return;
+    }
+    try {
+      await axios.post(`${API}/membres/${membreId}/offrir-cotisation`, { nb: nbSaisons });
+      toast.success('Cotisation offerte');
+      await loadData();
+    } catch (e) {
+      console.error(e);
+      toast.error("Erreur lors de l'offre");
     }
   };
 
@@ -1886,6 +1900,11 @@ const Comptabilite = () => {
                               <p className="text-xs text-gray-400">
                                 {nb} saison(s) · <span className="text-orange-300 font-bold">{total} €</span>
                                 {m.telephone && <span className="ml-2 text-gray-500">· {m.telephone}</span>}
+                                {Number(m.cotisations_offertes || 0) > 0 && (
+                                  <span className="ml-2 text-purple-300">
+                                    🎁 {m.cotisations_offertes} offerte(s)
+                                  </span>
+                                )}
                               </p>
                             </div>
                           </div>
@@ -1902,24 +1921,46 @@ const Comptabilite = () => {
                             <Button
                               size="sm"
                               variant="outline"
+                              onClick={() => handleOffrirCotisation(m.id, 1)}
+                              className="border-purple-500/40 text-purple-300 hover:bg-purple-500/10 text-xs"
+                              data-testid={`offer-cot-${m.id}`}
+                              title="Offrir cette saison (exonération officielle, trace conservée)"
+                            >
+                              🎁 Offert (1 saison)
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
                               onClick={() => handleAnnulerCotisation(m.id, 1)}
                               className="border-red-500/40 text-red-400 hover:bg-red-500/10 text-xs"
                               data-testid={`cancel-cot-${m.id}`}
-                              title="Annuler 1 saison (exonération / paiement hors app)"
+                              title="Annuler (erreur de saisie, aucune trace)"
                             >
                               🗑️ Annuler 1 saison
                             </Button>
                             {nb > 1 && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleAnnulerCotisation(m.id, nb)}
-                                className="border-red-500/40 text-red-400 hover:bg-red-500/10 text-xs"
-                                data-testid={`cancel-all-cot-${m.id}`}
-                                title={`Annuler les ${nb} saisons`}
-                              >
-                                🗑️ Tout annuler ({nb})
-                              </Button>
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleOffrirCotisation(m.id, nb)}
+                                  className="border-purple-500/40 text-purple-300 hover:bg-purple-500/10 text-xs"
+                                  data-testid={`offer-all-cot-${m.id}`}
+                                  title={`Offrir les ${nb} saisons`}
+                                >
+                                  🎁 Tout offrir ({nb})
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleAnnulerCotisation(m.id, nb)}
+                                  className="border-red-500/40 text-red-400 hover:bg-red-500/10 text-xs"
+                                  data-testid={`cancel-all-cot-${m.id}`}
+                                  title={`Annuler les ${nb} saisons (erreur)`}
+                                >
+                                  🗑️ Tout annuler ({nb})
+                                </Button>
+                              </>
                             )}
                           </div>
                         </div>

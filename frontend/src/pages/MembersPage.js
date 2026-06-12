@@ -1031,6 +1031,13 @@ const MembersPage = () => {
                           )}
                         </div>
 
+                        {/* Cotisations offertes (info) */}
+                        {Number(selectedMember?.cotisations_offertes || 0) > 0 && (
+                          <div className="mb-3 px-3 py-2 bg-purple-900/30 border border-purple-500/40 rounded text-sm text-purple-200">
+                            🎁 {selectedMember.cotisations_offertes} saison(s) de cotisation offerte(s) par le club
+                          </div>
+                        )}
+
                         {lignes.length > 0 && (
                           <>
                             {/* En-tête */}
@@ -1070,36 +1077,68 @@ const MembersPage = () => {
                                     </Button>
                                   )}
                                   {l.key.startsWith('cot-') && (
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={async () => {
-                                        if (!window.confirm(`Annuler « ${l.description} » (${l.montant} €) ?\n\nÀ utiliser uniquement si la cotisation a déjà été réglée hors de l'app ou pour exonérer le membre.`)) return;
-                                        try {
-                                          const res = await fetch(`${API_URL}/api/membres/${selectedMember.id}/annuler-cotisation`, {
-                                            method: 'POST',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({ nb: 1 }),
-                                          });
-                                          if (!res.ok) throw new Error('http');
-                                          const data = await res.json();
-                                          toast.success('Cotisation annulée');
-                                          // Mettre à jour le membre sélectionné localement
-                                          setSelectedMember({ ...selectedMember, situation_cotisation: data.situation_cotisation });
-                                          // Refresh des membres
-                                          if (typeof loadMembers === 'function') {
-                                            loadMembers();
+                                    <div className="flex gap-1">
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={async () => {
+                                          if (!window.confirm(`Offrir « ${l.description} » (${l.montant} €) au membre ?\n\nLe club exonère officiellement le membre. La trace "cotisation offerte" sera conservée.`)) return;
+                                          try {
+                                            const res = await fetch(`${API_URL}/api/membres/${selectedMember.id}/offrir-cotisation`, {
+                                              method: 'POST',
+                                              headers: { 'Content-Type': 'application/json' },
+                                              body: JSON.stringify({ nb: 1 }),
+                                            });
+                                            if (!res.ok) throw new Error('http');
+                                            const data = await res.json();
+                                            toast.success('Cotisation offerte');
+                                            setSelectedMember({
+                                              ...selectedMember,
+                                              situation_cotisation: data.situation_cotisation,
+                                              cotisations_offertes: data.cotisations_offertes,
+                                            });
+                                            if (typeof loadMembers === 'function') {
+                                              loadMembers();
+                                            }
+                                          } catch (_) {
+                                            toast.error("Erreur lors de l'offre");
                                           }
-                                        } catch (_) {
-                                          toast.error("Erreur lors de l'annulation");
-                                        }
-                                      }}
-                                      className="text-red-400 hover:text-red-200 hover:bg-red-500/10 px-2"
-                                      data-testid={`del-cot-${l.key.replace('cot-', '')}`}
-                                      title="Annuler cette cotisation (réglée hors app / exonération)"
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </Button>
+                                        }}
+                                        className="text-purple-300 hover:text-purple-200 hover:bg-purple-500/10 px-2"
+                                        data-testid={`offer-cot-${l.key.replace('cot-', '')}`}
+                                        title="Offrir cette cotisation (exonération officielle, trace conservée)"
+                                      >
+                                        🎁
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={async () => {
+                                          if (!window.confirm(`Annuler « ${l.description} » (${l.montant} €) ?\n\nÀ utiliser uniquement pour corriger une erreur de saisie (aucune trace).`)) return;
+                                          try {
+                                            const res = await fetch(`${API_URL}/api/membres/${selectedMember.id}/annuler-cotisation`, {
+                                              method: 'POST',
+                                              headers: { 'Content-Type': 'application/json' },
+                                              body: JSON.stringify({ nb: 1 }),
+                                            });
+                                            if (!res.ok) throw new Error('http');
+                                            const data = await res.json();
+                                            toast.success('Cotisation annulée');
+                                            setSelectedMember({ ...selectedMember, situation_cotisation: data.situation_cotisation });
+                                            if (typeof loadMembers === 'function') {
+                                              loadMembers();
+                                            }
+                                          } catch (_) {
+                                            toast.error("Erreur lors de l'annulation");
+                                          }
+                                        }}
+                                        className="text-red-400 hover:text-red-200 hover:bg-red-500/10 px-2"
+                                        data-testid={`del-cot-${l.key.replace('cot-', '')}`}
+                                        title="Annuler (erreur de saisie, aucune trace)"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </Button>
+                                    </div>
                                   )}
                                 </div>
                               ))}

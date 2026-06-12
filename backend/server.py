@@ -92,6 +92,7 @@ class Member(BaseModel):
     pourcentage_presences: float = 0.0  # 0 à 100
     etoiles: int = 1  # 1 à 4
     situation_cotisation: int = 0  # 0, 1, 2 ou 3
+    cotisations_offertes: int = 0  # nombre de saisons offertes par le club (exonération)
     autres_infos: str = ""
     saisons_exclues: List[int] = []  # Saisons où le membre était en sommeil (ex: [5, 6, 7])
     telephone: Optional[str] = None  # Numéro de téléphone portable pour WhatsApp
@@ -2061,7 +2062,8 @@ async def delete_dette(dette_id: str):
 @api_router.post("/membres/{membre_id}/annuler-cotisation")
 async def annuler_cotisation_membre(membre_id: str, payload: dict = Body(default={})):
     """Annule N saison(s) de cotisation pour un membre (sans création de transaction).
-    À utiliser quand un paiement a été reçu hors de l'application ou pour exonérer.
+    À utiliser uniquement pour corriger une erreur de saisie.
+    Le nb est juste retiré de situation_cotisation, aucune trace.
     """
     nb = int((payload or {}).get('nb') or 1)
     if nb < 1:
@@ -2083,6 +2085,38 @@ async def annuler_cotisation_membre(membre_id: str, payload: dict = Body(default
     return {
         "message": f"{actuel - nouveau} cotisation(s) annulée(s)",
         "situation_cotisation": nouveau,
+    }
+
+
+@api_router.post("/membres/{membre_id}/offrir-cotisation")
+async def offrir_cotisation_membre(membre_id: str, payload: dict = Body(default={})):
+    """Offrir N saison(s) de cotisation à un membre (exonération officielle).
+    Décrémente situation_cotisation ET incrémente un compteur cotisations_offertes
+    pour garder la trace que la cotisation a été offerte par le club.
+    """
+    nb = int((payload or {}).get('nb') or 1)
+    if nb < 1:
+        raise HTTPException(status_code=400, detail="nb doit être >= 1")
+    membre = await db.members.find_one({"id": membre_id}, {"_id": 0})
+    if not membre:
+        raise HTTPException(status_code=404, detail="Membre non trouvé")
+    actuel = int(membre.get('situation_cotisation') or 0)
+    offert_actuel = int(membre.get('cotisations_offertes') or 0)
+    if actuel <= 0:
+        return {"message": "Aucune cotisation due", "situation_cotisation": 0, "cotisations_offertes": offert_actuel}
+    n_offered = min(actuel, nb)
+    await db.members.update_one(
+        {"id": membre_id},
+        {"$set": {
+            "situation_cotisation": actuel - n_offered,
+            "cotisations_offertes": offert_actuel + n_offered,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }}
+    )
+    return {
+        "message": f"{n_offered} cotisation(s) offerte(s) au membre",
+        "situation_cotisation": actuel - n_offered,
+        "cotisations_offertes": offert_actuel + n_offered,
     }
 
 
