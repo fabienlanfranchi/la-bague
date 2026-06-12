@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -37,6 +38,7 @@ const Comptabilite = () => {
   });
   const [comptes, setComptes] = useState([]);
   const [transactions, setTransactions] = useState([]);
+  const [factures, setFactures] = useState([]);
   const [members, setMembers] = useState([]);
   const [dettes, setDettes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -136,12 +138,13 @@ const Comptabilite = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [summaryRes, comptesRes, transactionsRes, membersRes, dettesRes] = await Promise.all([
+      const [summaryRes, comptesRes, transactionsRes, membersRes, dettesRes, facturesRes] = await Promise.all([
         axios.get(`${API}/transactions/summary`),
         axios.get(`${API}/comptes`),
         axios.get(`${API}/transactions`),
         axios.get(`${API}/members`),
-        axios.get(`${API}/dettes`).catch(() => ({ data: [] }))
+        axios.get(`${API}/dettes`).catch(() => ({ data: [] })),
+        axios.get(`${API}/factures-a-payer`).catch(() => ({ data: [] })),
       ]);
 
       setSummary(summaryRes.data);
@@ -149,6 +152,7 @@ const Comptabilite = () => {
       setTransactions(transactionsRes.data);
       setMembers(membersRes.data);
       setDettes(dettesRes.data || []);
+      setFactures(facturesRes.data || []);
       
       // Initialiser la caisse par défaut avec le premier compte
       if (comptesRes.data.length > 0 && !newMouvement.endroit) {
@@ -376,6 +380,110 @@ const Comptabilite = () => {
     }
   };
 
+  // ====== FACTURES À PAYER ======
+  const [showAddFactureModal, setShowAddFactureModal] = useState(false);
+  const [newFacture, setNewFacture] = useState({ libelle: '', montant: '', fournisseur: '', detail: '' });
+  const [payingFacture, setPayingFacture] = useState(null);  // facture en cours de paiement
+  const [payRepartition, setPayRepartition] = useState([{ caisse: '', montant: '' }]);
+  const [payMode, setPayMode] = useState('');
+  const [payDate, setPayDate] = useState('');
+  const [payLoading, setPayLoading] = useState(false);
+
+  const handleCreateFacture = async () => {
+    if (!newFacture.libelle || !Number(newFacture.montant) || Number(newFacture.montant) <= 0) {
+      toast.error('Libellé et montant valides requis');
+      return;
+    }
+    try {
+      await axios.post(`${API}/factures-a-payer`, {
+        libelle: newFacture.libelle,
+        montant: parseFloat(newFacture.montant),
+        fournisseur: newFacture.fournisseur || null,
+        detail: newFacture.detail || null,
+      });
+      toast.success('Facture ajoutée');
+      setShowAddFactureModal(false);
+      setNewFacture({ libelle: '', montant: '', fournisseur: '', detail: '' });
+      loadData();
+    } catch (e) {
+      console.error(e);
+      toast.error('Erreur lors de la création');
+    }
+  };
+
+  const handleDeleteFacture = async (id) => {
+    if (!window.confirm('Supprimer cette facture à payer ?')) return;
+    try {
+      await axios.delete(`${API}/factures-a-payer/${id}`);
+      toast.success('Facture supprimée');
+      loadData();
+    } catch (e) {
+      console.error(e);
+      toast.error('Erreur lors de la suppression');
+    }
+  };
+
+  const openPayFacture = (facture) => {
+    setPayingFacture(facture);
+    setPayRepartition([{ caisse: '', montant: facture.montant.toFixed(2) }]);
+    setPayMode('');
+    setPayDate(new Date().toISOString().split('T')[0]);
+  };
+
+  const closePayModal = () => {
+    setPayingFacture(null);
+    setPayRepartition([{ caisse: '', montant: '' }]);
+    setPayMode('');
+  };
+
+  const addPayLine = () => {
+    if (payRepartition.length >= 5) return;
+    setPayRepartition([...payRepartition, { caisse: '', montant: '' }]);
+  };
+
+  const removePayLine = (idx) => {
+    setPayRepartition(payRepartition.filter((_, i) => i !== idx));
+  };
+
+  const updatePayLine = (idx, field, val) => {
+    const next = [...payRepartition];
+    next[idx] = { ...next[idx], [field]: val };
+    setPayRepartition(next);
+  };
+
+  const totalRepartition = payRepartition.reduce((s, r) => s + (parseFloat(r.montant) || 0), 0);
+
+  const submitPayFacture = async () => {
+    if (!payingFacture) return;
+    // Validation
+    for (const r of payRepartition) {
+      if (!r.caisse || !Number(r.montant) || Number(r.montant) <= 0) {
+        toast.error('Chaque ligne doit avoir une caisse et un montant > 0');
+        return;
+      }
+    }
+    if (Math.abs(totalRepartition - payingFacture.montant) > 0.01) {
+      toast.error(`La somme (${totalRepartition.toFixed(2)} €) doit être égale au montant facture (${payingFacture.montant.toFixed(2)} €)`);
+      return;
+    }
+    setPayLoading(true);
+    try {
+      await axios.post(`${API}/factures-a-payer/${payingFacture.id}/payer`, {
+        repartition: payRepartition.map(r => ({ caisse: r.caisse, montant: parseFloat(r.montant) })),
+        date_paiement: payDate || null,
+        mode_paiement: payMode || null,
+      });
+      toast.success('Facture payée');
+      closePayModal();
+      loadData();
+    } catch (e) {
+      console.error(e);
+      toast.error(e.response?.data?.detail || 'Erreur lors du paiement');
+    } finally {
+      setPayLoading(false);
+    }
+  };
+
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -464,6 +572,83 @@ const Comptabilite = () => {
             <p className="text-sm text-gray-500 mt-1">Toutes périodes</p>
           </CardContent>
         </Card>
+      </div>
+
+      {/* À Payer (factures du club) */}
+      <div>
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+          <h2 className="text-2xl font-serif font-bold text-white flex items-center">
+            <DollarSign className="w-6 h-6 mr-2 text-orange-400" />
+            À Payer
+            {factures.filter(f => f.statut === 'en_attente').length > 0 && (
+              <Badge className="ml-3 bg-orange-500/20 text-orange-300 border border-orange-500/40">
+                {factures.filter(f => f.statut === 'en_attente').length} facture(s)
+              </Badge>
+            )}
+          </h2>
+          <Button
+            onClick={() => setShowAddFactureModal(true)}
+            className="bg-orange-600 hover:bg-orange-700 text-white font-serif"
+            data-testid="add-facture-btn"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Ajouter une facture
+          </Button>
+        </div>
+
+        {factures.filter(f => f.statut === 'en_attente').length === 0 ? (
+          <Card className="bg-black/30 border border-[#D4A024]/20 backdrop-blur-sm">
+            <CardContent className="py-8 text-center text-gray-400">
+              Aucune facture en attente de paiement
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {factures.filter(f => f.statut === 'en_attente').map((f) => (
+              <Card
+                key={f.id}
+                className="bg-gradient-to-br from-orange-950/30 to-black/40 border border-orange-500/30 backdrop-blur-sm"
+                data-testid={`facture-card-${f.id}`}
+              >
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base text-white flex items-start justify-between gap-2">
+                    <span className="flex-1">{f.libelle}</span>
+                    <span className="text-orange-300 font-bold whitespace-nowrap">
+                      {formatMontant(f.montant)}
+                    </span>
+                  </CardTitle>
+                  {f.fournisseur && (
+                    <p className="text-xs text-gray-400">{f.fournisseur}</p>
+                  )}
+                </CardHeader>
+                <CardContent className="pt-0 space-y-2">
+                  {f.detail && (
+                    <p className="text-xs text-gray-300 italic">{f.detail}</p>
+                  )}
+                  <div className="flex gap-2 pt-2">
+                    <Button
+                      size="sm"
+                      onClick={() => openPayFacture(f)}
+                      className="flex-1 bg-green-700 hover:bg-green-600 text-white"
+                      data-testid={`pay-facture-${f.id}`}
+                    >
+                      Payer
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleDeleteFacture(f.id)}
+                      className="text-red-400 hover:bg-red-500/10"
+                      data-testid={`del-facture-${f.id}`}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Comptes */}
@@ -1417,6 +1602,250 @@ const Comptabilite = () => {
                   data-testid="confirm-edit-caisse-btn"
                 >
                   {savingCaisse ? 'Correction…' : 'Corriger'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* ============ MODAL : Ajouter une facture à payer ============ */}
+      {showAddFactureModal && (
+        <div
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowAddFactureModal(false)}
+        >
+          <Card
+            className="bg-[#1a1a1a] border-2 border-orange-500/50 max-w-md w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <CardHeader className="border-b border-orange-500/30">
+              <CardTitle className="text-orange-300 flex items-center justify-between">
+                Nouvelle facture à payer
+                <button
+                  type="button"
+                  onClick={() => setShowAddFactureModal(false)}
+                  className="text-gray-400 hover:text-white"
+                  data-testid="close-add-facture"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4 space-y-3">
+              <div>
+                <label className="text-sm text-gray-400 mb-1 block">Libellé *</label>
+                <Input
+                  value={newFacture.libelle}
+                  onChange={(e) => setNewFacture({ ...newFacture, libelle: e.target.value })}
+                  placeholder="Ex: Cotisation FFAC 2026"
+                  className="bg-black/40 border-orange-500/30 text-white"
+                  data-testid="facture-libelle"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-gray-400 mb-1 block">Montant (€) *</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={newFacture.montant}
+                  onChange={(e) => setNewFacture({ ...newFacture, montant: e.target.value })}
+                  placeholder="Ex: 350"
+                  className="bg-black/40 border-orange-500/30 text-white"
+                  data-testid="facture-montant"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-gray-400 mb-1 block">Fournisseur</label>
+                <Input
+                  value={newFacture.fournisseur}
+                  onChange={(e) => setNewFacture({ ...newFacture, fournisseur: e.target.value })}
+                  placeholder="Ex: Sosh, La Poste, Restaurant…"
+                  className="bg-black/40 border-orange-500/30 text-white"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-gray-400 mb-1 block">Détail</label>
+                <textarea
+                  value={newFacture.detail}
+                  onChange={(e) => setNewFacture({ ...newFacture, detail: e.target.value })}
+                  placeholder="Note interne (facultatif)"
+                  rows={2}
+                  className="w-full bg-black/40 border border-orange-500/30 text-white rounded px-3 py-2 resize-none"
+                />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowAddFactureModal(false)}
+                  className="flex-1 border-gray-600 text-gray-300 hover:bg-gray-800"
+                >
+                  Annuler
+                </Button>
+                <Button
+                  onClick={handleCreateFacture}
+                  className="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-bold"
+                  data-testid="confirm-add-facture"
+                >
+                  Ajouter
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* ============ MODAL : Payer une facture (avec répartition multi-caisses) ============ */}
+      {payingFacture && (
+        <div
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+          onClick={closePayModal}
+        >
+          <Card
+            className="bg-[#1a1a1a] border-2 border-green-500/50 max-w-lg w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <CardHeader className="border-b border-green-500/30">
+              <CardTitle className="text-green-300 flex items-center justify-between">
+                Payer : {payingFacture.libelle}
+                <button
+                  type="button"
+                  onClick={closePayModal}
+                  className="text-gray-400 hover:text-white"
+                  data-testid="close-pay-facture"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </CardTitle>
+              <p className="text-sm text-gray-400">
+                Montant total : <span className="text-green-300 font-bold">{formatMontant(payingFacture.montant)}</span>
+              </p>
+            </CardHeader>
+            <CardContent className="pt-4 space-y-4">
+              {/* Date + Mode */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs text-gray-400 mb-1 block">Date du paiement</label>
+                  <Input
+                    type="date"
+                    value={payDate}
+                    onChange={(e) => setPayDate(e.target.value)}
+                    className="bg-black/40 border-green-500/30 text-white text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 mb-1 block">Mode de paiement</label>
+                  <select
+                    value={payMode}
+                    onChange={(e) => setPayMode(e.target.value)}
+                    className="w-full bg-black/40 border border-green-500/30 text-white rounded px-2 py-2 text-sm"
+                  >
+                    <option value="">— Choisir —</option>
+                    <option value="Virement">Virement</option>
+                    <option value="Espèces">Espèces</option>
+                    <option value="Chèque">Chèque</option>
+                    <option value="CB">CB</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Répartition */}
+              <div>
+                <label className="text-sm text-gray-300 mb-2 block font-semibold">
+                  Répartition entre caisses
+                </label>
+                <div className="space-y-2">
+                  {payRepartition.map((r, idx) => (
+                    <div key={idx} className="grid grid-cols-[1fr_120px_auto] gap-2 items-center">
+                      <select
+                        value={r.caisse}
+                        onChange={(e) => updatePayLine(idx, 'caisse', e.target.value)}
+                        className="bg-black/40 border border-green-500/30 text-white rounded px-2 py-2 text-sm"
+                        data-testid={`pay-caisse-${idx}`}
+                      >
+                        <option value="">— Caisse —</option>
+                        <option value="Compte Bancaire">Compte Bancaire</option>
+                        <option value="Chez Fabien">Chez Fabien</option>
+                        <option value="Chez Jacques">Chez Jacques</option>
+                        <option value="PayPal">PayPal</option>
+                        <option value="Asso Connect">Asso Connect</option>
+                      </select>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={r.montant}
+                        onChange={(e) => updatePayLine(idx, 'montant', e.target.value)}
+                        placeholder="Montant €"
+                        className="bg-black/40 border-green-500/30 text-white text-sm"
+                        data-testid={`pay-montant-${idx}`}
+                      />
+                      {payRepartition.length > 1 && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => removePayLine(idx)}
+                          className="text-red-400 hover:bg-red-500/10 p-2"
+                          data-testid={`remove-pay-line-${idx}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {payRepartition.length < 5 && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={addPayLine}
+                    className="mt-2 border-green-500/40 text-green-300 hover:bg-green-500/10 w-full"
+                    data-testid="add-pay-line"
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Ajouter une autre caisse
+                  </Button>
+                )}
+              </div>
+
+              {/* Résumé */}
+              <div className="bg-black/30 border border-green-500/30 rounded p-3 text-sm">
+                <div className="flex justify-between text-gray-300">
+                  <span>Total réparti</span>
+                  <span
+                    className={`font-bold ${
+                      Math.abs(totalRepartition - payingFacture.montant) < 0.01
+                        ? 'text-green-300'
+                        : 'text-orange-300'
+                    }`}
+                  >
+                    {formatMontant(totalRepartition)} / {formatMontant(payingFacture.montant)}
+                  </span>
+                </div>
+                {Math.abs(totalRepartition - payingFacture.montant) >= 0.01 && (
+                  <p className="text-orange-400 text-xs mt-1">
+                    ⚠️ La somme doit égaler le montant de la facture
+                  </p>
+                )}
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={closePayModal}
+                  disabled={payLoading}
+                  className="flex-1 border-gray-600 text-gray-300 hover:bg-gray-800"
+                >
+                  Annuler
+                </Button>
+                <Button
+                  onClick={submitPayFacture}
+                  disabled={payLoading || Math.abs(totalRepartition - payingFacture.montant) >= 0.01}
+                  className="flex-1 bg-green-700 hover:bg-green-600 text-white font-bold disabled:opacity-50"
+                  data-testid="confirm-pay-facture"
+                >
+                  {payLoading ? 'Paiement…' : 'Confirmer le paiement'}
                 </Button>
               </div>
             </CardContent>

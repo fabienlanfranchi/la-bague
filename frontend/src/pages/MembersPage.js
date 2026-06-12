@@ -1040,10 +1040,7 @@ const MembersPage = () => {
                             </div>
                             <div className="space-y-1">
                               {lignes.map((l) => (
-                                <div
-                                  key={l.key}
-                                  className="grid grid-cols-[1fr_auto_auto] items-center gap-3 py-2 px-2 rounded bg-black/20"
-                                >
+                                <div key={l.key} className="grid grid-cols-[1fr_auto_auto] items-center gap-3 py-2 px-2 rounded bg-black/20">
                                   <span className="text-gray-200 text-base">{l.description}</span>
                                   <span className="text-red-300 text-base font-bold">
                                     {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(l.montant)}
@@ -1068,6 +1065,38 @@ const MembersPage = () => {
                                       className="text-red-400 hover:text-red-200 hover:bg-red-500/10 px-2"
                                       data-testid={`del-dette-${l.key.replace('dette-', '')}`}
                                       title="Effacer cette dette (paiement reçu hors app)"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  )}
+                                  {l.key.startsWith('cot-') && (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={async () => {
+                                        if (!window.confirm(`Annuler « ${l.description} » (${l.montant} €) ?\n\nÀ utiliser uniquement si la cotisation a déjà été réglée hors de l'app ou pour exonérer le membre.`)) return;
+                                        try {
+                                          const res = await fetch(`${API_URL}/api/membres/${selectedMember.id}/annuler-cotisation`, {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ nb: 1 }),
+                                          });
+                                          if (!res.ok) throw new Error('http');
+                                          const data = await res.json();
+                                          toast.success('Cotisation annulée');
+                                          // Mettre à jour le membre sélectionné localement
+                                          setSelectedMember({ ...selectedMember, situation_cotisation: data.situation_cotisation });
+                                          // Refresh des membres
+                                          if (typeof loadMembers === 'function') {
+                                            loadMembers();
+                                          }
+                                        } catch (_) {
+                                          toast.error("Erreur lors de l'annulation");
+                                        }
+                                      }}
+                                      className="text-red-400 hover:text-red-200 hover:bg-red-500/10 px-2"
+                                      data-testid={`del-cot-${l.key.replace('cot-', '')}`}
+                                      title="Annuler cette cotisation (réglée hors app / exonération)"
                                     >
                                       <Trash2 className="w-4 h-4" />
                                     </Button>

@@ -2058,6 +2058,190 @@ async def delete_dette(dette_id: str):
     return {"message": "Dette marquée comme réglée"}
 
 
+@api_router.post("/membres/{membre_id}/annuler-cotisation")
+async def annuler_cotisation_membre(membre_id: str, payload: dict = Body(default={})):
+    """Annule N saison(s) de cotisation pour un membre (sans création de transaction).
+    À utiliser quand un paiement a été reçu hors de l'application ou pour exonérer.
+    """
+    nb = int((payload or {}).get('nb') or 1)
+    if nb < 1:
+        raise HTTPException(status_code=400, detail="nb doit être >= 1")
+    membre = await db.members.find_one({"id": membre_id}, {"_id": 0})
+    if not membre:
+        raise HTTPException(status_code=404, detail="Membre non trouvé")
+    actuel = int(membre.get('situation_cotisation') or 0)
+    if actuel <= 0:
+        return {"message": "Aucune cotisation due", "situation_cotisation": 0}
+    nouveau = max(0, actuel - nb)
+    await db.members.update_one(
+        {"id": membre_id},
+        {"$set": {
+            "situation_cotisation": nouveau,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }}
+    )
+    return {
+        "message": f"{actuel - nouveau} cotisation(s) annulée(s)",
+        "situation_cotisation": nouveau,
+    }
+
+
+# ============ FACTURES À PAYER (Comptabilité) ============
+
+class FactureAPayer(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    libelle: str
+    montant: float
+    fournisseur: Optional[str] = None
+    detail: Optional[str] = None
+    statut: str = "en_attente"  # en_attente, payee
+    date_creation: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    date_paiement: Optional[str] = None
+    repartition: Optional[list] = None  # [{caisse, montant}]
+
+
+class FactureAPayerCreate(BaseModel):
+    libelle: str
+    montant: float
+    fournisseur: Optional[str] = None
+    detail: Optional[str] = None
+
+
+@api_router.get("/factures-a-payer")
+async def list_factures_a_payer(statut: Optional[str] = None):
+    """Liste les factures à payer (option statut=en_attente|payee)."""
+    q = {}
+    if statut:
+        q['statut'] = statut
+    factures = await db.factures_a_payer.find(q, {"_id": 0}).sort("date_creation", -1).to_list(500)
+    return factures
+
+
+@api_router.post("/factures-a-payer")
+async def create_facture_a_payer(payload: FactureAPayerCreate):
+    facture = FactureAPayer(
+        libelle=payload.libelle,
+        montant=float(payload.montant),
+        fournisseur=payload.fournisseur,
+        detail=payload.detail,
+    )
+    doc = facture.model_dump()
+    # datetime -> isoformat pour la persistance
+    doc['date_creation'] = doc['date_creation'].isoformat() if isinstance(doc['date_creation'], datetime) else doc['date_creation']
+    await db.factures_a_payer.insert_one(doc)
+    return {"message": "Facture ajoutée", "facture": {k: v for k, v in doc.items() if k != '_id'}}
+
+
+@api_router.delete("/factures-a-payer/{facture_id}")
+async def delete_facture_a_payer(facture_id: str):
+    res = await db.factures_a_payer.delete_one({"id": facture_id})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Facture non trouvée")
+    return {"message": "Facture supprimée"}
+
+
+@api_router.post("/factures-a-payer/{facture_id}/payer")
+async def payer_facture(facture_id: str, payload: dict = Body(...)):
+    """Marquer une facture comme payée.
+    Body: {
+      "repartition": [{"caisse": "Chez Fabien", "montant": 50}, {"caisse": "Compte Bancaire", "montant": 30}],
+      "date_paiement": "2026-05-30",
+      "mode_paiement": "Virement"  # optionnel, repris sur chaque transaction
+    }
+    Crée une transaction "dépense" par caisse, décrémente les soldes correspondants.
+    """
+    facture = await db.factures_a_payer.find_one({"id": facture_id}, {"_id": 0})
+    if not facture:
+        raise HTTPException(status_code=404, detail="Facture non trouvée")
+    if facture.get('statut') == 'payee':
+        raise HTTPException(status_code=400, detail="Facture déjà payée")
+
+    repartition = (payload or {}).get('repartition') or []
+    if not isinstance(repartition, list) or not repartition:
+        raise HTTPException(status_code=400, detail="Répartition requise (au moins 1 caisse)")
+
+    # Validation des montants
+    total = 0.0
+    cleaned = []
+    for r in repartition:
+        caisse = (r or {}).get('caisse')
+        montant = float((r or {}).get('montant') or 0)
+        if not caisse or montant <= 0:
+            raise HTTPException(status_code=400, detail="Chaque ligne doit avoir caisse + montant > 0")
+        cleaned.append({"caisse": caisse, "montant": round(montant, 2)})
+        total += montant
+
+    expected = round(float(facture['montant']), 2)
+    if abs(round(total, 2) - expected) > 0.01:
+        raise HTTPException(status_code=400, detail=f"Somme des montants ({total:.2f}€) différente du montant facture ({expected:.2f}€)")
+
+    date_paiement = (payload or {}).get('date_paiement') or datetime.now(timezone.utc).strftime('%Y-%m-%d')
+    mode_paiement = (payload or {}).get('mode_paiement')
+
+    # Mapping caisse -> nom de compte en DB
+    compte_mapping = {
+        "Compte": "Compte Bancaire",
+        "Compte Bancaire": "Compte Bancaire",
+        "Compte bancaire": "Compte Bancaire",
+        "Chèque": "Compte Bancaire",
+        "chèque": "Compte Bancaire",
+        "Fabien": "Chez Fabien",
+        "Chez Fabien": "Chez Fabien",
+        "Jacques": "Chez Jacques",
+        "Chez Jacques": "Chez Jacques",
+        "Enveloppe bar": "Dehors",
+        "Dehors": "Dehors",
+        "PayPal": "PayPal",
+        "Asso Connect": "Asso Connect",
+    }
+
+    transactions_creees = []
+    for r in cleaned:
+        nom_compte = compte_mapping.get(r['caisse'], r['caisse'])
+        compte = await db.comptes.find_one({"nom": nom_compte}, {"_id": 0})
+        if not compte:
+            raise HTTPException(status_code=400, detail=f"Caisse inconnue: {r['caisse']}")
+        # Créer la transaction dépense
+        trans = {
+            "id": str(uuid.uuid4()),
+            "date": date_paiement,
+            "type": "dépense",
+            "membre_id": None,
+            "objet": "autres",
+            "montant": r['montant'],
+            "endroit": nom_compte,
+            "mode_paiement": mode_paiement,
+            "detail": f"Facture: {facture['libelle']}" + (f" · {facture.get('fournisseur')}" if facture.get('fournisseur') else ""),
+            "facture_id": facture_id,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        await db.transactions.insert_one(trans)
+        # Décrémenter le solde
+        nouveau_solde = float(compte.get('solde') or 0) - r['montant']
+        await db.comptes.update_one(
+            {"nom": nom_compte},
+            {"$set": {"solde": nouveau_solde, "updated_at": datetime.now(timezone.utc).isoformat()}}
+        )
+        transactions_creees.append({k: v for k, v in trans.items() if k != '_id'})
+
+    # Marquer la facture comme payée
+    await db.factures_a_payer.update_one(
+        {"id": facture_id},
+        {"$set": {
+            "statut": "payee",
+            "date_paiement": date_paiement,
+            "repartition": cleaned,
+            "mode_paiement": mode_paiement,
+        }}
+    )
+    return {
+        "message": "Facture payée",
+        "transactions": transactions_creees,
+        "facture_id": facture_id,
+    }
+
+
 # ============ PAIEMENTS EN ATTENTE - ROUTES ============
 
 @api_router.get("/paiements-en-attente")
