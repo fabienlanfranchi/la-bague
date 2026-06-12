@@ -39,6 +39,7 @@ const Comptabilite = () => {
   const [comptes, setComptes] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [factures, setFactures] = useState([]);
+  const [showCotisationsList, setShowCotisationsList] = useState(false);
   const [members, setMembers] = useState([]);
   const [dettes, setDettes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -377,6 +378,58 @@ const Comptabilite = () => {
       toast.error(error.response?.data?.detail || 'Erreur lors de la correction');
     } finally {
       setSavingCaisse(false);
+    }
+  };
+
+  // ====== COTISATIONS - LISTE ET ACTIONS ======
+  const handleAnnulerCotisation = async (membreId, nbSaisons = 1) => {
+    if (!window.confirm(`Annuler ${nbSaisons} saison(s) de cotisation pour ce membre ?\n\nÀ utiliser si le paiement a été reçu hors de l'app ou pour exonérer.`)) {
+      return;
+    }
+    try {
+      await axios.post(`${API}/membres/${membreId}/annuler-cotisation`, { nb: nbSaisons });
+      toast.success('Cotisation annulée');
+      await loadData();
+    } catch (e) {
+      console.error(e);
+      toast.error("Erreur lors de l'annulation");
+    }
+  };
+
+  const handleDeclarerPaiementCotisation = async (membreId, nbSaisons = 1, caisse = 'Chez Fabien', mode = 'Espèces') => {
+    // Crée directement une transaction recette validée et décrémente situation_cotisation
+    const montant = nbSaisons * 200;
+    if (!window.confirm(`Déclarer un paiement de ${montant} € (${nbSaisons} saison(s)) sur la caisse "${caisse}" en ${mode} ?`)) {
+      return;
+    }
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      // 1. Créer le paiement en attente
+      const presFab = members.find(m => m.role === 'admin' || m.login_key === 'labague1');
+      const declarantId = presFab?.id || membreId;
+      const res = await axios.post(`${API}/paiements-en-attente`, {
+        membre_id: membreId,
+        declarant_id: declarantId,
+        date_paiement: today,
+        type: 'recette',
+        objet: 'cotisation',
+        montant,
+        endroit: caisse,
+        mode_paiement: mode,
+        detail: `Saisi par le trésorier - ${nbSaisons} saison(s)`,
+      });
+      const paiementId = res.data?.paiement?.id;
+      // 2. Valider immédiatement le paiement
+      if (paiementId && declarantId) {
+        await axios.post(`${API}/paiements-en-attente/${paiementId}/valider`, null, {
+          params: { validateur_id: declarantId },
+        });
+      }
+      toast.success(`Paiement de ${montant} € enregistré`);
+      await loadData();
+    } catch (e) {
+      console.error(e);
+      toast.error(e.response?.data?.detail || 'Erreur lors du paiement');
     }
   };
 
@@ -750,10 +803,18 @@ const Comptabilite = () => {
               </Badge>
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
             <p className="text-gray-300">
               {summary.cotisations_en_attente} saison(s) de cotisation en attente de paiement (200€/an)
             </p>
+            <Button
+              onClick={() => setShowCotisationsList(true)}
+              className="bg-orange-600 hover:bg-orange-700 text-white"
+              data-testid="open-cotisations-list-btn"
+            >
+              <User className="w-4 h-4 mr-2" />
+              Voir la liste des membres concernés
+            </Button>
           </CardContent>
         </Card>
       )}
@@ -1605,6 +1666,112 @@ const Comptabilite = () => {
                 </Button>
               </div>
             </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* ============ MODAL : Liste des cotisations en attente ============ */}
+      {showCotisationsList && (
+        <div
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowCotisationsList(false)}
+        >
+          <Card
+            className="bg-[#1a1a1a] border-2 border-orange-500/50 max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <CardHeader className="border-b border-orange-500/30 flex-shrink-0">
+              <CardTitle className="text-orange-300 flex items-center justify-between">
+                <span>Cotisations en attente</span>
+                <button
+                  type="button"
+                  onClick={() => setShowCotisationsList(false)}
+                  className="text-gray-400 hover:text-white"
+                  data-testid="close-cotisations-list"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </CardTitle>
+              <p className="text-sm text-gray-400">
+                {members.filter(m => Number(m.situation_cotisation || 0) > 0).length} membre(s) ·{' '}
+                {summary.cotisations_en_attente} saison(s) · {summary.cotisations_en_attente * 200} €
+              </p>
+            </CardHeader>
+            <CardContent className="pt-4 overflow-y-auto flex-1">
+              {members.filter(m => Number(m.situation_cotisation || 0) > 0).length === 0 ? (
+                <p className="text-gray-400 text-center py-8">
+                  Aucun membre en retard 🎉
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {members
+                    .filter(m => Number(m.situation_cotisation || 0) > 0)
+                    .sort((a, b) => Number(b.situation_cotisation) - Number(a.situation_cotisation))
+                    .map((m) => {
+                      const nb = Number(m.situation_cotisation || 0);
+                      const total = nb * 200;
+                      return (
+                        <div
+                          key={m.id}
+                          className="bg-black/30 border border-orange-500/20 rounded-lg p-3"
+                          data-testid={`cot-row-${m.id}`}
+                        >
+                          <div className="flex items-center justify-between gap-3 mb-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-white font-semibold truncate">{m.nom_complet}</p>
+                              <p className="text-xs text-gray-400">
+                                {nb} saison(s) · <span className="text-orange-300 font-bold">{total} €</span>
+                                {m.telephone && <span className="ml-2 text-gray-500">· {m.telephone}</span>}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex gap-2 flex-wrap">
+                            <Button
+                              size="sm"
+                              onClick={() => handleDeclarerPaiementCotisation(m.id, nb, 'Chez Fabien', 'Espèces')}
+                              className="bg-green-700 hover:bg-green-600 text-white text-xs"
+                              data-testid={`declare-pay-${m.id}`}
+                              title="Déclarer un paiement (200€/saison)"
+                            >
+                              💰 Déclarer payé · Fabien · Espèces
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleAnnulerCotisation(m.id, 1)}
+                              className="border-red-500/40 text-red-400 hover:bg-red-500/10 text-xs"
+                              data-testid={`cancel-cot-${m.id}`}
+                              title="Annuler 1 saison (exonération / paiement hors app)"
+                            >
+                              🗑️ Annuler 1 saison
+                            </Button>
+                            {nb > 1 && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleAnnulerCotisation(m.id, nb)}
+                                className="border-red-500/40 text-red-400 hover:bg-red-500/10 text-xs"
+                                data-testid={`cancel-all-cot-${m.id}`}
+                                title={`Annuler les ${nb} saisons`}
+                              >
+                                🗑️ Tout annuler ({nb})
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+            </CardContent>
+            <div className="border-t border-orange-500/30 p-3 flex-shrink-0">
+              <Button
+                onClick={() => setShowCotisationsList(false)}
+                className="w-full bg-gray-700 hover:bg-gray-600 text-white"
+              >
+                Fermer
+              </Button>
+            </div>
           </Card>
         </div>
       )}
