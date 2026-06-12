@@ -55,11 +55,15 @@ const Comptabilite = () => {
 
   // Modal de dette "Dehors"
   const [showDetteModal, setShowDetteModal] = useState(false);
+  const [detteMode, setDetteMode] = useState('single');  // 'single' | 'multi' | 'invite'
   const [detteForm, setDetteForm] = useState({
     membre_id: '',
     montant: '',
-    cause: ''
+    cause: '',
+    nom_invite: '',
   });
+  const [detteMultiSelectedIds, setDetteMultiSelectedIds] = useState([]);  // ids pour mode multi
+  const [detteMultiSearch, setDetteMultiSearch] = useState('');  // filtre liste multi
 
   // Modal de détails d'une caisse
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -254,13 +258,9 @@ const Comptabilite = () => {
     }
   };
 
-  // Fonction pour ajouter une dette "Dehors"
+  // Fonction pour ajouter une dette (3 modes : single / multi / invité)
   const handleAddDette = async () => {
     try {
-      if (!detteForm.membre_id) {
-        toast.error('Veuillez sélectionner un membre');
-        return;
-      }
       if (!detteForm.montant || parseFloat(detteForm.montant) <= 0) {
         toast.error('Veuillez renseigner un montant valide');
         return;
@@ -270,19 +270,52 @@ const Comptabilite = () => {
         return;
       }
 
-      await axios.post(`${API}/dettes`, {
-        membre_id: detteForm.membre_id,
-        montant: parseFloat(detteForm.montant),
-        cause: detteForm.cause.trim()
-      });
+      if (detteMode === 'multi') {
+        if (detteMultiSelectedIds.length === 0) {
+          toast.error('Sélectionnez au moins un membre');
+          return;
+        }
+        const res = await axios.post(`${API}/dettes/multi`, {
+          membre_ids: detteMultiSelectedIds,
+          montant: parseFloat(detteForm.montant),
+          cause: detteForm.cause.trim(),
+        });
+        toast.success(res.data?.message || 'Dettes enregistrées');
+      } else if (detteMode === 'invite') {
+        if (!detteForm.nom_invite.trim()) {
+          toast.error("Renseignez le nom de l'invité");
+          return;
+        }
+        await axios.post(`${API}/dettes`, {
+          membre_id: null,
+          nom_invite: detteForm.nom_invite.trim(),
+          montant: parseFloat(detteForm.montant),
+          cause: detteForm.cause.trim(),
+        });
+        toast.success('Dette invité enregistrée');
+      } else {
+        // single
+        if (!detteForm.membre_id) {
+          toast.error('Veuillez sélectionner un membre');
+          return;
+        }
+        await axios.post(`${API}/dettes`, {
+          membre_id: detteForm.membre_id,
+          montant: parseFloat(detteForm.montant),
+          cause: detteForm.cause.trim(),
+        });
+        toast.success('Dette enregistrée avec succès');
+      }
 
-      toast.success('Dette enregistrée avec succès');
       setShowDetteModal(false);
-      setDetteForm({ membre_id: '', montant: '', cause: '' });
+      setDetteForm({ membre_id: '', montant: '', cause: '', nom_invite: '' });
+      setDetteMultiSelectedIds([]);
+      setDetteMultiSearch('');
+      setDetteMode('single');
       loadData();
     } catch (error) {
       console.error('Erreur lors de l\'ajout de la dette:', error);
-      toast.error('Erreur lors de l\'ajout de la dette');
+      toast.error(error.response?.data?.detail || 'Erreur lors de l\'ajout de la dette');
     }
   };
 
@@ -1448,41 +1481,193 @@ const Comptabilite = () => {
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className="p-6 space-y-4">
+            <CardContent className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+              {/* Sélecteur de mode */}
+              <div className="grid grid-cols-3 gap-1 bg-black/40 rounded p-1 border border-red-600/30">
+                <button
+                  type="button"
+                  onClick={() => setDetteMode('single')}
+                  className={`px-2 py-2 rounded text-xs font-semibold transition ${
+                    detteMode === 'single' ? 'bg-red-600 text-white' : 'text-gray-400 hover:text-white'
+                  }`}
+                  data-testid="dette-mode-single"
+                >
+                  Un membre
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDetteMode('multi')}
+                  className={`px-2 py-2 rounded text-xs font-semibold transition ${
+                    detteMode === 'multi' ? 'bg-red-600 text-white' : 'text-gray-400 hover:text-white'
+                  }`}
+                  data-testid="dette-mode-multi"
+                >
+                  Plusieurs membres
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDetteMode('invite')}
+                  className={`px-2 py-2 rounded text-xs font-semibold transition ${
+                    detteMode === 'invite' ? 'bg-red-600 text-white' : 'text-gray-400 hover:text-white'
+                  }`}
+                  data-testid="dette-mode-invite"
+                >
+                  Invité non-membre
+                </button>
+              </div>
+
               {/* Aperçu du format */}
               <div className="bg-red-900/20 border border-red-600/30 rounded-lg p-3 text-sm">
                 <p className="text-gray-300">
-                  <span className="text-red-400 font-bold">MEMBRE</span>{' '}
-                  <span className="text-[#D4A024]">{detteForm.membre_id ? members.find(m => m.id === detteForm.membre_id)?.nom_complet || '...' : '...'}</span>{' '}
-                  <span className="text-red-400 font-bold">DOIT</span>{' '}
-                  <span className="text-white">{detteForm.montant || '0'}€</span>{' '}
-                  <span className="text-red-400 font-bold">CAUSE</span>{' '}
-                  <span className="text-gray-300">{detteForm.cause || '...'}</span>
+                  {detteMode === 'single' && (
+                    <>
+                      <span className="text-red-400 font-bold">MEMBRE</span>{' '}
+                      <span className="text-[#D4A024]">{detteForm.membre_id ? members.find(m => m.id === detteForm.membre_id)?.nom_complet || '...' : '...'}</span>{' '}
+                      <span className="text-red-400 font-bold">DOIT</span>{' '}
+                      <span className="text-white">{detteForm.montant || '0'}€</span>{' '}
+                      <span className="text-red-400 font-bold">CAUSE</span>{' '}
+                      <span className="text-gray-300">{detteForm.cause || '...'}</span>
+                    </>
+                  )}
+                  {detteMode === 'multi' && (
+                    <>
+                      <span className="text-red-400 font-bold">{detteMultiSelectedIds.length} MEMBRE(S)</span>{' '}
+                      <span className="text-red-400 font-bold">DOIVENT CHACUN</span>{' '}
+                      <span className="text-white">{detteForm.montant || '0'}€</span>{' '}
+                      <span className="text-red-400 font-bold">CAUSE</span>{' '}
+                      <span className="text-gray-300">{detteForm.cause || '...'}</span>
+                    </>
+                  )}
+                  {detteMode === 'invite' && (
+                    <>
+                      <span className="text-red-400 font-bold">INVITÉ</span>{' '}
+                      <span className="text-[#D4A024]">{detteForm.nom_invite || '...'}</span>{' '}
+                      <span className="text-red-400 font-bold">DOIT</span>{' '}
+                      <span className="text-white">{detteForm.montant || '0'}€</span>{' '}
+                      <span className="text-red-400 font-bold">CAUSE</span>{' '}
+                      <span className="text-gray-300">{detteForm.cause || '...'}</span>
+                    </>
+                  )}
                 </p>
               </div>
 
-              {/* Sélection du membre avec Shadcn Select */}
-              <div>
-                <label className="block text-sm text-red-400 mb-2 font-bold">MEMBRE</label>
-                <Select
-                  value={detteForm.membre_id || "none"}
-                  onValueChange={(value) => setDetteForm({ ...detteForm, membre_id: value === "none" ? "" : value })}
-                >
-                  <SelectTrigger className="w-full bg-black/60 border-red-600/30 text-white">
-                    <SelectValue placeholder="Sélectionner un membre..." />
-                  </SelectTrigger>
-                  <SelectContent className="bg-[#1a1a1a] border-red-600/30 max-h-[300px]">
-                    <SelectItem value="none" className="text-gray-400">-- Sélectionner --</SelectItem>
-                    {members.map(m => (
-                      <SelectItem key={m.id} value={m.id} className="text-white">{m.nom_complet}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {/* Mode SINGLE : Sélection du membre */}
+              {detteMode === 'single' && (
+                <div>
+                  <label className="block text-sm text-red-400 mb-2 font-bold">MEMBRE</label>
+                  <Select
+                    value={detteForm.membre_id || "none"}
+                    onValueChange={(value) => setDetteForm({ ...detteForm, membre_id: value === "none" ? "" : value })}
+                  >
+                    <SelectTrigger className="w-full bg-black/60 border-red-600/30 text-white">
+                      <SelectValue placeholder="Sélectionner un membre..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#1a1a1a] border-red-600/30 max-h-[300px]">
+                      <SelectItem value="none" className="text-gray-400">-- Sélectionner --</SelectItem>
+                      {members.map(m => (
+                        <SelectItem key={m.id} value={m.id} className="text-white">{m.nom_complet}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Mode MULTI : Liste avec checkboxes */}
+              {detteMode === 'multi' && (
+                <div>
+                  <div className="flex items-center justify-between mb-2 gap-2">
+                    <label className="text-sm text-red-400 font-bold">MEMBRES À FACTURER</label>
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setDetteMultiSelectedIds(members.map(m => m.id))}
+                        className="border-green-500/40 text-green-300 hover:bg-green-500/10 text-xs h-7 px-2"
+                        data-testid="multi-check-all"
+                      >
+                        Tout cocher
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setDetteMultiSelectedIds([])}
+                        className="border-gray-600 text-gray-300 hover:bg-gray-800 text-xs h-7 px-2"
+                        data-testid="multi-uncheck-all"
+                      >
+                        Tout décocher
+                      </Button>
+                    </div>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Rechercher un membre..."
+                    value={detteMultiSearch}
+                    onChange={(e) => setDetteMultiSearch(e.target.value)}
+                    className="w-full mb-2 px-3 py-2 bg-black/40 border border-red-600/30 rounded text-white text-sm"
+                    data-testid="multi-search"
+                  />
+                  <div className="bg-black/30 border border-red-600/30 rounded max-h-[260px] overflow-y-auto">
+                    {members
+                      .filter(m => !detteMultiSearch || m.nom_complet.toLowerCase().includes(detteMultiSearch.toLowerCase()))
+                      .map((m) => {
+                        const checked = detteMultiSelectedIds.includes(m.id);
+                        return (
+                          <label
+                            key={m.id}
+                            className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-red-500/5 cursor-pointer border-b border-red-500/10 last:border-0"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => {
+                                setDetteMultiSelectedIds(prev =>
+                                  prev.includes(m.id) ? prev.filter(x => x !== m.id) : [...prev, m.id]
+                                );
+                              }}
+                              className="w-4 h-4 accent-red-500"
+                              data-testid={`multi-check-${m.id}`}
+                            />
+                            <span className={checked ? 'text-white font-semibold' : 'text-gray-300'}>
+                              {m.nom_complet}
+                            </span>
+                            {Number(m.situation_cotisation || 0) > 0 && (
+                              <span className="ml-auto text-xs text-orange-400">
+                                {m.situation_cotisation} cotis.
+                              </span>
+                            )}
+                          </label>
+                        );
+                      })}
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {detteMultiSelectedIds.length} sélectionné(s) · total à créer :{' '}
+                    <span className="text-orange-300 font-bold">
+                      {(detteMultiSelectedIds.length * (parseFloat(detteForm.montant) || 0)).toFixed(2)} €
+                    </span>
+                  </p>
+                </div>
+              )}
+
+              {/* Mode INVITÉ : nom libre */}
+              {detteMode === 'invite' && (
+                <div>
+                  <label className="block text-sm text-red-400 mb-2 font-bold">NOM DE L'INVITÉ</label>
+                  <input
+                    type="text"
+                    value={detteForm.nom_invite}
+                    onChange={(e) => setDetteForm({ ...detteForm, nom_invite: e.target.value })}
+                    placeholder="Ex: Pierre Martin (ami de Fabien)"
+                    className="w-full px-3 py-2 bg-black/40 border border-red-600/30 rounded text-white"
+                    data-testid="dette-nom-invite"
+                  />
+                </div>
+              )}
 
               {/* Montant */}
               <div>
-                <label className="block text-sm text-red-400 mb-2 font-bold">DOIT (montant en €)</label>
+                <label className="block text-sm text-red-400 mb-2 font-bold">
+                  {detteMode === 'multi' ? 'MONTANT PAR MEMBRE' : 'DOIT'} (en €)
+                </label>
                 <input
                   type="number"
                   step="0.01"
@@ -1563,6 +1748,7 @@ const Comptabilite = () => {
                     <>
                       {dettes.map((dette) => {
                         const membre = members.find(m => m.id === dette.membre_id);
+                        const isInvite = !dette.membre_id && dette.nom_invite;
                         return (
                           <div 
                             key={dette.id} 
@@ -1571,8 +1757,12 @@ const Comptabilite = () => {
                             <div className="flex items-center justify-between">
                               <div>
                                 <p className="text-white">
-                                  <span className="text-red-400 font-bold">MEMBRE</span>{' '}
-                                  <span className="text-[#D4A024]">{membre?.nom_complet || 'Inconnu'}</span>
+                                  <span className="text-red-400 font-bold">
+                                    {isInvite ? 'INVITÉ' : 'MEMBRE'}
+                                  </span>{' '}
+                                  <span className="text-[#D4A024]">
+                                    {isInvite ? dette.nom_invite : (membre?.nom_complet || 'Inconnu')}
+                                  </span>
                                 </p>
                                 <p className="text-white">
                                   <span className="text-red-400 font-bold">DOIT</span>{' '}

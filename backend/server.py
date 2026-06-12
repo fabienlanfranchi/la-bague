@@ -1234,7 +1234,8 @@ class Dette(BaseModel):
     model_config = ConfigDict(extra="ignore")
     
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    membre_id: str
+    membre_id: Optional[str] = None  # null si dette d'un invité non membre
+    nom_invite: Optional[str] = None  # nom libre de l'invité non membre
     montant: float
     cause: str  # Ex: "tombola", "repas", etc.
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -1242,7 +1243,15 @@ class Dette(BaseModel):
 
 
 class DetteCreate(BaseModel):
-    membre_id: str
+    membre_id: Optional[str] = None
+    nom_invite: Optional[str] = None
+    montant: float
+    cause: str
+
+
+class DetteMultiCreate(BaseModel):
+    """Création groupée de dettes (même cause + montant pour plusieurs membres)"""
+    membre_ids: List[str]
     montant: float
     cause: str
 
@@ -2031,13 +2040,20 @@ async def get_dettes_membre(membre_id: str):
 
 @api_router.post("/dettes", response_model=Dette)
 async def create_dette(input: DetteCreate):
-    """Créer une nouvelle dette pour un membre"""
-    # Vérifier que le membre existe
-    membre = await db.members.find_one({"id": input.membre_id}, {"_id": 0})
-    if not membre:
-        raise HTTPException(status_code=404, detail="Membre non trouvé")
+    """Créer une nouvelle dette pour un membre OU un invité non membre.
+    - Si membre_id fourni : dette liée au membre
+    - Si nom_invite fourni (sans membre_id) : dette d'un invité externe
+    """
+    if not input.membre_id and not (input.nom_invite and input.nom_invite.strip()):
+        raise HTTPException(status_code=400, detail="Renseigner soit un membre_id, soit un nom_invite")
+    if input.membre_id:
+        membre = await db.members.find_one({"id": input.membre_id}, {"_id": 0})
+        if not membre:
+            raise HTTPException(status_code=404, detail="Membre non trouvé")
     
     dette_obj = Dette(**input.model_dump())
+    if dette_obj.nom_invite:
+        dette_obj.nom_invite = dette_obj.nom_invite.strip()
     
     doc = dette_obj.model_dump()
     doc['created_at'] = doc['created_at'].isoformat()
@@ -2046,6 +2062,45 @@ async def create_dette(input: DetteCreate):
     await db.dettes.insert_one(doc)
     
     return dette_obj
+
+
+@api_router.post("/dettes/multi")
+async def create_dettes_multi(input: DetteMultiCreate):
+    """Créer la même dette pour plusieurs membres en une seule opération.
+    Ex: après un événement, le club ajoute 30 € à 25 membres présents.
+    """
+    if not input.membre_ids:
+        raise HTTPException(status_code=400, detail="Aucun membre sélectionné")
+    if input.montant <= 0:
+        raise HTTPException(status_code=400, detail="Montant invalide")
+    cause = (input.cause or '').strip()
+    if not cause:
+        raise HTTPException(status_code=400, detail="Cause requise")
+
+    # Vérifier que tous les membres existent
+    existing = await db.members.find(
+        {"id": {"$in": input.membre_ids}}, {"_id": 0, "id": 1}
+    ).to_list(1000)
+    existing_ids = {m["id"] for m in existing}
+    invalid = [mid for mid in input.membre_ids if mid not in existing_ids]
+    if invalid:
+        raise HTTPException(status_code=400, detail=f"Membres inconnus: {invalid}")
+
+    now = datetime.now(timezone.utc).isoformat()
+    docs = []
+    for membre_id in input.membre_ids:
+        d = Dette(membre_id=membre_id, montant=float(input.montant), cause=cause).model_dump()
+        d['created_at'] = now
+        d['updated_at'] = now
+        docs.append(d)
+    if docs:
+        await db.dettes.insert_many(docs)
+    return {
+        "message": f"{len(docs)} dette(s) créée(s)",
+        "count": len(docs),
+        "cause": cause,
+        "montant": input.montant,
+    }
 
 
 @api_router.delete("/dettes/{dette_id}")
