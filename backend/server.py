@@ -2088,6 +2088,17 @@ async def annuler_cotisation_membre(membre_id: str, payload: dict = Body(default
 
 # ============ FACTURES À PAYER (Comptabilité) ============
 
+class FactureLigne(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    libelle: str
+    montant: float
+    statut: str = "en_attente"  # en_attente | payee
+    date_paiement: Optional[str] = None
+    repartition: Optional[list] = None  # [{caisse, montant}]
+    mode_paiement: Optional[str] = None
+
+
 class FactureAPayer(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -2095,10 +2106,11 @@ class FactureAPayer(BaseModel):
     montant: float
     fournisseur: Optional[str] = None
     detail: Optional[str] = None
-    statut: str = "en_attente"  # en_attente, payee
+    statut: str = "en_attente"  # en_attente, partielle, payee
+    lignes: Optional[list] = None  # liste de FactureLigne (dict)
     date_creation: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     date_paiement: Optional[str] = None
-    repartition: Optional[list] = None  # [{caisse, montant}]
+    repartition: Optional[list] = None  # [{caisse, montant}] - paiement global éventuel
 
 
 class FactureAPayerCreate(BaseModel):
@@ -2106,6 +2118,7 @@ class FactureAPayerCreate(BaseModel):
     montant: float
     fournisseur: Optional[str] = None
     detail: Optional[str] = None
+    lignes: Optional[list] = None  # [{libelle, montant}]
 
 
 @api_router.get("/factures-a-payer")
@@ -2120,17 +2133,106 @@ async def list_factures_a_payer(statut: Optional[str] = None):
 
 @api_router.post("/factures-a-payer")
 async def create_facture_a_payer(payload: FactureAPayerCreate):
+    # Normaliser les lignes si fournies
+    lignes_clean = None
+    if payload.lignes:
+        lignes_clean = []
+        for l in payload.lignes:
+            if not isinstance(l, dict):
+                continue
+            lib = (l.get('libelle') or '').strip()
+            try:
+                mt = float(l.get('montant') or 0)
+            except (TypeError, ValueError):
+                mt = 0
+            if not lib or mt <= 0:
+                continue
+            lignes_clean.append({
+                "id": str(uuid.uuid4()),
+                "libelle": lib,
+                "montant": round(mt, 2),
+                "statut": "en_attente",
+                "date_paiement": None,
+                "repartition": None,
+                "mode_paiement": None,
+            })
+    montant_total = (
+        round(sum(l['montant'] for l in lignes_clean), 2)
+        if lignes_clean
+        else round(float(payload.montant or 0), 2)
+    )
     facture = FactureAPayer(
         libelle=payload.libelle,
-        montant=float(payload.montant),
+        montant=montant_total,
         fournisseur=payload.fournisseur,
         detail=payload.detail,
+        lignes=lignes_clean,
     )
     doc = facture.model_dump()
-    # datetime -> isoformat pour la persistance
     doc['date_creation'] = doc['date_creation'].isoformat() if isinstance(doc['date_creation'], datetime) else doc['date_creation']
     await db.factures_a_payer.insert_one(doc)
     return {"message": "Facture ajoutée", "facture": {k: v for k, v in doc.items() if k != '_id'}}
+
+
+@api_router.put("/factures-a-payer/{facture_id}")
+async def update_facture_a_payer(facture_id: str, payload: dict = Body(...)):
+    """Mettre à jour une facture (libellé, fournisseur, détail, lignes).
+    Les lignes payées ne sont pas modifiables (sauf via /payer)."""
+    existing = await db.factures_a_payer.find_one({"id": facture_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Facture non trouvée")
+
+    updates = {}
+    for key in ("libelle", "fournisseur", "detail"):
+        if key in payload:
+            updates[key] = payload.get(key)
+
+    if "lignes" in payload:
+        lignes_input = payload.get("lignes") or []
+        existing_lignes = {l['id']: l for l in (existing.get('lignes') or [])}
+        new_lignes = []
+        for l in lignes_input:
+            if not isinstance(l, dict):
+                continue
+            lib = (l.get('libelle') or '').strip()
+            try:
+                mt = float(l.get('montant') or 0)
+            except (TypeError, ValueError):
+                mt = 0
+            if not lib or mt <= 0:
+                continue
+            line_id = l.get('id')
+            old = existing_lignes.get(line_id) if line_id else None
+            if old and old.get('statut') == 'payee':
+                # Conserver intacte
+                new_lignes.append(old)
+            else:
+                new_lignes.append({
+                    "id": line_id or str(uuid.uuid4()),
+                    "libelle": lib,
+                    "montant": round(mt, 2),
+                    "statut": "en_attente",
+                    "date_paiement": None,
+                    "repartition": None,
+                    "mode_paiement": None,
+                })
+        updates['lignes'] = new_lignes
+        montant_total = round(sum(l['montant'] for l in new_lignes), 2) if new_lignes else round(float(payload.get('montant') or existing.get('montant') or 0), 2)
+        updates['montant'] = montant_total
+        # Recalculer le statut global
+        if new_lignes:
+            n_paid = sum(1 for l in new_lignes if l.get('statut') == 'payee')
+            if n_paid == 0:
+                updates['statut'] = 'en_attente'
+            elif n_paid == len(new_lignes):
+                updates['statut'] = 'payee'
+            else:
+                updates['statut'] = 'partielle'
+
+    if updates:
+        await db.factures_a_payer.update_one({"id": facture_id}, {"$set": updates})
+    facture = await db.factures_a_payer.find_one({"id": facture_id}, {"_id": 0})
+    return {"message": "Facture mise à jour", "facture": facture}
 
 
 @api_router.delete("/factures-a-payer/{facture_id}")
@@ -2143,11 +2245,12 @@ async def delete_facture_a_payer(facture_id: str):
 
 @api_router.post("/factures-a-payer/{facture_id}/payer")
 async def payer_facture(facture_id: str, payload: dict = Body(...)):
-    """Marquer une facture comme payée.
+    """Marquer une facture (ou certaines lignes) comme payée.
     Body: {
       "repartition": [{"caisse": "Chez Fabien", "montant": 50}, {"caisse": "Compte Bancaire", "montant": 30}],
       "date_paiement": "2026-05-30",
-      "mode_paiement": "Virement"  # optionnel, repris sur chaque transaction
+      "mode_paiement": "Virement",
+      "ligne_ids": ["uuid1", "uuid2"]  # optionnel : payer uniquement ces lignes
     }
     Crée une transaction "dépense" par caisse, décrémente les soldes correspondants.
     """
@@ -2155,11 +2258,13 @@ async def payer_facture(facture_id: str, payload: dict = Body(...)):
     if not facture:
         raise HTTPException(status_code=404, detail="Facture non trouvée")
     if facture.get('statut') == 'payee':
-        raise HTTPException(status_code=400, detail="Facture déjà payée")
+        raise HTTPException(status_code=400, detail="Facture déjà entièrement payée")
 
     repartition = (payload or {}).get('repartition') or []
     if not isinstance(repartition, list) or not repartition:
         raise HTTPException(status_code=400, detail="Répartition requise (au moins 1 caisse)")
+
+    ligne_ids = (payload or {}).get('ligne_ids') or []  # optionnel
 
     # Validation des montants
     total = 0.0
@@ -2171,15 +2276,28 @@ async def payer_facture(facture_id: str, payload: dict = Body(...)):
             raise HTTPException(status_code=400, detail="Chaque ligne doit avoir caisse + montant > 0")
         cleaned.append({"caisse": caisse, "montant": round(montant, 2)})
         total += montant
+    total = round(total, 2)
 
-    expected = round(float(facture['montant']), 2)
-    if abs(round(total, 2) - expected) > 0.01:
-        raise HTTPException(status_code=400, detail=f"Somme des montants ({total:.2f}€) différente du montant facture ({expected:.2f}€)")
+    # Déterminer le montant attendu : somme des lignes sélectionnées ou facture globale
+    expected_lignes = []
+    if facture.get('lignes'):
+        if ligne_ids:
+            expected_lignes = [l for l in facture['lignes'] if l.get('id') in ligne_ids and l.get('statut') != 'payee']
+            if not expected_lignes:
+                raise HTTPException(status_code=400, detail="Aucune ligne valide à payer dans la sélection")
+        else:
+            # Sans sélection : toutes les lignes non payées
+            expected_lignes = [l for l in facture['lignes'] if l.get('statut') != 'payee']
+        expected = round(sum(l['montant'] for l in expected_lignes), 2)
+    else:
+        expected = round(float(facture['montant']), 2)
+
+    if abs(total - expected) > 0.01:
+        raise HTTPException(status_code=400, detail=f"Somme des montants ({total:.2f}€) différente du montant à payer ({expected:.2f}€)")
 
     date_paiement = (payload or {}).get('date_paiement') or datetime.now(timezone.utc).strftime('%Y-%m-%d')
     mode_paiement = (payload or {}).get('mode_paiement')
 
-    # Mapping caisse -> nom de compte en DB
     compte_mapping = {
         "Compte": "Compte Bancaire",
         "Compte Bancaire": "Compte Bancaire",
@@ -2196,13 +2314,16 @@ async def payer_facture(facture_id: str, payload: dict = Body(...)):
         "Asso Connect": "Asso Connect",
     }
 
+    detail_ligne_libelles = ""
+    if expected_lignes:
+        detail_ligne_libelles = " · " + ", ".join(l['libelle'] for l in expected_lignes)
+
     transactions_creees = []
     for r in cleaned:
         nom_compte = compte_mapping.get(r['caisse'], r['caisse'])
         compte = await db.comptes.find_one({"nom": nom_compte}, {"_id": 0})
         if not compte:
             raise HTTPException(status_code=400, detail=f"Caisse inconnue: {r['caisse']}")
-        # Créer la transaction dépense
         trans = {
             "id": str(uuid.uuid4()),
             "date": date_paiement,
@@ -2212,12 +2333,11 @@ async def payer_facture(facture_id: str, payload: dict = Body(...)):
             "montant": r['montant'],
             "endroit": nom_compte,
             "mode_paiement": mode_paiement,
-            "detail": f"Facture: {facture['libelle']}" + (f" · {facture.get('fournisseur')}" if facture.get('fournisseur') else ""),
+            "detail": f"Facture: {facture['libelle']}" + (f" · {facture.get('fournisseur')}" if facture.get('fournisseur') else "") + detail_ligne_libelles,
             "facture_id": facture_id,
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
         await db.transactions.insert_one(trans)
-        # Décrémenter le solde
         nouveau_solde = float(compte.get('solde') or 0) - r['montant']
         await db.comptes.update_one(
             {"nom": nom_compte},
@@ -2225,18 +2345,43 @@ async def payer_facture(facture_id: str, payload: dict = Body(...)):
         )
         transactions_creees.append({k: v for k, v in trans.items() if k != '_id'})
 
-    # Marquer la facture comme payée
-    await db.factures_a_payer.update_one(
-        {"id": facture_id},
-        {"$set": {
-            "statut": "payee",
-            "date_paiement": date_paiement,
-            "repartition": cleaned,
-            "mode_paiement": mode_paiement,
-        }}
-    )
+    # Mise à jour des statuts de lignes + statut facture
+    if facture.get('lignes'):
+        paid_ids = {l['id'] for l in expected_lignes}
+        updated_lignes = []
+        for l in facture['lignes']:
+            if l.get('id') in paid_ids:
+                updated_lignes.append({
+                    **l,
+                    "statut": "payee",
+                    "date_paiement": date_paiement,
+                    "repartition": cleaned,
+                    "mode_paiement": mode_paiement,
+                })
+            else:
+                updated_lignes.append(l)
+        n_paid = sum(1 for l in updated_lignes if l.get('statut') == 'payee')
+        new_statut = 'payee' if n_paid == len(updated_lignes) else 'partielle'
+        await db.factures_a_payer.update_one(
+            {"id": facture_id},
+            {"$set": {
+                "lignes": updated_lignes,
+                "statut": new_statut,
+                "date_paiement": date_paiement if new_statut == 'payee' else facture.get('date_paiement'),
+            }}
+        )
+    else:
+        await db.factures_a_payer.update_one(
+            {"id": facture_id},
+            {"$set": {
+                "statut": "payee",
+                "date_paiement": date_paiement,
+                "repartition": cleaned,
+                "mode_paiement": mode_paiement,
+            }}
+        )
     return {
-        "message": "Facture payée",
+        "message": "Paiement enregistré",
         "transactions": transactions_creees,
         "facture_id": facture_id,
     }

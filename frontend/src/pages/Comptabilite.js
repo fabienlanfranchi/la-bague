@@ -435,32 +435,117 @@ const Comptabilite = () => {
 
   // ====== FACTURES À PAYER ======
   const [showAddFactureModal, setShowAddFactureModal] = useState(false);
-  const [newFacture, setNewFacture] = useState({ libelle: '', montant: '', fournisseur: '', detail: '' });
-  const [payingFacture, setPayingFacture] = useState(null);  // facture en cours de paiement
+  const [newFacture, setNewFacture] = useState({
+    libelle: '',
+    fournisseur: '',
+    detail: '',
+    lignes: [{ libelle: '', montant: '' }],
+  });
+  const [editingFacture, setEditingFacture] = useState(null);  // facture en cours d'édition (avec ses lignes)
+  const [payingFacture, setPayingFacture] = useState(null);
+  const [paySelectedLignes, setPaySelectedLignes] = useState([]);  // ids de lignes sélectionnées
   const [payRepartition, setPayRepartition] = useState([{ caisse: '', montant: '' }]);
   const [payMode, setPayMode] = useState('');
   const [payDate, setPayDate] = useState('');
   const [payLoading, setPayLoading] = useState(false);
 
+  const factureMontant = (f) => {
+    if (f.lignes && f.lignes.length) {
+      return f.lignes.reduce((s, l) => s + (parseFloat(l.montant) || 0), 0);
+    }
+    return parseFloat(f.montant) || 0;
+  };
+  const factureRestant = (f) => {
+    if (f.lignes && f.lignes.length) {
+      return f.lignes
+        .filter(l => l.statut !== 'payee')
+        .reduce((s, l) => s + (parseFloat(l.montant) || 0), 0);
+    }
+    return f.statut === 'payee' ? 0 : (parseFloat(f.montant) || 0);
+  };
+
+  const newFactureTotal = newFacture.lignes.reduce((s, l) => s + (parseFloat(l.montant) || 0), 0);
+
+  const updateNewLigne = (idx, field, val) => {
+    const next = [...newFacture.lignes];
+    next[idx] = { ...next[idx], [field]: val };
+    setNewFacture({ ...newFacture, lignes: next });
+  };
+  const addNewLigne = () => setNewFacture({ ...newFacture, lignes: [...newFacture.lignes, { libelle: '', montant: '' }] });
+  const removeNewLigne = (idx) => setNewFacture({ ...newFacture, lignes: newFacture.lignes.filter((_, i) => i !== idx) });
+
   const handleCreateFacture = async () => {
-    if (!newFacture.libelle || !Number(newFacture.montant) || Number(newFacture.montant) <= 0) {
-      toast.error('Libellé et montant valides requis');
+    if (!newFacture.libelle) {
+      toast.error('Libellé requis');
+      return;
+    }
+    const lignesClean = newFacture.lignes.filter(l => l.libelle && Number(l.montant) > 0);
+    if (lignesClean.length === 0) {
+      toast.error('Ajoutez au moins une ligne avec un montant');
       return;
     }
     try {
       await axios.post(`${API}/factures-a-payer`, {
         libelle: newFacture.libelle,
-        montant: parseFloat(newFacture.montant),
+        montant: lignesClean.reduce((s, l) => s + parseFloat(l.montant), 0),
         fournisseur: newFacture.fournisseur || null,
         detail: newFacture.detail || null,
+        lignes: lignesClean.map(l => ({ libelle: l.libelle, montant: parseFloat(l.montant) })),
       });
       toast.success('Facture ajoutée');
       setShowAddFactureModal(false);
-      setNewFacture({ libelle: '', montant: '', fournisseur: '', detail: '' });
+      setNewFacture({ libelle: '', fournisseur: '', detail: '', lignes: [{ libelle: '', montant: '' }] });
       loadData();
     } catch (e) {
       console.error(e);
       toast.error('Erreur lors de la création');
+    }
+  };
+
+  // Édition
+  const openEditFacture = (facture) => {
+    setEditingFacture({
+      ...facture,
+      lignes: facture.lignes && facture.lignes.length
+        ? facture.lignes.map(l => ({ ...l }))
+        : [{ libelle: facture.libelle, montant: facture.montant }],
+    });
+  };
+  const updateEditLigne = (idx, field, val) => {
+    const next = [...editingFacture.lignes];
+    next[idx] = { ...next[idx], [field]: val };
+    setEditingFacture({ ...editingFacture, lignes: next });
+  };
+  const addEditLigne = () => setEditingFacture({ ...editingFacture, lignes: [...editingFacture.lignes, { libelle: '', montant: '' }] });
+  const removeEditLigne = (idx) => {
+    const ligne = editingFacture.lignes[idx];
+    if (ligne && ligne.statut === 'payee') {
+      toast.error('Impossible de supprimer une ligne déjà payée');
+      return;
+    }
+    setEditingFacture({ ...editingFacture, lignes: editingFacture.lignes.filter((_, i) => i !== idx) });
+  };
+  const editTotal = (editingFacture?.lignes || []).reduce((s, l) => s + (parseFloat(l.montant) || 0), 0);
+  const saveEditFacture = async () => {
+    if (!editingFacture) return;
+    const lignesClean = editingFacture.lignes.filter(l => l.libelle && Number(l.montant) > 0);
+    if (lignesClean.length === 0) {
+      toast.error('Conservez au moins une ligne valide');
+      return;
+    }
+    try {
+      await axios.put(`${API}/factures-a-payer/${editingFacture.id}`, {
+        libelle: editingFacture.libelle,
+        fournisseur: editingFacture.fournisseur || null,
+        detail: editingFacture.detail || null,
+        lignes: lignesClean,
+      });
+      toast.success('Facture mise à jour');
+      setEditingFacture(null);
+      loadData();
+    } catch (e) {
+      console.error(e);
+      toast.error('Erreur lors de la mise à jour');
     }
   };
 
@@ -478,13 +563,33 @@ const Comptabilite = () => {
 
   const openPayFacture = (facture) => {
     setPayingFacture(facture);
-    setPayRepartition([{ caisse: '', montant: facture.montant.toFixed(2) }]);
+    // Par défaut, toutes les lignes non payées sont sélectionnées
+    const unpaidLignes = (facture.lignes || []).filter(l => l.statut !== 'payee');
+    setPaySelectedLignes(unpaidLignes.map(l => l.id));
+    const total = unpaidLignes.length
+      ? unpaidLignes.reduce((s, l) => s + l.montant, 0)
+      : facture.montant;
+    setPayRepartition([{ caisse: '', montant: total.toFixed(2) }]);
     setPayMode('');
     setPayDate(new Date().toISOString().split('T')[0]);
   };
 
+  const togglePayLigne = (id) => {
+    setPaySelectedLignes(prev => {
+      const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
+      // Recalculer le total réparti automatiquement
+      const lignes = payingFacture?.lignes || [];
+      const selectedSum = lignes
+        .filter(l => next.includes(l.id))
+        .reduce((s, l) => s + l.montant, 0);
+      setPayRepartition([{ caisse: payRepartition[0]?.caisse || '', montant: selectedSum.toFixed(2) }]);
+      return next;
+    });
+  };
+
   const closePayModal = () => {
     setPayingFacture(null);
+    setPaySelectedLignes([]);
     setPayRepartition([{ caisse: '', montant: '' }]);
     setPayMode('');
   };
@@ -506,17 +611,27 @@ const Comptabilite = () => {
 
   const totalRepartition = payRepartition.reduce((s, r) => s + (parseFloat(r.montant) || 0), 0);
 
+  // Montant à payer selon sélection (toutes les lignes non payées par défaut ou cas sans lignes)
+  const payExpected = (() => {
+    if (!payingFacture) return 0;
+    if (payingFacture.lignes && payingFacture.lignes.length) {
+      return payingFacture.lignes
+        .filter(l => paySelectedLignes.includes(l.id))
+        .reduce((s, l) => s + l.montant, 0);
+    }
+    return payingFacture.montant || 0;
+  })();
+
   const submitPayFacture = async () => {
     if (!payingFacture) return;
-    // Validation
     for (const r of payRepartition) {
       if (!r.caisse || !Number(r.montant) || Number(r.montant) <= 0) {
         toast.error('Chaque ligne doit avoir une caisse et un montant > 0');
         return;
       }
     }
-    if (Math.abs(totalRepartition - payingFacture.montant) > 0.01) {
-      toast.error(`La somme (${totalRepartition.toFixed(2)} €) doit être égale au montant facture (${payingFacture.montant.toFixed(2)} €)`);
+    if (Math.abs(totalRepartition - payExpected) > 0.01) {
+      toast.error(`La somme (${totalRepartition.toFixed(2)} €) doit être égale au montant à payer (${payExpected.toFixed(2)} €)`);
       return;
     }
     setPayLoading(true);
@@ -525,8 +640,9 @@ const Comptabilite = () => {
         repartition: payRepartition.map(r => ({ caisse: r.caisse, montant: parseFloat(r.montant) })),
         date_paiement: payDate || null,
         mode_paiement: payMode || null,
+        ligne_ids: payingFacture.lignes && payingFacture.lignes.length ? paySelectedLignes : undefined,
       });
-      toast.success('Facture payée');
+      toast.success('Paiement enregistré');
       closePayModal();
       loadData();
     } catch (e) {
@@ -633,9 +749,9 @@ const Comptabilite = () => {
           <h2 className="text-2xl font-serif font-bold text-white flex items-center">
             <DollarSign className="w-6 h-6 mr-2 text-orange-400" />
             À Payer
-            {factures.filter(f => f.statut === 'en_attente').length > 0 && (
+            {factures.filter(f => f.statut !== 'payee').length > 0 && (
               <Badge className="ml-3 bg-orange-500/20 text-orange-300 border border-orange-500/40">
-                {factures.filter(f => f.statut === 'en_attente').length} facture(s)
+                {factures.filter(f => f.statut !== 'payee').length} facture(s)
               </Badge>
             )}
           </h2>
@@ -649,57 +765,105 @@ const Comptabilite = () => {
           </Button>
         </div>
 
-        {factures.filter(f => f.statut === 'en_attente').length === 0 ? (
+        {factures.filter(f => f.statut !== 'payee').length === 0 ? (
           <Card className="bg-black/30 border border-[#D4A024]/20 backdrop-blur-sm">
             <CardContent className="py-8 text-center text-gray-400">
               Aucune facture en attente de paiement
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {factures.filter(f => f.statut === 'en_attente').map((f) => (
-              <Card
-                key={f.id}
-                className="bg-gradient-to-br from-orange-950/30 to-black/40 border border-orange-500/30 backdrop-blur-sm"
-                data-testid={`facture-card-${f.id}`}
-              >
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base text-white flex items-start justify-between gap-2">
-                    <span className="flex-1">{f.libelle}</span>
-                    <span className="text-orange-300 font-bold whitespace-nowrap">
-                      {formatMontant(f.montant)}
-                    </span>
-                  </CardTitle>
-                  {f.fournisseur && (
-                    <p className="text-xs text-gray-400">{f.fournisseur}</p>
-                  )}
-                </CardHeader>
-                <CardContent className="pt-0 space-y-2">
-                  {f.detail && (
-                    <p className="text-xs text-gray-300 italic">{f.detail}</p>
-                  )}
-                  <div className="flex gap-2 pt-2">
-                    <Button
-                      size="sm"
-                      onClick={() => openPayFacture(f)}
-                      className="flex-1 bg-green-700 hover:bg-green-600 text-white"
-                      data-testid={`pay-facture-${f.id}`}
-                    >
-                      Payer
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleDeleteFacture(f.id)}
-                      className="text-red-400 hover:bg-red-500/10"
-                      data-testid={`del-facture-${f.id}`}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {factures.filter(f => f.statut !== 'payee').map((f) => {
+              const total = factureMontant(f);
+              const restant = factureRestant(f);
+              const paye = total - restant;
+              const hasLignes = f.lignes && f.lignes.length > 0;
+              return (
+                <Card
+                  key={f.id}
+                  className="bg-gradient-to-br from-orange-950/30 to-black/40 border border-orange-500/30 backdrop-blur-sm"
+                  data-testid={`facture-card-${f.id}`}
+                >
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base text-white flex items-start justify-between gap-2">
+                      <span className="flex-1">{f.libelle}</span>
+                      <div className="text-right whitespace-nowrap">
+                        <span className="text-orange-300 font-bold">
+                          {formatMontant(total)}
+                        </span>
+                        {paye > 0 && (
+                          <div className="text-xs text-green-300 mt-0.5">
+                            Réglé : {formatMontant(paye)}
+                          </div>
+                        )}
+                      </div>
+                    </CardTitle>
+                    {f.fournisseur && (
+                      <p className="text-xs text-gray-400">{f.fournisseur}</p>
+                    )}
+                    {f.statut === 'partielle' && (
+                      <Badge className="bg-yellow-700/40 text-yellow-200 border border-yellow-500/40 w-fit">
+                        Partiellement payée · Reste : {formatMontant(restant)}
+                      </Badge>
+                    )}
+                  </CardHeader>
+                  <CardContent className="pt-0 space-y-2">
+                    {f.detail && (
+                      <p className="text-xs text-gray-300 italic">{f.detail}</p>
+                    )}
+                    {/* Décompte des lignes */}
+                    {hasLignes && (
+                      <div className="bg-black/40 rounded border border-orange-500/20 divide-y divide-orange-500/10">
+                        {f.lignes.map((l) => (
+                          <div
+                            key={l.id}
+                            className="flex items-center justify-between px-2 py-1.5 text-xs"
+                            data-testid={`facture-${f.id}-ligne-${l.id}`}
+                          >
+                            <span className={l.statut === 'payee' ? 'text-gray-500 line-through' : 'text-gray-200'}>
+                              {l.statut === 'payee' && <span className="mr-1">✓</span>}
+                              {l.libelle}
+                            </span>
+                            <span className={l.statut === 'payee' ? 'text-gray-500 line-through' : 'text-orange-300 font-semibold'}>
+                              {formatMontant(l.montant)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex gap-2 pt-2">
+                      <Button
+                        size="sm"
+                        onClick={() => openPayFacture(f)}
+                        className="flex-1 bg-green-700 hover:bg-green-600 text-white"
+                        data-testid={`pay-facture-${f.id}`}
+                      >
+                        Payer {hasLignes && restant !== total ? `(reste ${formatMontant(restant)})` : ''}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openEditFacture(f)}
+                        className="border-blue-500/40 text-blue-300 hover:bg-blue-500/10"
+                        data-testid={`edit-facture-${f.id}`}
+                        title="Éditer (libellé, lignes)"
+                      >
+                        ✎
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleDeleteFacture(f.id)}
+                        className="text-red-400 hover:bg-red-500/10"
+                        data-testid={`del-facture-${f.id}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
       </div>
@@ -1776,6 +1940,131 @@ const Comptabilite = () => {
         </div>
       )}
 
+      {/* ============ MODAL : Éditer une facture (lignes) ============ */}
+      {editingFacture && (
+        <div
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+          onClick={() => setEditingFacture(null)}
+        >
+          <Card
+            className="bg-[#1a1a1a] border-2 border-blue-500/50 max-w-lg w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <CardHeader className="border-b border-blue-500/30">
+              <CardTitle className="text-blue-300 flex items-center justify-between">
+                Éditer la facture
+                <button
+                  type="button"
+                  onClick={() => setEditingFacture(null)}
+                  className="text-gray-400 hover:text-white"
+                  data-testid="close-edit-facture"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4 space-y-3">
+              <div>
+                <label className="text-sm text-gray-400 mb-1 block">Libellé global</label>
+                <Input
+                  value={editingFacture.libelle}
+                  onChange={(e) => setEditingFacture({ ...editingFacture, libelle: e.target.value })}
+                  className="bg-black/40 border-blue-500/30 text-white"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-gray-400 mb-1 block">Fournisseur</label>
+                <Input
+                  value={editingFacture.fournisseur || ''}
+                  onChange={(e) => setEditingFacture({ ...editingFacture, fournisseur: e.target.value })}
+                  className="bg-black/40 border-blue-500/30 text-white"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-gray-300 mb-2 font-semibold flex items-center justify-between">
+                  <span>Sous-factures</span>
+                  <span className="text-blue-300">Total : {formatMontant(editTotal)}</span>
+                </label>
+                <div className="space-y-2">
+                  {editingFacture.lignes.map((l, idx) => (
+                    <div key={l.id || idx} className="grid grid-cols-[1fr_110px_auto] gap-2 items-center">
+                      <Input
+                        value={l.libelle}
+                        disabled={l.statut === 'payee'}
+                        onChange={(e) => updateEditLigne(idx, 'libelle', e.target.value)}
+                        className="bg-black/40 border-blue-500/30 text-white text-sm disabled:opacity-60"
+                        data-testid={`edit-ligne-libelle-${idx}`}
+                      />
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={l.montant}
+                        disabled={l.statut === 'payee'}
+                        onChange={(e) => updateEditLigne(idx, 'montant', e.target.value)}
+                        className="bg-black/40 border-blue-500/30 text-white text-sm disabled:opacity-60"
+                        data-testid={`edit-ligne-montant-${idx}`}
+                      />
+                      {l.statut === 'payee' ? (
+                        <Badge className="bg-green-700/30 text-green-300 border border-green-500/40 text-xs">
+                          payée
+                        </Badge>
+                      ) : (
+                        editingFacture.lignes.length > 1 && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => removeEditLigne(idx)}
+                            className="text-red-400 hover:bg-red-500/10 p-2"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={addEditLigne}
+                  className="mt-2 border-blue-500/40 text-blue-300 hover:bg-blue-500/10 w-full"
+                  data-testid="add-edit-ligne"
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  Ajouter une sous-facture
+                </Button>
+              </div>
+              <div>
+                <label className="text-sm text-gray-400 mb-1 block">Détail</label>
+                <textarea
+                  value={editingFacture.detail || ''}
+                  onChange={(e) => setEditingFacture({ ...editingFacture, detail: e.target.value })}
+                  rows={2}
+                  className="w-full bg-black/40 border border-blue-500/30 text-white rounded px-3 py-2 resize-none"
+                />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setEditingFacture(null)}
+                  className="flex-1 border-gray-600 text-gray-300 hover:bg-gray-800"
+                >
+                  Annuler
+                </Button>
+                <Button
+                  onClick={saveEditFacture}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold"
+                  data-testid="confirm-edit-facture"
+                >
+                  Enregistrer
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* ============ MODAL : Ajouter une facture à payer ============ */}
       {showAddFactureModal && (
         <div
@@ -1801,26 +2090,13 @@ const Comptabilite = () => {
             </CardHeader>
             <CardContent className="pt-4 space-y-3">
               <div>
-                <label className="text-sm text-gray-400 mb-1 block">Libellé *</label>
+                <label className="text-sm text-gray-400 mb-1 block">Libellé global *</label>
                 <Input
                   value={newFacture.libelle}
                   onChange={(e) => setNewFacture({ ...newFacture, libelle: e.target.value })}
-                  placeholder="Ex: Cotisation FFAC 2026"
+                  placeholder="Ex: Repas anniversaire club"
                   className="bg-black/40 border-orange-500/30 text-white"
                   data-testid="facture-libelle"
-                />
-              </div>
-              <div>
-                <label className="text-sm text-gray-400 mb-1 block">Montant (€) *</label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={newFacture.montant}
-                  onChange={(e) => setNewFacture({ ...newFacture, montant: e.target.value })}
-                  placeholder="Ex: 350"
-                  className="bg-black/40 border-orange-500/30 text-white"
-                  data-testid="facture-montant"
                 />
               </div>
               <div>
@@ -1828,10 +2104,65 @@ const Comptabilite = () => {
                 <Input
                   value={newFacture.fournisseur}
                   onChange={(e) => setNewFacture({ ...newFacture, fournisseur: e.target.value })}
-                  placeholder="Ex: Sosh, La Poste, Restaurant…"
+                  placeholder="Ex: Restaurant Le Club"
                   className="bg-black/40 border-orange-500/30 text-white"
                 />
               </div>
+
+              {/* Lignes de la facture */}
+              <div>
+                <label className="text-sm text-gray-300 mb-2 font-semibold flex items-center justify-between">
+                  <span>Sous-factures / postes</span>
+                  <span className="text-orange-300">
+                    Total : {formatMontant(newFactureTotal)}
+                  </span>
+                </label>
+                <div className="space-y-2">
+                  {newFacture.lignes.map((l, idx) => (
+                    <div key={idx} className="grid grid-cols-[1fr_110px_auto] gap-2 items-center">
+                      <Input
+                        value={l.libelle}
+                        onChange={(e) => updateNewLigne(idx, 'libelle', e.target.value)}
+                        placeholder={idx === 0 ? "Ex: Traiteur" : "Ex: Vin / Boissons"}
+                        className="bg-black/40 border-orange-500/30 text-white text-sm"
+                        data-testid={`new-ligne-libelle-${idx}`}
+                      />
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={l.montant}
+                        onChange={(e) => updateNewLigne(idx, 'montant', e.target.value)}
+                        placeholder="Montant €"
+                        className="bg-black/40 border-orange-500/30 text-white text-sm"
+                        data-testid={`new-ligne-montant-${idx}`}
+                      />
+                      {newFacture.lignes.length > 1 && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => removeNewLigne(idx)}
+                          className="text-red-400 hover:bg-red-500/10 p-2"
+                          data-testid={`remove-new-ligne-${idx}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={addNewLigne}
+                  className="mt-2 border-orange-500/40 text-orange-300 hover:bg-orange-500/10 w-full"
+                  data-testid="add-new-ligne"
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  Ajouter une sous-facture
+                </Button>
+              </div>
+
               <div>
                 <label className="text-sm text-gray-400 mb-1 block">Détail</label>
                 <textarea
@@ -1855,7 +2186,7 @@ const Comptabilite = () => {
                   className="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-bold"
                   data-testid="confirm-add-facture"
                 >
-                  Ajouter
+                  Ajouter ({formatMontant(newFactureTotal)})
                 </Button>
               </div>
             </CardContent>
@@ -1886,10 +2217,53 @@ const Comptabilite = () => {
                 </button>
               </CardTitle>
               <p className="text-sm text-gray-400">
-                Montant total : <span className="text-green-300 font-bold">{formatMontant(payingFacture.montant)}</span>
+                {payingFacture.lignes && payingFacture.lignes.length ? (
+                  <>Cochez les sous-factures à régler · Sélectionné : <span className="text-green-300 font-bold">{formatMontant(payExpected)}</span></>
+                ) : (
+                  <>Montant total : <span className="text-green-300 font-bold">{formatMontant(payingFacture.montant)}</span></>
+                )}
               </p>
             </CardHeader>
             <CardContent className="pt-4 space-y-4">
+              {/* Sélection des sous-factures (si lignes) */}
+              {payingFacture.lignes && payingFacture.lignes.length > 0 && (
+                <div>
+                  <label className="text-sm text-gray-300 mb-2 block font-semibold">
+                    Sous-factures à régler
+                  </label>
+                  <div className="bg-black/40 rounded border border-green-500/20 divide-y divide-green-500/10">
+                    {payingFacture.lignes.map((l) => {
+                      const isPaid = l.statut === 'payee';
+                      const checked = paySelectedLignes.includes(l.id);
+                      return (
+                        <label
+                          key={l.id}
+                          className={`flex items-center gap-2 px-3 py-2 text-sm cursor-pointer ${
+                            isPaid ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-500/5'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked || isPaid}
+                            disabled={isPaid}
+                            onChange={() => !isPaid && togglePayLigne(l.id)}
+                            className="w-4 h-4 accent-green-500"
+                            data-testid={`pay-toggle-${l.id}`}
+                          />
+                          <span className={`flex-1 ${isPaid ? 'line-through text-gray-500' : 'text-gray-200'}`}>
+                            {isPaid && '✓ '}
+                            {l.libelle}
+                          </span>
+                          <span className={isPaid ? 'text-gray-500 line-through' : 'text-orange-300 font-semibold'}>
+                            {formatMontant(l.montant)}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Date + Mode */}
               <div className="grid grid-cols-2 gap-2">
                 <div>
@@ -1982,17 +2356,17 @@ const Comptabilite = () => {
                   <span>Total réparti</span>
                   <span
                     className={`font-bold ${
-                      Math.abs(totalRepartition - payingFacture.montant) < 0.01
+                      Math.abs(totalRepartition - payExpected) < 0.01
                         ? 'text-green-300'
                         : 'text-orange-300'
                     }`}
                   >
-                    {formatMontant(totalRepartition)} / {formatMontant(payingFacture.montant)}
+                    {formatMontant(totalRepartition)} / {formatMontant(payExpected)}
                   </span>
                 </div>
-                {Math.abs(totalRepartition - payingFacture.montant) >= 0.01 && (
+                {Math.abs(totalRepartition - payExpected) >= 0.01 && (
                   <p className="text-orange-400 text-xs mt-1">
-                    ⚠️ La somme doit égaler le montant de la facture
+                    ⚠️ La somme doit égaler le montant sélectionné
                   </p>
                 )}
               </div>
@@ -2008,7 +2382,7 @@ const Comptabilite = () => {
                 </Button>
                 <Button
                   onClick={submitPayFacture}
-                  disabled={payLoading || Math.abs(totalRepartition - payingFacture.montant) >= 0.01}
+                  disabled={payLoading || Math.abs(totalRepartition - payExpected) >= 0.01 || payExpected <= 0}
                   className="flex-1 bg-green-700 hover:bg-green-600 text-white font-bold disabled:opacity-50"
                   data-testid="confirm-pay-facture"
                 >
