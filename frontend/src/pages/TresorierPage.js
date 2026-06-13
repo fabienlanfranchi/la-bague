@@ -32,8 +32,32 @@ const TresorierPage = () => {
     objet: '',
     montant: '',
     endroit: '',
-    detail: ''
+    detail: '',
+    dette_id: '',  // dette pointée (si l'argent règle une dette spécifique)
   });
+
+  const [dettesMembre, setDettesMembre] = useState([]);
+
+  // Charger les dettes du membre sélectionné
+  useEffect(() => {
+    const loadDettes = async () => {
+      if (!form.membre_id) {
+        setDettesMembre([]);
+        return;
+      }
+      try {
+        const res = await fetch(`${API_URL}/api/dettes/membre/${form.membre_id}`);
+        const data = await res.json();
+        setDettesMembre(data || []);
+      } catch (e) {
+        console.error('Erreur chargement dettes:', e);
+        setDettesMembre([]);
+      }
+    };
+    loadDettes();
+    // Reset dette_id quand on change de membre
+    setForm((f) => ({ ...f, dette_id: '' }));
+  }, [form.membre_id]);
 
   useEffect(() => {
     loadData();
@@ -96,6 +120,7 @@ const TresorierPage = () => {
           endroit: form.endroit,
           detail: form.detail || null,
           declarant_id: currentMember?.id || null,
+          dette_id: form.dette_id && form.dette_id !== 'COTISATION' ? form.dette_id : null,
         })
       });
 
@@ -109,7 +134,8 @@ const TresorierPage = () => {
           objet: '',
           montant: '',
           endroit: '',
-          detail: ''
+          detail: '',
+          dette_id: '',
         });
         // Recharger les signalements
         const paiementsRes = await fetch(`${API_URL}/api/paiements-en-attente/membre/${currentMember.id}`);
@@ -216,6 +242,90 @@ const TresorierPage = () => {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Pointer une dette / cotisation existante (apparait si membre sélectionné) */}
+            {form.membre_id && (() => {
+              const m = members.find(x => x.id === form.membre_id);
+              const nbCotis = Number(m?.situation_cotisation || 0);
+              const hasItems = nbCotis > 0 || dettesMembre.length > 0;
+              if (!hasItems) return null;
+              return (
+                <div className="bg-[#D4A024]/5 border border-[#D4A024]/30 rounded-lg p-3">
+                  <label className="block text-sm text-[#D4A024] font-semibold mb-2">
+                    💡 Lier ce paiement à une dette/cotisation ?
+                  </label>
+                  <p className="text-xs text-gray-400 mb-2">
+                    Si oui, l'effacement de la dette se fera automatiquement à la validation par le Président.
+                  </p>
+                  <div className="space-y-1 max-h-48 overflow-y-auto">
+                    {/* Option "paiement libre" */}
+                    <label
+                      className={`flex items-center gap-2 px-3 py-2 rounded cursor-pointer text-sm ${
+                        !form.dette_id ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-800/40'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        checked={!form.dette_id}
+                        onChange={() => setForm({ ...form, dette_id: '' })}
+                        className="accent-gray-400"
+                      />
+                      <span>Paiement libre (aucun lien automatique)</span>
+                    </label>
+
+                    {/* Cotisations dues */}
+                    {nbCotis > 0 && (
+                      <label
+                        className={`flex items-center gap-2 px-3 py-2 rounded cursor-pointer text-sm ${
+                          form.dette_id === 'COTISATION' ? 'bg-orange-700/40 text-orange-200' : 'text-gray-300 hover:bg-orange-500/10'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          checked={form.dette_id === 'COTISATION'}
+                          onChange={() => setForm({
+                            ...form,
+                            dette_id: 'COTISATION',
+                            objet: 'cotisation',
+                            montant: String(nbCotis * 200),
+                          })}
+                          className="accent-orange-400"
+                        />
+                        <span>
+                          🪪 Cotisation · {nbCotis} saison(s) · <span className="text-orange-300 font-bold">{nbCotis * 200} €</span>
+                        </span>
+                      </label>
+                    )}
+
+                    {/* Dettes du membre */}
+                    {dettesMembre.map((d) => (
+                      <label
+                        key={d.id}
+                        className={`flex items-center gap-2 px-3 py-2 rounded cursor-pointer text-sm ${
+                          form.dette_id === d.id ? 'bg-red-700/40 text-red-200' : 'text-gray-300 hover:bg-red-500/10'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          checked={form.dette_id === d.id}
+                          onChange={() => setForm({
+                            ...form,
+                            dette_id: d.id,
+                            objet: d.cause || 'autres',
+                            montant: String(d.montant),
+                            detail: d.cause || form.detail,
+                          })}
+                          className="accent-red-400"
+                        />
+                        <span>
+                          💸 {d.cause} · <span className="text-red-300 font-bold">{d.montant} €</span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Objet */}
             <div>
