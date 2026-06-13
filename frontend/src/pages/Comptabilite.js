@@ -384,12 +384,17 @@ const Comptabilite = () => {
     }
 
     try {
+      // Nom à afficher : membre OU nom_invite OU fallback générique
+      const nomAffiche = detteARegler.membre_id
+        ? (members.find(m => m.id === detteARegler.membre_id)?.nom_complet || 'Membre inconnu')
+        : (detteARegler.nom_invite || 'Invité');
+
       // 1. Créer le virement Dehors → Compte destination
       await axios.post(`${API}/virements`, {
         compte_source: 'Dehors',
         compte_destination: compteDestinationReglement,
         montant: detteARegler.montant,
-        description: `Paiement dette: ${detteARegler.cause} (${members.find(m => m.id === detteARegler.membre_id)?.nom_complet || 'Membre'})`
+        description: `Paiement dette: ${detteARegler.cause} (${nomAffiche})`
       });
 
       // 2. Supprimer la dette
