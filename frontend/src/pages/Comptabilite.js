@@ -1774,15 +1774,59 @@ const Comptabilite = () => {
                                 </p>
                               </div>
                               <div className="flex gap-1 flex-wrap">
+                                {dette.membre_id && (
+                                  <Button
+                                    onClick={async () => {
+                                      const nom = membre?.nom_complet || 'le membre';
+                                      if (!window.confirm(`Déclarer la dette de ${nom} (${dette.montant} € · ${dette.cause}) comme payée ?\n\nCréera un paiement en attente, validé immédiatement :\n• Caisse : Chez Fabien\n• Mode : Espèces`)) return;
+                                      try {
+                                        const today = new Date().toISOString().split('T')[0];
+                                        const admin = members.find(m => m.role === 'admin' || m.login_key === 'labague1');
+                                        const declarantId = admin?.id || dette.membre_id;
+                                        // 1. Créer paiement en attente lié à la dette
+                                        const res = await axios.post(`${API}/paiements-en-attente`, {
+                                          membre_id: dette.membre_id,
+                                          declarant_id: declarantId,
+                                          date_paiement: today,
+                                          type: 'recette',
+                                          objet: dette.cause || 'autres',
+                                          montant: dette.montant,
+                                          endroit: 'Chez Fabien',
+                                          mode_paiement: 'Espèces',
+                                          detail: `Dette: ${dette.cause}`,
+                                          dette_id: dette.id,
+                                        });
+                                        const paiementId = res.data?.paiement?.id;
+                                        // 2. Valider immédiatement → la dette est supprimée et la caisse créditée
+                                        if (paiementId && declarantId) {
+                                          await axios.post(`${API}/paiements-en-attente/${paiementId}/valider`, null, {
+                                            params: { validateur_id: declarantId },
+                                          });
+                                        }
+                                        toast.success(`Paiement de ${dette.montant} € enregistré`);
+                                        loadData();
+                                      } catch (e) {
+                                        console.error(e);
+                                        toast.error(e.response?.data?.detail || 'Erreur lors du paiement');
+                                      }
+                                    }}
+                                    size="sm"
+                                    className="bg-green-700 hover:bg-green-600 text-white text-xs"
+                                    data-testid={`declarer-payee-dette-${dette.id}`}
+                                    title="Déclarer payé sur Chez Fabien en Espèces (raccourci)"
+                                  >
+                                    💰 Payé · Fabien · Espèces
+                                  </Button>
+                                )}
                                 <Button
                                   onClick={() => openReglementModal(dette)}
                                   variant="outline"
                                   size="sm"
                                   className="border-green-600 text-green-400 hover:bg-green-900/20"
                                   data-testid={`reglement-dette-${dette.id}`}
-                                  title="Encaisser le règlement de la dette"
+                                  title="Encaisser la dette sur une autre caisse / autre mode"
                                 >
-                                  ✓ Réglé
+                                  ✓ Réglé...
                                 </Button>
                                 <Button
                                   onClick={async () => {
