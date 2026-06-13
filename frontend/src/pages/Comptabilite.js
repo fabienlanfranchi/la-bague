@@ -60,6 +60,49 @@ const Comptabilite = () => {
     description: ''
   });
 
+  // Modal de déclaration de paiement d'une dette (trésorier ou admin)
+  const [declaringDette, setDeclaringDette] = useState(null);
+  const [declareCaisse, setDeclareCaisse] = useState('Chez Fabien');
+  const [declareMode, setDeclareMode] = useState('Espèces');
+  const [declareLoading, setDeclareLoading] = useState(false);
+
+  const openDeclareDette = (dette) => {
+    setDeclaringDette(dette);
+    setDeclareCaisse('Chez Fabien');
+    setDeclareMode('Espèces');
+  };
+
+  const submitDeclareDette = async () => {
+    if (!declaringDette || !declareCaisse || !declareMode) {
+      toast.error('Choisissez caisse et mode de paiement');
+      return;
+    }
+    setDeclareLoading(true);
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      await axios.post(`${API}/paiements-en-attente`, {
+        membre_id: declaringDette.membre_id,
+        declarant_id: currentMember?.id || null,
+        date_paiement: today,
+        type: 'recette',
+        objet: declaringDette.cause || 'autres',
+        montant: declaringDette.montant,
+        endroit: declareCaisse,
+        mode_paiement: declareMode,
+        detail: `Dette: ${declaringDette.cause}`,
+        dette_id: declaringDette.id,
+      });
+      toast.success("Paiement déclaré · en attente de validation du Président");
+      setDeclaringDette(null);
+      loadData();
+    } catch (e) {
+      console.error(e);
+      toast.error(e.response?.data?.detail || 'Erreur lors de la déclaration');
+    } finally {
+      setDeclareLoading(false);
+    }
+  };
+
   // Modal de dette "Dehors"
   const [showDetteModal, setShowDetteModal] = useState(false);
   const [detteMode, setDetteMode] = useState('single');  // 'single' | 'multi' | 'invite'
@@ -1801,6 +1844,17 @@ const Comptabilite = () => {
                                 </p>
                               </div>
                               <div className="flex gap-1 flex-wrap">
+                                {dette.membre_id && !canAct && (
+                                  <Button
+                                    onClick={() => openDeclareDette(dette)}
+                                    size="sm"
+                                    className="bg-blue-700 hover:bg-blue-600 text-white text-xs"
+                                    data-testid={`declarer-paiement-dette-${dette.id}`}
+                                    title="Déclarer un paiement (sera validé par le Président)"
+                                  >
+                                    📤 Déclarer paiement
+                                  </Button>
+                                )}
                                 {dette.membre_id && canAct && (
                                   <Button
                                     onClick={async () => {
@@ -2288,6 +2342,90 @@ const Comptabilite = () => {
                 Fermer
               </Button>
             </div>
+          </Card>
+        </div>
+      )}
+
+      {/* ============ MODAL : Trésorier — Déclarer paiement d'une dette ============ */}
+      {declaringDette && (
+        <div
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+          onClick={() => setDeclaringDette(null)}
+        >
+          <Card
+            className="bg-[#1a1a1a] border-2 border-blue-500/50 max-w-md w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <CardHeader className="border-b border-blue-500/30">
+              <CardTitle className="text-blue-300 flex items-center justify-between">
+                Déclarer un paiement
+                <button
+                  type="button"
+                  onClick={() => setDeclaringDette(null)}
+                  className="text-gray-400 hover:text-white"
+                  data-testid="close-declare-dette"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </CardTitle>
+              <p className="text-sm text-gray-400">
+                {getMemberName(declaringDette.membre_id)} · {declaringDette.cause} ·{' '}
+                <span className="text-blue-300 font-bold">{formatMontant(declaringDette.montant)}</span>
+              </p>
+            </CardHeader>
+            <CardContent className="pt-4 space-y-3">
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">Caisse créditée</label>
+                <select
+                  value={declareCaisse}
+                  onChange={(e) => setDeclareCaisse(e.target.value)}
+                  className="w-full bg-black/40 border border-blue-500/30 text-white rounded px-2 py-2 text-sm"
+                  data-testid="declare-caisse"
+                >
+                  <option value="Compte Bancaire">Compte Bancaire</option>
+                  <option value="Chez Fabien">Chez Fabien</option>
+                  <option value="Chez Jacques">Chez Jacques</option>
+                  <option value="PayPal">PayPal</option>
+                  <option value="Asso Connect">Asso Connect</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">Mode de paiement</label>
+                <select
+                  value={declareMode}
+                  onChange={(e) => setDeclareMode(e.target.value)}
+                  className="w-full bg-black/40 border border-blue-500/30 text-white rounded px-2 py-2 text-sm"
+                  data-testid="declare-mode"
+                >
+                  <option value="Virement">Virement</option>
+                  <option value="Espèces">Espèces</option>
+                  <option value="Chèque">Chèque</option>
+                  <option value="CB">CB</option>
+                </select>
+              </div>
+              <div className="bg-yellow-900/20 border border-yellow-600/30 rounded p-3 text-xs text-yellow-200">
+                ℹ️ Ce paiement sera <strong>en attente</strong> et apparaîtra chez le Président pour validation.
+                Une fois validé : la caisse sera créditée, la dette supprimée du profil du membre et une transaction enregistrée automatiquement.
+              </div>
+              <div className="flex gap-2 pt-1">
+                <Button
+                  variant="outline"
+                  onClick={() => setDeclaringDette(null)}
+                  disabled={declareLoading}
+                  className="flex-1 border-gray-600 text-gray-300 hover:bg-gray-800"
+                >
+                  Annuler
+                </Button>
+                <Button
+                  onClick={submitDeclareDette}
+                  disabled={declareLoading}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold disabled:opacity-50"
+                  data-testid="confirm-declare-dette"
+                >
+                  {declareLoading ? 'Envoi…' : 'Déclarer'}
+                </Button>
+              </div>
+            </CardContent>
           </Card>
         </div>
       )}
