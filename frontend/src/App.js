@@ -127,6 +127,16 @@ const AdminRoute = ({ children }) => {
   return children;
 };
 
+const AdminOrTresorierRoute = ({ children }) => {
+  const { currentMember, loading, isAdmin } = useUser();
+  if (loading) return <LoadingScreen />;
+  if (!currentMember) return <Navigate to="/login" replace />;
+  const isTresorier = (currentMember.fonction || '').toLowerCase().includes('trésorier')
+    || (currentMember.fonction || '').toLowerCase().includes('tresorier');
+  if (!isAdmin && !isTresorier) return <Navigate to="/dashboard" replace />;
+  return children;
+};
+
 const Home = () => {
   // Sélectionner une photo aléatoire parmi les 10
   const randomCigar = Math.floor(Math.random() * 10) + 1;
@@ -372,11 +382,11 @@ function App() {
             <Route
               path="/comptabilite"
               element={
-                <AdminRoute>
+                <AdminOrTresorierRoute>
                   <AppLayout>
                     <Comptabilite />
                   </AppLayout>
-                </AdminRoute>
+                </AdminOrTresorierRoute>
               }
             />
             <Route

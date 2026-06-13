@@ -41,7 +41,7 @@ const Sidebar = () => {
 
   const menuItems = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, adminOnly: false },
-    { path: '/comptabilite', label: 'Comptabilité', icon: DollarSign, adminOnly: true },
+    { path: '/comptabilite', label: 'Comptabilité', icon: DollarSign, adminOnly: true, tresorierAllowed: true },
     { path: '/members', label: 'Membres', icon: Users, adminOnly: true },
     { path: '/tresorier', label: 'Trésorier', icon: ClipboardCheck, adminOnly: false, tresorierOnly: true },
     { path: '/evenements', label: 'Événements', icon: Calendar, adminOnly: false },
@@ -111,7 +111,8 @@ const Sidebar = () => {
             {menuItems.map((item) => {
               // SÉCURITÉ: Vérifier à la fois isAdmin ET currentMember.is_president
               const hasAdminAccess = isAdmin && currentMember?.is_president === true;
-              if (item.adminOnly && !hasAdminAccess) return null;
+              // Comptabilité : accessible aussi aux trésoriers (lecture)
+              if (item.adminOnly && !hasAdminAccess && !(item.tresorierAllowed && isTresorier)) return null;
               if (item.memberOnly && hasAdminAccess) return null;
               // Onglet Trésorier visible uniquement pour les trésoriers (pas en mode admin)
               if (item.tresorierOnly && !isTresorier) return null;

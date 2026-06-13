@@ -27,9 +27,16 @@ import { toast } from 'sonner';
 import axios from 'axios';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+import { useUser } from '../context/UserContext';
+
 const API = `${BACKEND_URL}/api`;
 
 const Comptabilite = () => {
+  const { currentMember, isAdmin } = useUser();
+  const isPresident = isAdmin && currentMember?.is_president === true;
+  // Le trésorier peut consulter + déclarer mais pas valider/agir sur des automatisations
+  // canAct = peut effectuer toutes les actions (valider, corriger caisse, offrir/annuler dette, supprimer transaction, etc.)
+  const canAct = isPresident;
   const [summary, setSummary] = useState({
     solde_total: 0,
     total_recettes: 0,
@@ -737,6 +744,18 @@ const Comptabilite = () => {
         </p>
       </div>
 
+      {/* Bandeau Trésorier (lecture seule) */}
+      {!canAct && (
+        <div className="bg-blue-900/30 border border-blue-500/40 rounded-lg p-4 text-blue-200">
+          <p className="text-sm">
+            <span className="font-bold">👁️ Mode consultation Trésorier</span> — Vous pouvez tout consulter mais
+            les validations, encaissements et corrections de caisse restent réservés au Président.
+            Pour <strong>déclarer un paiement</strong> au nom d'un membre,
+            utilisez l'onglet <strong>« Trésorier »</strong> qui transmettra la demande au Président pour validation.
+          </p>
+        </div>
+      )}
+
       {/* Vue d'ensemble financière */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {/* Solde total (comptes + dettes) */}
@@ -882,8 +901,10 @@ const Comptabilite = () => {
                       <Button
                         size="sm"
                         onClick={() => openPayFacture(f)}
-                        className="flex-1 bg-green-700 hover:bg-green-600 text-white"
+                        disabled={!canAct}
+                        className="flex-1 bg-green-700 hover:bg-green-600 text-white disabled:opacity-40"
                         data-testid={`pay-facture-${f.id}`}
+                        title={canAct ? '' : 'Paiement réservé au Président'}
                       >
                         Payer {hasLignes && restant !== total ? `(reste ${formatMontant(restant)})` : ''}
                       </Button>
@@ -891,9 +912,10 @@ const Comptabilite = () => {
                         size="sm"
                         variant="outline"
                         onClick={() => openEditFacture(f)}
-                        className="border-blue-500/40 text-blue-300 hover:bg-blue-500/10"
+                        disabled={!canAct}
+                        className="border-blue-500/40 text-blue-300 hover:bg-blue-500/10 disabled:opacity-30"
                         data-testid={`edit-facture-${f.id}`}
-                        title="Éditer (libellé, lignes)"
+                        title={canAct ? 'Éditer (libellé, lignes)' : 'Réservé au Président'}
                       >
                         ✎
                       </Button>
@@ -901,8 +923,10 @@ const Comptabilite = () => {
                         size="sm"
                         variant="ghost"
                         onClick={() => handleDeleteFacture(f.id)}
-                        className="text-red-400 hover:bg-red-500/10"
+                        disabled={!canAct}
+                        className="text-red-400 hover:bg-red-500/10 disabled:opacity-30"
                         data-testid={`del-facture-${f.id}`}
+                        title={canAct ? '' : 'Réservé au Président'}
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -1325,15 +1349,16 @@ const Comptabilite = () => {
                           <td className="p-3">
                             <button
                               type="button"
-                              onClick={() => openEditCaisse(trans)}
-                              className="group inline-flex items-center gap-1"
+                              onClick={() => canAct && openEditCaisse(trans)}
+                              disabled={!canAct}
+                              className="group inline-flex items-center gap-1 disabled:cursor-default"
                               data-testid={`edit-caisse-${trans.id}`}
-                              title="Cliquer pour corriger la caisse"
+                              title={canAct ? "Cliquer pour corriger la caisse" : "Modification réservée au Président"}
                             >
-                              <Badge className="bg-[#7A2020]/50 text-[#D4A024] border border-[#D4A024]/30 text-sm px-2 py-1 group-hover:bg-[#D4A024]/20 cursor-pointer transition">
+                              <Badge className={`bg-[#7A2020]/50 text-[#D4A024] border border-[#D4A024]/30 text-sm px-2 py-1 ${canAct ? 'group-hover:bg-[#D4A024]/20 cursor-pointer' : ''} transition`}>
                                 {trans.endroit}
                               </Badge>
-                              <span className="text-[10px] text-gray-500 group-hover:text-[#D4A024] transition">✎</span>
+                              {canAct && <span className="text-[10px] text-gray-500 group-hover:text-[#D4A024] transition">✎</span>}
                             </button>
                           </td>
                           <td className="p-3">
@@ -1341,8 +1366,10 @@ const Comptabilite = () => {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleDeleteTransaction(trans.id)}
-                              className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                              disabled={!canAct}
+                              className="text-red-400 hover:text-red-300 hover:bg-red-900/20 disabled:opacity-30"
                               data-testid={`delete-trans-${trans.id}`}
+                              title={canAct ? 'Supprimer le mouvement' : 'Réservé au Président'}
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
@@ -1774,7 +1801,7 @@ const Comptabilite = () => {
                                 </p>
                               </div>
                               <div className="flex gap-1 flex-wrap">
-                                {dette.membre_id && (
+                                {dette.membre_id && canAct && (
                                   <Button
                                     onClick={async () => {
                                       const nom = membre?.nom_complet || 'le membre';
@@ -1822,9 +1849,10 @@ const Comptabilite = () => {
                                   onClick={() => openReglementModal(dette)}
                                   variant="outline"
                                   size="sm"
-                                  className="border-green-600 text-green-400 hover:bg-green-900/20"
+                                  disabled={!canAct}
+                                  className="border-green-600 text-green-400 hover:bg-green-900/20 disabled:opacity-30"
                                   data-testid={`reglement-dette-${dette.id}`}
-                                  title="Encaisser la dette sur une autre caisse / autre mode"
+                                  title={canAct ? "Encaisser la dette sur une autre caisse / autre mode" : "Réservé au Président"}
                                 >
                                   ✓ Réglé...
                                 </Button>
@@ -1843,9 +1871,10 @@ const Comptabilite = () => {
                                   }}
                                   variant="outline"
                                   size="sm"
-                                  className="border-purple-500/40 text-purple-300 hover:bg-purple-500/10"
+                                  disabled={!canAct}
+                                  className="border-purple-500/40 text-purple-300 hover:bg-purple-500/10 disabled:opacity-30"
                                   data-testid={`offrir-dette-${dette.id}`}
-                                  title="Offert par le club (trace conservée)"
+                                  title={canAct ? "Offert par le club (trace conservée)" : "Réservé au Président"}
                                 >
                                   🎁 Offert
                                 </Button>
@@ -1863,9 +1892,10 @@ const Comptabilite = () => {
                                   }}
                                   variant="outline"
                                   size="sm"
-                                  className="border-red-500/40 text-red-400 hover:bg-red-500/10"
+                                  disabled={!canAct}
+                                  className="border-red-500/40 text-red-400 hover:bg-red-500/10 disabled:opacity-30"
                                   data-testid={`annuler-dette-${dette.id}`}
-                                  title="Annuler (erreur de saisie, aucune trace)"
+                                  title={canAct ? "Annuler (erreur de saisie, aucune trace)" : "Réservé au Président"}
                                 >
                                   🗑️
                                 </Button>
@@ -2190,9 +2220,10 @@ const Comptabilite = () => {
                             <Button
                               size="sm"
                               onClick={() => handleDeclarerPaiementCotisation(m.id, nb, 'Chez Fabien', 'Espèces')}
-                              className="bg-green-700 hover:bg-green-600 text-white text-xs"
+                              disabled={!canAct}
+                              className="bg-green-700 hover:bg-green-600 text-white text-xs disabled:opacity-40"
                               data-testid={`declare-pay-${m.id}`}
-                              title="Déclarer un paiement (200€/saison)"
+                              title={canAct ? "Déclarer un paiement (200€/saison)" : "Réservé au Président"}
                             >
                               💰 Déclarer payé · Fabien · Espèces
                             </Button>
@@ -2200,9 +2231,10 @@ const Comptabilite = () => {
                               size="sm"
                               variant="outline"
                               onClick={() => handleOffrirCotisation(m.id, 1)}
-                              className="border-purple-500/40 text-purple-300 hover:bg-purple-500/10 text-xs"
+                              disabled={!canAct}
+                              className="border-purple-500/40 text-purple-300 hover:bg-purple-500/10 text-xs disabled:opacity-30"
                               data-testid={`offer-cot-${m.id}`}
-                              title="Offrir cette saison (exonération officielle, trace conservée)"
+                              title={canAct ? "Offrir cette saison" : "Réservé au Président"}
                             >
                               🎁 Offert (1 saison)
                             </Button>
@@ -2210,9 +2242,10 @@ const Comptabilite = () => {
                               size="sm"
                               variant="outline"
                               onClick={() => handleAnnulerCotisation(m.id, 1)}
-                              className="border-red-500/40 text-red-400 hover:bg-red-500/10 text-xs"
+                              disabled={!canAct}
+                              className="border-red-500/40 text-red-400 hover:bg-red-500/10 text-xs disabled:opacity-30"
                               data-testid={`cancel-cot-${m.id}`}
-                              title="Annuler (erreur de saisie, aucune trace)"
+                              title={canAct ? "Annuler (erreur de saisie)" : "Réservé au Président"}
                             >
                               🗑️ Annuler 1 saison
                             </Button>
