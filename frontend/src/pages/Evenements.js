@@ -660,7 +660,16 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
         objet = newEvent.objet_type.charAt(0).toUpperCase() + newEvent.objet_type.slice(1);
       }
 
-      const type_sondage = newEvent.objet_type === 'repas' ? 'repas' : 'simple';
+      // Mapping correct objet_type -> type_sondage (3 types officiels: repas / apero / anniversaire)
+      // "autre" est rattaché à "apero" pour ne pas casser les statistiques.
+      const typeSondageMap = {
+        repas: 'repas',
+        apero: 'apero',
+        'apéro': 'apero',
+        anniversaire: 'anniversaire',
+        autre: 'apero'
+      };
+      const type_sondage = typeSondageMap[(newEvent.objet_type || '').toLowerCase()] || 'apero';
 
       // Date : combine date + heure (si fournie) ; sinon midi local pour éviter timezone
       const heurePrecisee = !!newEvent.heure_only;
@@ -2273,7 +2282,10 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                       date: newEvent.date,
                       objet: objet,
                       lieu: newEvent.lieu,
-                      type_sondage: newEvent.objet_type === 'repas' ? 'repas' : 'simple'
+                      type_sondage: (() => {
+                        const m = { repas: 'repas', apero: 'apero', 'apéro': 'apero', anniversaire: 'anniversaire', autre: 'apero' };
+                        return m[(newEvent.objet_type || '').toLowerCase()] || 'apero';
+                      })()
                     };
                     shareEventToWhatsApp(tempEvent);
                   }}

@@ -7749,16 +7749,12 @@ async def start_auto_terminer_scheduler():
 
 @app.on_event("startup")
 async def auto_fix_events():
-    """Corriger les types d'événements et supprimer les doublons connus."""
+    """Nettoyage léger au démarrage.
+    NOTE: l'ancienne migration `simple -> apero` a été retirée car destructrice
+    (elle transformait des anniversaires mal typés par le frontend en apéros, faussant les stats).
+    Le mapping correct est désormais fait côté frontend lors de la création.
+    """
     try:
-        # Corriger le type "simple" → "apero"
-        result = await db.evenements.update_many(
-            {"type_sondage": "simple"},
-            {"$set": {"type_sondage": "apero"}}
-        )
-        if result.modified_count > 0:
-            logging.info(f"Corrigé {result.modified_count} événements 'simple' → 'apero'")
-        
         # Supprimer le doublon vide connu
         await db.evenements.delete_one({"id": "42ff9fcc-7b3b-4479-b431-b9250d2215ec"})
     except Exception as e:
