@@ -7672,8 +7672,34 @@ async def auto_terminer_evenements_endpoint():
 
 
 async def recalculer_presences_saison(saison: int):
-    """Recalculer TOUTES les présences d'une saison à partir des réponses réelles.
-    Pas d'incrémental, pas de doublon possible - source de vérité absolue."""
+    """Recalculer les présences d'une saison à partir des réponses réelles.
+    
+    ⚠️ NON-DESTRUCTIF (corrigé 14/06/2026) :
+    - Si la saison est marquée `is_manuel=True` dans saisons_config → SKIP TOTAL.
+      Ces saisons contiennent des données historiques saisies manuellement
+      qu'il ne faut JAMAIS écraser.
+    - Sinon, utilise $max : ne diminue jamais les valeurs existantes.
+    - Sauvegarde automatique avant tout changement (collection presences_membres_backup).
+    """
+    # 0) SAFETY : ne PAS toucher aux saisons en saisie manuelle
+    saison_cfg = await db.saisons_config.find_one({"saison": saison}, {"_id": 0})
+    if saison_cfg and saison_cfg.get("is_manuel", False):
+        logging.info(f"[recalculer_presences_saison] Saison {saison} is_manuel=True -> SKIP (protection données manuelles)")
+        return
+    
+    # 1) BACKUP automatique des presences_membres actuelles
+    now_iso = datetime.now(timezone.utc).isoformat()
+    current_presences = await db.presences_membres.find({"saison": saison}, {"_id": 0}).to_list(500)
+    if current_presences:
+        await db.presences_membres_backup.insert_one({
+            "id": str(uuid.uuid4()),
+            "saison": saison,
+            "backup_date": now_iso,
+            "reason": "auto_recalculer_presences_saison",
+            "snapshot": current_presences
+        })
+    
+    # 2) Recalcul (avec $max pour ne JAMAIS diminuer une valeur existante)
     evenements = await db.evenements.find(
         {"saison": saison, "statut": "terminé"}, {"_id": 0}
     ).to_list(200)
@@ -7701,21 +7727,28 @@ async def recalculer_presences_saison(saison: int):
             if r.get('present'):
                 compteurs[membre_id][presence_field] += 1
     
-    now = datetime.now(timezone.utc).isoformat()
     for membre_id, counts in compteurs.items():
         existing = await db.presences_membres.find_one({"membre_id": membre_id, "saison": saison})
         if existing:
+            # $max : ne descend jamais en dessous des valeurs existantes
             await db.presences_membres.update_one(
                 {"membre_id": membre_id, "saison": saison},
-                {"$set": {**counts, "updated_at": now}}
+                {
+                    "$max": {
+                        "presences_aperos": counts["presences_aperos"],
+                        "presences_repas": counts["presences_repas"],
+                        "presences_anniversaires": counts["presences_anniversaires"]
+                    },
+                    "$set": {"updated_at": now_iso}
+                }
             )
         else:
             await db.presences_membres.insert_one({
                 "id": str(uuid.uuid4()), "membre_id": membre_id, "saison": saison,
-                **counts, "created_at": now, "updated_at": now
+                **counts, "created_at": now_iso, "updated_at": now_iso
             })
     
-    logging.info(f"Saison {saison}: presences recalculees pour {len(compteurs)} membres")
+    logging.info(f"Saison {saison}: presences recalculees (NON DESTRUCTIF, $max) pour {len(compteurs)} membres")
 
 
 @api_router.post("/recalculer-presences/{saison}")
