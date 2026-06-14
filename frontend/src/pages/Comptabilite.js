@@ -2276,6 +2276,28 @@ const Comptabilite = () => {
                             </div>
                           </div>
                           <div className="flex gap-2 flex-wrap">
+                            {!canAct && (
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  // Réutiliser la modal de déclaration en faisant comme si c'était une "dette cotisation"
+                                  openDeclareDette({
+                                    id: null,  // pas de dette_id réel → la validation décrémentera la cotisation via objet='cotisation'
+                                    membre_id: m.id,
+                                    cause: 'cotisation',
+                                    montant: total,
+                                    nom_invite: null,
+                                    _isCotisation: true,
+                                    _membreName: m.nom_complet,
+                                  });
+                                }}
+                                className="bg-blue-700 hover:bg-blue-600 text-white text-xs"
+                                data-testid={`declarer-cot-${m.id}`}
+                                title="Déclarer un paiement (sera validé par le Président)"
+                              >
+                                📤 Déclarer paiement
+                              </Button>
+                            )}
                             <Button
                               size="sm"
                               onClick={() => handleDeclarerPaiementCotisation(m.id, nb, 'Chez Fabien', 'Espèces')}

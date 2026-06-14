@@ -10,7 +10,7 @@ import os
 import uuid
 from datetime import datetime
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://cigare-manager.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://cigare-finances.preview.emergentagent.com').rstrip('/')
 
 # Test member ID for Fabien Lanfranchi (admin/président)
 TEST_MEMBRE_ID = "d6b30499-2c9b-43e4-9402-7234da4c9855"

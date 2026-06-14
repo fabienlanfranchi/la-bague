@@ -1,96 +1,80 @@
 <analysis>**original_problem_statement**: 
 Finaliser l'application de gestion pour le club de cigares La Bague Impériale. PRODUCT REQUIREMENTS : 
 - Création d'un onglet Trésorier exclusif avec outil de signalement de paiement.
-- Ajout de boutons Marquer Absent et Annuler pour la gestion des événements.
-- Refonte dynamique des statistiques.
-- Sondages génériques anonymes, multi-questions, affichés et votables directement depuis le Dashboard.
-- Notification WhatsApp pour les sondages.
-- Refonte de la page de compétences Winston (vrais diplômes / certificats) avec images intégrées sans fond blanc.
-- Refonte de l'authentification (passage au JWT Bearer) pour corriger un bug critique de croisement de sessions entre utilisateurs.
-- Fonctionnalité de clôture de sondage et export PDF officiel des résultats.
+- Gestion comptable avancée : séparation de la caisse et du mode de paiement, factures multi-lignes, paiements partiels.
+- Amélioration de la gestion des événements : heure facultative, ajout de détails libres, retrait des mentions menu pour les événements hors repas.
+- WhatsApp : Notifications de rappel pour les cotisations impayées (similaire aux sondages).
+- Catalogue de cigares : upload de photos personnalisées, nettoyage de doublons.
+- Trésorier : accès consultatif à la comptabilité et capacité à lier un paiement déclaré à une dette ou cotisation spécifique.
+- Fix de calculs statistiques des présences de la Saison 13.
 
 **User's preferred language**: French. INSTRUCT NEXT AGENT TO RESPOND IN FRENCH ONLY.
 
 **what currently exists?** 
-Une application full-stack (React, FastAPI, MongoDB, MySQL pour le catalogue de cigares) robuste avec authentification JWT. Fonctionnalités complètes de gestion d'événements, sondages, messagerie, profil financier interactif, et un assistant IA (Winston) avec mémoire persistante.
+Application full-stack (React, FastAPI, MongoDB, MySQL distant pour le catalogue de cigares) avec authentification JWT. Elle comprend la gestion d'événements, messagerie/relances WhatsApp, facturation/comptabilité poussée (dettes, factures multi-lignes multi-caisses, cotisations), profil financier interactif, et un assistant IA (Winston). 
 
 **Last working item**: 
-    - **Last item agent was working**: Insertion de nouveaux cigares dans la base de données MySQL distante (). L'utilisateur a fourni la fiche détaillée d'un Davidoff Puro Dominicano Corona Larga. L'agent a exécuté un script Python pour l'insérer, mais a rencontré une erreur MySQL.
-    - **Status**: IN PROGRESS
-    - **Agent Testing Done**: Y (L'exécution du script a échoué)
-    - **Which testing method agent to use?** python -c (pour tester l'insertion en DB)
+    - **Last item agent was working**: Résolution d'un bug de calcul des statistiques de présence. Le pourcentage global et celui de la saison 13 avaient drastiquement chuté. L'agent a tenté un correctif dans  qui a causé la perte des stats existantes (chute à 20% pour le président). Le correctif a été annulé (revert) et l'utilisateur a demandé d'ouvrir une nouvelle session.
+    - **Status**: BLOCKED
+    - **Agent Testing Done**: N
+    - **Which testing method agent to use?** backend testing agent / python -c
     - **User Testing Done**: N
 
 **All Pending/In progress Issue list**: 
-  - **Issue 1: Erreur d'insertion MySQL (P0)**
-     - **Attempted fixes**: L'agent a tenté d'insérer le cigare Davidoff fourni par l'utilisateur avec la colonne .
-     - **Next debug checklist**: Retirer la colonne  (et  si présente) de la requête  dans le script Python car elles n'existent pas dans la table  (elles sont vraisemblablement calculées côté frontend ou ignorées). Exécuter à nouveau le script.
-     - **Why fix this issue and what will be achieved with the fix?** Permet d'ajouter les nouveaux cigares dans la Cigarothèque pour les membres.
-     - **Status**: IN PROGRESS
-     - **Is recurring issue?** N
-     - **Should Test frontend/backend/both after fix?** Backend (Vérifier l'insertion via requête SELECT).
-     - **Blocked on other issue**: None
-
-  - **Issue 2: En attente des 2 autres cigares (P1)**
-     - **Attempted fixes**: NA
-     - **Next debug checklist**: Demander à l'utilisateur de fournir les informations pour les 2 cigares restants via le même template une fois le Davidoff inséré.
-     - **Why fix this issue and what will be achieved with the fix?** L'utilisateur a mentionné 3 nouveaux cigares, un seul a été fourni pour le moment.
+  - **Issue 1: Bug critique de calcul des statistiques de présences (Saison 13) (P0)**
+     - **Attempted fixes**: Modification des lignes 5108-5140 de  pour tenter d'exclure les événements non-terminés du dénominateur. Cela a effacé les présences individuelles dans le frontend (chute de 95% à 20%). Fix annulé par un .
+     - **Next debug checklist**: Vérifier le comportement des compteurs  (et autres types) par rapport à  des membres dans  (fonctions  et ). Trouver pourquoi l'événement Anniversaire Café de la Plage (27 présents) compte pour 0 anniversaire, et pourquoi le taux global chute sans raison.
+     - **Why fix this issue and what will be achieved with the fix?** Restituer des statistiques de participation exactes pour les membres et le club.
      - **Status**: NOT STARTED
-     - **Is recurring issue?** N
-     - **Should Test frontend/backend/both after fix?** NA
+     - **Is recurring issue?** Y
+     - **Should Test frontend/backend/both after fix?** Backend (via  script appelant les routes pour vérifier les mathématiques).
+     - **Blocked on other issue**: None.
 
-**In progress Task List**:
-  - **Task 1: Ajout de cigares au catalogue**
-     - **Where to resume**: Corriger le script d'insertion pour le Davidoff et demander les deux suivants.
-     - **What will be achieved with this?** Maintien du catalogue à jour.
-     - **Status**: IN PROGRESS
-     - **Should Test frontend/backend/both after fix?** Backend
-     - **Blocked on something**: Issue 1
+**In progress Task List**: 
+  (Aucune, la session précédente a été stoppée par l'utilisateur pour traiter le bug des statistiques).
 
 **Upcoming and Future Tasks**
-    - (P2) Refactorisation de  : Extraire les routes vers le dossier  pour alléger le fichier (~7000 lignes).
+    - (P2) Refactorisation de  : Extraire les routes vers le dossier  pour alléger le fichier (actuellement >8000 lignes).
     - (P2) Refactorisation de  : Découper le composant monumental en sous-composants (, , etc.).
 
 **Completed work in this session**
-- Fix halos blancs autour des badges Winston via script Python. (DONE)
-- Fix placement des badges Winston (Conca Specialist / Bague Specialist) avec nouvelles images. (DONE)
-- Ajout règle plafond 50 € pour Winston (prompt système). (DONE)
-- Ajout de la mémoire persistante pour Winston (). (DONE)
-- Fix lisibilité du calendrier Info - Prochain événement. (DONE)
-- Modification des options de repas : mode Unique, Choix au vote ou Aucun et fix validation. (DONE)
-- Fix compteurs de présences pour plats uniques (inclus invités et ajouts manuels). (DONE)
-- Heure d'événement personnalisable + maj génération WhatsApp. (DONE)
-- Ajout carte Répartition par Étoiles sur le Dashboard membre et rendu cliquable. (DONE)
-- Affichage choix de menu personnel du membre sur page Evènements. (DONE)
-- Fix critique route  (décorateur orphelin) + ajout scheduler automatique. (DONE)
-- Ajout options destinataires pour Rappel de cotisation et distinction du déclarant d'un paiement en attente. (DONE)
-- Transformation de Situation Financière en facture interactive cliquable synchronisée sur l'onglet admin. (DONE)
-- Ajout édition/persistance (overrides) des templates de messages personnalisables. (DONE)
-- Deux variantes (Rappel personnalisé, Rappel général) pour rappel de cotisation. (DONE)
-- Fix bouton Partager en externe pour envoyer le contenu complet du message. (DONE)
-- Obligation de renseigner le mode de paiement lors du signalement par le membre. (DONE)
-- Ajout 4 filtres avancés Ma Cigarothèque (Terroir, Note globale, Puissance, Qualité/Prix) avec demi-points. (DONE)
+- Ajout des 3 cigares Davidoff en MySQL. (DONE)
+- Upload de photos personnalisées pour la Cigarothèque (stockage B64 Mongo + URL proxy). (DONE)
+- Correction des codes de puissance MySQL (remplacement de M/F par B/A pour les couleurs correctes). (DONE)
+- Ajout du flow de Relance WhatsApp pour les cotisations impayées (Dashboard Président). (DONE)
+- Séparation des champs Caisse et Mode de paiement dans les déclarations et le backend. (DONE)
+- Ajout d'un outil d'édition Corriger la caisse pour les transactions comptables passées. (DONE)
+- Création d'un endpoint et d'un bouton de nettoyage () pour les doublons de la Cigarothèque perso. (DONE)
+- Événements : séparation Date/Heure (heure facultative), ajout d'un champ texte Détail, et suppression du mot menu des messages WhatsApp hors-repas. (DONE)
+- Correction du badge Vous êtes à jour du membre (prend désormais en compte les cotisations et dettes). (DONE)
+- Comptabilité : bouton d'annulation de cotisation par le président. (DONE)
+- Comptabilité : espace À Payer avec factures multi-lignes, paiements partiels et paiement réparti sur plusieurs caisses. (DONE)
+- Comptabilité : bouton Offert pour les dettes et les cotisations (mise à jour du modèle Membre avec ). (DONE)
+- Dettes : création multi-membres en bloc, et création de dette pour invité non-membre (). (DONE)
+- Trésorier : accès consultatif à l'onglet Comptabilité. (DONE)
+- Trésorier : possibilité de lier un paiement déclaré à un  ou une cotisation, déclenchant l'auto-suppression de la dette lors de la validation par le président. (DONE)
 
 **Earlier issues found/mentioned but not fixed**
 None.
 
 **Known issue recurrence from previous fork**
-  - **Issue recurrence in previous fork**: Problème de déploiement de l'utilisateur (très fréquent). L'utilisateur teste sur l'URL de production sans avoir redéployé les modifications faites en preview.
+  - **Issue recurrence in previous fork**: Incompréhension Preview vs Production. L'utilisateur teste sur son URL de production déployée alors que l'agent modifie le code en Preview.
   - **Recurrence count**: Très fréquent.
-  - **Status**: IN PROGRESS (Le prochain agent DOIT absolument ajouter un rappel en gras de redéployer l'application via la console Emergent à la fin de chaque message).
+  - **Status**: IN PROGRESS (Le prochain agent **DOIT** absolument ajouter un rappel de redéployer l'application via la console Emergent si une modification de code est effectuée).
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
 - Application full-stack (React + FastAPI).
-- Double base de données: MongoDB (utilisateurs, événements, dettes, paiements, messages, mémoires Winston) et MySQL distante (Catalogue de cigares partagé).
-- Authentification JWT (Bearer Token).
+- Double base de données: MongoDB (utilisateurs, comptabilité, événements, etc.) et MySQL distante (Catalogue de cigares).
+- Système de gestion de caisses (transactions, dettes, factures) et de cotisations annuelles.
 
 **key DB schema**
-  - MySQL : uid=0(root) gid=0(root) groups=0(root), , , , , , , , , .
-  - MongoDB : , uid=0(root) gid=0(root) groups=0(root), , Thu May 28 15:17:05 UTC 2026.
-  - MongoDB : uid=0(root) gid=0(root) groups=0(root), , , , , , .
+  - MongoDB  / : incluent maintenant  (str) et  (str, pour automatisation).
+  - MongoDB : inclut  (str),  (active, offerte), .
+  - MongoDB : inclut  (int).
+  - MongoDB  (nouveau) : , , ,  (Array de dicts),  (en_attente, partielle, payee).
 
 **changes in tech stack**
   - None
@@ -103,70 +87,67 @@ None.
   - 
   - 
   - 
-  -  (Créé dans cette session)
+  - 
+  - 
+  - 
 
 **Areas that need refactoring**: 
-  - 
-  - 
+  -  (L'agent a rencontré des soucis de lisibilité avec plus de 8000 lignes)
+  -  (Fichier lourd en modals)
 
 **key api endpoints**
-  -  (Nouveau)
-  -  (Mis à jour avec declarant_id et dette_id)
-  -  (Nouvelle route)
+  - 
+  - 
+  - 
+  -  (et endpoints associés pour les factures)
+  - 
+  - 
+  - 
 
 **Critical Info for New Agent** 
 - **LANGUE** : RÉPONDRE EN FRANÇAIS UNIQUEMENT.
-- **RAPPEL DE DÉPLOIEMENT** : Ajoutez systématiquement en gras : **Noubliez pas de redéployer lapplication via la console Emergent !** à la fin de TOUS vos messages. L'utilisateur signale souvent des bugs car il teste sur la prod avant de redéployer.
-- **MYSQL** : Pour insérer dans la table , n'utilisez pas de colonnes comme  ou  qui n'existent pas dans le schéma.
-- Winston a maintenant une mémoire persistante asynchrone ; les modifications se trouvent dans .
+- L'utilisateur est en situation de **frustration** vis-à-vis du bug de statistiques qui a fait chuter la présence globale et annulé ses présences de la saison. Procédez avec beaucoup de prudence mathématique sur les endpoints de stats.
+- Ne pas omettre le rappel de déploiement à chaque modification de code : Noubliez pas de redéployer lapplication via la console Emergent !
+- Lors de l'utilisation du tool , écraser  en utilisant  (l'agent précédent a eu une erreur car il a oublié ce paramètre).
 
 **documents and test reports created in this job**
-  -  (Doit être mis à jour par le prochain agent à la fin de sa tâche).
+  -  (A mettre à jour en forçant l'écrasement)
 
 **Last 10 User Messages and any pending HUMAN messages** 
- - (User) : Signale un bug où le bouton Partager en externe envoie un lien et non le message.
- - (Agent) : Corrige le bouton pour utiliser  /  avec le texte formaté.
- - (User) : Demande la possibilité de sauvegarder par défaut les messages modifiés dans les templates.
- - (Agent) : Crée le système d'override des templates dans le backend et l'UI.
- - (User) : Demande de renommer les variantes en Rappel personnalisé et Rappel général.
- - (Agent) : Fait la modification.
- - (User) : Demande 4 nouveaux filtres pour Ma Cigarothèque avec notes sur 5.
- - (Agent) : Ajoute les filtres.
- - (User) : Demande d'ajouter les demi-points (1,5, 2,5...) et de retirer les signes ≥.
- - (Agent) : Met à jour les filtres.
- - (User) : Demande de synchroniser la vue Facture sur le profil et l'onglet admin.
- - (Agent) : Synchronise les deux vues.
- - (User) : Signale un bug où un membre a payé sa dette mais elle n'est pas effacée (car paiement partiel ou non relié).
- - (Agent) : Fixe la liaison via  et ajoute un bouton poubelle Effacer la dette côté président. Rend le choix du lieu de paiement obligatoire.
- - (User) : Demande de filtrer la liste Membres concernés et d'identifier qui déclare un paiement.
- - (Agent) : Fait les corrections.
- - (User) : Annonce qu'il y a 3 nouveaux cigares à ajouter et demande comment fournir les infos.
- - (Agent) : Propose un template ou de lire une photo.
- - (User) : Fournit la fiche détaillée du Davidoff Puro Dominicano Corona Larga.
- - (Agent) : Tente l'insertion MySQL mais échoue à cause de colonnes inexistantes. **[PENDING]**
+ - (User): Demande que le Trésorier ait accès à Comptabilité en mode lecture et puisse déclarer des paiements liés.
+ - (Agent): Donne accès et masque les boutons d'action sensibles pour le rôle Trésorier.
+ - (User): Demande d'ajouter un bouton pour que le Trésorier puisse pointer/déclarer un paiement directement depuis l'onglet des dettes.
+ - (Agent): Ajoute le bouton Déclarer paiement sur chaque dette.
+ - (User): Note que le détail nom du membre est perdu lors du paiement d'une dette pour un invité non-membre.
+ - (Agent): Corrige pour utiliser le champ .
+ - (User): Demande la même fonction Déclarer paiement sur les cotisations pour le Trésorier.
+ - (Agent): Ajoute la fonctionnalité.
+ - (User): Se plaint que les stats de présence saison 13 ont chuté de 52% à 13% après la création d'un événement.
+ - (Agent): Fait un diagnostic et tente un correctif sur le calcul du dénominateur.
+ - (User): Signale que le correctif a fait empirer le bug (effacement des présences individuelles, chute de 95% à 20% pour son compte). Demande de démarrer une nouvelle session. **[PENDING P0 BUG]**
 
 **Project Health Check:**
-- Broken: None. 
+- Broken: Calculs statistiques (Global et Saison 13) dans .
 - Mocked: None.
 
 **3rd Party Integrations** 
   - OpenAI GPT via Emergent LLM Key (Winston)
-  - WebAuthn (Face ID)
 
 **Testing status**
   - Testing agent used after significant changes: NO
   - Troubleshoot agent used after agent stuck in loop: NO
   - Test files created: None
-  - Known regressions: None
+  - Known regressions: Les fonctions de calcul de statistiques de présence ( et ) renvoient des valeurs incorrectes suite à la création d'un événement sans présences.
 
 **Credentials to test flow:**
   - Login Key:  (Admin: Fabien Lanfranchi)
-  - Login Key:  (Membre: Jacques Peretti)
+  - Login Key:  (Trésorier: Jacques Peretti)
 
 **What agent forgot to execute**
-  - L'agent s'est arrêté après l'erreur MySQL sans confirmer l'ajout du cigare. 
+  - Mettre à jour  (erreur de tool, a oublié ).
+  - Résoudre correctement le bug des stats avant de fermer la session.
 
 **Debugging checklist for current issue**
-    Issue: Erreur 
-    Backend files to check: Script python exécuté via bash pour l'insertion.
-    Fix : Assurez-vous que le dictionnaire inséré ne contient que les clés valides (id, marque, gamme, vitole_nom, vitole_type, vitole_cubain, pays_fabrication, is_cubain, bagues_etoiles, dimensions, prix_estime, etc.) et supprimez  et .</analysis>
+    Issue: Chute des statistiques de présences (Saison 13 et Global) lors de l'ajout d'événements, et non prise en compte de l'événement Anniversaire Café de la plage.
+    Backend files to check:  (Lignes ~960-1030 pour  et ~5100-5220 pour ).
+    Fix approach: Revoir la logique mathématique. Si un événement est dans la base (dénominateur augmenté) mais qu'il n'est pas encore terminé ou que les présences ne sont pas réparties, le taux chute. Ne comptez dans le dénominateur *que* les événements terminés, ou vérifiez pourquoi l'événement anniversaire avec 27 présents ne déclenche pas le compteur  des membres. Testez vos algorithmes avec un script Python avant de déployer.</analysis>
