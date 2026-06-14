@@ -1,83 +1,67 @@
 # La Bague Impériale - PRD
 
-## SESSION 14 Juin 2026 - 🔴 P0 Bug stats Saison 13 RÉSOLU + Anniversaire restauré
+## SESSION 14 Juin 2026 - 🔴 P0 Bug stats RÉSOLU + restauration en cours
 
-### Cause racine identifiée
-- **Frontend `Evenements.js` (lignes 663 & 2276)** : lors de la création d'un nouvel événement, le mapping `type_sondage` était cassé : tout type ≠ "repas" était envoyé comme `'simple'` au backend (au lieu de `'anniversaire'` / `'apero'`).
-- **Backend `server.py` (startup `auto_fix_events`)** : une migration automatique convertissait `type_sondage='simple'` → `'apero'` à chaque démarrage. Conséquence : un événement Anniversaire créé via l'UI principale finissait classé en apéro, faussant le compteur `nb_anniversaires` et les présences individuelles.
+### Cause racine identifiée (commit `bf17558` du 21/04/2026)
+Un agent précédent a ajouté une fonction `recalculer_presences_saison()` **destructive** + un scheduler horaire qui appelait cette fonction. Conséquences sur les saisons historiques (S1-S12) :
+- Les présences saisies manuellement étaient écrasées par un recalcul basé uniquement sur `reponses_sondages` / `reponses_manuelles`
+- Or ces collections sont quasi vides pour les events historiques (juste un `total_presents` agrégé)
+- Résultat : 31 membres sur 35 avec des % réduits par rapport à `members_data.json` (référence d'origine)
 
-### Correctifs appliqués
-- ✅ **Frontend `Evenements.js`** : mapping correct `objet_type` → `type_sondage` (repas, apero, anniversaire, autre→apero). Lignes 663 et 2276.
-- ✅ **Backend `server.py` `auto_fix_events`** : retrait de la migration destructrice `simple→apero`. Seul le nettoyage du doublon connu est conservé.
-- ✅ **Restauration des données** : événement "Anniversaire Café de la Plage" (13/06/2026, Saison 13) recréé avec les 27 membres présents (script `/app/backend/restore_anniversaire_s13.py`). saisons_config.S13.nb_anniversaires=1, sum presences_anniversaires=27.
+### Correctifs structurels appliqués (PROTECTION FUTURE)
+✅ `Evenements.js` lignes 663 & 2276 : mapping `type_sondage` correct (anniversaire reste anniversaire)
+✅ `server.py` `auto_fix_events` : suppression migration destructrice `simple→apero`
+✅ `server.py` `recalculer_presences_saison()` :
+   - Skip total si `saisons_config.is_manuel=True`
+   - Utilise `$max` au lieu de `$set` (ne diminue jamais une valeur)
+   - Backup automatique avant tout changement (collection `presences_membres_backup`)
+✅ Backup complet effectué : `id=514ba3f2-61da-42d4-93be-5718c02cf181` (456 entrées)
 
-### Validations API
-- `POST /api/evenements` avec `type_sondage='anniversaire'` → stocké correctement, `nb_anniversaires` incrémenté ✅
-- `DELETE` → décrémente proprement ✅
-- Stats Fabien Lanfranchi : 96% (cohérent, vraies données intactes) ✅
-- Stats Saison 13 : 18 événements (7 apéros + 10 repas + 1 anniversaire), 285 présences ✅
+### Restauration manuelle effectuée
+✅ **Fabien Lanfranchi (Président)** restauré :
+  - S12 : 8/11/1 → **100%**
+  - S13 : 6/10/1 → 94%
+  - Global : **97%** ⭐⭐⭐⭐ (209/215)
+✅ **Anniversaire Café de la Plage** (13/06/2026 S13) recréé avec 27 membres présents
 
-### ⚠️ Action utilisateur requise
-Redéployer l'application via la console Emergent pour propager les correctifs en production.
+### 🔴 EN ATTENTE — Restauration complète saisons 1-13
+L'utilisateur va envoyer des **tableaux Excel par saison** (lignes=membres, colonnes=événements+lieux, 1=présent).
+À la réception, mettre à jour :
+- `presences_membres` (par membre/saison)
+- `saisons_config` (nb_aperos, nb_repas, nb_anniversaires)
+- `evenements` (créer ceux qui manquent)
+- Verrouiller les saisons en `is_manuel=True`
+
+### ⚠️ Action utilisateur
+- Redéployer en production via la console Emergent (correctifs frontend + backend)
+- Uploader les fichiers Excel par saison
 
 ---
 
 ## Application Overview
-Application de gestion complète pour le club de cigares "La Bague Impériale". Full-stack React + FastAPI app using MongoDB for state/users and external OVH MySQL database for cigar catalog.
+Application full-stack React + FastAPI pour le club de cigares "La Bague Impériale". MongoDB (utilisateurs, comptabilité, événements) + MySQL OVH externe (catalogue de cigares).
 
 ## Core Features
-- Gestion des 35 membres du club
-- Catalogue de 651 cigares (MySQL externe OVH CloudDB)
-- Winston - Assistant IA spécialiste des cigares (via Emergent LLM Key)
+- 35 membres du club
+- Catalogue de 651 cigares (MySQL externe OVH)
+- Winston - Assistant IA spécialiste cigares (Emergent LLM Key)
 - Événements et présences (repas, apéro, anniversaire)
 - Comptabilité multi-caisses, dettes, factures multi-lignes, paiements partiels
 - Sondages et votes (anonymes)
-- Onglet Trésorier (signalement de paiements + accès consultatif)
+- Trésorier (signalement de paiements + accès consultatif)
 - Cigarothèque personnelle avec upload de photos
 
 ---
 
 ## BACKLOG / FUTURE TASKS
 
+### P0 — Restauration complète présences depuis Excel utilisateur (EN ATTENTE FICHIERS)
+
 ### P2 - Refactorisation server.py (~8000 lignes)
-- routes/auth.py
-- routes/members.py
-- routes/cigares.py
-- routes/evenements.py
-- routes/comptabilite.py
 
 ### P2 - Refactorisation Dashboard.js
-- Extraire `DashboardMembre`, `SondagesActifs`, `RelancesWhatsApp` en sous-composants
 
-### P2 - Améliorer `/api/evenements/simple` (création historique)
-- Permettre la saisie d'une liste de `membres_presents_ids` pour les événements historiques afin d'incrémenter `presences_membres` automatiquement (actuellement seul `total_presents: int` est accepté).
-
-### Face ID / Touch ID (WebAuthn) - Prêt pour validation manuelle
-
----
-
-## Technical Architecture
-```
-/backend/
-├── server.py              # ~8016 lines (refacto en cours)
-├── database.py
-├── cigar_knowledge.py
-├── routes/winston.py
-├── tests/
-├── restore_anniversaire_s13.py  # script one-shot du 14/06/2026
-├── diagnostic_stats.py          # outil d'audit présences
-
-/frontend/src/
-├── pages/Dashboard.js
-├── pages/Evenements.js     # FIX 14/06/2026 lignes 663 & 2276
-├── pages/Comptabilite.js
-├── pages/MembersPage.js
-├── pages/TresorierPage.js
-├── pages/Cigarotheque.js
-├── pages/ProfilePage.js
-├── components/Sidebar.js
-└── context/UserContext.js
-```
+### P2 - Améliorer `/api/evenements/simple` (création historique) — accepter `membres_presents_ids`
 
 ---
 
@@ -95,17 +79,14 @@ Voir `/app/memory/test_credentials.md`
 ---
 
 ## URLs
-- Frontend: https://cigare-finances.preview.emergentagent.com
-- API: https://cigare-finances.preview.emergentagent.com/api
+- Frontend Preview : https://cigare-finances.preview.emergentagent.com
+- Production : https://labagueimperiale.optizioni.app (à redéployer)
 
 ---
 
-## Historique des sessions (résumé)
-- **28/04/2026** : Halo blanc Winston résolu (mask circulaire PNG)
-- **22/04/2026** : Sondages anonymes Dashboard, purge tokens
-- **21/04/2026** : Sondages génériques anonymes
-- **12/04/2026** : Bouton "Marquer Absent" + Titres sidebar + Onglet Trésorier signalement
-- **10/04/2026** : Tri colonnes Membres, Résumé Restaurateur, Cigarthèque hiérarchique, Favoris Cigares
-- **09/04/2026** : Info prochain événement, Messagerie ciblée
-- **Sessions précédentes** : Auth JWT, WhatsApp, Comptabilité, Winston, Catalogue cigares, etc.
-- **Session précédente (fork)** : Trésorier consultatif Comptabilité + déclaration paiements liés (dettes, cotisations), upload photos Cigarothèque, factures multi-lignes paiements partiels, dettes multi-membres + invités, cigares Davidoff, séparation caisse/mode paiement, événements heure facultative + détail libre, dedupe Cigarothèque. **Bug stats S13 laissé en P0**.
+## Scripts utiles créés cette session
+- `/app/backend/diagnostic_stats.py` — audit lecture seule du global
+- `/app/backend/audit_complet.py` — audit toutes saisons
+- `/app/backend/diag_fabien.py` — détail Fabien event par event
+- `/app/backend/restore_anniversaire_s13.py` — restauration anniversaire 13/06/2026
+- `/app/backend/restore_fabien.py` — restauration Fabien S12+S13 (avec backup auto)
