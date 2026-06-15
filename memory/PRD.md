@@ -15,10 +15,13 @@
    - 🔵 "Restaurer Excel" (upload via input file) — `data-testid: restore-backup-excel-btn`
 ✅ **Cycle export → import testé sur Preview** : 13 saisons, 455 présences, 216 événements, 1346 réponses manuelles restaurés sans erreur. Données identiques après cycle (idempotent).
 
-### 🟢 Solution Preview → Production (recover sans support)
-1. Sur la Preview, cliquer **Sauvegarde Excel** → télécharger le fichier
-2. Sur la Production (URL déployée), cliquer **Restaurer Excel** → uploader le fichier téléchargé
-3. Les données Preview sont copiées en Production. Membres et mots de passe non touchés.
+### Améliorations 15/06/2026 (suite)
+✅ Endpoint import devenu **résilient aux différences d'IDs Preview vs Production** :
+   - Stratégie de matching membres en cascade : `Membre ID` → `N° Membre` → `Nom Complet`
+   - Important car les UUIDs membres peuvent différer entre les 2 bases MongoDB
+✅ Messages d'erreur détaillés (l'utilisateur voit l'erreur exacte au lieu du message générique)
+✅ Droits étendus à Président + Trésorier + Secrétaire
+✅ Logs serveur ajoutés pour traçabilité
 
 ---
 

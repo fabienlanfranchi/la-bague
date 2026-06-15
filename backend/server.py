@@ -989,8 +989,10 @@ async def restaurer_sauvegarde_excel(request: Request, file: UploadFile = File(.
     NE TOUCHE PAS aux membres (collection members), aux mots de passe, ni à la comptabilité.
     """
     member = await get_current_user(request)
-    if not (member.get('is_president') or member.get('fonction') == 'Président'):
-        raise HTTPException(status_code=403, detail="Accès réservé au Président")
+    if not (member.get('is_president') or member.get('fonction') in ('Président', 'Trésorier', 'Secrétaire')):
+        raise HTTPException(status_code=403, detail=f"Accès réservé à l'administration (votre fonction: {member.get('fonction', 'inconnue')})")
+
+    logging.info(f"[restaurer-sauvegarde-excel] Demande par {member.get('nom_complet')} (fonction: {member.get('fonction')})")
 
     try:
         import pandas as pd
@@ -1000,10 +1002,17 @@ async def restaurer_sauvegarde_excel(request: Request, file: UploadFile = File(.
         if not content:
             raise HTTPException(status_code=400, detail="Fichier vide")
 
-        xls = pd.ExcelFile(io.BytesIO(content), engine='openpyxl')
+        logging.info(f"[restaurer-sauvegarde-excel] Fichier reçu: {len(content)} bytes")
+
+        try:
+            xls = pd.ExcelFile(io.BytesIO(content), engine='openpyxl')
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Fichier Excel invalide ou corrompu : {str(e)}")
+
         required_sheets = {'Récap Saisons', 'Présences par Membre', 'Événements', 'Présences par Événement'}
         if not required_sheets.issubset(set(xls.sheet_names)):
-            raise HTTPException(status_code=400, detail=f"Fichier Excel invalide. Onglets requis : {required_sheets}")
+            missing = required_sheets - set(xls.sheet_names)
+            raise HTTPException(status_code=400, detail=f"Onglets manquants dans le fichier : {missing}. Onglets trouvés : {xls.sheet_names}")
 
         rapport = {
             'saisons_config_upserted': 0,
@@ -1013,9 +1022,23 @@ async def restaurer_sauvegarde_excel(request: Request, file: UploadFile = File(.
             'erreurs': []
         }
 
-        # Mapping membre_id (au cas où il faudrait retrouver par numéro)
+        # Mapping membre_id (au cas où il faudrait retrouver par numéro ou par nom)
         members_list = await db.members.find({}, {"_id": 0, "id": 1, "numero_membre": 1, "nom_complet": 1}).to_list(1000)
         num_to_id = {m.get('numero_membre'): m['id'] for m in members_list if m.get('numero_membre')}
+        nom_to_id = {(m.get('nom_complet') or '').strip().lower(): m['id'] for m in members_list if m.get('nom_complet')}
+        ids_existants = {m['id'] for m in members_list}
+
+        def resolve_membre_id(membre_id_excel, numero_membre, nom_complet):
+            """Trouve un membre_id valide en production en essayant plusieurs stratégies."""
+            if membre_id_excel and membre_id_excel in ids_existants:
+                return membre_id_excel
+            if numero_membre and num_to_id.get(numero_membre):
+                return num_to_id[numero_membre]
+            if nom_complet:
+                key = str(nom_complet).strip().lower()
+                if nom_to_id.get(key):
+                    return nom_to_id[key]
+            return None
 
         # 1. Saisons config
         df_s = xls.parse('Récap Saisons')
@@ -1051,16 +1074,20 @@ async def restaurer_sauvegarde_excel(request: Request, file: UploadFile = File(.
         # 2. Presences par membre
         df_p = xls.parse('Présences par Membre')
         has_membre_id = 'Membre ID' in df_p.columns
+        membres_introuvables = set()
         for _, row in df_p.iterrows():
             try:
-                saison = int(row.get('Saison')) if pd.notna(row.get('Saison')) else None
+                saison_val = row.get('Saison')
+                saison = int(saison_val) if pd.notna(saison_val) else None
                 if not saison:
                     continue
-                membre_id = row.get('Membre ID') if has_membre_id and pd.notna(row.get('Membre ID')) else None
+                membre_id_excel = row.get('Membre ID') if has_membre_id and pd.notna(row.get('Membre ID')) else None
+                num_val = row.get('N° Membre')
+                num = int(num_val) if pd.notna(num_val) and str(num_val).strip() not in ('', '0') else None
+                nom_complet = row.get('Nom Complet') if pd.notna(row.get('Nom Complet')) else None
+                membre_id = resolve_membre_id(membre_id_excel, num, nom_complet)
                 if not membre_id:
-                    num = int(row.get('N° Membre')) if pd.notna(row.get('N° Membre')) else None
-                    membre_id = num_to_id.get(num)
-                if not membre_id:
+                    membres_introuvables.add(f"N°{num}/{nom_complet}")
                     continue
                 doc = {
                     'membre_id': membre_id,
@@ -1080,7 +1107,9 @@ async def restaurer_sauvegarde_excel(request: Request, file: UploadFile = File(.
                     await db.presences_membres.insert_one(doc)
                 rapport['presences_membres_upserted'] += 1
             except Exception as e:
-                rapport['erreurs'].append(f"Présence membre_id={row.get('Membre ID')} S{row.get('Saison')}: {e}")
+                rapport['erreurs'].append(f"Présence ligne S{row.get('Saison')} N°{row.get('N° Membre')}: {e}")
+        if membres_introuvables:
+            rapport['erreurs'].append(f"Membres introuvables en base (présences ignorées) : {sorted(membres_introuvables)}")
 
         # 3. Evenements
         df_e = xls.parse('Événements')
