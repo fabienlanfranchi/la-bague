@@ -982,11 +982,26 @@ async def telecharger_sauvegarde_complete(member: dict = Depends(get_current_mem
 
 
 @api_router.post("/admin/restaurer-sauvegarde-excel")
-async def restaurer_sauvegarde_excel(file: UploadFile = File(...), member: dict = Depends(get_current_member_from_jwt)):
+async def restaurer_sauvegarde_excel(request: Request, file: UploadFile = File(...)):
     """[ADMIN] Restaure une sauvegarde Excel (générée par /sauvegarde-complete-excel).
     Reconstruit/upsert : saisons_config, presences_membres, evenements, reponses_manuelles.
     NE TOUCHE PAS aux membres (collection members), aux mots de passe, ni à la comptabilité.
     """
+    # IMPORTANT : lire le body AVANT de valider l'auth, sinon la connexion est coupée
+    # pendant l'upload et le client voit "Erreur réseau"
+    try:
+        content = await file.read()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Erreur lecture du fichier : {e}")
+
+    # Maintenant valider l'auth (Bearer header ou cookie JWT)
+    try:
+        member = await get_current_member_from_jwt(request)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Auth échouée : {e}")
+
     if not (member.get('is_president') or member.get('fonction') in ('Président', 'Trésorier', 'Secrétaire')):
         raise HTTPException(status_code=403, detail=f"Accès réservé à l'administration (votre fonction: {member.get('fonction', 'inconnue')})")
 
@@ -996,7 +1011,6 @@ async def restaurer_sauvegarde_excel(file: UploadFile = File(...), member: dict 
         import pandas as pd
         import io
 
-        content = await file.read()
         if not content:
             raise HTTPException(status_code=400, detail="Fichier vide")
 
