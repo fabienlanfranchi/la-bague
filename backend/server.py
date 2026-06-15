@@ -7796,6 +7796,35 @@ async def recalculer_presences_saison(saison: int):
             })
     
     logging.info(f"Saison {saison}: presences recalculees (NON DESTRUCTIF, $max) pour {len(compteurs)} membres")
+    
+    # AUTO-SYNC : mettre à jour les agrégats saisons_config pour saisons non-manuelles
+    await sync_saisons_config_aggregates(saison)
+
+
+async def sync_saisons_config_aggregates(saison: int):
+    """Synchronise saisons_config.presences_membres_* avec la somme réelle des presences_membres.
+    Appelé automatiquement après recalcul et clôture d'event.
+    Ne touche PAS aux saisons en mode is_manuel=True (S1-S12 figées historiques)."""
+    cfg = await db.saisons_config.find_one({"saison": saison}, {"_id": 0})
+    if cfg and cfg.get("is_manuel", False):
+        return  # protection saisons manuelles
+    
+    pm_docs = await db.presences_membres.find({"saison": saison}, {"_id": 0}).to_list(500)
+    sum_ap = sum(p.get("presences_aperos", 0) for p in pm_docs)
+    sum_rp = sum(p.get("presences_repas", 0) for p in pm_docs)
+    sum_an = sum(p.get("presences_anniversaires", 0) for p in pm_docs)
+    
+    await db.saisons_config.update_one(
+        {"saison": saison},
+        {"$set": {
+            "presences_membres_aperos": sum_ap,
+            "presences_membres_repas": sum_rp,
+            "presences_membres_anniversaires": sum_an,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }},
+        upsert=True
+    )
+    logging.info(f"[sync_aggregates] Saison {saison} -> {sum_ap}/{sum_rp}/{sum_an}")
 
 
 @api_router.post("/recalculer-presences/{saison}")
