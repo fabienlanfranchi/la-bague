@@ -103,7 +103,7 @@ Voir `/app/memory/test_credentials.md`
 ---
 
 ## URLs
-- Frontend Preview : https://cigares-stats.preview.emergentagent.com
+- Frontend Preview : https://cigare-stats.preview.emergentagent.com
 - Production : https://labagueimperiale.optizioni.app (à redéployer)
 
 ---

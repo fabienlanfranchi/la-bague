@@ -1,153 +1,125 @@
 <analysis>**original_problem_statement**: 
-Finaliser l'application de gestion pour le club de cigares La Bague Impériale. PRODUCT REQUIREMENTS : 
-- Création d'un onglet Trésorier exclusif avec outil de signalement de paiement.
-- Gestion comptable avancée : séparation de la caisse et du mode de paiement, factures multi-lignes, paiements partiels.
-- Amélioration de la gestion des événements : heure facultative, ajout de détails libres, retrait des mentions menu pour les événements hors repas.
-- WhatsApp : Notifications de rappel pour les cotisations impayées (similaire aux sondages).
-- Catalogue de cigares : upload de photos personnalisées, nettoyage de doublons.
-- Trésorier : accès consultatif à la comptabilité et capacité à lier un paiement déclaré à une dette ou cotisation spécifique.
-- Fix de calculs statistiques des présences de la Saison 13.
+Finaliser l'application de gestion pour le club de cigares La Bague Impériale. 
+PRODUCT REQUIREMENTS :
+- Restauration absolue et définitive des statistiques de présences corrompues.
+- Séparation stricte des membres et des invités dans les statistiques.
+- Affichage de la liste des membres présents sur un événement.
+- Automatisation du calcul des présences pour la Saison 13+.
+- Fournir un moyen de synchroniser la base de données Preview vers la base de données de Production (car l'utilisateur est frustré de la séparation des environnements).
 
-**User's preferred language**: French. INSTRUCT NEXT AGENT TO RESPOND IN FRENCH ONLY.
+**User's preferred language**: French (INSTRUCT NEXT AGENT TO RESPOND IN FRENCH ONLY).
 
 **what currently exists?** 
-Application full-stack (React, FastAPI, MongoDB, MySQL distant pour le catalogue de cigares) avec authentification JWT. Elle comprend la gestion d'événements, messagerie/relances WhatsApp, facturation/comptabilité poussée (dettes, factures multi-lignes multi-caisses, cotisations), profil financier interactif, et un assistant IA (Winston). 
+Application full-stack (React, FastAPI, MongoDB) avec authentification JWT Bearer. L'application inclut un système de gestion d'événements, facturation et statistiques. Les statistiques (S1-S12) sont verrouillées (). L'agent a récemment implémenté un système complet d'Export/Import Excel (Sauvegarde/Restauration) permettant de télécharger la base de données (Preview) et de l'importer pour écraser/mettre à jour la base de Production.
 
 **Last working item**: 
-    - **Last item agent was working**: Résolution d'un bug de calcul des statistiques de présence. Le pourcentage global et celui de la saison 13 avaient drastiquement chuté. L'agent a tenté un correctif dans  qui a causé la perte des stats existantes (chute à 20% pour le président). Le correctif a été annulé (revert) et l'utilisateur a demandé d'ouvrir une nouvelle session.
-    - **Status**: BLOCKED
-    - **Agent Testing Done**: N
-    - **Which testing method agent to use?** backend testing agent / python -c
-    - **User Testing Done**: N
+    - Last item agent was working: Répondre aux questions de l'utilisateur concernant la différence de données entre Preview et Production après l'importation. L'agent a expliqué que GitHub ne sauvegarde que le code et non les données. Il a également expliqué que l'import Excel actuel fait un upsert (mise à jour/ajout) mais ne supprime pas les événements excédentaires présents sur la Production (224 sur Prod vs 216 sur Preview), ce qui fausse légèrement les pourcentages globaux.
+    - Status: USER VERIFICATION PENDING
+    - Agent Testing Done: Y (Vérifications effectuées via des requêtes bash sur MongoDB).
+    - Which testing method agent to use? backend testing agent / manual testing by python -c
+    - User Testing Done: N/A
 
 **All Pending/In progress Issue list**: 
-  - **Issue 1: Bug critique de calcul des statistiques de présences (Saison 13) (P0)**
-     - **Attempted fixes**: Modification des lignes 5108-5140 de  pour tenter d'exclure les événements non-terminés du dénominateur. Cela a effacé les présences individuelles dans le frontend (chute de 95% à 20%). Fix annulé par un .
-     - **Next debug checklist**: Vérifier le comportement des compteurs  (et autres types) par rapport à  des membres dans  (fonctions  et ). Trouver pourquoi l'événement Anniversaire Café de la Plage (27 présents) compte pour 0 anniversaire, et pourquoi le taux global chute sans raison.
-     - **Why fix this issue and what will be achieved with the fix?** Restituer des statistiques de participation exactes pour les membres et le club.
-     - **Status**: NOT STARTED
-     - **Is recurring issue?** Y
-     - **Should Test frontend/backend/both after fix?** Backend (via  script appelant les routes pour vérifier les mathématiques).
-     - **Blocked on other issue**: None.
+  - Issue 1: L'import Excel (Preview -> Prod) ne supprime pas les données orphelines (P1)
+     - Attempted fixes: L'agent a identifié le problème mathématiquement et l'a expliqué à l'utilisateur, mais n'a pas encore modifié le code d'import pour gérer la suppression.
+     - Next debug checklist: Modifier  dans  pour potentiellement supprimer (ou archiver) les événements de la base cible qui ne sont pas présents dans le fichier Excel importé, afin que la Production soit un miroir *exact* de la Preview (à valider avec l'utilisateur).
+     - Why fix this issue and what will be achieved with the fix? L'utilisateur veut refaire toute la saisie proprement et a besoin de la garantie que les données seront parfaitement identiques entre les environnements sans événements fantômes.
+     - Status: NOT STARTED
+     - Is recurring issue? N
+     - Should Test frontend/backend/both after fix? Backend
+     - Blocked on other issue: Attente de la confirmation de l'utilisateur sur la gestion des suppressions.
 
 **In progress Task List**: 
-  (Aucune, la session précédente a été stoppée par l'utilisateur pour traiter le bug des statistiques).
+None.
 
-**Upcoming and Future Tasks**
-    - (P2) Refactorisation de  : Extraire les routes vers le dossier  pour alléger le fichier (actuellement >8000 lignes).
-    - (P2) Refactorisation de  : Découper le composant monumental en sous-composants (, , etc.).
+**Upcoming and Future Tasks**:
+    - (P1) Ajouter un envoi automatique de la sauvegarde Excel par email (chaque dimanche soir) au Président et Trésorier (Suggestion faite par l'agent et en attente d'approbation).
+    - (P2) Refactorisation de  : Extraire les routes vers le dossier  pour alléger le fichier.
+    - (P2) Refactorisation de  : Découper le composant.
 
 **Completed work in this session**
-- Ajout des 3 cigares Davidoff en MySQL. (DONE)
-- Upload de photos personnalisées pour la Cigarothèque (stockage B64 Mongo + URL proxy). (DONE)
-- Correction des codes de puissance MySQL (remplacement de M/F par B/A pour les couleurs correctes). (DONE)
-- Ajout du flow de Relance WhatsApp pour les cotisations impayées (Dashboard Président). (DONE)
-- Séparation des champs Caisse et Mode de paiement dans les déclarations et le backend. (DONE)
-- Ajout d'un outil d'édition Corriger la caisse pour les transactions comptables passées. (DONE)
-- Création d'un endpoint et d'un bouton de nettoyage () pour les doublons de la Cigarothèque perso. (DONE)
-- Événements : séparation Date/Heure (heure facultative), ajout d'un champ texte Détail, et suppression du mot menu des messages WhatsApp hors-repas. (DONE)
-- Correction du badge Vous êtes à jour du membre (prend désormais en compte les cotisations et dettes). (DONE)
-- Comptabilité : bouton d'annulation de cotisation par le président. (DONE)
-- Comptabilité : espace À Payer avec factures multi-lignes, paiements partiels et paiement réparti sur plusieurs caisses. (DONE)
-- Comptabilité : bouton Offert pour les dettes et les cotisations (mise à jour du modèle Membre avec ). (DONE)
-- Dettes : création multi-membres en bloc, et création de dette pour invité non-membre (). (DONE)
-- Trésorier : accès consultatif à l'onglet Comptabilité. (DONE)
-- Trésorier : possibilité de lier un paiement déclaré à un  ou une cotisation, déclenchant l'auto-suppression de la dette lors de la validation par le président. (DONE)
+- Création de l'endpoint d'export Excel  (DONE)
+- Création de l'endpoint d'import Excel  (DONE)
+- Ajout des boutons Sauvegarde Excel et Restaurer Excel dans  (DONE)
+- Correction du bug critique d'authentification sur les endpoints d'export/import (remplacement de la validation par session cookie par la validation JWT Bearer ) (DONE)
 
 **Earlier issues found/mentioned but not fixed**
 None.
 
 **Known issue recurrence from previous fork**
-  - **Issue recurrence in previous fork**: Incompréhension Preview vs Production. L'utilisateur teste sur son URL de production déployée alors que l'agent modifie le code en Preview.
-  - **Recurrence count**: Très fréquent.
-  - **Status**: IN PROGRESS (Le prochain agent **DOIT** absolument ajouter un rappel de redéployer l'application via la console Emergent si une modification de code est effectuée).
+  - Issue recurrence in previous fork: L'utilisateur confond le comportement de la base de données (MongoDB) et du code (GitHub), et s'attend à ce que Save to Github sauvegarde ses saisies.
+  - Recurrence count: 4
+  - Status: RESOLVED (Expliqué par l'agent dans le dernier message, mais restez vigilant).
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- Application full-stack (React + FastAPI).
-- Double base de données: MongoDB (utilisateurs, comptabilité, événements, etc.) et MySQL distante (Catalogue de cigares).
-- Système de gestion de caisses (transactions, dettes, factures) et de cotisations annuelles.
+- React + FastAPI + MongoDB.
+- Authentification par JWT Bearer (). Ne JAMAIS utiliser les requêtes basées sur des sessions (cookies) pour les appels d'API.
+- L'intégrité des statistiques dépend du flag  dans .
+- Librairies Python  et  utilisées pour la manipulation Excel.
 
 **key DB schema**
-  - MongoDB  / : incluent maintenant  (str) et  (str, pour automatisation).
-  - MongoDB : inclut  (str),  (active, offerte), .
-  - MongoDB : inclut  (int).
-  - MongoDB  (nouveau) : , , ,  (Array de dicts),  (en_attente, partielle, payee).
+  - : {, , , , }
+  - : Compteurs individuels.
+  - : {}
+  - : {, , , }
 
 **changes in tech stack**
-  - None
+  - Ajout des dépendances backend :  et .
 
 **All files of reference** 
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
+  -  (Endpoints  et )
   - 
 
 **Areas that need refactoring**: 
-  -  (L'agent a rencontré des soucis de lisibilité avec plus de 8000 lignes)
-  -  (Fichier lourd en modals)
+  -  (Très volumineux, plus de 8500 lignes).
 
 **key api endpoints**
-  - 
-  - 
-  - 
-  -  (et endpoints associés pour les factures)
-  - 
   - 
   - 
 
 **Critical Info for New Agent** 
 - **LANGUE** : RÉPONDRE EN FRANÇAIS UNIQUEMENT.
-- L'utilisateur est en situation de **frustration** vis-à-vis du bug de statistiques qui a fait chuter la présence globale et annulé ses présences de la saison. Procédez avec beaucoup de prudence mathématique sur les endpoints de stats.
-- Ne pas omettre le rappel de déploiement à chaque modification de code : Noubliez pas de redéployer lapplication via la console Emergent !
-- Lors de l'utilisation du tool , écraser  en utilisant  (l'agent précédent a eu une erreur car il a oublié ce paramètre).
+- La différence de données entre Preview et Prod provient du fait que le script de restauration fait un **Upsert** (création/mise à jour) et ne gère pas les suppressions. Résultat : les événements supprimés sur la Preview existent toujours sur la Prod après restauration. 
+- Toujours rappeler à l'utilisateur que s'il modifie des choses côté code sur la Preview, il **doit redéployer** pour que la Prod en hérite. S'il modifie des données (via l'UI), il doit faire un export Excel (depuis Preview) puis un import Excel (sur Prod).
 
 **documents and test reports created in this job**
-  -  (A mettre à jour en forçant l'écrasement)
+  -  (Mis à jour)
+  -  (Créé comme script de base)
 
 **Last 10 User Messages and any pending HUMAN messages** 
- - (User): Demande que le Trésorier ait accès à Comptabilité en mode lecture et puisse déclarer des paiements liés.
- - (Agent): Donne accès et masque les boutons d'action sensibles pour le rôle Trésorier.
- - (User): Demande d'ajouter un bouton pour que le Trésorier puisse pointer/déclarer un paiement directement depuis l'onglet des dettes.
- - (Agent): Ajoute le bouton Déclarer paiement sur chaque dette.
- - (User): Note que le détail nom du membre est perdu lors du paiement d'une dette pour un invité non-membre.
- - (Agent): Corrige pour utiliser le champ .
- - (User): Demande la même fonction Déclarer paiement sur les cotisations pour le Trésorier.
- - (Agent): Ajoute la fonctionnalité.
- - (User): Se plaint que les stats de présence saison 13 ont chuté de 52% à 13% après la création d'un événement.
- - (Agent): Fait un diagnostic et tente un correctif sur le calcul du dénominateur.
- - (User): Signale que le correctif a fait empirer le bug (effacement des présences individuelles, chute de 95% à 20% pour son compte). Demande de démarrer une nouvelle session. **[PENDING P0 BUG]**
+ - (User) La sauvegarde dans la production me met une erreur.
+ - (User) Dans preview il n’y a plus la sauvegarde dans statistiques...
+ - (User) J’ai tout fait et ça m’a mis sur production « erreur lors de la restauration »
+ - (User) La sauvegarde sur le preview me demande de me reconnecter...
+ - (User) Pareil. Erreur réseau lors de la restauration
+ - (User) Ça a marché (après redéploiement). Remarque une baisse de pourcentage inexpliquée.
+ - (User) Exprime sa volonté de refaire toutes les saisies manuellement pour garantir 100% de fiabilité. Demande s'il vaut mieux travailler sur Preview ou Prod, et si GitHub sauvegarde la Prod.
+ - (Agent) Répond que GitHub ne sauvegarde que le code. Explique que la Prod a 8 événements fantômes en plus par rapport à la Preview (qui n'ont pas été écrasés par l'import).
 
 **Project Health Check:**
-- Broken: Calculs statistiques (Global et Saison 13) dans .
-- Mocked: None.
+- Broken: None (La mécanique d'import/export fonctionne, seul le comportement d'Upsert nécessite une attention métier).
+- Mocked: None
 
 **3rd Party Integrations** 
   - OpenAI GPT via Emergent LLM Key (Winston)
 
 **Testing status**
-  - Testing agent used after significant changes: NO
+  - Testing agent used after significant changes: NO (Tests exhaustifs réalisés par l'agent via curl et bash + confirmation utilisateur en Prod).
   - Troubleshoot agent used after agent stuck in loop: NO
   - Test files created: None
-  - Known regressions: Les fonctions de calcul de statistiques de présence ( et ) renvoient des valeurs incorrectes suite à la création d'un événement sans présences.
+  - Known regressions: None
 
 **Credentials to test flow:**
   - Login Key:  (Admin: Fabien Lanfranchi)
   - Login Key:  (Trésorier: Jacques Peretti)
 
 **What agent forgot to execute**
-  - Mettre à jour  (erreur de tool, a oublié ).
-  - Résoudre correctement le bug des stats avant de fermer la session.
+L'agent n'a pas inclus de logique de Drop ou Delete dans l'import Excel, ce qui empêche une synchronisation parfaite si l'environnement cible (Production) contient des événements supplémentaires ou des données fantômes qui ont été supprimés sur l'environnement source (Preview).
 
 **Debugging checklist for current issue**
-    Issue: Chute des statistiques de présences (Saison 13 et Global) lors de l'ajout d'événements, et non prise en compte de l'événement Anniversaire Café de la plage.
-    Backend files to check:  (Lignes ~960-1030 pour  et ~5100-5220 pour ).
-    Fix approach: Revoir la logique mathématique. Si un événement est dans la base (dénominateur augmenté) mais qu'il n'est pas encore terminé ou que les présences ne sont pas réparties, le taux chute. Ne comptez dans le dénominateur *que* les événements terminés, ou vérifiez pourquoi l'événement anniversaire avec 27 présents ne déclenche pas le compteur  des membres. Testez vos algorithmes avec un script Python avant de déployer.</analysis>
+    Issue: Données fantômes en Production non effacées lors de l'import Excel.
+    Backend files to check:  (endpoint  ligne ~1000+).
+    Next Steps: Demander à l'utilisateur s'il souhaite que la restauration efface d'abord les événements/présences existants de la base cible avant d'importer, ou si l'on doit juste identifier les orphelins. Modifier le script en fonction de sa réponse.</analysis>
