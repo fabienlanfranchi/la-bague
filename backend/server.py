@@ -2825,6 +2825,54 @@ async def delete_evenement_image(evenement_id: str):
     return {"message": "Image supprimée"}
 
 
+@api_router.get("/evenements/{evenement_id}/presents")
+async def get_evenement_presents(evenement_id: str):
+    """Obtenir la liste des membres présents à un événement (membres + manuels + invités).
+    Combine reponses_sondages, reponses_evenements et reponses_manuelles.
+    """
+    evt = await db.evenements.find_one({"id": evenement_id}, {"_id": 0})
+    if not evt:
+        raise HTTPException(status_code=404, detail="Événement non trouvé")
+    
+    # 1) Réponses des membres (sondages + evenements)
+    membre_ids_presents = set()
+    reponses_s = await db.reponses_sondages.find({"evenement_id": evenement_id, "present": True}, {"_id": 0}).to_list(1000)
+    reponses_e = await db.reponses_evenements.find({"evenement_id": evenement_id, "present": True}, {"_id": 0}).to_list(1000)
+    for r in reponses_s + reponses_e:
+        if r.get("membre_id"):
+            membre_ids_presents.add(r["membre_id"])
+    
+    # 2) Réponses manuelles
+    manuelles = await db.reponses_manuelles.find({"evenement_id": evenement_id, "present": True}, {"_id": 0}).to_list(500)
+    manuelles_membres = []  # membres avec membre_id
+    manuelles_invites = []  # invités libres (sans membre_id)
+    for r in manuelles:
+        if r.get("membre_id"):
+            membre_ids_presents.add(r["membre_id"])
+            manuelles_membres.append(r)
+        else:
+            manuelles_invites.append({"nom": r.get("nom", "Invité"), "type": r.get("type", "invite")})
+    
+    # 3) Joindre infos membres
+    members_docs = []
+    if membre_ids_presents:
+        members_docs = await db.members.find(
+            {"id": {"$in": list(membre_ids_presents)}},
+            {"_id": 0, "id": 1, "numero_membre": 1, "nom_complet": 1, "fonction": 1}
+        ).to_list(500)
+        members_docs.sort(key=lambda m: m.get("numero_membre") or 999)
+    
+    return {
+        "evenement_id": evenement_id,
+        "lieu": evt.get("lieu"),
+        "date": evt.get("date"),
+        "type_sondage": evt.get("type_sondage"),
+        "total": len(members_docs) + len(manuelles_invites),
+        "membres": members_docs,
+        "invites": manuelles_invites
+    }
+
+
 @api_router.get("/evenements/{evenement_id}/stats")
 async def get_evenement_stats(evenement_id: str):
     """Obtenir les statistiques d'un événement"""

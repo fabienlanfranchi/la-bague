@@ -1662,6 +1662,17 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                                   ✏️
                                 </span>
                               )}
+                              <Button
+                                onClick={(e) => { e.stopPropagation(); loadRepondants(evt); }}
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 px-2 text-[#D4A024] hover:text-[#E8B832] hover:bg-[#D4A024]/10"
+                                title="Voir la liste des présents"
+                                data-testid={`btn-presents-${evt.id}`}
+                              >
+                                <Users className="w-3 h-3 mr-1" />
+                                <span className="text-xs">Présents</span>
+                              </Button>
                               {hasAdminAccess && (
                                 <Button
                                   onClick={(e) => handleDeleteEvent(evt.id, e)}
