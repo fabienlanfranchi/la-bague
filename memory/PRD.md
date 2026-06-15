@@ -15,13 +15,12 @@
    - 🔵 "Restaurer Excel" (upload via input file) — `data-testid: restore-backup-excel-btn`
 ✅ **Cycle export → import testé sur Preview** : 13 saisons, 455 présences, 216 événements, 1346 réponses manuelles restaurés sans erreur. Données identiques après cycle (idempotent).
 
-### Améliorations 15/06/2026 (suite)
-✅ Endpoint import devenu **résilient aux différences d'IDs Preview vs Production** :
-   - Stratégie de matching membres en cascade : `Membre ID` → `N° Membre` → `Nom Complet`
-   - Important car les UUIDs membres peuvent différer entre les 2 bases MongoDB
-✅ Messages d'erreur détaillés (l'utilisateur voit l'erreur exacte au lieu du message générique)
-✅ Droits étendus à Président + Trésorier + Secrétaire
-✅ Logs serveur ajoutés pour traçabilité
+### Bug fix critique 15/06/2026 (auth)
+🔴 **Bug racine identifié** : Les endpoints export/import utilisaient `get_current_user` (session cookie) alors que toute l'app utilise **JWT Bearer** stocké dans `localStorage` (`lbi_access_token`). Le frontend fetch() n'ajoutait pas le header Authorization → 401 systématique sur mobile.
+✅ **Correctif** :
+   - Backend : remplacé `get_current_user` par `Depends(get_current_member_from_jwt)` (lit Bearer + cookie JWT)
+   - Frontend : ajout du header `Authorization: Bearer ${localStorage.getItem('lbi_access_token')}` sur les fetch() d'export et d'import
+✅ Testé : cycle complet via JWT Bearer fonctionne (108 KB exportés, 13/455/216/1346 réimportés sans erreur)
 
 ---
 

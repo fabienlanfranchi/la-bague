@@ -311,8 +311,10 @@ export default function Statistiques() {
   const handleDownloadBackup = async () => {
     try {
       toast.info('Génération de la sauvegarde en cours...');
+      const token = localStorage.getItem('lbi_access_token');
       const res = await fetch(`${API_URL}/api/admin/sauvegarde-complete-excel`, {
-        credentials: 'include'
+        credentials: 'include',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
       if (!res.ok) {
         if (res.status === 403) {
@@ -361,9 +363,11 @@ export default function Statistiques() {
       toast.info('Import de la sauvegarde en cours...');
       const formData = new FormData();
       formData.append('file', file);
+      const token = localStorage.getItem('lbi_access_token');
       const res = await fetch(`${API_URL}/api/admin/restaurer-sauvegarde-excel`, {
         method: 'POST',
         credentials: 'include',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
         body: formData,
       });
       const data = await res.json();

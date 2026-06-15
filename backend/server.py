@@ -835,7 +835,7 @@ async def get_membres_mots_de_passe():
 
 
 @api_router.get("/admin/sauvegarde-complete-excel")
-async def telecharger_sauvegarde_complete(request: Request):
+async def telecharger_sauvegarde_complete(member: dict = Depends(get_current_member_from_jwt)):
     """[ADMIN] Génère et télécharge une sauvegarde Excel complète :
     - Récap des Saisons (S1 à S13+)
     - Présences par membre et par saison
@@ -843,7 +843,6 @@ async def telecharger_sauvegarde_complete(request: Request):
     - Présences par événement (membres + invités)
     - Liste des membres
     """
-    member = await get_current_user(request)
     if not member.get('is_president') and member.get('fonction') not in ('Président', 'Trésorier', 'Secrétaire'):
         raise HTTPException(status_code=403, detail="Accès réservé à l'administration du club")
 
@@ -983,12 +982,11 @@ async def telecharger_sauvegarde_complete(request: Request):
 
 
 @api_router.post("/admin/restaurer-sauvegarde-excel")
-async def restaurer_sauvegarde_excel(request: Request, file: UploadFile = File(...)):
+async def restaurer_sauvegarde_excel(file: UploadFile = File(...), member: dict = Depends(get_current_member_from_jwt)):
     """[ADMIN] Restaure une sauvegarde Excel (générée par /sauvegarde-complete-excel).
     Reconstruit/upsert : saisons_config, presences_membres, evenements, reponses_manuelles.
     NE TOUCHE PAS aux membres (collection members), aux mots de passe, ni à la comptabilité.
     """
-    member = await get_current_user(request)
     if not (member.get('is_president') or member.get('fonction') in ('Président', 'Trésorier', 'Secrétaire')):
         raise HTTPException(status_code=403, detail=f"Accès réservé à l'administration (votre fonction: {member.get('fonction', 'inconnue')})")
 
