@@ -362,11 +362,12 @@ const Evenements = () => {
         };
       });
       
-      // Ajouter les réponses manuelles (membres sans accès + invités)
+      // Ajouter les réponses manuelles - MEMBRES uniquement (pas les invités)
+      // Les invités/honneur/anciens ne comptent pas dans les statistiques.
       // en évitant les doublons (un membre_manuel peut déjà être dans reponses_evenements)
       const membreIdsDejaPresents = new Set(reponses.map(r => r.membre_id));
       const manuellesUniques = manuelles.filter(m => 
-        !m.membre_id || !membreIdsDejaPresents.has(m.membre_id)
+        m.type === 'membre_manuel' && m.membre_id && !membreIdsDejaPresents.has(m.membre_id)
       );
       
       const manuellesAvecNoms = manuellesUniques.map(r => ({
@@ -2393,14 +2394,6 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                                 <Badge className="bg-blue-600/50 text-xs">Manuel</Badge>
                               )}
                             </div>
-                            {/* Afficher les choix du repas si c'est un sondage repas */}
-                            {r.choix_entree || r.choix_plat || r.choix_dessert ? (
-                              <div className="flex space-x-2 text-sm">
-                                {r.choix_entree && <Badge className="bg-amber-600/50">{r.choix_entree}</Badge>}
-                                {r.choix_plat && <Badge className="bg-blue-600/50">{r.choix_plat}</Badge>}
-                                {r.choix_dessert && <Badge className="bg-purple-600/50">{r.choix_dessert}</Badge>}
-                              </div>
-                            ) : null}
                           </div>
                         ))}
                       </div>

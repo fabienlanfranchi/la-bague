@@ -2842,16 +2842,14 @@ async def get_evenement_presents(evenement_id: str):
         if r.get("membre_id"):
             membre_ids_presents.add(r["membre_id"])
     
-    # 2) Réponses manuelles
+    # 2) Réponses manuelles - MEMBRES uniquement (les invités ne comptent pas dans 'total')
     manuelles = await db.reponses_manuelles.find({"evenement_id": evenement_id, "present": True}, {"_id": 0}).to_list(500)
-    manuelles_membres = []  # membres avec membre_id
-    manuelles_invites = []  # invités libres (sans membre_id)
+    manuelles_membres = []
     for r in manuelles:
-        if r.get("membre_id"):
+        # Filtre: seul type='membre_manuel' avec membre_id rejoint la liste des membres
+        if r.get("type") == "membre_manuel" and r.get("membre_id"):
             membre_ids_presents.add(r["membre_id"])
             manuelles_membres.append(r)
-        else:
-            manuelles_invites.append({"nom": r.get("nom", "Invité"), "type": r.get("type", "invite")})
     
     # 3) Joindre infos membres
     members_docs = []
@@ -2867,9 +2865,8 @@ async def get_evenement_presents(evenement_id: str):
         "lieu": evt.get("lieu"),
         "date": evt.get("date"),
         "type_sondage": evt.get("type_sondage"),
-        "total": len(members_docs) + len(manuelles_invites),
-        "membres": members_docs,
-        "invites": manuelles_invites
+        "total": len(members_docs),  # uniquement membres
+        "membres": members_docs
     }
 
 
@@ -7702,8 +7699,9 @@ async def auto_terminer_evenements_endpoint():
         reponses = await db.reponses_evenements.find({"evenement_id": evt_id}, {"_id": 0}).to_list(1000)
         manuelles = await db.reponses_manuelles.find({"evenement_id": evt_id}, {"_id": 0}).to_list(100)
         direct_ids = set(r.get('membre_id') for r in reponses if r.get('membre_id'))
-        manuelles_uniques = [m for m in manuelles if m.get('membre_id') and m['membre_id'] not in direct_ids]
-        presents = [r for r in (reponses + manuelles_uniques) if r.get('present')]
+        # IMPORTANT: total_presents compte uniquement les MEMBRES (pas les invités/honneur/anciens)
+        manuelles_membres = [m for m in manuelles if m.get('type') == 'membre_manuel' and m.get('membre_id') and m['membre_id'] not in direct_ids]
+        presents = [r for r in (reponses + manuelles_membres) if r.get('present')]
         
         await db.evenements.update_one(
             {"id": evt_id},
@@ -7764,7 +7762,8 @@ async def recalculer_presences_saison(saison: int):
         reponses = await db.reponses_evenements.find({"evenement_id": evt['id']}, {"_id": 0}).to_list(1000)
         manuelles = await db.reponses_manuelles.find({"evenement_id": evt['id']}, {"_id": 0}).to_list(100)
         direct_ids = set(r.get('membre_id') for r in reponses if r.get('membre_id'))
-        manuelles_uniques = [m for m in manuelles if m.get('membre_id') and m['membre_id'] not in direct_ids]
+        # MEMBRES uniquement (pas les invités)
+        manuelles_uniques = [m for m in manuelles if m.get('type') == 'membre_manuel' and m.get('membre_id') and m['membre_id'] not in direct_ids]
         
         for r in reponses + manuelles_uniques:
             membre_id = r.get('membre_id')
@@ -8065,8 +8064,9 @@ async def auto_terminer_evenements():
             reponses = await db.reponses_evenements.find({"evenement_id": evt_id}, {"_id": 0}).to_list(1000)
             manuelles = await db.reponses_manuelles.find({"evenement_id": evt_id}, {"_id": 0}).to_list(100)
             direct_ids = set(r.get('membre_id') for r in reponses if r.get('membre_id'))
-            manuelles_uniques = [m for m in manuelles if m.get('membre_id') and m['membre_id'] not in direct_ids]
-            presents = [r for r in (reponses + manuelles_uniques) if r.get('present')]
+            # IMPORTANT: compte uniquement les MEMBRES (pas les invités/honneur/anciens)
+            manuelles_membres = [m for m in manuelles if m.get('type') == 'membre_manuel' and m.get('membre_id') and m['membre_id'] not in direct_ids]
+            presents = [r for r in (reponses + manuelles_membres) if r.get('present')]
             
             await db.evenements.update_one(
                 {"id": evt_id},
