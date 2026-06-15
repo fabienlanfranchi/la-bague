@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { ChevronLeft, ChevronRight, Save, BarChart3, Users, Calendar, RefreshCw, Check, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, TrendingUp, Edit, Lock, Table, LineChart, Download } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Save, BarChart3, Users, Calendar, RefreshCw, Check, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, TrendingUp, Edit, Lock, Table, LineChart, Download, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
@@ -320,7 +320,9 @@ export default function Statistiques() {
         } else if (res.status === 401) {
           toast.error("Veuillez vous reconnecter");
         } else {
-          toast.error("Erreur lors de la génération de la sauvegarde");
+          let msg = "Erreur lors de la génération de la sauvegarde";
+          try { const j = await res.json(); if (j?.detail) msg = j.detail; } catch (_) {}
+          toast.error(msg);
         }
         return;
       }
@@ -338,6 +340,51 @@ export default function Statistiques() {
     } catch (err) {
       console.error('Erreur téléchargement sauvegarde:', err);
       toast.error('Erreur réseau lors du téléchargement');
+    }
+  };
+
+  // Restaurer une sauvegarde Excel (importer le fichier)
+  const handleRestoreBackup = async (file) => {
+    if (!file) return;
+    const confirmation = window.confirm(
+      "⚠️ Vous allez RESTAURER une sauvegarde Excel.\n\n" +
+      "Cette action va remplacer/ajouter :\n" +
+      "  • Les configs de saisons (S1, S2, ...)\n" +
+      "  • Les présences par membre\n" +
+      "  • Les événements (par ID)\n" +
+      "  • Les présences par événement (réponses manuelles)\n\n" +
+      "Elle NE TOUCHE PAS aux membres, mots de passe, ni à la comptabilité.\n\n" +
+      "Continuer ?"
+    );
+    if (!confirmation) return;
+    try {
+      toast.info('Import de la sauvegarde en cours...');
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch(`${API_URL}/api/admin/restaurer-sauvegarde-excel`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data?.detail || "Erreur lors de la restauration");
+        return;
+      }
+      const r = data?.rapport || {};
+      toast.success(
+        `✅ Restauration OK : ${r.saisons_config_upserted || 0} saisons, ${r.presences_membres_upserted || 0} présences membres, ${r.evenements_upserted || 0} événements, ${r.reponses_manuelles_upserted || 0} réponses manuelles.`,
+        { duration: 8000 }
+      );
+      if (r.erreurs && r.erreurs.length) {
+        console.warn('Erreurs partielles :', r.erreurs);
+        toast.warning(`${r.erreurs.length} erreur(s) partielle(s) — voir la console`);
+      }
+      // Recharger les données
+      loadData();
+    } catch (err) {
+      console.error('Erreur import sauvegarde:', err);
+      toast.error('Erreur réseau lors de la restauration');
     }
   };
 
@@ -484,6 +531,28 @@ export default function Statistiques() {
             <Download className="h-4 w-4 mr-1 sm:mr-2" />
             <span className="text-xs sm:text-sm">Sauvegarde Excel</span>
           </Button>
+          <Button
+            variant="outline"
+            onClick={() => document.getElementById('restore-backup-input')?.click()}
+            size="sm"
+            data-testid="restore-backup-excel-btn"
+            className="flex-1 sm:flex-none bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100 hover:text-blue-800"
+            title="Importer une sauvegarde Excel (transfert Preview → Production)"
+          >
+            <Upload className="h-4 w-4 mr-1 sm:mr-2" />
+            <span className="text-xs sm:text-sm">Restaurer Excel</span>
+          </Button>
+          <input
+            id="restore-backup-input"
+            type="file"
+            accept=".xlsx"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) handleRestoreBackup(f);
+              e.target.value = '';
+            }}
+          />
         </div>
       </div>
 

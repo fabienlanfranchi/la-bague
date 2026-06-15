@@ -847,121 +847,326 @@ async def telecharger_sauvegarde_complete(request: Request):
     if not member.get('is_president') and member.get('fonction') not in ('Président', 'Trésorier', 'Secrétaire'):
         raise HTTPException(status_code=403, detail="Accès réservé à l'administration du club")
 
-    import pandas as pd
-    from openpyxl import load_workbook
-    import io
+    try:
+        import pandas as pd
+        from openpyxl import load_workbook
+        import io
 
-    members_list = await db.members.find({}, {"_id": 0}).to_list(1000)
-    members_map = {m['id']: m for m in members_list}
+        members_list = await db.members.find({}, {"_id": 0}).to_list(1000)
+        members_map = {m['id']: m for m in members_list}
 
-    saisons = await db.saisons_config.find({}, {'_id': 0}).sort('saison', 1).to_list(100)
-    df_saisons = pd.DataFrame([{
-        'Saison': s.get('saison'),
-        'Nb Apéros': s.get('nb_aperos', 0),
-        'Nb Repas': s.get('nb_repas', 0),
-        'Nb Anniversaires': s.get('nb_anniversaires', 0),
-        'Présences Apéros (total)': s.get('presences_membres_aperos', 0),
-        'Présences Repas (total)': s.get('presences_membres_repas', 0),
-        'Présences Anniversaires (total)': s.get('presences_membres_anniversaires', 0),
-        'Nb membres': s.get('nb_membres_manuel', 0),
-        'Verrouillée (manuel)': 'OUI' if s.get('is_manuel') else 'NON',
-    } for s in saisons])
+        saisons = await db.saisons_config.find({}, {'_id': 0}).sort('saison', 1).to_list(100)
+        df_saisons = pd.DataFrame([{
+            'Saison': s.get('saison') or 0,
+            'Nb Apéros': s.get('nb_aperos', 0) or 0,
+            'Nb Repas': s.get('nb_repas', 0) or 0,
+            'Nb Anniversaires': s.get('nb_anniversaires', 0) or 0,
+            'Présences Apéros (total)': s.get('presences_membres_aperos', 0) or 0,
+            'Présences Repas (total)': s.get('presences_membres_repas', 0) or 0,
+            'Présences Anniversaires (total)': s.get('presences_membres_anniversaires', 0) or 0,
+            'Nb membres': s.get('nb_membres_manuel', 0) or 0,
+            'Verrouillée (manuel)': 'OUI' if s.get('is_manuel') else 'NON',
+        } for s in saisons]) if saisons else pd.DataFrame([{'Saison': '', 'Nb Apéros': '', 'Nb Repas': '', 'Nb Anniversaires': '', 'Présences Apéros (total)': '', 'Présences Repas (total)': '', 'Présences Anniversaires (total)': '', 'Nb membres': '', 'Verrouillée (manuel)': ''}]).iloc[0:0]
 
-    presences = await db.presences_membres.find({}, {'_id': 0}).to_list(10000)
-    rows = []
-    for p in presences:
-        m = members_map.get(p.get('membre_id'), {})
-        rows.append({
-            'Saison': p.get('saison'),
-            'N° Membre': m.get('numero_membre', ''),
-            'Nom Complet': m.get('nom_complet', '(inconnu)'),
-            'Fonction': m.get('fonction', ''),
-            'Présences Apéros': p.get('presences_aperos', 0),
-            'Présences Repas': p.get('presences_repas', 0),
-            'Présences Anniversaires': p.get('presences_anniversaires', 0),
-            'Total Présences': p.get('presences_aperos', 0) + p.get('presences_repas', 0) + p.get('presences_anniversaires', 0),
-        })
-    df_presences = pd.DataFrame(rows).sort_values(['Saison', 'N° Membre']) if rows else pd.DataFrame()
+        presences = await db.presences_membres.find({}, {'_id': 0}).to_list(10000)
+        rows = []
+        for p in presences:
+            m = members_map.get(p.get('membre_id'), {})
+            rows.append({
+                'Saison': p.get('saison') or 0,
+                'Membre ID': p.get('membre_id', ''),
+                'N° Membre': m.get('numero_membre') or 0,
+                'Nom Complet': m.get('nom_complet') or '(inconnu)',
+                'Fonction': m.get('fonction') or '',
+                'Présences Apéros': p.get('presences_aperos', 0) or 0,
+                'Présences Repas': p.get('presences_repas', 0) or 0,
+                'Présences Anniversaires': p.get('presences_anniversaires', 0) or 0,
+                'Total Présences': (p.get('presences_aperos', 0) or 0) + (p.get('presences_repas', 0) or 0) + (p.get('presences_anniversaires', 0) or 0),
+            })
+        if rows:
+            df_presences = pd.DataFrame(rows).sort_values(['Saison', 'N° Membre'])
+        else:
+            df_presences = pd.DataFrame(columns=['Saison', 'Membre ID', 'N° Membre', 'Nom Complet', 'Fonction', 'Présences Apéros', 'Présences Repas', 'Présences Anniversaires', 'Total Présences'])
 
-    evenements = await db.evenements.find({}, {'_id': 0}).sort([('saison', 1), ('date', 1)]).to_list(2000)
-    df_evt = pd.DataFrame([{
-        'ID Événement': e.get('id'),
-        'Saison': e.get('saison'),
-        'Date': e.get('date', '')[:10] if e.get('date') else '',
-        'Objet': e.get('objet', ''),
-        'Lieu': e.get('lieu', ''),
-        'Type': e.get('type_sondage', ''),
-        'Statut': e.get('statut', ''),
-        'Total Présents (membres)': e.get('total_presents', 0),
-    } for e in evenements])
+        evenements = await db.evenements.find({}, {'_id': 0}).sort([('saison', 1), ('date', 1)]).to_list(2000)
+        df_evt = pd.DataFrame([{
+            'ID Événement': e.get('id') or '',
+            'Saison': e.get('saison') or 0,
+            'Date': (e.get('date') or '')[:10] if isinstance(e.get('date'), str) else '',
+            'Objet': e.get('objet') or '',
+            'Lieu': e.get('lieu') or '',
+            'Type': e.get('type_sondage') or '',
+            'Statut': e.get('statut') or '',
+            'Total Présents (membres)': e.get('total_presents', 0) or 0,
+        } for e in evenements]) if evenements else pd.DataFrame(columns=['ID Événement', 'Saison', 'Date', 'Objet', 'Lieu', 'Type', 'Statut', 'Total Présents (membres)'])
 
-    rm = await db.reponses_manuelles.find({}, {'_id': 0}).to_list(20000)
-    evt_map = {e['id']: e for e in evenements}
-    rows_rm = []
-    for r in rm:
-        e = evt_map.get(r.get('evenement_id'), {})
-        nom = r.get('nom', '')
-        if r.get('membre_id'):
-            mb = members_map.get(r['membre_id'], {})
-            nom = mb.get('nom_complet', nom)
-        rows_rm.append({
-            'Saison': e.get('saison', ''),
-            'Date Événement': e.get('date', '')[:10] if e.get('date') else '',
-            'Objet': e.get('objet', ''),
-            'Type Personne': r.get('type', ''),
-            'Nom': nom,
-            'Présent': 'OUI' if r.get('present') else 'NON',
-            'Entrée': r.get('choix_entree', ''),
-            'Plat': r.get('choix_plat', ''),
-            'Dessert': r.get('choix_dessert', ''),
-        })
-    df_rm = pd.DataFrame(rows_rm).sort_values(['Saison', 'Date Événement']) if rows_rm else pd.DataFrame()
+        rm = await db.reponses_manuelles.find({}, {'_id': 0}).to_list(20000)
+        evt_map = {e['id']: e for e in evenements}
+        rows_rm = []
+        for r in rm:
+            e = evt_map.get(r.get('evenement_id'), {})
+            nom = r.get('nom', '') or ''
+            if r.get('membre_id'):
+                mb = members_map.get(r['membre_id'], {})
+                nom = mb.get('nom_complet') or nom
+            rows_rm.append({
+                'Événement ID': r.get('evenement_id', ''),
+                'Saison': e.get('saison') or 0,
+                'Date Événement': (e.get('date') or '')[:10] if isinstance(e.get('date'), str) else '',
+                'Objet': e.get('objet') or '',
+                'Type Personne': r.get('type') or '',
+                'Membre ID': r.get('membre_id', '') or '',
+                'Nom': nom,
+                'Présent': 'OUI' if r.get('present') else 'NON',
+                'Entrée': r.get('choix_entree') or '',
+                'Plat': r.get('choix_plat') or '',
+                'Dessert': r.get('choix_dessert') or '',
+            })
+        if rows_rm:
+            df_rm = pd.DataFrame(rows_rm).sort_values(['Saison', 'Date Événement'])
+        else:
+            df_rm = pd.DataFrame(columns=['Événement ID', 'Saison', 'Date Événement', 'Objet', 'Type Personne', 'Membre ID', 'Nom', 'Présent', 'Entrée', 'Plat', 'Dessert'])
 
-    df_membres = pd.DataFrame([{
-        'N°': m.get('numero_membre'),
-        'Nom Complet': m.get('nom_complet'),
-        'Fonction': m.get('fonction', ''),
-        'Email': m.get('email', ''),
-        'Téléphone': m.get('telephone', ''),
-        'Saison Entrée': m.get('saison_entree', ''),
-        'Année Entrée': m.get('annee_entree', ''),
-        'Compte Validé': 'OUI' if m.get('is_validated') else 'NON',
-    } for m in members_list]).sort_values('N°')
+        membres_rows = [{
+            'ID Membre': m.get('id') or '',
+            'N°': m.get('numero_membre') or 0,
+            'Nom Complet': m.get('nom_complet') or '',
+            'Fonction': m.get('fonction') or '',
+            'Email': m.get('email') or '',
+            'Téléphone': m.get('telephone') or '',
+            'Saison Entrée': m.get('saison_entree') or '',
+            'Année Entrée': m.get('annee_entree') or '',
+            'Compte Validé': 'OUI' if m.get('is_validated') else 'NON',
+        } for m in members_list]
+        if membres_rows:
+            df_membres = pd.DataFrame(membres_rows).sort_values('N°')
+        else:
+            df_membres = pd.DataFrame(columns=['ID Membre', 'N°', 'Nom Complet', 'Fonction', 'Email', 'Téléphone', 'Saison Entrée', 'Année Entrée', 'Compte Validé'])
 
-    buf = io.BytesIO()
-    with pd.ExcelWriter(buf, engine='openpyxl') as writer:
-        df_saisons.to_excel(writer, sheet_name='Récap Saisons', index=False)
-        df_presences.to_excel(writer, sheet_name='Présences par Membre', index=False)
-        df_evt.to_excel(writer, sheet_name='Événements', index=False)
-        df_rm.to_excel(writer, sheet_name='Présences par Événement', index=False)
-        df_membres.to_excel(writer, sheet_name='Membres', index=False)
+        buf = io.BytesIO()
+        with pd.ExcelWriter(buf, engine='openpyxl') as writer:
+            df_saisons.to_excel(writer, sheet_name='Récap Saisons', index=False)
+            df_presences.to_excel(writer, sheet_name='Présences par Membre', index=False)
+            df_evt.to_excel(writer, sheet_name='Événements', index=False)
+            df_rm.to_excel(writer, sheet_name='Présences par Événement', index=False)
+            df_membres.to_excel(writer, sheet_name='Membres', index=False)
 
-    # Auto-fit colonnes
-    buf.seek(0)
-    wb = load_workbook(buf)
-    for sheet_name in wb.sheetnames:
-        ws = wb[sheet_name]
-        for col in ws.columns:
-            max_length = 0
-            col_letter = col[0].column_letter
-            for cell in col:
+        # Auto-fit colonnes
+        buf.seek(0)
+        wb = load_workbook(buf)
+        for sheet_name in wb.sheetnames:
+            ws = wb[sheet_name]
+            for col in ws.columns:
+                max_length = 0
+                col_letter = col[0].column_letter
+                for cell in col:
+                    try:
+                        if cell.value is not None and len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
+                    except Exception:
+                        pass
+                ws.column_dimensions[col_letter].width = min(max(max_length + 2, 10), 50)
+        out = io.BytesIO()
+        wb.save(out)
+        out.seek(0)
+
+        ts = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')
+        filename = f"SAUVEGARDE_LaBagueImperiale_{ts}.xlsx"
+        return StreamingResponse(
+            out,
+            media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        )
+    except Exception as e:
+        logging.exception("Erreur génération sauvegarde Excel")
+        raise HTTPException(status_code=500, detail=f"Erreur génération sauvegarde : {str(e)}")
+
+
+@api_router.post("/admin/restaurer-sauvegarde-excel")
+async def restaurer_sauvegarde_excel(request: Request, file: UploadFile = File(...)):
+    """[ADMIN] Restaure une sauvegarde Excel (générée par /sauvegarde-complete-excel).
+    Reconstruit/upsert : saisons_config, presences_membres, evenements, reponses_manuelles.
+    NE TOUCHE PAS aux membres (collection members), aux mots de passe, ni à la comptabilité.
+    """
+    member = await get_current_user(request)
+    if not (member.get('is_president') or member.get('fonction') == 'Président'):
+        raise HTTPException(status_code=403, detail="Accès réservé au Président")
+
+    try:
+        import pandas as pd
+        import io
+
+        content = await file.read()
+        if not content:
+            raise HTTPException(status_code=400, detail="Fichier vide")
+
+        xls = pd.ExcelFile(io.BytesIO(content), engine='openpyxl')
+        required_sheets = {'Récap Saisons', 'Présences par Membre', 'Événements', 'Présences par Événement'}
+        if not required_sheets.issubset(set(xls.sheet_names)):
+            raise HTTPException(status_code=400, detail=f"Fichier Excel invalide. Onglets requis : {required_sheets}")
+
+        rapport = {
+            'saisons_config_upserted': 0,
+            'presences_membres_upserted': 0,
+            'evenements_upserted': 0,
+            'reponses_manuelles_upserted': 0,
+            'erreurs': []
+        }
+
+        # Mapping membre_id (au cas où il faudrait retrouver par numéro)
+        members_list = await db.members.find({}, {"_id": 0, "id": 1, "numero_membre": 1, "nom_complet": 1}).to_list(1000)
+        num_to_id = {m.get('numero_membre'): m['id'] for m in members_list if m.get('numero_membre')}
+
+        # 1. Saisons config
+        df_s = xls.parse('Récap Saisons')
+        for _, row in df_s.iterrows():
+            try:
+                saison = int(row.get('Saison')) if pd.notna(row.get('Saison')) else None
+                if not saison:
+                    continue
+                doc = {
+                    'saison': saison,
+                    'nb_aperos': int(row.get('Nb Apéros') or 0),
+                    'nb_repas': int(row.get('Nb Repas') or 0),
+                    'nb_anniversaires': int(row.get('Nb Anniversaires') or 0),
+                    'presences_membres_aperos': int(row.get('Présences Apéros (total)') or 0),
+                    'presences_membres_repas': int(row.get('Présences Repas (total)') or 0),
+                    'presences_membres_anniversaires': int(row.get('Présences Anniversaires (total)') or 0),
+                    'nb_membres_manuel': int(row.get('Nb membres') or 0),
+                    'is_manuel': str(row.get('Verrouillée (manuel)', '')).upper() == 'OUI',
+                    'updated_at': datetime.now(timezone.utc).isoformat(),
+                    'restored_from_backup_excel': True,
+                }
+                existing = await db.saisons_config.find_one({'saison': saison})
+                if existing:
+                    await db.saisons_config.update_one({'saison': saison}, {'$set': doc})
+                else:
+                    doc['id'] = str(uuid.uuid4())
+                    doc['created_at'] = datetime.now(timezone.utc).isoformat()
+                    await db.saisons_config.insert_one(doc)
+                rapport['saisons_config_upserted'] += 1
+            except Exception as e:
+                rapport['erreurs'].append(f"Saison {row.get('Saison')}: {e}")
+
+        # 2. Presences par membre
+        df_p = xls.parse('Présences par Membre')
+        has_membre_id = 'Membre ID' in df_p.columns
+        for _, row in df_p.iterrows():
+            try:
+                saison = int(row.get('Saison')) if pd.notna(row.get('Saison')) else None
+                if not saison:
+                    continue
+                membre_id = row.get('Membre ID') if has_membre_id and pd.notna(row.get('Membre ID')) else None
+                if not membre_id:
+                    num = int(row.get('N° Membre')) if pd.notna(row.get('N° Membre')) else None
+                    membre_id = num_to_id.get(num)
+                if not membre_id:
+                    continue
+                doc = {
+                    'membre_id': membre_id,
+                    'saison': saison,
+                    'presences_aperos': int(row.get('Présences Apéros') or 0),
+                    'presences_repas': int(row.get('Présences Repas') or 0),
+                    'presences_anniversaires': int(row.get('Présences Anniversaires') or 0),
+                    'updated_at': datetime.now(timezone.utc).isoformat(),
+                    'restored_from_backup_excel': True,
+                }
+                existing = await db.presences_membres.find_one({'membre_id': membre_id, 'saison': saison})
+                if existing:
+                    await db.presences_membres.update_one({'membre_id': membre_id, 'saison': saison}, {'$set': doc})
+                else:
+                    doc['id'] = str(uuid.uuid4())
+                    doc['created_at'] = datetime.now(timezone.utc).isoformat()
+                    await db.presences_membres.insert_one(doc)
+                rapport['presences_membres_upserted'] += 1
+            except Exception as e:
+                rapport['erreurs'].append(f"Présence membre_id={row.get('Membre ID')} S{row.get('Saison')}: {e}")
+
+        # 3. Evenements
+        df_e = xls.parse('Événements')
+        for _, row in df_e.iterrows():
+            try:
+                evt_id = row.get('ID Événement') if pd.notna(row.get('ID Événement')) else None
+                if not evt_id:
+                    continue
+                date_str = str(row.get('Date') or '').strip()
+                # Stocker la date au format ISO (00:00:00 UTC) si simple "YYYY-MM-DD"
+                date_iso = ''
+                if date_str:
+                    try:
+                        d = datetime.fromisoformat(date_str.split('T')[0])
+                        date_iso = d.replace(tzinfo=timezone.utc).isoformat()
+                    except Exception:
+                        date_iso = date_str
+                doc = {
+                    'id': evt_id,
+                    'date': date_iso or date_str,
+                    'objet': str(row.get('Objet') or ''),
+                    'lieu': str(row.get('Lieu') or ''),
+                    'type_sondage': str(row.get('Type') or 'repas'),
+                    'statut': str(row.get('Statut') or 'terminé'),
+                    'saison': int(row.get('Saison')) if pd.notna(row.get('Saison')) else 0,
+                    'total_presents': int(row.get('Total Présents (membres)') or 0),
+                    'restored_from_backup_excel': True,
+                }
+                existing = await db.evenements.find_one({'id': evt_id})
+                if existing:
+                    await db.evenements.update_one({'id': evt_id}, {'$set': doc})
+                else:
+                    doc['created_at'] = datetime.now(timezone.utc).isoformat()
+                    await db.evenements.insert_one(doc)
+                rapport['evenements_upserted'] += 1
+            except Exception as e:
+                rapport['erreurs'].append(f"Événement {row.get('ID Événement')}: {e}")
+
+        # 4. Reponses manuelles
+        df_rm = xls.parse('Présences par Événement')
+        # Stratégie : pour chaque événement présent dans la feuille, supprimer ses reponses_manuelles puis recréer
+        evenements_dans_feuille = set()
+        if 'Événement ID' in df_rm.columns:
+            for _, row in df_rm.iterrows():
+                evt_id = row.get('Événement ID')
+                if pd.notna(evt_id) and evt_id:
+                    evenements_dans_feuille.add(evt_id)
+            # Purge ciblée
+            for evt_id in evenements_dans_feuille:
+                await db.reponses_manuelles.delete_many({'evenement_id': evt_id})
+            # Recréation
+            for _, row in df_rm.iterrows():
                 try:
-                    if cell.value and len(str(cell.value)) > max_length:
-                        max_length = len(str(cell.value))
-                except Exception:
-                    pass
-            ws.column_dimensions[col_letter].width = min(max_length + 2, 50)
-    out = io.BytesIO()
-    wb.save(out)
-    out.seek(0)
+                    evt_id = row.get('Événement ID')
+                    if not (pd.notna(evt_id) and evt_id):
+                        continue
+                    type_personne = str(row.get('Type Personne') or 'membre_manuel')
+                    present_val = str(row.get('Présent') or 'NON').upper() == 'OUI'
+                    membre_id = row.get('Membre ID') if 'Membre ID' in df_rm.columns and pd.notna(row.get('Membre ID')) else None
+                    doc = {
+                        'id': str(uuid.uuid4()),
+                        'evenement_id': evt_id,
+                        'type': type_personne,
+                        'nom': str(row.get('Nom') or ''),
+                        'present': present_val,
+                        'choix_entree': str(row.get('Entrée') or ''),
+                        'choix_plat': str(row.get('Plat') or ''),
+                        'choix_dessert': str(row.get('Dessert') or ''),
+                        'created_at': datetime.now(timezone.utc).isoformat(),
+                        'restored_from_backup_excel': True,
+                    }
+                    if membre_id:
+                        doc['membre_id'] = membre_id
+                    await db.reponses_manuelles.insert_one(doc)
+                    rapport['reponses_manuelles_upserted'] += 1
+                except Exception as e:
+                    rapport['erreurs'].append(f"Réponse manuelle evt={row.get('Événement ID')}: {e}")
+        else:
+            rapport['erreurs'].append("Colonne 'Événement ID' absente de l'onglet 'Présences par Événement' — réponses manuelles non importées (fichier d'une ancienne version ?).")
 
-    ts = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')
-    filename = f"SAUVEGARDE_LaBagueImperiale_{ts}.xlsx"
-    return StreamingResponse(
-        out,
-        media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
-    )
+        return {"success": True, "rapport": rapport}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.exception("Erreur restauration sauvegarde Excel")
+        raise HTTPException(status_code=500, detail=f"Erreur restauration : {str(e)}")
 
 
 

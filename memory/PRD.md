@@ -1,23 +1,24 @@
 # La Bague Impériale - PRD
 
-## SESSION 15 Juin 2026 - 💾 Sauvegarde Excel complète disponible
+## SESSION 15 Juin 2026 - 💾 Sauvegarde Excel complète + Restauration disponible
 
 ### Nouveau (15/06/2026)
-✅ **Endpoint backend** `GET /api/admin/sauvegarde-complete-excel` (admin only)
-   - Génère un Excel `SAUVEGARDE_LaBagueImperiale_*.xlsx` avec 5 onglets :
-     1. Récap Saisons (13 saisons)
-     2. Présences par Membre (455 lignes)
-     3. Événements (216 lignes)
-     4. Présences par Événement (1346 lignes, membres + invités)
-     5. Membres (35 lignes)
-   - Réservé aux fonctions : `is_president`, Président, Trésorier, Secrétaire
-✅ **Bouton frontend** "Sauvegarde Excel" sur la page Statistiques (header) — testé OK via curl admin
-   - data-testid: `download-backup-excel-btn`
-   - Permet à l'utilisateur d'archiver localement toutes les données du club
+✅ **Endpoint export** `GET /api/admin/sauvegarde-complete-excel` (admin only)
+   - Excel `SAUVEGARDE_LaBagueImperiale_*.xlsx` avec 5 onglets : Récap Saisons, Présences par Membre (avec Membre ID), Événements, Présences par Événement (avec Événement ID + Membre ID), Membres
+   - Robuste contre champs manquants / collections vides
+✅ **Endpoint import** `POST /api/admin/restaurer-sauvegarde-excel` (Président uniquement)
+   - Upsert `saisons_config`, `presences_membres`, `evenements`, `reponses_manuelles`
+   - NE TOUCHE PAS aux membres, mots de passe, comptabilité
+   - Purge ciblée des `reponses_manuelles` par événement avant recréation (évite doublons)
+✅ **Boutons frontend** sur la page Statistiques :
+   - 🟢 "Sauvegarde Excel" (download) — `data-testid: download-backup-excel-btn`
+   - 🔵 "Restaurer Excel" (upload via input file) — `data-testid: restore-backup-excel-btn`
+✅ **Cycle export → import testé sur Preview** : 13 saisons, 455 présences, 216 événements, 1346 réponses manuelles restaurés sans erreur. Données identiques après cycle (idempotent).
 
-### Contexte : désynchronisation Preview vs Production
-L'utilisateur a redéployé. Les données restaurées (S1-S13) existent uniquement sur la **base Preview** ;
-la base Production reste séparée et non synchronisée. La sauvegarde Excel sert de filet de sécurité.
+### 🟢 Solution Preview → Production (recover sans support)
+1. Sur la Preview, cliquer **Sauvegarde Excel** → télécharger le fichier
+2. Sur la Production (URL déployée), cliquer **Restaurer Excel** → uploader le fichier téléchargé
+3. Les données Preview sont copiées en Production. Membres et mots de passe non touchés.
 
 ---
 
