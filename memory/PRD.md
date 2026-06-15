@@ -1,5 +1,26 @@
 # La Bague Impériale - PRD
 
+## SESSION 15 Juin 2026 - 💾 Sauvegarde Excel complète disponible
+
+### Nouveau (15/06/2026)
+✅ **Endpoint backend** `GET /api/admin/sauvegarde-complete-excel` (admin only)
+   - Génère un Excel `SAUVEGARDE_LaBagueImperiale_*.xlsx` avec 5 onglets :
+     1. Récap Saisons (13 saisons)
+     2. Présences par Membre (455 lignes)
+     3. Événements (216 lignes)
+     4. Présences par Événement (1346 lignes, membres + invités)
+     5. Membres (35 lignes)
+   - Réservé aux fonctions : `is_president`, Président, Trésorier, Secrétaire
+✅ **Bouton frontend** "Sauvegarde Excel" sur la page Statistiques (header) — testé OK via curl admin
+   - data-testid: `download-backup-excel-btn`
+   - Permet à l'utilisateur d'archiver localement toutes les données du club
+
+### Contexte : désynchronisation Preview vs Production
+L'utilisateur a redéployé. Les données restaurées (S1-S13) existent uniquement sur la **base Preview** ;
+la base Production reste séparée et non synchronisée. La sauvegarde Excel sert de filet de sécurité.
+
+---
+
 ## SESSION 14 Juin 2026 - 🔴 P0 Bug stats RÉSOLU + restauration en cours
 
 ### Cause racine identifiée (commit `bf17558` du 21/04/2026)
@@ -15,7 +36,7 @@ Un agent précédent a ajouté une fonction `recalculer_presences_saison()` **de
    - Skip total si `saisons_config.is_manuel=True`
    - Utilise `$max` au lieu de `$set` (ne diminue jamais une valeur)
    - Backup automatique avant tout changement (collection `presences_membres_backup`)
-✅ Backup complet effectué : `id=514ba3f2-61da-42d4-93be-5718c02cf181` (456 entrées)
+✅ Backup complet effectué : `id=cigares-stats` (456 entrées)
 
 ### Restauration manuelle effectuée
 ✅ **Fabien Lanfranchi (Président)** restauré :
@@ -79,7 +100,7 @@ Voir `/app/memory/test_credentials.md`
 ---
 
 ## URLs
-- Frontend Preview : https://cigare-finances.preview.emergentagent.com
+- Frontend Preview : https://cigares-stats.preview.emergentagent.com
 - Production : https://labagueimperiale.optizioni.app (à redéployer)
 
 ---

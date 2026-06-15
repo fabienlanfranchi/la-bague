@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { ChevronLeft, ChevronRight, Save, BarChart3, Users, Calendar, RefreshCw, Check, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, TrendingUp, Edit, Lock, Table, LineChart } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Save, BarChart3, Users, Calendar, RefreshCw, Check, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, TrendingUp, Edit, Lock, Table, LineChart, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
@@ -307,6 +307,40 @@ export default function Statistiques() {
     return saisonsManuelEdits[saison] && Object.keys(saisonsManuelEdits[saison]).length > 0;
   };
 
+  // Télécharger la sauvegarde Excel complète
+  const handleDownloadBackup = async () => {
+    try {
+      toast.info('Génération de la sauvegarde en cours...');
+      const res = await fetch(`${API_URL}/api/admin/sauvegarde-complete-excel`, {
+        credentials: 'include'
+      });
+      if (!res.ok) {
+        if (res.status === 403) {
+          toast.error("Accès réservé à l'administration du club");
+        } else if (res.status === 401) {
+          toast.error("Veuillez vous reconnecter");
+        } else {
+          toast.error("Erreur lors de la génération de la sauvegarde");
+        }
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const ts = new Date().toISOString().slice(0, 16).replace(/[T:-]/g, '');
+      a.download = `SAUVEGARDE_LaBagueImperiale_${ts}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success('Sauvegarde téléchargée avec succès !');
+    } catch (err) {
+      console.error('Erreur téléchargement sauvegarde:', err);
+      toast.error('Erreur réseau lors du téléchargement');
+    }
+  };
+
   // Sauvegarder toutes les modifications
   const handleSave = async () => {
     setSaving(true);
@@ -438,6 +472,17 @@ export default function Statistiques() {
           >
             <TrendingUp className="h-4 w-4 mr-1 sm:mr-2" />
             <span className="text-xs sm:text-sm">Stats Saisons</span>
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleDownloadBackup}
+            size="sm"
+            data-testid="download-backup-excel-btn"
+            className="flex-1 sm:flex-none bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800"
+            title="Télécharger toutes les données du club (saisons, présences, événements) en Excel"
+          >
+            <Download className="h-4 w-4 mr-1 sm:mr-2" />
+            <span className="text-xs sm:text-sm">Sauvegarde Excel</span>
           </Button>
         </div>
       </div>

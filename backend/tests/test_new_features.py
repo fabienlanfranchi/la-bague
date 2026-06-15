@@ -8,7 +8,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://cigare-finances.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://cigares-stats.preview.emergentagent.com')
 
 class TestMembersAPI:
     """Test members API - verify fonction field for Trésorier and Secrétaire"""

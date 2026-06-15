@@ -1,5 +1,5 @@
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Response, Query, File, UploadFile, Body
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse, FileResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
@@ -832,6 +832,138 @@ async def get_membres_mots_de_passe():
     ).sort("numero_membre", 1).to_list(1000)
     
     return members
+
+
+@api_router.get("/admin/sauvegarde-complete-excel")
+async def telecharger_sauvegarde_complete(request: Request):
+    """[ADMIN] Génère et télécharge une sauvegarde Excel complète :
+    - Récap des Saisons (S1 à S13+)
+    - Présences par membre et par saison
+    - Liste des événements
+    - Présences par événement (membres + invités)
+    - Liste des membres
+    """
+    member = await get_current_user(request)
+    if not member.get('is_president') and member.get('fonction') not in ('Président', 'Trésorier', 'Secrétaire'):
+        raise HTTPException(status_code=403, detail="Accès réservé à l'administration du club")
+
+    import pandas as pd
+    from openpyxl import load_workbook
+    import io
+
+    members_list = await db.members.find({}, {"_id": 0}).to_list(1000)
+    members_map = {m['id']: m for m in members_list}
+
+    saisons = await db.saisons_config.find({}, {'_id': 0}).sort('saison', 1).to_list(100)
+    df_saisons = pd.DataFrame([{
+        'Saison': s.get('saison'),
+        'Nb Apéros': s.get('nb_aperos', 0),
+        'Nb Repas': s.get('nb_repas', 0),
+        'Nb Anniversaires': s.get('nb_anniversaires', 0),
+        'Présences Apéros (total)': s.get('presences_membres_aperos', 0),
+        'Présences Repas (total)': s.get('presences_membres_repas', 0),
+        'Présences Anniversaires (total)': s.get('presences_membres_anniversaires', 0),
+        'Nb membres': s.get('nb_membres_manuel', 0),
+        'Verrouillée (manuel)': 'OUI' if s.get('is_manuel') else 'NON',
+    } for s in saisons])
+
+    presences = await db.presences_membres.find({}, {'_id': 0}).to_list(10000)
+    rows = []
+    for p in presences:
+        m = members_map.get(p.get('membre_id'), {})
+        rows.append({
+            'Saison': p.get('saison'),
+            'N° Membre': m.get('numero_membre', ''),
+            'Nom Complet': m.get('nom_complet', '(inconnu)'),
+            'Fonction': m.get('fonction', ''),
+            'Présences Apéros': p.get('presences_aperos', 0),
+            'Présences Repas': p.get('presences_repas', 0),
+            'Présences Anniversaires': p.get('presences_anniversaires', 0),
+            'Total Présences': p.get('presences_aperos', 0) + p.get('presences_repas', 0) + p.get('presences_anniversaires', 0),
+        })
+    df_presences = pd.DataFrame(rows).sort_values(['Saison', 'N° Membre']) if rows else pd.DataFrame()
+
+    evenements = await db.evenements.find({}, {'_id': 0}).sort([('saison', 1), ('date', 1)]).to_list(2000)
+    df_evt = pd.DataFrame([{
+        'ID Événement': e.get('id'),
+        'Saison': e.get('saison'),
+        'Date': e.get('date', '')[:10] if e.get('date') else '',
+        'Objet': e.get('objet', ''),
+        'Lieu': e.get('lieu', ''),
+        'Type': e.get('type_sondage', ''),
+        'Statut': e.get('statut', ''),
+        'Total Présents (membres)': e.get('total_presents', 0),
+    } for e in evenements])
+
+    rm = await db.reponses_manuelles.find({}, {'_id': 0}).to_list(20000)
+    evt_map = {e['id']: e for e in evenements}
+    rows_rm = []
+    for r in rm:
+        e = evt_map.get(r.get('evenement_id'), {})
+        nom = r.get('nom', '')
+        if r.get('membre_id'):
+            mb = members_map.get(r['membre_id'], {})
+            nom = mb.get('nom_complet', nom)
+        rows_rm.append({
+            'Saison': e.get('saison', ''),
+            'Date Événement': e.get('date', '')[:10] if e.get('date') else '',
+            'Objet': e.get('objet', ''),
+            'Type Personne': r.get('type', ''),
+            'Nom': nom,
+            'Présent': 'OUI' if r.get('present') else 'NON',
+            'Entrée': r.get('choix_entree', ''),
+            'Plat': r.get('choix_plat', ''),
+            'Dessert': r.get('choix_dessert', ''),
+        })
+    df_rm = pd.DataFrame(rows_rm).sort_values(['Saison', 'Date Événement']) if rows_rm else pd.DataFrame()
+
+    df_membres = pd.DataFrame([{
+        'N°': m.get('numero_membre'),
+        'Nom Complet': m.get('nom_complet'),
+        'Fonction': m.get('fonction', ''),
+        'Email': m.get('email', ''),
+        'Téléphone': m.get('telephone', ''),
+        'Saison Entrée': m.get('saison_entree', ''),
+        'Année Entrée': m.get('annee_entree', ''),
+        'Compte Validé': 'OUI' if m.get('is_validated') else 'NON',
+    } for m in members_list]).sort_values('N°')
+
+    buf = io.BytesIO()
+    with pd.ExcelWriter(buf, engine='openpyxl') as writer:
+        df_saisons.to_excel(writer, sheet_name='Récap Saisons', index=False)
+        df_presences.to_excel(writer, sheet_name='Présences par Membre', index=False)
+        df_evt.to_excel(writer, sheet_name='Événements', index=False)
+        df_rm.to_excel(writer, sheet_name='Présences par Événement', index=False)
+        df_membres.to_excel(writer, sheet_name='Membres', index=False)
+
+    # Auto-fit colonnes
+    buf.seek(0)
+    wb = load_workbook(buf)
+    for sheet_name in wb.sheetnames:
+        ws = wb[sheet_name]
+        for col in ws.columns:
+            max_length = 0
+            col_letter = col[0].column_letter
+            for cell in col:
+                try:
+                    if cell.value and len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except Exception:
+                    pass
+            ws.column_dimensions[col_letter].width = min(max_length + 2, 50)
+    out = io.BytesIO()
+    wb.save(out)
+    out.seek(0)
+
+    ts = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')
+    filename = f"SAUVEGARDE_LaBagueImperiale_{ts}.xlsx"
+    return StreamingResponse(
+        out,
+        media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+    )
+
+
 
 
 @api_router.get("/admin/demandes-mot-de-passe")
