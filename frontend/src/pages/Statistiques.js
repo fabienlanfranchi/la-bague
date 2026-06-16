@@ -472,6 +472,35 @@ export default function Statistiques() {
     if (selectedSaison < 20) setSelectedSaison(s => s + 1);
   };
 
+  // Verrouiller / Déverrouiller la saison sélectionnée
+  const toggleVerrouillageSaison = async () => {
+    const config = getCurrentConfig();
+    const estVerrouillee = !!config.is_manuel;
+    const action = estVerrouillee ? 'déverrouiller' : 'verrouiller';
+    if (!window.confirm(
+      `Voulez-vous vraiment ${action} la Saison ${selectedSaison} ?\n\n` +
+      (estVerrouillee
+        ? '⚠️ Les présences pourront à nouveau être modifiées automatiquement par les sondages.'
+        : '🔒 Les présences et la config de cette saison seront figées (aucun recalcul automatique).')
+    )) return;
+    try {
+      const token = localStorage.getItem('lbi_access_token');
+      const res = await fetch(`${API_URL}/api/saisons-config/${selectedSaison}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ is_manuel: !estVerrouillee })
+      });
+      if (!res.ok) throw new Error('Erreur lors du verrouillage');
+      const updated = await res.json();
+      setSaisonsConfig(prev => ({ ...prev, [selectedSaison]: { ...prev[selectedSaison], ...updated } }));
+      toast.success(estVerrouillee
+        ? `Saison ${selectedSaison} déverrouillée`
+        : `Saison ${selectedSaison} verrouillée 🔒`);
+    } catch (e) {
+      toast.error('Impossible de modifier le verrouillage');
+    }
+  };
+
   const config = getCurrentConfig();
 
   if (loading) {
@@ -599,13 +628,32 @@ export default function Statistiques() {
           {/* Config de la saison (nombre d'événements) */}
           <Card className="border-amber-200 bg-amber-50/50">
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-amber-600" />
-                Configuration de la Saison {selectedSaison}
-                <span className="text-sm font-normal text-stone-500 ml-2">
-                  (Nombre d'événements organisés)
-                </span>
-              </CardTitle>
+              <div className="flex items-start justify-between gap-2 flex-wrap">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-amber-600" />
+                  Configuration de la Saison {selectedSaison}
+                  <span className="text-sm font-normal text-stone-500 ml-2">
+                    (Nombre d'événements organisés)
+                  </span>
+                </CardTitle>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={toggleVerrouillageSaison}
+                  data-testid="toggle-verrouillage-saison-btn"
+                  className={
+                    config.is_manuel
+                      ? "bg-red-50 border-red-300 text-red-700 hover:bg-red-100 hover:text-red-800"
+                      : "bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800"
+                  }
+                  title={config.is_manuel
+                    ? "Cette saison est verrouillée. Cliquez pour la déverrouiller."
+                    : "Cliquez pour verrouiller définitivement les données de cette saison."}
+                >
+                  <Lock className="h-4 w-4 mr-1" />
+                  {config.is_manuel ? 'Verrouillée 🔒 (cliquer pour déverrouiller)' : 'Verrouiller cette saison'}
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-3 gap-6">

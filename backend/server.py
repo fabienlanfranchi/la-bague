@@ -4750,6 +4750,7 @@ class SaisonConfigUpdate(BaseModel):
     nb_aperos: Optional[int] = None
     nb_repas: Optional[int] = None
     nb_anniversaires: Optional[int] = None
+    is_manuel: Optional[bool] = None
 
 
 class PresenceMembre(BaseModel):
