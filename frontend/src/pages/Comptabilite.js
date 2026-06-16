@@ -132,14 +132,18 @@ const Comptabilite = () => {
     objet: 'cotisation',
     montant: '',
     endroit: '',
+    mode_paiement: '',
     detail: ''
   });
 
   // Options pour les objets
   const objetOptions = ['cotisation', 'album', 'tombola', 'anniversaire', 'autres'];
-  
-  // Options fixes pour les caisses
-  const caisseOptions = ['Compte', 'Chez Fabien', 'Chez Jacques', 'PayPal', 'Asso Connect', 'Chèque'];
+
+  // Liste officielle des caisses : basée sur la collection `comptes` (pas de doublon possible)
+  const caisseOptions = comptes.map(c => c.nom);
+
+  // Options fixes pour les modes de paiement
+  const modePaiementOptions = ['Espèces', 'Virement', 'Chèque', 'CB'];
 
   // Filtres pour l'historique des mouvements
   const [filterCaisse, setFilterCaisse] = useState('tous');
@@ -147,6 +151,7 @@ const Comptabilite = () => {
   const [filterPeriode, setFilterPeriode] = useState('tous');
   const [filterMembre, setFilterMembre] = useState('tous');
   const [filterObjet, setFilterObjet] = useState('tous');
+  const [filterModePaiement, setFilterModePaiement] = useState('tous');
 
   // Transactions filtrées
   const getFilteredTransactions = () => {
@@ -159,10 +164,17 @@ const Comptabilite = () => {
       filtered = filtered.filter(t => t.type === filterType);
     }
     if (filterMembre !== 'tous') {
-      filtered = filtered.filter(t => t.membre_id === filterMembre);
+      if (filterMembre === 'invite') {
+        filtered = filtered.filter(t => !t.membre_id);
+      } else {
+        filtered = filtered.filter(t => t.membre_id === filterMembre);
+      }
     }
     if (filterObjet !== 'tous') {
       filtered = filtered.filter(t => t.objet?.toLowerCase() === filterObjet.toLowerCase());
+    }
+    if (filterModePaiement !== 'tous') {
+      filtered = filtered.filter(t => (t.mode_paiement || '') === filterModePaiement);
     }
     if (filterPeriode !== 'tous') {
       const now = new Date();
@@ -184,7 +196,7 @@ const Comptabilite = () => {
   };
 
   const filteredTransactions = getFilteredTransactions();
-  const hasActiveFilters = filterCaisse !== 'tous' || filterType !== 'tous' || filterPeriode !== 'tous' || filterMembre !== 'tous' || filterObjet !== 'tous';
+  const hasActiveFilters = filterCaisse !== 'tous' || filterType !== 'tous' || filterPeriode !== 'tous' || filterMembre !== 'tous' || filterObjet !== 'tous' || filterModePaiement !== 'tous';
 
   useEffect(() => {
     loadData();
@@ -260,6 +272,7 @@ const Comptabilite = () => {
         objet: 'cotisation',
         montant: '',
         endroit: comptes.length > 0 ? comptes[0].nom : '',
+        mode_paiement: '',
         detail: ''
       });
       
@@ -546,7 +559,7 @@ const Comptabilite = () => {
   const [editingFacture, setEditingFacture] = useState(null);  // facture en cours d'édition (avec ses lignes)
   const [payingFacture, setPayingFacture] = useState(null);
   const [paySelectedLignes, setPaySelectedLignes] = useState([]);  // ids de lignes sélectionnées
-  const [payRepartition, setPayRepartition] = useState([{ caisse: '', montant: '' }]);
+  const [payRepartition, setPayRepartition] = useState([{ caisse: '', montant: '', mode_paiement: '' }]);
   const [payMode, setPayMode] = useState('');
   const [payDate, setPayDate] = useState('');
   const [payLoading, setPayLoading] = useState(false);
@@ -557,13 +570,22 @@ const Comptabilite = () => {
     }
     return parseFloat(f.montant) || 0;
   };
+  const factureDejaPaye = (f) => {
+    // Pour factures sans lignes : cumul de paiements partiels
+    if (!f.lignes || !f.lignes.length) {
+      return (f.paiements || []).reduce((s, p) => s + (parseFloat(p.total) || 0), 0);
+    }
+    return f.lignes.filter(l => l.statut === 'payee').reduce((s, l) => s + (parseFloat(l.montant) || 0), 0);
+  };
   const factureRestant = (f) => {
     if (f.lignes && f.lignes.length) {
       return f.lignes
         .filter(l => l.statut !== 'payee')
         .reduce((s, l) => s + (parseFloat(l.montant) || 0), 0);
     }
-    return f.statut === 'payee' ? 0 : (parseFloat(f.montant) || 0);
+    if (f.statut === 'payee') return 0;
+    const paye = factureDejaPaye(f);
+    return Math.max(0, (parseFloat(f.montant) || 0) - paye);
   };
 
   const newFactureTotal = newFacture.lignes.reduce((s, l) => s + (parseFloat(l.montant) || 0), 0);
@@ -668,10 +690,14 @@ const Comptabilite = () => {
     // Par défaut, toutes les lignes non payées sont sélectionnées
     const unpaidLignes = (facture.lignes || []).filter(l => l.statut !== 'payee');
     setPaySelectedLignes(unpaidLignes.map(l => l.id));
-    const total = unpaidLignes.length
-      ? unpaidLignes.reduce((s, l) => s + l.montant, 0)
-      : facture.montant;
-    setPayRepartition([{ caisse: '', montant: total.toFixed(2) }]);
+    let total;
+    if (unpaidLignes.length) {
+      total = unpaidLignes.reduce((s, l) => s + l.montant, 0);
+    } else {
+      // Facture sans lignes : reste à payer (autorise partiel)
+      total = factureRestant(facture);
+    }
+    setPayRepartition([{ caisse: '', montant: total.toFixed(2), mode_paiement: '' }]);
     setPayMode('');
     setPayDate(new Date().toISOString().split('T')[0]);
   };
@@ -684,7 +710,7 @@ const Comptabilite = () => {
       const selectedSum = lignes
         .filter(l => next.includes(l.id))
         .reduce((s, l) => s + l.montant, 0);
-      setPayRepartition([{ caisse: payRepartition[0]?.caisse || '', montant: selectedSum.toFixed(2) }]);
+      setPayRepartition([{ caisse: payRepartition[0]?.caisse || '', montant: selectedSum.toFixed(2), mode_paiement: payRepartition[0]?.mode_paiement || '' }]);
       return next;
     });
   };
@@ -692,13 +718,13 @@ const Comptabilite = () => {
   const closePayModal = () => {
     setPayingFacture(null);
     setPaySelectedLignes([]);
-    setPayRepartition([{ caisse: '', montant: '' }]);
+    setPayRepartition([{ caisse: '', montant: '', mode_paiement: '' }]);
     setPayMode('');
   };
 
   const addPayLine = () => {
     if (payRepartition.length >= 5) return;
-    setPayRepartition([...payRepartition, { caisse: '', montant: '' }]);
+    setPayRepartition([...payRepartition, { caisse: '', montant: '', mode_paiement: '' }]);
   };
 
   const removePayLine = (idx) => {
@@ -713,16 +739,18 @@ const Comptabilite = () => {
 
   const totalRepartition = payRepartition.reduce((s, r) => s + (parseFloat(r.montant) || 0), 0);
 
-  // Montant à payer selon sélection (toutes les lignes non payées par défaut ou cas sans lignes)
+  // Montant attendu (lignes sélectionnées) et reste à payer (facture sans lignes)
+  const hasLignes = !!(payingFacture && payingFacture.lignes && payingFacture.lignes.length);
   const payExpected = (() => {
     if (!payingFacture) return 0;
-    if (payingFacture.lignes && payingFacture.lignes.length) {
+    if (hasLignes) {
       return payingFacture.lignes
         .filter(l => paySelectedLignes.includes(l.id))
         .reduce((s, l) => s + l.montant, 0);
     }
-    return payingFacture.montant || 0;
+    return factureRestant(payingFacture);  // reste à payer (autorise partiel)
   })();
+  const payDejaPaye = payingFacture && !hasLignes ? factureDejaPaye(payingFacture) : 0;
 
   const submitPayFacture = async () => {
     if (!payingFacture) return;
@@ -732,17 +760,33 @@ const Comptabilite = () => {
         return;
       }
     }
-    if (Math.abs(totalRepartition - payExpected) > 0.01) {
-      toast.error(`La somme (${totalRepartition.toFixed(2)} €) doit être égale au montant à payer (${payExpected.toFixed(2)} €)`);
-      return;
+    // Avec lignes : somme stricte == expected. Sans lignes : somme <= reste à payer (partiel autorisé)
+    if (hasLignes) {
+      if (Math.abs(totalRepartition - payExpected) > 0.01) {
+        toast.error(`La somme (${totalRepartition.toFixed(2)} €) doit être égale au montant à payer (${payExpected.toFixed(2)} €)`);
+        return;
+      }
+    } else {
+      if (totalRepartition > payExpected + 0.01) {
+        toast.error(`La somme (${totalRepartition.toFixed(2)} €) dépasse le reste à payer (${payExpected.toFixed(2)} €)`);
+        return;
+      }
+      if (totalRepartition <= 0) {
+        toast.error('Le montant payé doit être supérieur à 0');
+        return;
+      }
     }
     setPayLoading(true);
     try {
       await axios.post(`${API}/factures-a-payer/${payingFacture.id}/payer`, {
-        repartition: payRepartition.map(r => ({ caisse: r.caisse, montant: parseFloat(r.montant) })),
+        repartition: payRepartition.map(r => ({
+          caisse: r.caisse,
+          montant: parseFloat(r.montant),
+          mode_paiement: r.mode_paiement || payMode || null,
+        })),
         date_paiement: payDate || null,
         mode_paiement: payMode || null,
-        ligne_ids: payingFacture.lignes && payingFacture.lignes.length ? paySelectedLignes : undefined,
+        ligne_ids: hasLignes ? paySelectedLignes : undefined,
       });
       toast.success('Paiement enregistré');
       closePayModal();
@@ -1122,7 +1166,7 @@ const Comptabilite = () => {
             </SelectTrigger>
             <SelectContent className="bg-[#1a1a1a] border-[#D4A024]/30">
               <SelectItem value="tous" className="text-gray-400 text-sm py-2">Toutes caisses</SelectItem>
-              {[...new Set(transactions.map(t => t.endroit))].filter(Boolean).map(c => (
+              {caisseOptions.map(c => (
                 <SelectItem key={c} value={c} className="text-white text-sm py-2">{c}</SelectItem>
               ))}
             </SelectContent>
@@ -1145,6 +1189,7 @@ const Comptabilite = () => {
             </SelectTrigger>
             <SelectContent className="bg-[#1a1a1a] border-[#D4A024]/30 max-h-[300px]">
               <SelectItem value="tous" className="text-gray-400 text-sm py-2">Tous membres</SelectItem>
+              <SelectItem value="invite" className="text-[#D4A024] text-sm py-2 italic">Invité (sans membre)</SelectItem>
               {(() => {
                 // Liste unique des membre_id présents dans les transactions, triés par nom
                 const ids = [...new Set(transactions.map(t => t.membre_id).filter(Boolean))];
@@ -1188,11 +1233,23 @@ const Comptabilite = () => {
             </SelectContent>
           </Select>
 
+          <Select value={filterModePaiement} onValueChange={setFilterModePaiement}>
+            <SelectTrigger className="w-[170px] bg-black/60 border-[#D4A024]/30 text-white h-10 text-sm" data-testid="filter-mode-paiement">
+              <SelectValue placeholder="Mode de paiement" />
+            </SelectTrigger>
+            <SelectContent className="bg-[#1a1a1a] border-[#D4A024]/30">
+              <SelectItem value="tous" className="text-gray-400 text-sm py-2">Tous modes</SelectItem>
+              {modePaiementOptions.map(mp => (
+                <SelectItem key={mp} value={mp} className="text-white text-sm py-2">{mp}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           {hasActiveFilters && (
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => { setFilterCaisse('tous'); setFilterType('tous'); setFilterPeriode('tous'); setFilterMembre('tous'); setFilterObjet('tous'); }}
+              onClick={() => { setFilterCaisse('tous'); setFilterType('tous'); setFilterPeriode('tous'); setFilterMembre('tous'); setFilterObjet('tous'); setFilterModePaiement('tous'); }}
               className="text-[#D4A024] hover:bg-[#D4A024]/10 h-10 text-sm"
               data-testid="clear-filters-btn"
             >
@@ -1311,6 +1368,25 @@ const Comptabilite = () => {
                 </Select>
               </div>
 
+              {/* Mode de paiement */}
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Mode de paiement</label>
+                <Select
+                  value={newMouvement.mode_paiement || "none"}
+                  onValueChange={(value) => setNewMouvement({ ...newMouvement, mode_paiement: value === "none" ? "" : value })}
+                >
+                  <SelectTrigger className="w-full bg-black/60 border-[#D4A024]/30 text-white" data-testid="select-mode-paiement">
+                    <SelectValue placeholder="Sélectionner..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#1a1a1a] border-[#D4A024]/30">
+                    <SelectItem value="none" className="text-gray-400">-- Aucun --</SelectItem>
+                    {modePaiementOptions.map(mp => (
+                      <SelectItem key={mp} value={mp} className="text-white">{mp}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               {/* Détail */}
               <div className="md:col-span-2">
                 <label className="block text-sm text-gray-400 mb-1">
@@ -1352,13 +1428,14 @@ const Comptabilite = () => {
                     <th className="p-3 text-base font-serif text-[#D4A024]">Raison / Membre</th>
                     <th className="p-3 text-base font-serif text-[#D4A024]">Détail</th>
                     <th className="p-3 text-base font-serif text-[#D4A024]">Caisse</th>
+                    <th className="p-3 text-base font-serif text-[#D4A024]">Mode</th>
                     <th className="p-3 text-base font-serif text-[#D4A024]"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredTransactions.length === 0 ? (
                     <tr>
-                      <td colSpan="7" className="p-8 text-center text-gray-400 text-lg">
+                      <td colSpan="8" className="p-8 text-center text-gray-400 text-lg">
                         {hasActiveFilters ? 'Aucun mouvement pour ces filtres' : 'Aucun mouvement enregistré'}
                       </td>
                     </tr>
@@ -1408,6 +1485,9 @@ const Comptabilite = () => {
                               </Badge>
                               {canAct && <span className="text-[10px] text-gray-500 group-hover:text-[#D4A024] transition">✎</span>}
                             </button>
+                          </td>
+                          <td className="p-3 text-sm text-gray-300 whitespace-nowrap">
+                            {trans.mode_paiement || '-'}
                           </td>
                           <td className="p-3">
                             <Button
@@ -2737,7 +2817,12 @@ const Comptabilite = () => {
                 {payingFacture.lignes && payingFacture.lignes.length ? (
                   <>Cochez les sous-factures à régler · Sélectionné : <span className="text-green-300 font-bold">{formatMontant(payExpected)}</span></>
                 ) : (
-                  <>Montant total : <span className="text-green-300 font-bold">{formatMontant(payingFacture.montant)}</span></>
+                  <>
+                    Total facture : <span className="text-gray-200 font-bold">{formatMontant(payingFacture.montant)}</span>
+                    {payDejaPaye > 0 && (
+                      <> · Déjà payé : <span className="text-yellow-300 font-bold">{formatMontant(payDejaPaye)}</span></>
+                    )}
+                    {' · '}Reste : <span className="text-green-300 font-bold">{formatMontant(payExpected)}</span></>
                 )}
               </p>
             </CardHeader>
@@ -2781,7 +2866,7 @@ const Comptabilite = () => {
                 </div>
               )}
 
-              {/* Date + Mode */}
+              {/* Date + Mode par défaut */}
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-xs text-gray-400 mb-1 block">Date du paiement</label>
@@ -2793,13 +2878,13 @@ const Comptabilite = () => {
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-gray-400 mb-1 block">Mode de paiement</label>
+                  <label className="text-xs text-gray-400 mb-1 block">Mode par défaut</label>
                   <select
                     value={payMode}
                     onChange={(e) => setPayMode(e.target.value)}
                     className="w-full bg-black/40 border border-green-500/30 text-white rounded px-2 py-2 text-sm"
                   >
-                    <option value="">— Choisir —</option>
+                    <option value="">— Aucun —</option>
                     <option value="Virement">Virement</option>
                     <option value="Espèces">Espèces</option>
                     <option value="Chèque">Chèque</option>
@@ -2808,14 +2893,14 @@ const Comptabilite = () => {
                 </div>
               </div>
 
-              {/* Répartition */}
+              {/* Répartition (caisse + montant + mode par ligne) */}
               <div>
                 <label className="text-sm text-gray-300 mb-2 block font-semibold">
                   Répartition entre caisses
                 </label>
                 <div className="space-y-2">
                   {payRepartition.map((r, idx) => (
-                    <div key={idx} className="grid grid-cols-[1fr_120px_auto] gap-2 items-center">
+                    <div key={idx} className="grid grid-cols-[1fr_100px_110px_auto] gap-2 items-center">
                       <select
                         value={r.caisse}
                         onChange={(e) => updatePayLine(idx, 'caisse', e.target.value)}
@@ -2823,11 +2908,9 @@ const Comptabilite = () => {
                         data-testid={`pay-caisse-${idx}`}
                       >
                         <option value="">— Caisse —</option>
-                        <option value="Compte Bancaire">Compte Bancaire</option>
-                        <option value="Chez Fabien">Chez Fabien</option>
-                        <option value="Chez Jacques">Chez Jacques</option>
-                        <option value="PayPal">PayPal</option>
-                        <option value="Asso Connect">Asso Connect</option>
+                        {comptes.map(c => (
+                          <option key={c.id} value={c.nom}>{c.nom}</option>
+                        ))}
                       </select>
                       <Input
                         type="number"
@@ -2839,6 +2922,18 @@ const Comptabilite = () => {
                         className="bg-black/40 border-green-500/30 text-white text-sm"
                         data-testid={`pay-montant-${idx}`}
                       />
+                      <select
+                        value={r.mode_paiement || ''}
+                        onChange={(e) => updatePayLine(idx, 'mode_paiement', e.target.value)}
+                        className="bg-black/40 border border-green-500/30 text-white rounded px-2 py-2 text-sm"
+                        data-testid={`pay-mode-${idx}`}
+                      >
+                        <option value="">Mode…</option>
+                        <option value="Espèces">Espèces</option>
+                        <option value="Virement">Virement</option>
+                        <option value="Chèque">Chèque</option>
+                        <option value="CB">CB</option>
+                      </select>
                       {payRepartition.length > 1 && (
                         <Button
                           size="sm"
@@ -2870,20 +2965,28 @@ const Comptabilite = () => {
               {/* Résumé */}
               <div className="bg-black/30 border border-green-500/30 rounded p-3 text-sm">
                 <div className="flex justify-between text-gray-300">
-                  <span>Total réparti</span>
+                  <span>{hasLignes ? 'Total réparti' : 'Montant payé maintenant'}</span>
                   <span
                     className={`font-bold ${
-                      Math.abs(totalRepartition - payExpected) < 0.01
-                        ? 'text-green-300'
-                        : 'text-orange-300'
+                      hasLignes
+                        ? (Math.abs(totalRepartition - payExpected) < 0.01 ? 'text-green-300' : 'text-orange-300')
+                        : (totalRepartition > 0 && totalRepartition <= payExpected + 0.01 ? 'text-green-300' : 'text-orange-300')
                     }`}
                   >
                     {formatMontant(totalRepartition)} / {formatMontant(payExpected)}
+                    {!hasLignes && totalRepartition > 0 && totalRepartition < payExpected - 0.01 && (
+                      <span className="ml-2 text-yellow-300 text-xs">(paiement partiel)</span>
+                    )}
                   </span>
                 </div>
-                {Math.abs(totalRepartition - payExpected) >= 0.01 && (
+                {hasLignes && Math.abs(totalRepartition - payExpected) >= 0.01 && (
                   <p className="text-orange-400 text-xs mt-1">
                     ⚠️ La somme doit égaler le montant sélectionné
+                  </p>
+                )}
+                {!hasLignes && totalRepartition > payExpected + 0.01 && (
+                  <p className="text-orange-400 text-xs mt-1">
+                    ⚠️ La somme dépasse le reste à payer ({formatMontant(payExpected)})
                   </p>
                 )}
               </div>
@@ -2899,7 +3002,13 @@ const Comptabilite = () => {
                 </Button>
                 <Button
                   onClick={submitPayFacture}
-                  disabled={payLoading || Math.abs(totalRepartition - payExpected) >= 0.01 || payExpected <= 0}
+                  disabled={
+                    payLoading
+                    || payExpected <= 0
+                    || (hasLignes
+                          ? Math.abs(totalRepartition - payExpected) >= 0.01
+                          : (totalRepartition <= 0 || totalRepartition > payExpected + 0.01))
+                  }
                   className="flex-1 bg-green-700 hover:bg-green-600 text-white font-bold disabled:opacity-50"
                   data-testid="confirm-pay-facture"
                 >

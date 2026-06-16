@@ -1582,6 +1582,7 @@ class Transaction(BaseModel):
     objet: str  # "cotisation", "dette", "album", "tickets", "habits", "autres"
     montant: float
     endroit: str  # "Compte", "chèque", "Fabien", "Jacques", "Enveloppe bar", "PayPal"
+    mode_paiement: Optional[str] = None  # "Espèces", "Virement", "Chèque", "CB"
     detail: str = ""  # Détail libre ou format spécial pour dette
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -1593,6 +1594,7 @@ class TransactionCreate(BaseModel):
     objet: str
     montant: float
     endroit: str
+    mode_paiement: Optional[str] = None
     detail: str = ""
 
 
@@ -2602,9 +2604,10 @@ class FactureAPayer(BaseModel):
     detail: Optional[str] = None
     statut: str = "en_attente"  # en_attente, partielle, payee
     lignes: Optional[list] = None  # liste de FactureLigne (dict)
+    paiements: Optional[list] = None  # historique des paiements (pour factures sans lignes)
     date_creation: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     date_paiement: Optional[str] = None
-    repartition: Optional[list] = None  # [{caisse, montant}] - paiement global éventuel
+    repartition: Optional[list] = None  # [{caisse, montant}] - paiement global éventuel (legacy)
 
 
 class FactureAPayerCreate(BaseModel):
@@ -2741,11 +2744,14 @@ async def delete_facture_a_payer(facture_id: str):
 async def payer_facture(facture_id: str, payload: dict = Body(...)):
     """Marquer une facture (ou certaines lignes) comme payée.
     Body: {
-      "repartition": [{"caisse": "Chez Fabien", "montant": 50}, {"caisse": "Compte Bancaire", "montant": 30}],
+      "repartition": [{"caisse": "Chez Fabien", "montant": 50, "mode_paiement": "Espèces"}, ...],
       "date_paiement": "2026-05-30",
-      "mode_paiement": "Virement",
-      "ligne_ids": ["uuid1", "uuid2"]  # optionnel : payer uniquement ces lignes
+      "mode_paiement": "Virement",  # mode global (fallback si non précisé par ligne)
+      "ligne_ids": ["uuid1", ...]   # optionnel : payer uniquement ces lignes
     }
+    - Pour une facture AVEC lignes : la somme doit être exactement égale au montant des lignes sélectionnées.
+    - Pour une facture SANS lignes : la somme peut être partielle (≤ reste à payer).
+      Les paiements successifs sont historisés dans facture.paiements.
     Crée une transaction "dépense" par caisse, décrémente les soldes correspondants.
     """
     facture = await db.factures_a_payer.find_one({"id": facture_id}, {"_id": 0})
@@ -2759,38 +2765,44 @@ async def payer_facture(facture_id: str, payload: dict = Body(...)):
         raise HTTPException(status_code=400, detail="Répartition requise (au moins 1 caisse)")
 
     ligne_ids = (payload or {}).get('ligne_ids') or []  # optionnel
+    mode_global = (payload or {}).get('mode_paiement')
 
-    # Validation des montants
+    # Validation des montants + mode par ligne (sinon fallback global)
     total = 0.0
     cleaned = []
     for r in repartition:
         caisse = (r or {}).get('caisse')
         montant = float((r or {}).get('montant') or 0)
+        mode_r = (r or {}).get('mode_paiement') or mode_global
         if not caisse or montant <= 0:
             raise HTTPException(status_code=400, detail="Chaque ligne doit avoir caisse + montant > 0")
-        cleaned.append({"caisse": caisse, "montant": round(montant, 2)})
+        cleaned.append({"caisse": caisse, "montant": round(montant, 2), "mode_paiement": mode_r})
         total += montant
     total = round(total, 2)
 
-    # Déterminer le montant attendu : somme des lignes sélectionnées ou facture globale
+    # Déterminer le montant attendu
     expected_lignes = []
-    if facture.get('lignes'):
+    a_des_lignes = bool(facture.get('lignes'))
+    if a_des_lignes:
         if ligne_ids:
             expected_lignes = [l for l in facture['lignes'] if l.get('id') in ligne_ids and l.get('statut') != 'payee']
             if not expected_lignes:
                 raise HTTPException(status_code=400, detail="Aucune ligne valide à payer dans la sélection")
         else:
-            # Sans sélection : toutes les lignes non payées
             expected_lignes = [l for l in facture['lignes'] if l.get('statut') != 'payee']
         expected = round(sum(l['montant'] for l in expected_lignes), 2)
+        if abs(total - expected) > 0.01:
+            raise HTTPException(status_code=400, detail=f"Somme des montants ({total:.2f}€) différente du montant à payer ({expected:.2f}€)")
     else:
-        expected = round(float(facture['montant']), 2)
-
-    if abs(total - expected) > 0.01:
-        raise HTTPException(status_code=400, detail=f"Somme des montants ({total:.2f}€) différente du montant à payer ({expected:.2f}€)")
+        # Facture sans lignes : autoriser paiement partiel
+        deja_paye = round(sum(float(p.get('total') or 0) for p in (facture.get('paiements') or [])), 2)
+        reste = round(float(facture['montant']) - deja_paye, 2)
+        if reste <= 0:
+            raise HTTPException(status_code=400, detail="Aucun montant restant à payer")
+        if total > reste + 0.01:
+            raise HTTPException(status_code=400, detail=f"Montant ({total:.2f}€) supérieur au reste à payer ({reste:.2f}€)")
 
     date_paiement = (payload or {}).get('date_paiement') or datetime.now(timezone.utc).strftime('%Y-%m-%d')
-    mode_paiement = (payload or {}).get('mode_paiement')
 
     compte_mapping = {
         "Compte": "Compte Bancaire",
@@ -2826,7 +2838,7 @@ async def payer_facture(facture_id: str, payload: dict = Body(...)):
             "objet": "autres",
             "montant": r['montant'],
             "endroit": nom_compte,
-            "mode_paiement": mode_paiement,
+            "mode_paiement": r.get('mode_paiement'),
             "detail": f"Facture: {facture['libelle']}" + (f" · {facture.get('fournisseur')}" if facture.get('fournisseur') else "") + detail_ligne_libelles,
             "facture_id": facture_id,
             "created_at": datetime.now(timezone.utc).isoformat(),
@@ -2839,8 +2851,8 @@ async def payer_facture(facture_id: str, payload: dict = Body(...)):
         )
         transactions_creees.append({k: v for k, v in trans.items() if k != '_id'})
 
-    # Mise à jour des statuts de lignes + statut facture
-    if facture.get('lignes'):
+    # Mise à jour des statuts
+    if a_des_lignes:
         paid_ids = {l['id'] for l in expected_lignes}
         updated_lignes = []
         for l in facture['lignes']:
@@ -2850,7 +2862,7 @@ async def payer_facture(facture_id: str, payload: dict = Body(...)):
                     "statut": "payee",
                     "date_paiement": date_paiement,
                     "repartition": cleaned,
-                    "mode_paiement": mode_paiement,
+                    "mode_paiement": mode_global or (cleaned[0].get('mode_paiement') if cleaned else None),
                 })
             else:
                 updated_lignes.append(l)
@@ -2865,13 +2877,22 @@ async def payer_facture(facture_id: str, payload: dict = Body(...)):
             }}
         )
     else:
+        # Historiser le paiement + recalculer statut
+        paiements = list(facture.get('paiements') or [])
+        paiements.append({
+            "id": str(uuid.uuid4()),
+            "date": date_paiement,
+            "total": total,
+            "repartition": cleaned,
+        })
+        total_paye = round(sum(float(p.get('total') or 0) for p in paiements), 2)
+        new_statut = 'payee' if total_paye >= float(facture['montant']) - 0.01 else 'partielle'
         await db.factures_a_payer.update_one(
             {"id": facture_id},
             {"$set": {
-                "statut": "payee",
-                "date_paiement": date_paiement,
-                "repartition": cleaned,
-                "mode_paiement": mode_paiement,
+                "paiements": paiements,
+                "statut": new_statut,
+                "date_paiement": date_paiement if new_statut == 'payee' else facture.get('date_paiement'),
             }}
         )
     return {
