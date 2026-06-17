@@ -103,6 +103,7 @@ class Member(BaseModel):
     temporary_password: str = Field(default="")  # Format: clubcigare{numero}
     is_validated: bool = False
     is_president: bool = False
+    acces_bloque: bool = False  # Si True : l'accès via clé est refusé (ex: membre sorti du club)
     
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -134,6 +135,7 @@ class MemberUpdate(BaseModel):
     telephone: Optional[str] = None
     is_president: Optional[bool] = None
     saisons_exclues: Optional[List[int]] = None
+    acces_bloque: Optional[bool] = None
 
 
 class MemberImport(BaseModel):
@@ -264,6 +266,10 @@ async def login(request: Request, login_data: LoginRequest):
         
         if not verify_password(login_data.password, member['password_hash']):
             raise HTTPException(status_code=401, detail="Email ou mot de passe incorrect")
+        
+        # Refus si l'accès du membre a été bloqué
+        if member.get('acces_bloque'):
+            raise HTTPException(status_code=403, detail="Accès au club révoqué. Contactez le Président.")
         
         # Stocker l'ID en session
         request.session['member_id'] = member['id']
@@ -689,6 +695,10 @@ async def key_login(request: Request, response: Response, data: KeyLoginRequest)
     
     if not member:
         raise HTTPException(status_code=401, detail="Membre non trouvé avec ce numéro")
+    
+    # Refus si l'accès du membre a été bloqué (ex: membre sorti du club)
+    if member.get('acces_bloque'):
+        raise HTTPException(status_code=403, detail="Accès au club révoqué. Contactez le Président.")
     
     # Générer un nouveau device token
     new_device_token = str(uuid.uuid4())
