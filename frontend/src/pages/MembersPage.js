@@ -63,9 +63,9 @@ const MembersPage = () => {
   const [formData, setFormData] = useState({
     numero_membre: 0,
     nom_complet: '',
-    fonction: '',
+    fonction: 'Membre',
     annee_entree: new Date().getFullYear(),
-    saison_entree: 'Saison 13',  // Saison actuelle par défaut
+    saison_entree: 'Saison 14',  // Saison actuelle par défaut
     pourcentage_presences: 0,
     etoiles: 1,
     situation_cotisation: 0,
@@ -263,9 +263,9 @@ const MembersPage = () => {
       setFormData({
         numero_membre: maxNumero + 1,
         nom_complet: '',
-        fonction: '',
+        fonction: 'Membre',
         annee_entree: new Date().getFullYear(),
-        saison_entree: 'Saison 13',  // Saison actuelle par défaut
+        saison_entree: 'Saison 14',  // Saison actuelle par défaut
         pourcentage_presences: 0,
         etoiles: 1,
         situation_cotisation: 0,
