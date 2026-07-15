@@ -570,13 +570,24 @@ const Cigarotheque = () => {
       filtered = filtered.filter(c => c.favori === true);
     }
 
-    // Filtrer par recherche
+    // Fonction helper : normaliser une chaîne (case + accents)
+    const normalizeStr = (s) => (s || '')
+      .toString()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, ''); // supprime les accents
+
+    // Filtrer par recherche (dans tous les champs pertinents, ignore case & accents)
     if (maCollectionSearch) {
-      const searchLower = maCollectionSearch.toLowerCase();
+      const searchLower = normalizeStr(maCollectionSearch).trim();
       filtered = filtered.filter(c =>
-        (c.marque || '').toLowerCase().includes(searchLower) ||
-        (c.gamme || '').toLowerCase().includes(searchLower) ||
-        (c.vitole || '').toLowerCase().includes(searchLower)
+        normalizeStr(c.marque).includes(searchLower) ||
+        normalizeStr(c.gamme).includes(searchLower) ||
+        normalizeStr(c.vitole).includes(searchLower) ||
+        normalizeStr(c.nom_cigare).includes(searchLower) ||
+        normalizeStr(c.vitole_nom).includes(searchLower) ||
+        normalizeStr(c.pays).includes(searchLower) ||
+        normalizeStr(c.commentaire).includes(searchLower)
       );
     }
 
