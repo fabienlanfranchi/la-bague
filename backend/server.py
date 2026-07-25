@@ -4811,27 +4811,33 @@ async def get_saisons_config():
 @api_router.get("/saison-courante")
 async def get_saison_courante():
     """Retourne la saison en cours.
-    Logique :
-    - S'il existe une saison non-verrouillée dans saisons_config (saison <= 20) → c'est celle en cours
-    - Sinon (toutes verrouillées) → la saison en cours = max_saison + 1 (nouvelle saison qui démarre)
-    - Fallback : saison 1
+    Logique combinée (robuste) :
+    - Saison basée sur l'année civile : année - 2012 (S1=2013, S14=2026...)
+    - Plus grande saison non-verrouillée dans saisons_config (dans la plage utile)
+    - On retourne le MAX des deux, plafonné à 20
     Les saisons > 20 sont considérées comme des données parasites (tests) et ignorées.
     """
     MAX_SAISON = 20
-    # 1. Chercher la plus grande saison non-verrouillée dans saisons_config (dans la plage utile)
+    # 1. Saison "de la date" (fiable même sans verrouillage explicite)
+    annee = datetime.now(timezone.utc).year
+    saison_par_date = max(1, min(annee - 2012, MAX_SAISON))
+
+    # 2. Plus grande saison non-verrouillée en base
     non_verrouillees = await db.saisons_config.find(
-        {"is_manuel": {"$ne": True}, "saison": {"$lte": MAX_SAISON}}, {"_id": 0}
+        {"is_manuel": {"$ne": True}, "saison": {"$lte": MAX_SAISON}}, {"_id": 0, "saison": 1}
     ).sort("saison", -1).to_list(1)
-    if non_verrouillees:
-        return {"saison": non_verrouillees[0]["saison"]}
-    # 2. Sinon, toutes verrouillées → la saison en cours est celle qui vient après la max
-    toutes = await db.saisons_config.find(
-        {"saison": {"$lte": MAX_SAISON}}, {"_id": 0}
-    ).sort("saison", -1).to_list(1)
-    if toutes:
-        return {"saison": toutes[0]["saison"] + 1}
-    # 3. Fallback : saison 1
-    return {"saison": 1}
+    saison_par_config = non_verrouillees[0]["saison"] if non_verrouillees else 0
+
+    # 3. Si toutes verrouillées → max_saison + 1 (max plafonné à 20)
+    if not non_verrouillees:
+        toutes = await db.saisons_config.find(
+            {"saison": {"$lte": MAX_SAISON}}, {"_id": 0, "saison": 1}
+        ).sort("saison", -1).to_list(1)
+        if toutes:
+            saison_par_config = min(toutes[0]["saison"] + 1, MAX_SAISON)
+
+    # 4. Retourner le MAX (la plus avancée des deux)
+    return {"saison": max(saison_par_date, saison_par_config)}
 
 
 @api_router.get("/saisons-config/{saison}")
@@ -5575,21 +5581,26 @@ async def get_statistiques_moyennes_dashboard():
     - Moyenne globale = Total présences / Total événements
     - Moyenne repas = Total présences repas / Total repas
     """
-    # Déterminer dynamiquement la saison courante :
+    # Déterminer dynamiquement la saison courante (logique combinée date + config) :
+    # - Saison basée sur l'année civile : année - 2012
     # - Plus grande saison non-verrouillée existante (saison <= 20)
-    # - Sinon (toutes verrouillées) : max(saison) + 1
-    # Les saisons > 20 sont considérées comme des données parasites (tests) et ignorées.
+    # - On prend le MAX pour être robuste (indépendant du verrouillage)
     MAX_SAISON = 20
+    annee = datetime.now(timezone.utc).year
+    saison_par_date = max(1, min(annee - 2012, MAX_SAISON))
+
     non_verrouillees = await db.saisons_config.find(
         {"is_manuel": {"$ne": True}, "saison": {"$lte": MAX_SAISON}}, {"_id": 0, "saison": 1}
     ).sort("saison", -1).to_list(1)
     if non_verrouillees:
-        CURRENT_SEASON = non_verrouillees[0]["saison"]
+        saison_par_config = non_verrouillees[0]["saison"]
     else:
         toutes = await db.saisons_config.find(
             {"saison": {"$lte": MAX_SAISON}}, {"_id": 0, "saison": 1}
         ).sort("saison", -1).to_list(1)
-        CURRENT_SEASON = (toutes[0]["saison"] + 1) if toutes else 1
+        saison_par_config = min(toutes[0]["saison"] + 1, MAX_SAISON) if toutes else 1
+
+    CURRENT_SEASON = max(saison_par_date, saison_par_config)
     
     # Récupérer toutes les configs de saisons (contient les données manuelles pour S1-12)
     configs = await db.saisons_config.find({}, {"_id": 0}).to_list(100)

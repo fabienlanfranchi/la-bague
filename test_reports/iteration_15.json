@@ -1,0 +1,36 @@
+{
+  "summary": "Iter 15 backend-only tests for the combined date+config saison-courante logic. 17/17 pytest pass. Verified 3 scenarios (all locked / S13 unlocked / none locked) all return saison=14 in 2026, cap-at-20 with parasite saison=25 injected in DB, and 5 regressions (out-of-range 404, Marc Antoine 37 blocked, new members 75-78 login). Cleanup verified: no saison>20, all S1-S13 restored to is_manuel=True, no TEST_ residuals.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_saison_courante_combined_logic.py",
+    "/app/test_reports/pytest/iter15_results.xml"
+  ],
+  "action_items": [
+    "The combined logic fix is confirmed working in Preview. Main agent can now redeploy to Production with confidence: max(annee-2012, plus_grande_saison_non_verrouillee) capped at 20 returns 14 regardless of S13 lock state.",
+    "Consider extracting MAX_SAISON=20 into a module-level constant (currently duplicated at server.py L4820 and L5588)."
+  ],
+  "critical_code_review_comments": [
+    "server.py L4811-4840 /api/saison-courante: combined logic is correct and robust. Handles empty config gracefully (saison_par_config=0 → falls back to date).",
+    "server.py L5584-5600 moyennes-dashboard: same logic replicated — DRY violation, extract helper get_saison_courante_computed().",
+    "L4823 saison_par_date computed with max(1, min(annee-2012, MAX_SAISON)) — good clamp on both ends.",
+    "The parasite saison=25 correctly gets ignored due to $lte:20 filter in query (L4827)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_saison_courante_combined_logic.py (new)"
+  ],
+  "success_rate": {"backend": "100% (17/17)", "frontend": "n/a (skipped per request)"},
+  "test_credentials": "labague1 (admin), labague37 (blocked - 403 expected), labague75-78 (new members)",
+  "seed_data_creation": "Temporarily inserted saison=25 config for cap test — cleaned up in finally block. Temporarily toggled is_manuel on S13/S1-13 — restored to True in finally.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "DB state verified clean: 0 saisons>20, 0 unlocked seasons in S1-S13 (all restored to is_manuel=True), 0 TEST_ transactions. Server year is 2026 → EXPECTED_SAISON=14. If server date changes, expected value auto-adjusts via datetime.now(timezone.utc).year - 2012 in the test.",
+  "rca of the issue": "Original bug: Production Dashboard showed 'Saison 13' because the previous logic (plus grande saison non-verrouillée + 1) relied on S13 being locked, which is not the case on Production. Fix (verified): combined logic max(annee_civile - 2012, plus_grande_saison_non_verrouillee_via_config) capped at 20. This makes detection independent of lock state on Production. Confirmed in 3 scenarios: (a) all S1-13 locked → 14, (b) S13 unlocked → 14, (c) none locked → 14."
+}
