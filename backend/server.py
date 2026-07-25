@@ -4812,18 +4812,22 @@ async def get_saisons_config():
 async def get_saison_courante():
     """Retourne la saison en cours.
     Logique :
-    - S'il existe une saison non-verrouillée dans saisons_config → c'est celle en cours
+    - S'il existe une saison non-verrouillée dans saisons_config (saison <= 20) → c'est celle en cours
     - Sinon (toutes verrouillées) → la saison en cours = max_saison + 1 (nouvelle saison qui démarre)
     - Fallback : saison 1
+    Les saisons > 20 sont considérées comme des données parasites (tests) et ignorées.
     """
-    # 1. Chercher la plus grande saison non-verrouillée dans saisons_config
+    MAX_SAISON = 20
+    # 1. Chercher la plus grande saison non-verrouillée dans saisons_config (dans la plage utile)
     non_verrouillees = await db.saisons_config.find(
-        {"is_manuel": {"$ne": True}}, {"_id": 0}
+        {"is_manuel": {"$ne": True}, "saison": {"$lte": MAX_SAISON}}, {"_id": 0}
     ).sort("saison", -1).to_list(1)
     if non_verrouillees:
         return {"saison": non_verrouillees[0]["saison"]}
     # 2. Sinon, toutes verrouillées → la saison en cours est celle qui vient après la max
-    toutes = await db.saisons_config.find({}, {"_id": 0}).sort("saison", -1).to_list(1)
+    toutes = await db.saisons_config.find(
+        {"saison": {"$lte": MAX_SAISON}}, {"_id": 0}
+    ).sort("saison", -1).to_list(1)
     if toutes:
         return {"saison": toutes[0]["saison"] + 1}
     # 3. Fallback : saison 1
@@ -4832,20 +4836,27 @@ async def get_saison_courante():
 
 @api_router.get("/saisons-config/{saison}")
 async def get_saison_config(saison: int):
-    """Récupérer la config d'une saison"""
+    """Récupérer la config d'une saison. Crée une config vide si elle n'existe pas
+    (uniquement pour les saisons dans la plage utile 1-20)."""
     config = await db.saisons_config.find_one({"saison": saison}, {"_id": 0})
     if not config:
+        # Refuser de créer une config pour les saisons hors plage utile
+        if saison < 1 or saison > 20:
+            raise HTTPException(status_code=404, detail=f"Saison {saison} hors plage (1-20)")
         # Créer une config vide si elle n'existe pas
+        now = datetime.now(timezone.utc).isoformat()
         config = {
             "id": str(uuid.uuid4()),
             "saison": saison,
             "nb_aperos": 0,
             "nb_repas": 0,
             "nb_anniversaires": 0,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "updated_at": datetime.now(timezone.utc).isoformat()
+            "created_at": now,
+            "updated_at": now,
         }
         await db.saisons_config.insert_one(config)
+        # insert_one ajoute _id (ObjectId) au dict → il faut le retirer avant JSON serialization
+        config.pop('_id', None)
     return config
 
 
@@ -5565,15 +5576,19 @@ async def get_statistiques_moyennes_dashboard():
     - Moyenne repas = Total présences repas / Total repas
     """
     # Déterminer dynamiquement la saison courante :
-    # - Plus grande saison non-verrouillée existante
+    # - Plus grande saison non-verrouillée existante (saison <= 20)
     # - Sinon (toutes verrouillées) : max(saison) + 1
+    # Les saisons > 20 sont considérées comme des données parasites (tests) et ignorées.
+    MAX_SAISON = 20
     non_verrouillees = await db.saisons_config.find(
-        {"is_manuel": {"$ne": True}}, {"_id": 0, "saison": 1}
+        {"is_manuel": {"$ne": True}, "saison": {"$lte": MAX_SAISON}}, {"_id": 0, "saison": 1}
     ).sort("saison", -1).to_list(1)
     if non_verrouillees:
         CURRENT_SEASON = non_verrouillees[0]["saison"]
     else:
-        toutes = await db.saisons_config.find({}, {"_id": 0, "saison": 1}).sort("saison", -1).to_list(1)
+        toutes = await db.saisons_config.find(
+            {"saison": {"$lte": MAX_SAISON}}, {"_id": 0, "saison": 1}
+        ).sort("saison", -1).to_list(1)
         CURRENT_SEASON = (toutes[0]["saison"] + 1) if toutes else 1
     
     # Récupérer toutes les configs de saisons (contient les données manuelles pour S1-12)
