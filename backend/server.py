@@ -4810,34 +4810,29 @@ async def get_saisons_config():
 
 @api_router.get("/saison-courante")
 async def get_saison_courante():
-    """Retourne la saison en cours.
-    Logique combinée (robuste) :
-    - Saison basée sur l'année civile : année - 2012 (S1=2013, S14=2026...)
-    - Plus grande saison non-verrouillée dans saisons_config (dans la plage utile)
-    - On retourne le MAX des deux, plafonné à 20
-    Les saisons > 20 sont considérées comme des données parasites (tests) et ignorées.
+    """Retourne la saison en cours = la plus grande saison présente en base
+    (dans les événements OU dans saisons_config), bornée à 20.
+
+    Logique simple et intuitive :
+    - Aucune saison connue → 1 (démarrage)
+    - Sinon → max(saison max des événements, saison max de la config)
+    Dès que l'utilisateur crée son 1er événement Saison 14, l'app bascule sur S14.
+    Aucune dépendance à l'année civile (les saisons du club ne suivent pas l'année).
     """
     MAX_SAISON = 20
-    # 1. Saison "de la date" (fiable même sans verrouillage explicite)
-    annee = datetime.now(timezone.utc).year
-    saison_par_date = max(1, min(annee - 2012, MAX_SAISON))
+    # Saison max présente dans les événements (plage utile)
+    evt = await db.evenements.find(
+        {"saison": {"$lte": MAX_SAISON, "$gte": 1}}, {"_id": 0, "saison": 1}
+    ).sort("saison", -1).limit(1).to_list(1)
+    saison_evt = evt[0]["saison"] if evt else 0
 
-    # 2. Plus grande saison non-verrouillée en base
-    non_verrouillees = await db.saisons_config.find(
-        {"is_manuel": {"$ne": True}, "saison": {"$lte": MAX_SAISON}}, {"_id": 0, "saison": 1}
-    ).sort("saison", -1).to_list(1)
-    saison_par_config = non_verrouillees[0]["saison"] if non_verrouillees else 0
+    # Saison max présente dans saisons_config (plage utile)
+    cfg = await db.saisons_config.find(
+        {"saison": {"$lte": MAX_SAISON, "$gte": 1}}, {"_id": 0, "saison": 1}
+    ).sort("saison", -1).limit(1).to_list(1)
+    saison_cfg = cfg[0]["saison"] if cfg else 0
 
-    # 3. Si toutes verrouillées → max_saison + 1 (max plafonné à 20)
-    if not non_verrouillees:
-        toutes = await db.saisons_config.find(
-            {"saison": {"$lte": MAX_SAISON}}, {"_id": 0, "saison": 1}
-        ).sort("saison", -1).to_list(1)
-        if toutes:
-            saison_par_config = min(toutes[0]["saison"] + 1, MAX_SAISON)
-
-    # 4. Retourner le MAX (la plus avancée des deux)
-    return {"saison": max(saison_par_date, saison_par_config)}
+    return {"saison": max(saison_evt, saison_cfg, 1)}
 
 
 @api_router.get("/saisons-config/{saison}")
@@ -5581,26 +5576,19 @@ async def get_statistiques_moyennes_dashboard():
     - Moyenne globale = Total présences / Total événements
     - Moyenne repas = Total présences repas / Total repas
     """
-    # Déterminer dynamiquement la saison courante (logique combinée date + config) :
-    # - Saison basée sur l'année civile : année - 2012
-    # - Plus grande saison non-verrouillée existante (saison <= 20)
-    # - On prend le MAX pour être robuste (indépendant du verrouillage)
+    # Déterminer dynamiquement la saison courante :
+    # = plus grande saison présente en base (événements OU saisons_config), bornée à 20.
+    # Dès que l'utilisateur crée son 1er événement S14, l'app bascule sur S14.
     MAX_SAISON = 20
-    annee = datetime.now(timezone.utc).year
-    saison_par_date = max(1, min(annee - 2012, MAX_SAISON))
-
-    non_verrouillees = await db.saisons_config.find(
-        {"is_manuel": {"$ne": True}, "saison": {"$lte": MAX_SAISON}}, {"_id": 0, "saison": 1}
-    ).sort("saison", -1).to_list(1)
-    if non_verrouillees:
-        saison_par_config = non_verrouillees[0]["saison"]
-    else:
-        toutes = await db.saisons_config.find(
-            {"saison": {"$lte": MAX_SAISON}}, {"_id": 0, "saison": 1}
-        ).sort("saison", -1).to_list(1)
-        saison_par_config = min(toutes[0]["saison"] + 1, MAX_SAISON) if toutes else 1
-
-    CURRENT_SEASON = max(saison_par_date, saison_par_config)
+    evt = await db.evenements.find(
+        {"saison": {"$lte": MAX_SAISON, "$gte": 1}}, {"_id": 0, "saison": 1}
+    ).sort("saison", -1).limit(1).to_list(1)
+    saison_evt = evt[0]["saison"] if evt else 0
+    cfg = await db.saisons_config.find(
+        {"saison": {"$lte": MAX_SAISON, "$gte": 1}}, {"_id": 0, "saison": 1}
+    ).sort("saison", -1).limit(1).to_list(1)
+    saison_cfg = cfg[0]["saison"] if cfg else 0
+    CURRENT_SEASON = max(saison_evt, saison_cfg, 1)
     
     # Récupérer toutes les configs de saisons (contient les données manuelles pour S1-12)
     configs = await db.saisons_config.find({}, {"_id": 0}).to_list(100)

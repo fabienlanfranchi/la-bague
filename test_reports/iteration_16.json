@@ -1,0 +1,22 @@
+{
+  "summary": "Backend-only iteration 16: validated the new 'max saison présente en base' logic on /api/saison-courante and /api/statistiques/moyennes-dashboard. 16/16 pytest tests pass. The 4 sequential scenarios (baseline=13, +S14 event=14, delete S14=13, +S15 event=15) all behave as expected. Out-of-range saisons (99) are correctly ignored (bornes 1-20). No year-2012 arithmetic remains in server.py. Marc Antoine 37 stays blocked (403). /api/saisons-config/{21|99|100|0|-1} all return 404. DB was fully restored (0 events with saison>13, 0 configs with saison>13, 0 TEST_ residuals).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_saison_courante_max_present.py",
+    "/app/test_reports/pytest/iter16_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py is 8582 lines — should be split into modules (routers) for maintainability.",
+    "/api/saison-courante and /api/statistiques/moyennes-dashboard duplicate the exact same 'max(evt, cfg)' computation — extract into a helper function _get_current_season() to comply with DRY."
+  ],
+  "updated_files": ["/app/backend/tests/test_saison_courante_max_present.py"],
+  "success_rate": {"backend": "100%", "frontend": "N/A"},
+  "test_credentials": "labague1 (admin), labague37 (blocked - Marc Antoine), labague75-78 (new members)",
+  "seed_data_creation": "No persistent seed. All fixtures tagged TEST_ITER16_ were created and deleted within tests. Final DB verified clean.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Fix is final and stable. The endpoint returns max(saison in evenements, saison in saisons_config), bounded [1,20]. All previous iteration_15 tests remain valid conceptually but hardcoded EXPECTED_SAISON=14 based on datetime.year - it may fail since new logic returns 13 on current preview (only S1-S13 configs). Consider deprecating test_saison_courante_combined_logic.py.",
+  "rca of the issue": "N/A - previous fix was validated. New logic decouples current-season from calendar year, aligning with the club's non-calendar season cycle."
+}
