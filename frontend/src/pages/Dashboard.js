@@ -184,6 +184,7 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
   
   // Stats personnelles
   const [statsPerso, setStatsPerso] = useState(null);
+  const [saisonCourante, setSaisonCourante] = useState(13); // par défaut S13, remplacé au chargement
   
   // Modal détail des présences par type
   const [showPresenceDetail, setShowPresenceDetail] = useState(false);
@@ -285,8 +286,18 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
           setMessagesNonLus(messagesAvecNotif);
         }
         
-        // Charger les stats personnelles pour la saison 13
-        const statsResponse = await axios.get(`${API}/statistiques/saison/13`);
+        // Charger la saison courante depuis le backend
+        let saisonActive = 13;
+        try {
+          const saisonRes = await axios.get(`${API}/saison-courante`);
+          saisonActive = saisonRes.data?.saison || 13;
+          setSaisonCourante(saisonActive);
+        } catch (e) {
+          console.warn('Fallback S13 (saison-courante indisponible)');
+        }
+
+        // Charger les stats personnelles pour la saison courante
+        const statsResponse = await axios.get(`${API}/statistiques/saison/${saisonActive}`);
         const statsData = statsResponse.data;
         
         if (statsData && statsData.membres) {
@@ -787,7 +798,7 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
           <CardHeader>
             <CardTitle className="text-xl font-serif text-white flex items-center">
               <TrendingUp className="w-6 h-6 mr-2 text-[#D4A024]" />
-              Vos statistiques - Saison 13
+              Vos statistiques - Saison {saisonCourante}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -1504,7 +1515,7 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
             <CardHeader className="border-b border-[#D4A024]/30">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-xl font-serif text-[#D4A024]">
-                  {presenceDetailType === 'repas' ? 'Repas' : presenceDetailType === 'apero' ? 'Apéros' : 'Anniversaires'} - Saison 13
+                  {presenceDetailType === 'repas' ? 'Repas' : presenceDetailType === 'apero' ? 'Apéros' : 'Anniversaires'} - Saison {saisonCourante}
                 </CardTitle>
                 <Button variant="ghost" size="icon" onClick={() => setShowPresenceDetail(false)} className="text-[#D4A024]">
                   <X className="w-5 h-5" />
@@ -2335,11 +2346,22 @@ Le Bureau de La Bague Impériale`;
         console.log('Moyennes non disponibles');
       }
       
+      // Récupérer la saison courante pour l'affichage dynamique
+      let currentSeasonLabel = 'Saison 13 - 2025';
+      try {
+        const scRes = await axios.get(`${API}/saison-courante`);
+        const s = scRes.data?.saison;
+        if (s) {
+          // Année = 2012 + saison (Saison 1 = 2013)
+          currentSeasonLabel = `Saison ${s} - ${2012 + s}`;
+        }
+      } catch (e) {}
+      
       setStats({
         totalMembers,
         avgPresenceGlobal: pctGlobal.toFixed(1),
         avgPresenceSeason: pctSaisonActuelle.toFixed(1),
-        currentSeason: 'Saison 13 - 2025',
+        currentSeason: currentSeasonLabel,
         membersByStars,
         cotisationsEnAttente,
         totalSaisonsDues,

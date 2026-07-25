@@ -238,7 +238,7 @@ const Evenements = () => {
     lieu: '',
     detail: '',
     type_sondage: 'repas',
-    saison: 13,
+    saison: 14,
     statut: 'à venir',
     options_sondage: {
       entrees: ['Entrée A', 'Entrée B'],
@@ -702,7 +702,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
         lieu: '',
         detail: '',
         type_sondage: 'repas',
-        saison: 13,
+        saison: 14,
         statut: 'à venir',
         options_sondage: {
           entrees: ['Entrée A', 'Entrée B'],

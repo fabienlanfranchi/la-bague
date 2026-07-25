@@ -4808,6 +4808,28 @@ async def get_saisons_config():
     return configs
 
 
+@api_router.get("/saison-courante")
+async def get_saison_courante():
+    """Retourne la saison en cours.
+    Logique :
+    - S'il existe une saison non-verrouillée dans saisons_config → c'est celle en cours
+    - Sinon (toutes verrouillées) → la saison en cours = max_saison + 1 (nouvelle saison qui démarre)
+    - Fallback : saison 1
+    """
+    # 1. Chercher la plus grande saison non-verrouillée dans saisons_config
+    non_verrouillees = await db.saisons_config.find(
+        {"is_manuel": {"$ne": True}}, {"_id": 0}
+    ).sort("saison", -1).to_list(1)
+    if non_verrouillees:
+        return {"saison": non_verrouillees[0]["saison"]}
+    # 2. Sinon, toutes verrouillées → la saison en cours est celle qui vient après la max
+    toutes = await db.saisons_config.find({}, {"_id": 0}).sort("saison", -1).to_list(1)
+    if toutes:
+        return {"saison": toutes[0]["saison"] + 1}
+    # 3. Fallback : saison 1
+    return {"saison": 1}
+
+
 @api_router.get("/saisons-config/{saison}")
 async def get_saison_config(saison: int):
     """Récupérer la config d'une saison"""
