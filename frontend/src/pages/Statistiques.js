@@ -12,7 +12,18 @@ export default function Statistiques() {
   const [membres, setMembres] = useState([]);
   const [saisonsConfig, setSaisonsConfig] = useState({});
   const [presences, setPresences] = useState({});
-  const [selectedSaison, setSelectedSaison] = useState(1);  // Commencer par la saison 1
+  const [selectedSaison, setSelectedSaison] = useState(() => {
+    // Après une clôture (window.location.reload), on retrouve la nouvelle saison ici
+    try {
+      const stored = sessionStorage.getItem('lbi_selected_saison');
+      if (stored) {
+        sessionStorage.removeItem('lbi_selected_saison');
+        const n = parseInt(stored, 10);
+        if (n >= 1 && n <= 20) return n;
+      }
+    } catch (e) {}
+    return 1;
+  });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
@@ -522,6 +533,8 @@ export default function Statistiques() {
         throw new Error(err.detail || 'Erreur lors de la clôture');
       }
       toast.success(`✅ Saison ${saisonN} clôturée. Saison ${saisonNext} ouverte !`);
+      // Stocker la nouvelle saison pour que le reload atterrisse dessus
+      try { sessionStorage.setItem('lbi_selected_saison', String(saisonNext)); } catch (e) {}
       // Rafraîchir complet la page pour bien refléter tous les changements côté UI
       setTimeout(() => { window.location.reload(); }, 800);
     } catch (e) {

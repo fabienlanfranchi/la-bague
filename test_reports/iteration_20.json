@@ -1,0 +1,33 @@
+{
+  "summary": "Iteration 20 - Fix final du bug UI de bascule après clôture via sessionStorage. VALIDATION COMPLÈTE. Backend: 9/9 pytest PASS (test_cloturer_saison.py rejoué en régression, +cleanup final). UI Playwright end-to-end: login labague1 → /statistiques → clic Saison 13 → clic [data-testid='cloturer-saison-btn'] → confirm auto-accepté → reload → écran affiche 'Configuration de la Saison 14' (screenshot verified), bouton dit 'Clôturer S14 → Ouvrir S15', S14 est le bouton actif du sélecteur, sessionStorage['lbi_selected_saison'] correctement consommé et supprimé (null). Régressions OK: (a) sans sessionStorage au mount → selectedSaison=1 (default preservé), (b) sessionStorage='99' (hors plage 1-20) → ignoré, retour à 1, valeur supprimée. Cleanup final: S1-S13 is_manuel=True, aucune saisons_config S>13, aucun evenement S>13, /api/saison-courante=13.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Statistiques", "issues": ["Hydration errors React persistantes dans les logs console ('<tr> cannot be a child of <span>', '<span> tbody'). Provient probablement du wrapper x-visual-editor. Non bloquant fonctionnellement mais devrait être investigué."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_cloturer_saison.py",
+    "/app/test_reports/pytest/iter20_results.xml"
+  ],
+  "action_items": [
+    "Ajouter Depends(get_current_user_admin) sur POST /api/admin/cloturer-saison/{saison} — endpoint reste public non authentifié (déjà signalé iter18/19).",
+    "Investiguer hydration errors (tr/span, span/tbody) dans Statistiques.js (probablement wrapper visual-editor injecté)."
+  ],
+  "critical_code_review_comments": [
+    "Statistiques.js L15-26: le lazy init de useState avec sessionStorage.getItem + removeItem + validation plage (1..20) est propre et robuste. Try/catch défensif OK.",
+    "Statistiques.js L537: sessionStorage.setItem juste avant window.location.reload() garantit le bon atterrissage sur N+1 après reload — pattern correct.",
+    "server.py: endpoint /admin/cloturer-saison/{saison} toujours sans auth — HIGH priority (n'importe qui peut clôturer une saison via curl).",
+    "server.py toujours >8600 lignes — à modulariser."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "labague1 (admin/président)",
+  "seed_data_creation": "S14 créée par test_02_cloturer_s13_creates_s14 puis supprimée par test_99_final_cleanup_state. État final Preview restauré: S1-S13 is_manuel=True, 0 config S>13, 0 event S>13, /api/saison-courante=13.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Bug UI de bascule saison après clôture est RÉSOLU via sessionStorage. Le mécanisme: (a) cloturerEtOuvrirSaisonSuivante fait sessionStorage.setItem('lbi_selected_saison', String(saisonNext)) avant window.location.reload(), (b) useState au mount lit sessionStorage, valide plage 1..20, applique et supprime. Testids clés inchangés: [data-testid='login-button'], [data-testid='cle-input'], [data-testid='login-btn'], [data-testid='cloturer-saison-btn'], [data-testid='toggle-verrouillage-saison-btn']. Prochaine étape recommandée: sécuriser POST /api/admin/cloturer-saison/{saison} avec auth admin.",
+  "rca of the issue": "N/A - bug résolu et validé end-to-end."
+}
