@@ -509,9 +509,11 @@ export default function Statistiques() {
       `🆕 La Saison ${selectedSaison + 1} sera créée et deviendra la nouvelle saison en cours.\n\n` +
       `Cette action peut être annulée en déverrouillant la Saison ${selectedSaison} plus tard.`
     )) return;
+    const saisonN = selectedSaison;
+    const saisonNext = selectedSaison + 1;
     try {
       const token = localStorage.getItem('lbi_access_token');
-      const res = await fetch(`${API_URL}/api/admin/cloturer-saison/${selectedSaison}`, {
+      const res = await fetch(`${API_URL}/api/admin/cloturer-saison/${saisonN}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
       });
@@ -519,14 +521,9 @@ export default function Statistiques() {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.detail || 'Erreur lors de la clôture');
       }
-      const data = await res.json();
-      toast.success(`✅ Saison ${data.saison_cloturee} clôturée. Saison ${data.nouvelle_saison} ouverte !`);
-      // Recharger les configs pour rafraîchir l'UI et basculer sur la nouvelle saison
-      const cfgs = await axios.get(`${API_URL}/api/saisons-config`);
-      const cfgMap = {};
-      (cfgs.data || []).forEach(c => { cfgMap[c.saison] = c; });
-      setSaisonsConfig(cfgMap);
-      setSelectedSaison(data.nouvelle_saison);
+      toast.success(`✅ Saison ${saisonN} clôturée. Saison ${saisonNext} ouverte !`);
+      // Rafraîchir complet la page pour bien refléter tous les changements côté UI
+      setTimeout(() => { window.location.reload(); }, 800);
     } catch (e) {
       toast.error(e.message || 'Impossible de clôturer la saison');
     }
@@ -633,19 +630,26 @@ export default function Statistiques() {
                 <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 min-w-0 flex-1 justify-center">
                   <span className="text-xl sm:text-2xl font-bold text-amber-700 whitespace-nowrap">Saison {selectedSaison}</span>
                   <div className="flex gap-1 flex-wrap justify-center max-w-full overflow-x-auto pb-1">
-                    {[...Array(Math.min(14, 14))].map((_, i) => (
-                      <button
-                        key={i + 1}
-                        onClick={() => setSelectedSaison(i + 1)}
-                        className={`w-7 h-7 sm:w-8 sm:h-8 rounded text-xs sm:text-sm font-medium transition-colors shrink-0 ${
-                          selectedSaison === i + 1
-                            ? 'bg-amber-600 text-white'
-                            : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                        }`}
-                      >
-                        {i + 1}
-                      </button>
-                    ))}
+                    {(() => {
+                      // Nombre de saisons à afficher : max entre 14 et la plus grande saison en base
+                      const maxCfg = Object.keys(saisonsConfig)
+                        .map(Number)
+                        .filter(n => Number.isFinite(n) && n >= 1 && n <= 20);
+                      const nbSaisons = Math.min(20, Math.max(14, ...maxCfg, selectedSaison));
+                      return [...Array(nbSaisons)].map((_, i) => (
+                        <button
+                          key={i + 1}
+                          onClick={() => setSelectedSaison(i + 1)}
+                          className={`w-7 h-7 sm:w-8 sm:h-8 rounded text-xs sm:text-sm font-medium transition-colors shrink-0 ${
+                            selectedSaison === i + 1
+                              ? 'bg-amber-600 text-white'
+                              : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                          }`}
+                        >
+                          {i + 1}
+                        </button>
+                      ));
+                    })()}
                   </div>
                 </div>
 
