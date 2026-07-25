@@ -1,0 +1,32 @@
+{
+  "summary": "Iteration 18 - Nouveau BOUTON MANUEL de clôture de saison (POST /api/admin/cloturer-saison/{saison}). Backend 9/9 tests pytest PASSENT. Frontend: bouton [data-testid='cloturer-saison-btn'] visible pour toute saison < 20, à côté du bouton [data-testid='toggle-verrouillage-saison-btn']. Confirm JS déclenché correctement (message mentionne Saison 13 et Saison 14). Après clic + acceptation, /api/saison-courante bascule immédiatement de 13 → 14. Régression OK: labague37 → 403, membres 75-78 → 200, /saisons-config/{hors 1-20} → 404. Endpoint refuse saison<1 et >=20 avec 400. Idempotence OK: 2e appel ne recrée pas S14. Cleanup post-test effectué: S1-S13 restaurées is_manuel=True, aucune config S>13, aucun event S>13, /saison-courante=13.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Statistiques - Clôturer button", "issue": "Après clic réussi sur le bouton clôturer et succès de l'API (saison-courante bascule bien à N+1 côté backend), l'UI reste affichée sur Saison N (le heading 'Configuration de la Saison N' et le texte du bouton ne se mettent pas à jour vers N+1). setSelectedSaison(data.nouvelle_saison) semble ne pas déclencher le re-render attendu, ou le bouton pour la saison N+1 (ici S14) n'est pas dans la liste rendue car maxSaisonInDB n'inclut peut-être pas encore S14 au moment où setSelectedSaison s'exécute. Répro: login labague1 → /statistiques → clic saison 13 → clic 'Clôturer S13 → Ouvrir S14' → confirm → attendre 2s: le heading reste 'Configuration de la Saison 13' et le bouton dit toujours 'Clôturer S13 → Ouvrir S14' au lieu de 'Clôturer S14 → Ouvrir S15'.", "selector": "[data-testid='cloturer-saison-btn']", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_cloturer_saison.py",
+    "/app/test_reports/pytest/iter18_results.xml"
+  ],
+  "action_items": [
+    "Investiguer pourquoi setSelectedSaison(nouvelle_saison) après cloture n'entraîne pas de rafraîchissement UI vers S=N+1 (heading + texte du bouton restent sur N). Piste: appeler d'abord un refetch complet (loadSaisonsConfig) et await, puis setSelectedSaison; ou vérifier que le composant de sélection dynamique (buttons 1..maxSaisonInDB) recalcule bien maxSaisonInDB après setSaisonsConfig."
+  ],
+  "critical_code_review_comments": [
+    "server.py L4870-4881: création de la saison N+1 avec is_manuel=False est correcte, mais aucun contrôle d'authentification/autorisation sur l'endpoint POST /admin/cloturer-saison/{saison} — n'importe quel client non authentifié peut clôturer une saison. Ajouter Depends(get_current_user_admin) ou équivalent pour aligner avec les autres endpoints /admin/*.",
+    "Statistiques.js L525: axios.get(`${API_URL}/api/saisons-config`) manque le header Authorization: `Bearer ${token}` (contrairement au fetch juste au-dessus). Peut fonctionner tant que l'endpoint est public mais incohérent.",
+    "Statistiques.js L523: message de toast success utilise `data.saison_cloturee` mais si le backend renomme les champs, le toast affichera undefined. OK actuellement mais à noter.",
+    "server.py toujours >8600 lignes."
+  ],
+  "updated_files": ["/app/backend/tests/test_cloturer_saison.py"],
+  "success_rate": {"backend": "100%", "frontend": "85% (bug UI de basculement automatique)"},
+  "test_credentials": "labague1 (admin/président), labague37 bloqué (Marc Antoine), labague75-78 OK.",
+  "seed_data_creation": "Aucune donnée persistante. Config S14 créée durant les tests puis supprimée. Vérifié final: S1-S13 is_manuel=True, 0 config S>13, 0 event S>13, /saison-courante=13.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Endpoint POST /api/admin/cloturer-saison/{saison} validé fonctionnellement côté backend + confirm JS + appel API frontend. Bug UI restant: basculement selectedSaison→N+1 ne se traduit pas visuellement (heading + btn text restent sur N). Testids clés: [data-testid='login-button'] (accueil) → [data-testid='cle-input'] + [data-testid='login-btn'], [data-testid='cloturer-saison-btn'], [data-testid='toggle-verrouillage-saison-btn']. Cleanup: python -c avec motor sur saisons_config et evenements pour saison>13. IMPORTANT: /api/auth/key-login retourne 'access_token'.",
+  "rca of the issue": "N/A - bug fix demandé validé. Un bug UI mineur détecté sur le basculement de saison affiché après clôture (voir frontend_issues)."
+}

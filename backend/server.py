@@ -4835,6 +4835,59 @@ async def get_saison_courante():
     return {"saison": max(saison_evt, saison_cfg, 1)}
 
 
+@api_router.post("/admin/cloturer-saison/{saison}")
+async def cloturer_saison_et_ouvrir_suivante(saison: int):
+    """Clôturer la saison en cours + démarrer la saison suivante en un clic.
+    Actions :
+    1. Verrouille la saison N (is_manuel=True)
+    2. Crée une config vide pour la saison N+1 (nb_aperos=0, nb_repas=0, nb_anniversaires=0)
+    → Résultat : /saison-courante retourne N+1 immédiatement.
+    """
+    if saison < 1 or saison >= 20:
+        raise HTTPException(status_code=400, detail=f"Saison {saison} hors plage (1-19)")
+    saison_suivante = saison + 1
+
+    now = datetime.now(timezone.utc).isoformat()
+    # 1. Verrouiller la saison N (crée l'entrée si elle n'existe pas)
+    await db.saisons_config.update_one(
+        {"saison": saison},
+        {
+            "$set": {"is_manuel": True, "updated_at": now},
+            "$setOnInsert": {
+                "id": str(uuid.uuid4()),
+                "saison": saison,
+                "nb_aperos": 0,
+                "nb_repas": 0,
+                "nb_anniversaires": 0,
+                "created_at": now,
+            },
+        },
+        upsert=True,
+    )
+
+    # 2. Créer la saison N+1 si elle n'existe pas
+    existing_next = await db.saisons_config.find_one({"saison": saison_suivante})
+    if not existing_next:
+        new_cfg = {
+            "id": str(uuid.uuid4()),
+            "saison": saison_suivante,
+            "nb_aperos": 0,
+            "nb_repas": 0,
+            "nb_anniversaires": 0,
+            "is_manuel": False,
+            "created_at": now,
+            "updated_at": now,
+        }
+        await db.saisons_config.insert_one(new_cfg)
+
+    return {
+        "message": f"Saison {saison} clôturée et Saison {saison_suivante} ouverte",
+        "saison_cloturee": saison,
+        "nouvelle_saison": saison_suivante,
+    }
+
+
+
 @api_router.get("/saisons-config/{saison}")
 async def get_saison_config(saison: int):
     """Récupérer la config d'une saison. Crée une config vide si elle n'existe pas

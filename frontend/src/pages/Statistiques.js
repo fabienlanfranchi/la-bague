@@ -501,6 +501,37 @@ export default function Statistiques() {
     }
   };
 
+  // Clôturer la saison N et démarrer la saison N+1 en un clic
+  const cloturerEtOuvrirSaisonSuivante = async () => {
+    if (!window.confirm(
+      `Voulez-vous vraiment CLÔTURER la Saison ${selectedSaison} et DÉMARRER la Saison ${selectedSaison + 1} ?\n\n` +
+      `🔒 La Saison ${selectedSaison} sera verrouillée (données figées).\n` +
+      `🆕 La Saison ${selectedSaison + 1} sera créée et deviendra la nouvelle saison en cours.\n\n` +
+      `Cette action peut être annulée en déverrouillant la Saison ${selectedSaison} plus tard.`
+    )) return;
+    try {
+      const token = localStorage.getItem('lbi_access_token');
+      const res = await fetch(`${API_URL}/api/admin/cloturer-saison/${selectedSaison}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'Erreur lors de la clôture');
+      }
+      const data = await res.json();
+      toast.success(`✅ Saison ${data.saison_cloturee} clôturée. Saison ${data.nouvelle_saison} ouverte !`);
+      // Recharger les configs pour rafraîchir l'UI et basculer sur la nouvelle saison
+      const cfgs = await axios.get(`${API_URL}/api/saisons-config`);
+      const cfgMap = {};
+      (cfgs.data || []).forEach(c => { cfgMap[c.saison] = c; });
+      setSaisonsConfig(cfgMap);
+      setSelectedSaison(data.nouvelle_saison);
+    } catch (e) {
+      toast.error(e.message || 'Impossible de clôturer la saison');
+    }
+  };
+
   const config = getCurrentConfig();
 
   if (loading) {
@@ -653,6 +684,19 @@ export default function Statistiques() {
                   <Lock className="h-4 w-4 mr-1" />
                   {config.is_manuel ? 'Verrouillée 🔒 (cliquer pour déverrouiller)' : 'Verrouiller cette saison'}
                 </Button>
+                {/* Bouton "Clôturer et démarrer nouvelle saison" — toujours visible dans la plage utile */}
+                {selectedSaison < 20 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={cloturerEtOuvrirSaisonSuivante}
+                    data-testid="cloturer-saison-btn"
+                    className="bg-amber-50 border-amber-400 text-amber-800 hover:bg-amber-100 hover:text-amber-900 font-medium"
+                    title={`Verrouille la Saison ${selectedSaison} et démarre la Saison ${selectedSaison + 1}`}
+                  >
+                    🚪 Clôturer S{selectedSaison} → Ouvrir S{selectedSaison + 1}
+                  </Button>
+                )}
               </div>
             </CardHeader>
             <CardContent>
