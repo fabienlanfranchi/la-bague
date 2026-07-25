@@ -513,15 +513,15 @@ export default function Statistiques() {
   };
 
   // Clôturer la saison N et démarrer la saison N+1 en un clic
-  const cloturerEtOuvrirSaisonSuivante = async () => {
+  const cloturerEtOuvrirSaisonSuivante = async (saisonCible = null) => {
+    const saisonN = Number.isFinite(saisonCible) && saisonCible !== null ? saisonCible : selectedSaison;
+    const saisonNext = saisonN + 1;
     if (!window.confirm(
-      `Voulez-vous vraiment CLÔTURER la Saison ${selectedSaison} et DÉMARRER la Saison ${selectedSaison + 1} ?\n\n` +
-      `🔒 La Saison ${selectedSaison} sera verrouillée (données figées).\n` +
-      `🆕 La Saison ${selectedSaison + 1} sera créée et deviendra la nouvelle saison en cours.\n\n` +
-      `Cette action peut être annulée en déverrouillant la Saison ${selectedSaison} plus tard.`
+      `Voulez-vous vraiment CLÔTURER la Saison ${saisonN} et DÉMARRER la Saison ${saisonNext} ?\n\n` +
+      `🔒 La Saison ${saisonN} sera verrouillée (données figées).\n` +
+      `🆕 La Saison ${saisonNext} sera créée et deviendra la nouvelle saison en cours.\n\n` +
+      `Cette action peut être annulée en déverrouillant la Saison ${saisonN} plus tard.`
     )) return;
-    const saisonN = selectedSaison;
-    const saisonNext = selectedSaison + 1;
     try {
       const token = localStorage.getItem('lbi_access_token');
       const res = await fetch(`${API_URL}/api/admin/cloturer-saison/${saisonN}`, {
@@ -1054,6 +1054,30 @@ export default function Statistiques() {
                     Saison 13+ : Calcul automatique
                   </p>
                 )}
+                {/* Bouton "Clôturer la saison en cours" — accessible depuis le tableau global */}
+                <div className="mt-3">
+                  {(() => {
+                    // Déterminer la saison en cours = plus grande saison non verrouillée présente
+                    const cfgs = Object.values(saisonsConfig || {});
+                    const nonLocked = cfgs.filter(c => !c.is_manuel && Number(c.saison) >= 1 && Number(c.saison) <= 20);
+                    let saisonEnCours = nonLocked.length
+                      ? Math.max(...nonLocked.map(c => Number(c.saison)))
+                      : (cfgs.length ? Math.min(20, Math.max(...cfgs.map(c => Number(c.saison))) + 1) : 1);
+                    if (saisonEnCours >= 20) return null;
+                    return (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => cloturerEtOuvrirSaisonSuivante(saisonEnCours)}
+                        data-testid="cloturer-saison-global-btn"
+                        className="bg-amber-50 border-amber-400 text-amber-800 hover:bg-amber-100 hover:text-amber-900 font-medium"
+                        title={`Verrouille la Saison ${saisonEnCours} et démarre la Saison ${saisonEnCours + 1}`}
+                      >
+                        🚪 Clôturer S{saisonEnCours} → Ouvrir S{saisonEnCours + 1}
+                      </Button>
+                    );
+                  })()}
+                </div>
               </div>
               {/* Toggle Tableau / Graphique */}
               <div className="flex gap-2">

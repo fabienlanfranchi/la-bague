@@ -1,0 +1,31 @@
+{
+  "summary": "Iteration 21 - Validation du nouveau bouton [data-testid='cloturer-saison-global-btn'] ajouté dans le header du mode 'Stats Saisons' de /statistiques. VALIDATION COMPLÈTE. Backend: 9/9 pytest test_cloturer_saison.py PASS (régression endpoint POST /api/admin/cloturer-saison/{saison}, rejet plage 0/-1/20/25, idempotence, S13→S14). UI Playwright end-to-end: login labague1 → /statistiques → onglet 'Stats Saisons' auto-actif → bouton global visible avec texte exact '🚪 Clôturer S14 → Ouvrir S15' (car S1-S13 tous is_manuel=True en Preview donc saisonEnCours=max(13)+1=14) → clic → confirm auto-accepté avec message 'Voulez-vous vraiment CLÔTURER la Saison 14 et DÉMARRER la Saison 15 ?' → reload → écran affiche 'Configuration de la Saison 15', bouton 15 actif dans le sélecteur (screenshot verified). Cleanup final effectué manuellement via motor: 2 configs S14+S15 supprimées, 0 event >13, S1-S13 réaffirmées is_manuel=True, /api/saison-courante=13. État Preview parfaitement restauré.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Statistiques", "issues": ["Hydration errors React persistantes ('<tr> cannot be a child of <span>', '<span> tbody') — provient du wrapper x-visual-editor injecté (x-file-name, x-line-number, x-component). Non bloquant fonctionnellement. Déjà signalé iter20."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_cloturer_saison.py",
+    "/app/test_reports/pytest/iter21_results.xml"
+  ],
+  "action_items": [
+    "Sécuriser POST /api/admin/cloturer-saison/{saison} avec Depends(get_current_user_admin) — endpoint reste public non authentifié (signalé depuis iter18, non fixé)."
+  ],
+  "critical_code_review_comments": [
+    "Statistiques.js L516-543: cloturerEtOuvrirSaisonSuivante(saisonCible=null) — signature retro-compatible, param optionnel bien géré via Number.isFinite. Preserve le comportement existant du bouton du mode Saisie.",
+    "Statistiques.js L1058-1080: calcul saisonEnCours dans le render via IIFE — logique correcte (plus grande saison non-verrouillée, sinon max+1, sinon 1). Retourne null si >=20, évitant l'affichage hors plage. Bien placé dans le header Stats Saisons pour visibilité utilisateur.",
+    "Endpoint POST /admin/cloturer-saison/{saison} toujours sans auth — HIGH priority, blocage non fait depuis 4 itérations."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "labague1 (admin/président)",
+  "seed_data_creation": "Test UI a créé S14 (verrouillée) et S15 (courante) via clic sur cloturer-saison-global-btn. Cleanup post-test effectué: delete_many({saison:{$gt:13}}) sur saisons_config et evenements + reaffirmation is_manuel=True sur S1..S13. Vérifié: /api/saison-courante=13, 0 config >13.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Le bouton [data-testid='cloturer-saison-global-btn'] est fonctionnel dans le header du mode 'Stats Saisons' de /statistiques. Texte affiché dépend de saisonEnCours = plus grande saison non-verrouillée, sinon max(saisons)+1. En Preview: toutes S1-S13 verrouillées → S14. En Prod: S13 non-verrouillée → S13. testids stables: [data-testid='cloturer-saison-global-btn'], [data-testid='cloturer-saison-btn'] (mode Saisie), [data-testid='login-button'], [data-testid='cle-input'], [data-testid='login-btn']. État final Preview: S1-S13 is_manuel=True, /api/saison-courante=13.",
+  "rca of the issue": "N/A - nouvelle feature validée sans régression."
+}
