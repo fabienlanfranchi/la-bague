@@ -1,0 +1,23 @@
+{
+  "summary": "Backend-only testing du bug fix 'saison courante dynamique' + régressions. 8/8 tests passent. Le fix fonctionne : GET /api/statistiques/moyennes-dashboard renvoie bien saison_actuelle=14 et pct_saison_actuelle=0. GET /api/saison-courante renvoie {saison:14}. Stats S14 sans erreur. Globals inchangés (pct_global≈49.9, events>200). mode_paiement persisté. Paiement fractionné 500€ CB + 4300€ Espèces sur facture 4800€ sans lignes → statut 'payee'. SaisonConfigUpdate accepte is_manuel. labague37 renvoie 403 avec message français ('Accès au club révoqué').",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_dashboard_current_season.py",
+    "/app/test_reports/pytest/dashboard_season_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py fait 8568 lignes — devrait être découpé en modules (statistiques, factures, auth, comptabilité, saisons, etc.).",
+    "La logique CURRENT_SEASON dynamique est dupliquée dans /api/saison-courante (l.4820) et /api/statistiques/moyennes-dashboard (l.5570) — extraire une helper get_current_season() pour éviter la divergence future.",
+    "test_stats_saison_14_no_error : l'endpoint fonctionne mais aucune assertion structurelle — envisager de valider le contenu quand la spec sera figée."
+  ],
+  "updated_files": ["/app/backend/tests/test_dashboard_current_season.py"],
+  "success_rate": {"backend": "100%", "frontend": "N/A (skipped per request)"},
+  "test_credentials": "labague1 (admin), labague37 (bloqué)",
+  "seed_data_creation": "Aucune donnée persistée : la facture test, ses transactions et la config saison 99 sont nettoyées en fin de test.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Fixture auth_session utilise à la fois header Bearer et cookies JWT (lbi_session) car key-login pose un cookie httpOnly. Le fix CURRENT_SEASON dynamique fonctionne correctement sur Preview (toutes S1-13 verrouillées → S14 courante avec pct=0).",
+  "rca of the issue": "Bug initial : CURRENT_SEASON=13 était hardcodé dans /statistiques/moyennes-dashboard. Fix appliqué : détermination dynamique via db.saisons_config → première saison non verrouillée (is_manuel=False) triée desc, sinon max(saison)+1. Vérifié fonctionnel : renvoie 14 sur Preview car S1-S13 toutes verrouillées."
+}

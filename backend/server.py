@@ -5564,7 +5564,17 @@ async def get_statistiques_moyennes_dashboard():
     - Moyenne globale = Total présences / Total événements
     - Moyenne repas = Total présences repas / Total repas
     """
-    CURRENT_SEASON = 13
+    # Déterminer dynamiquement la saison courante :
+    # - Plus grande saison non-verrouillée existante
+    # - Sinon (toutes verrouillées) : max(saison) + 1
+    non_verrouillees = await db.saisons_config.find(
+        {"is_manuel": {"$ne": True}}, {"_id": 0, "saison": 1}
+    ).sort("saison", -1).to_list(1)
+    if non_verrouillees:
+        CURRENT_SEASON = non_verrouillees[0]["saison"]
+    else:
+        toutes = await db.saisons_config.find({}, {"_id": 0, "saison": 1}).sort("saison", -1).to_list(1)
+        CURRENT_SEASON = (toutes[0]["saison"] + 1) if toutes else 1
     
     # Récupérer toutes les configs de saisons (contient les données manuelles pour S1-12)
     configs = await db.saisons_config.find({}, {"_id": 0}).to_list(100)
