@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -186,6 +186,13 @@ const Evenements = () => {
   // Tableau par défaut pour permettre l'édition facile des présences
   const [viewMode, setViewMode] = useState('table');
   const [selectedSeason, setSelectedSeason] = useState(13);
+  // Saison max présente en base (au moins 13, jusqu'à 20)
+  const maxSaisonInDB = useMemo(() => {
+    const seasons = evenements
+      .map(e => Number(e.saison))
+      .filter(n => Number.isFinite(n) && n >= 1 && n <= 20);
+    return Math.max(13, ...seasons);
+  }, [evenements]);
   
   // État pour l'édition en mode tableau
   const [tableEditData, setTableEditData] = useState({});
@@ -1503,8 +1510,8 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => changeSeason(Math.min(13, selectedSeason + 1))}
-                      disabled={selectedSeason >= 13}
+                      onClick={() => changeSeason(Math.min(maxSaisonInDB, selectedSeason + 1))}
+                      disabled={selectedSeason >= maxSaisonInDB}
                       className="border-[#D4A024]/50 text-[#D4A024] hover:bg-[#D4A024]/20 disabled:opacity-30"
                     >
                       <ChevronRight className="w-4 h-4" />
@@ -1515,7 +1522,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                   <div className="flex items-center gap-2 flex-wrap justify-center">
                     <span className="text-gray-400 text-xs sm:text-sm hidden sm:inline">Aller à :</span>
                     <div className="flex flex-wrap gap-1 justify-center max-w-[280px] sm:max-w-none">
-                      {[13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map(num => (
+                      {Array.from({ length: maxSaisonInDB }, (_, i) => maxSaisonInDB - i).map(num => (
                         <button
                           key={num}
                           onClick={() => changeSeason(num)}
@@ -1786,8 +1793,18 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
           {showHistorique && (
             <CardContent className="pt-4">
               <div className="space-y-4">
-                {[...Array(13)].map((_, i) => {
-                  const saisonNum = 13 - i; // De 13 à 1
+                {(() => {
+                  // Déterminer la plus grande saison présente dans les événements
+                  // + toujours inclure au moins jusqu'à la saison 13, plafonné à 20
+                  const saisonMaxEvts = Object.keys(evenementsParSaison || {})
+                    .map(Number)
+                    .filter(n => Number.isFinite(n) && n >= 1 && n <= 20);
+                  const saisonMax = Math.max(13, ...saisonMaxEvts);
+                  // Générer la liste de saisonMax → 1
+                  const saisonsToShow = [];
+                  for (let s = saisonMax; s >= 1; s--) saisonsToShow.push(s);
+                  return saisonsToShow;
+                })().map((saisonNum) => {
                   const evts = evenementsParSaison[saisonNum] || [];
                   const evtsTermines = evts.filter(e => e.statut === 'terminé');
 

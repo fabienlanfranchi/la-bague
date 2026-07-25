@@ -1,0 +1,23 @@
+{
+  "summary": "Iteration 17 - Bug S14 sur page Événements. Backend + Frontend testés. Les 3 bug fixes PRIORITAIRES sont validés: (1) sélecteur 'Aller à:' affiche bien 14, 13, 12, ..., 1 quand un événement S14 existe (season-btn-14 présent, season-btn-15 absent). (2) La flèche droite permet d'aller de S13 → S14 (heading 'Saison 14 (2026-2027)' visible après clic). (3) L'historique déplié affiche bien un bloc data-testid='season-14' (Saison 14 avec 0 événement listé sous statut 'terminé' - normal car l'event créé est 'à venir', mais le bloc de saison s'affiche). Régression validée: après cleanup, /saison-courante=13, aucun season-btn > 13 dans l'UI. Marc Antoine (labague37) → 403 OK. Membres 75-78 → 200 OK. 6/6 tests pytest passent.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_saison14_frontend_bug.py",
+    "/app/test_reports/pytest/iter17_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "POST /api/evenements avec saison=14 crée AUTOMATIQUEMENT un doc saisons_config S14 (server.py L3611-3632). C'est un effet de bord: après suppression de l'event S14, la config S14 reste en base et /saison-courante continue à retourner 14. Recommandation: soit ne créer la config qu'à la demande explicite, soit auto-cleanup la config quand plus aucun event de cette saison n'existe. Impact fonctionnel: la 'saison courante' peut rester bloquée à N même si l'admin supprime tous les événements de S=N.",
+    "Le fix frontend fait 2 fois le même calcul 'max saison en base bornée à [1,20] avec plancher 13': une fois dans useMemo maxSaisonInDB (ligne 190-195) et une autre fois inline dans l'IIFE de l'historique (ligne 1799-1806). Extraire un seul useMemo réutilisé partout (DRY).",
+    "server.py toujours 8582 lignes — devrait être découpé en routers."
+  ],
+  "updated_files": ["/app/backend/tests/test_saison14_frontend_bug.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "labague1 (admin/président), labague37 bloqué (Marc Antoine), labague75-78 nouveaux membres OK. Login endpoint retourne 'access_token' (pas 'token').",
+  "seed_data_creation": "Aucune donnée persistante. Événement TEST_ITER17_S14 + saisons_config S14 créés puis supprimés (via API + delete_many direct MongoDB). Vérifié: 0 event S>13, 0 config S>13, /saison-courante=13.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Fix frontend page Événements pour saison dynamique validé end-to-end (backend + UI Playwright). ATTENTION: la création d'un event S14 crée aussi automatiquement une saisons_config S14 (side-effect de server.py L3611-3632). Pour restaurer un état propre après tests, toujours faire delete_many sur BOTH evenements ET saisons_config pour saison>13 (l'endpoint DELETE /evenements/{id} ne supprime pas la config). Auth: utiliser access_token retourné par /auth/key-login (PAS 'token'). Selectors UI: [data-testid='cle-input'] pour login + button:has-text('Valider'), [data-testid='season-btn-N'], [data-testid='season-N'] (historique), [data-testid='view-mode-list'].",
+  "rca of the issue": "Le bug 'S14 invisible dans page Événements' était dû à des '13' hardcodés dans /app/frontend/src/pages/Evenements.js (bouton flèche disabled à S13, Array.from({length:13}) pour boutons rapides, boucle for s=13 pour historique). Le fix utilise maintenant maxSaisonInDB = Math.max(13, ...seasons_en_base bornées 1-20). Vérifié dans Chrome sur preview URL: quand un event S14 existe, le selector affiche 14,13,...,1 et la section Historique inclut un bloc Saison 14 (2026-2027)."
+}
