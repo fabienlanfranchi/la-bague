@@ -5474,17 +5474,22 @@ async def get_statistiques_saisons_resume():
         
         is_manuel = config.get("is_manuel", False)
         
-        # ➜ nb_membres_actifs est TOUJOURS calculé dynamiquement depuis la base membres
-        #    (respect de l'historique via annee_entree + saisons_exclues)
-        #    Ainsi, si un nouveau membre est ajouté, il apparaîtra automatiquement
-        #    dans le compte à partir de sa saison d'entrée — même si la saison n'a pas encore d'événement.
-        membres_actifs = []
+        # Calcul dynamique en fallback (basé sur annee_entree - respect historique de qui était présent)
+        membres_actifs_dynamique = []
         for m in members:
             premiere_saison = m.get("annee_entree", 2013) - 2012
             saisons_exclues = m.get("saisons_exclues", []) or []
             if saison >= premiere_saison and saison not in saisons_exclues:
-                membres_actifs.append(m["id"])
-        nb_membres_actifs = len(membres_actifs)
+                membres_actifs_dynamique.append(m["id"])
+        
+        # ➜ RÈGLE : si la saison a une valeur manuelle nb_membres_manuel > 0, on l'utilise
+        #    (respect du vrai nombre historique, ex: S1 = 34 membres à l'époque)
+        #    Sinon on tombe sur le calcul dynamique (nouveau, utile pour la saison actuelle vide)
+        nb_membres_manuel = config.get("nb_membres_manuel", 0) or 0
+        if is_manuel and nb_membres_manuel > 0:
+            nb_membres_actifs = nb_membres_manuel
+        else:
+            nb_membres_actifs = len(membres_actifs_dynamique)
         
         # On garde la saison même sans événement (utile pour la saison actuelle en préparation)
         if total_events == 0:
@@ -5521,7 +5526,7 @@ async def get_statistiques_saisons_resume():
             total_pres_anniversaires = 0
             saison_presences = presences_by_saison.get(saison, [])
             for p in saison_presences:
-                if p["membre_id"] in membres_actifs:
+                if p["membre_id"] in membres_actifs_dynamique:
                     total_pres_aperos += p.get("presences_aperos", 0)
                     total_pres_repas += p.get("presences_repas", 0)
                     total_pres_anniversaires += p.get("presences_anniversaires", 0)
@@ -5620,15 +5625,22 @@ async def get_statistiques_moyennes_dashboard():
         nb_anniversaires = config.get("nb_anniversaires", 0)
         total_events_saison = nb_aperos + nb_repas + nb_anniversaires
         
-        # ➜ nb_membres_saison TOUJOURS calculé dynamiquement, même si la saison n'a pas d'événement
-        #    (permet à la saison actuelle sans événement encore créé de remonter le vrai nombre de membres actifs)
-        membres_actifs = []
+        is_manuel = config.get("is_manuel", False)
+        
+        # Fallback dynamique (respect historique via annee_entree)
+        membres_actifs_dynamique = []
         for m in members:
             premiere_saison = m.get("annee_entree", 2013) - 2012
             saisons_exclues = m.get("saisons_exclues", []) or []
             if saison >= premiere_saison and saison not in saisons_exclues:
-                membres_actifs.append(m["id"])
-        nb_membres_saison = len(membres_actifs)
+                membres_actifs_dynamique.append(m["id"])
+        
+        # ➜ Priorité à nb_membres_manuel > 0 (respect du vrai nombre historique)
+        nb_membres_manuel_val = config.get("nb_membres_manuel", 0) or 0
+        if is_manuel and nb_membres_manuel_val > 0:
+            nb_membres_saison = nb_membres_manuel_val
+        else:
+            nb_membres_saison = len(membres_actifs_dynamique)
         
         # Si c'est la saison actuelle, on remonte le nb_membres même sans événements
         if saison == CURRENT_SEASON:
@@ -5637,8 +5649,6 @@ async def get_statistiques_moyennes_dashboard():
         # Pour les stats de présences globales, on skip les saisons sans événements
         if total_events_saison == 0:
             continue
-        
-        is_manuel = config.get("is_manuel", False)
         
         if is_manuel:
             # DONNÉES MANUELLES pour les saisons verrouillées (présences uniquement)
@@ -5654,7 +5664,7 @@ async def get_statistiques_moyennes_dashboard():
             pres_anniv = 0
             saison_presences = presences_by_saison.get(saison, [])
             for p in saison_presences:
-                if p["membre_id"] in membres_actifs:
+                if p["membre_id"] in membres_actifs_dynamique:
                     pres_aperos += p.get("presences_aperos", 0)
                     pres_repas += p.get("presences_repas", 0)
                     pres_anniv += p.get("presences_anniversaires", 0)

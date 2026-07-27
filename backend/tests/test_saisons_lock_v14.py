@@ -238,9 +238,10 @@ class TestReponseSondageDelta:
 
 # -------------------- Tâche 4 : nb_membres_actifs dynamique --------------------
 
-class TestNbMembresActifsDynamique:
-    """Vérifie que membres_actifs / nb_membres_actifs_saison sont calculés depuis la
-    collection members (annee_entree + saisons_exclues) et NON depuis nb_membres_manuel."""
+class TestNbMembresActifsRegleManuelOuDynamique:
+    """Nouvelle règle (iter_16): membres_actifs = nb_membres_manuel si is_manuel=True ET
+    nb_membres_manuel > 0 (respect des valeurs historiques verrouillées comme S1=34).
+    Sinon, calcul dynamique (annee_entree + saisons_exclues) — utile pour S14 vide."""
 
     @pytest.fixture(scope="class")
     def all_members(self):
@@ -248,7 +249,17 @@ class TestNbMembresActifsDynamique:
         assert r.status_code == 200
         return r.json()
 
-    def _expected_for_saison(self, members, saison):
+    @pytest.fixture(scope="class")
+    def all_configs(self):
+        """Dict saison -> config (nb_membres_manuel, is_manuel)."""
+        out = {}
+        for s in range(1, 30):
+            r = requests.get(f"{API}/saisons-config/{s}", timeout=30)
+            if r.status_code == 200:
+                out[s] = r.json()
+        return out
+
+    def _dynamic_for_saison(self, members, saison):
         n = 0
         for m in members:
             premiere = (m.get("annee_entree") or 2013) - 2012
@@ -257,87 +268,124 @@ class TestNbMembresActifsDynamique:
                 n += 1
         return n
 
-    def test_saisons_resume_membres_dynamique(self, all_members):
+    def _expected_for_saison(self, members, config, saison):
+        """Applique la règle: manuel prioritaire si is_manuel + nb_membres_manuel>0."""
+        is_manuel = bool(config.get("is_manuel"))
+        nb_manuel = config.get("nb_membres_manuel", 0) or 0
+        if is_manuel and nb_manuel > 0:
+            return nb_manuel
+        return self._dynamic_for_saison(members, saison)
+
+    def test_saisons_resume_membres_regle_manuelle_ou_dynamique(self, all_members, all_configs):
         r = requests.get(f"{API}/statistiques/saisons-resume", timeout=30)
         assert r.status_code == 200
         stats = r.json()
         assert len(stats) > 0
 
-        total_members = len(all_members)
-        print(f"\n[INFO] Nombre total de membres en base: {total_members}")
-
-        # Pour chaque saison, vérifier membres_actifs == calcul dynamique
         for s in stats:
             saison = s["saison"]
-            expected = self._expected_for_saison(all_members, saison)
+            cfg = all_configs.get(saison, {})
+            expected = self._expected_for_saison(all_members, cfg, saison)
             actual = s["membres_actifs"]
-            print(f"  S{saison}: membres_actifs={actual} (attendu {expected}), is_manuel={s.get('is_manuel')}")
+            print(f"  S{saison}: membres_actifs={actual} (attendu {expected}), "
+                  f"is_manuel={s.get('is_manuel')}, nb_membres_manuel={cfg.get('nb_membres_manuel', 0)}")
             assert actual == expected, (
                 f"S{saison}: membres_actifs={actual} != attendu {expected} "
-                f"(dépend peut-être encore de nb_membres_manuel)"
+                f"(is_manuel={cfg.get('is_manuel')}, nb_membres_manuel={cfg.get('nb_membres_manuel')})"
             )
 
-        # S1 : uniquement fondateurs (annee_entree = 2013 => premiere_saison = 1)
-        s1 = next((s for s in stats if s["saison"] == 1), None)
-        if s1:
-            fondateurs = [m for m in all_members if (m.get("annee_entree") or 2013) == 2013]
-            assert s1["membres_actifs"] == len(fondateurs), (
-                f"S1 devrait avoir {len(fondateurs)} fondateurs, a {s1['membres_actifs']}"
+        # Régression explicite: S1 verrouillée avec nb_membres_manuel=34 doit remonter 34
+        s1_cfg = all_configs.get(1, {})
+        if s1_cfg.get("is_manuel") and (s1_cfg.get("nb_membres_manuel") or 0) > 0:
+            s1 = next((s for s in stats if s["saison"] == 1), None)
+            assert s1 is not None, "S1 absente de saisons-resume"
+            assert s1["membres_actifs"] == s1_cfg["nb_membres_manuel"], (
+                f"S1 doit remonter la valeur historique manuelle "
+                f"{s1_cfg['nb_membres_manuel']}, got {s1['membres_actifs']}"
             )
-            # Sanity: S1 doit être significativement plus petit que total
-            assert s1["membres_actifs"] <= total_members
 
-        # Saison la plus élevée : tous les membres actifs (annee_entree <= 2012+saison)
-        max_s = max(s["saison"] for s in stats)
-        top = next(s for s in stats if s["saison"] == max_s)
-        expected_top = self._expected_for_saison(all_members, max_s)
-        assert top["membres_actifs"] == expected_top
+        # Régression explicite: S14 avec nb_membres_manuel=0 doit remonter le dynamique
+        s14_cfg = all_configs.get(14, {})
+        if (s14_cfg.get("nb_membres_manuel") or 0) == 0:
+            s14 = next((s for s in stats if s["saison"] == 14), None)
+            if s14 is not None:
+                expected_dyn = self._dynamic_for_saison(all_members, 14)
+                assert s14["membres_actifs"] == expected_dyn, (
+                    f"S14 (nb_membres_manuel=0) doit tomber sur dynamique={expected_dyn}, "
+                    f"got {s14['membres_actifs']}"
+                )
 
-    def test_moyennes_dashboard_membres_dynamique(self, all_members):
+    def test_moyennes_dashboard_membres_regle(self, all_members, all_configs):
         r = requests.get(f"{API}/statistiques/moyennes-dashboard", timeout=30)
         assert r.status_code == 200
         data = r.json()
         saison_actuelle = data["saison_actuelle"]
-        expected = self._expected_for_saison(all_members, saison_actuelle)
+        cfg = all_configs.get(saison_actuelle, {})
+        expected = self._expected_for_saison(all_members, cfg, saison_actuelle)
         actual = data["nb_membres_actifs_saison"]
         print(f"\n[INFO] Dashboard saison_actuelle={saison_actuelle}, "
-              f"nb_membres_actifs_saison={actual}, attendu={expected}")
+              f"nb_membres_actifs_saison={actual}, attendu={expected}, "
+              f"is_manuel={cfg.get('is_manuel')}, nb_membres_manuel={cfg.get('nb_membres_manuel')}")
         assert actual == expected, (
-            f"nb_membres_actifs_saison={actual} != attendu {expected} (calcul dynamique)"
+            f"nb_membres_actifs_saison={actual} != attendu {expected}"
         )
 
-        # total_pres_possible_global doit être cohérent : > 0 dès qu'il y a des events
         assert data["total_pres_possible_global"] >= 0
         assert 0 <= data["pct_global"] <= 100
 
-    def test_is_manuel_dynamic_members_but_manual_presences(self, admin_token, all_members):
-        """Sur une saison verrouillée (is_manuel=True), les PRÉSENCES restent manuelles
-        MAIS membres_actifs doit rester dynamique."""
-        # Utiliser S14 qu'on sait verrouillée d'après l'itération précédente
-        r = requests.get(f"{API}/saisons-config/14", timeout=30)
-        if r.status_code != 200:
-            pytest.skip("S14 config not found")
-        cfg = r.json()
-        if not cfg.get("is_manuel"):
-            # Verrouiller pour le test
-            requests.post(f"{API}/saisons-config/14/verrouiller", headers=auth(admin_token), timeout=30)
+    def test_s14_fallback_dynamique_meme_apres_lock_unlock(self, admin_token, all_members, all_configs):
+        """S14 nb_membres_manuel=0 → doit rester dynamique que la saison soit verrouillée ou non."""
+        cfg14 = all_configs.get(14, {})
+        if (cfg14.get("nb_membres_manuel") or 0) > 0:
+            pytest.skip("S14 a une valeur manuelle > 0 - test non applicable")
 
-        r2 = requests.get(f"{API}/statistiques/saisons-resume", timeout=30)
-        stats = r2.json()
-        s14 = next((s for s in stats if s["saison"] == 14), None)
-        if s14 is None:
-            pytest.skip("S14 absente de saisons-resume (probablement pas d'évènements S14)")
+        expected_dyn = self._dynamic_for_saison(all_members, 14)
 
-        expected_membres = self._expected_for_saison(all_members, 14)
-        assert s14["membres_actifs"] == expected_membres, (
-            f"S14 verrouillée: membres_actifs={s14['membres_actifs']} != {expected_membres} dynamique"
+        # Déverrouiller S14
+        requests.post(f"{API}/saisons-config/14/deverrouiller", headers=auth(admin_token), timeout=30)
+        r_dash = requests.get(f"{API}/statistiques/moyennes-dashboard", timeout=30).json()
+        assert r_dash["nb_membres_actifs_saison"] == expected_dyn, (
+            f"S14 déverrouillée: {r_dash['nb_membres_actifs_saison']} != dyn {expected_dyn}"
         )
-        # is_manuel doit être True
-        assert s14.get("is_manuel") is True
 
-    def test_ajout_membre_incremente_compteur(self, all_members):
-        """Ajouter un membre S14 (annee_entree=2026) doit incrémenter membres_actifs de S14 de +1.
-        Nettoyage garanti via try/finally."""
+        # Reverrouiller S14 (nb_membres_manuel reste 0)
+        r_lock = requests.post(f"{API}/saisons-config/14/verrouiller",
+                               headers=auth(admin_token), timeout=30)
+        assert r_lock.status_code == 200
+        # Vérifier que le lock n'a pas mis nb_membres_manuel non nul
+        r_cfg2 = requests.get(f"{API}/saisons-config/14", timeout=30).json()
+        r_dash2 = requests.get(f"{API}/statistiques/moyennes-dashboard", timeout=30).json()
+        if (r_cfg2.get("nb_membres_manuel") or 0) == 0:
+            assert r_dash2["nb_membres_actifs_saison"] == expected_dyn, (
+                f"S14 reverrouillée avec nb_membres_manuel=0: "
+                f"{r_dash2['nb_membres_actifs_saison']} != dyn {expected_dyn}"
+            )
+
+    def test_verrouillage_ne_modifie_pas_valeurs_historiques(self, admin_token, all_configs):
+        """Régression : verrouiller S12/S13 ne doit pas changer leurs membres_actifs
+        (les valeurs manuelles historiques doivent rester intactes)."""
+        for saison in (12, 13):
+            cfg = all_configs.get(saison, {})
+            manual = cfg.get("nb_membres_manuel", 0) or 0
+            if manual <= 0:
+                continue
+            # S'assurer que la saison est verrouillée
+            requests.post(f"{API}/saisons-config/{saison}/verrouiller",
+                          headers=auth(admin_token), timeout=30)
+            r = requests.get(f"{API}/statistiques/saisons-resume", timeout=30).json()
+            s = next((x for x in r if x["saison"] == saison), None)
+            assert s is not None, f"S{saison} absente"
+            assert s["membres_actifs"] == manual, (
+                f"S{saison} verrouillée: membres_actifs={s['membres_actifs']} != "
+                f"historique manuel {manual}"
+            )
+
+    def test_ajout_membre_incremente_compteur_si_dynamique(self, all_members, all_configs):
+        """Ajouter un membre S14 doit incrémenter membres_actifs de S14 SEULEMENT si S14
+        est en mode dynamique (nb_membres_manuel <= 0). Nettoyage via try/finally."""
+        cfg14 = all_configs.get(14, {})
+        if (cfg14.get("nb_membres_manuel") or 0) > 0:
+            pytest.skip("S14 a nb_membres_manuel > 0 - le compteur est manuel, test skip")
         # État initial S14
         r = requests.get(f"{API}/statistiques/saisons-resume", timeout=30)
         stats_before = r.json()
