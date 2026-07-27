@@ -5477,36 +5477,34 @@ async def get_statistiques_saisons_resume():
         
         is_manuel = config.get("is_manuel", False)
         
-        # Pour les saisons avec données manuelles (toutes saisons désormais, plus limitées à ≤12)
+        # ➜ nb_membres_actifs est TOUJOURS calculé dynamiquement depuis la base membres
+        #    (respect de l'historique via annee_entree + saisons_exclues)
+        #    Ainsi, si un nouveau membre est ajouté, il apparaîtra automatiquement
+        #    dans le compte à partir de sa saison d'entrée.
+        membres_actifs = []
+        for m in members:
+            premiere_saison = m.get("annee_entree", 2013) - 2012
+            saisons_exclues = m.get("saisons_exclues", []) or []
+            if saison >= premiere_saison and saison not in saisons_exclues:
+                membres_actifs.append(m["id"])
+        nb_membres_actifs = len(membres_actifs)
+        
+        # Pour les saisons avec données manuelles (verrouillées) : présences depuis config
         if is_manuel:
-            # Utiliser les données manuelles
             total_pres_aperos = config.get("presences_membres_aperos", 0) or 0
             total_pres_repas = config.get("presences_membres_repas", 0) or 0
             total_pres_anniversaires = config.get("presences_membres_anniversaires", 0) or 0
-            nb_membres_actifs = config.get("nb_membres_manuel", 0) or 0
         else:
-            # Calcul automatique depuis les données de présence
-            # Trouver les membres actifs cette saison
-            membres_actifs = []
-            for m in members:
-                premiere_saison = m.get("annee_entree", 2013) - 2012
-                saisons_exclues = m.get("saisons_exclues", [])
-                if saison >= premiere_saison and saison not in saisons_exclues:
-                    membres_actifs.append(m["id"])
-            
-            # Calculer les présences totales
+            # Calcul automatique des présences depuis presences_membres
             total_pres_aperos = 0
             total_pres_repas = 0
             total_pres_anniversaires = 0
-            
             saison_presences = presences_by_saison.get(saison, [])
             for p in saison_presences:
                 if p["membre_id"] in membres_actifs:
                     total_pres_aperos += p.get("presences_aperos", 0)
                     total_pres_repas += p.get("presences_repas", 0)
                     total_pres_anniversaires += p.get("presences_anniversaires", 0)
-            
-            nb_membres_actifs = len(membres_actifs)
         
         total_pres = total_pres_aperos + total_pres_repas + total_pres_anniversaires
         
@@ -5607,25 +5605,23 @@ async def get_statistiques_moyennes_dashboard():
         
         is_manuel = config.get("is_manuel", False)
         
+        # ➜ nb_membres_saison est TOUJOURS calculé dynamiquement (respect historique via annee_entree)
+        membres_actifs = []
+        for m in members:
+            premiere_saison = m.get("annee_entree", 2013) - 2012
+            saisons_exclues = m.get("saisons_exclues", []) or []
+            if saison >= premiere_saison and saison not in saisons_exclues:
+                membres_actifs.append(m["id"])
+        nb_membres_saison = len(membres_actifs)
+        
         if is_manuel:
-            # DONNÉES MANUELLES pour les saisons verrouillées
+            # DONNÉES MANUELLES pour les saisons verrouillées (présences uniquement)
             pres_aperos = config.get("presences_membres_aperos", 0) or 0
             pres_repas = config.get("presences_membres_repas", 0) or 0
             pres_anniv = config.get("presences_membres_anniversaires", 0) or 0
             pres_total = pres_aperos + pres_repas + pres_anniv
-            nb_membres_saison = config.get("nb_membres_manuel", 0) or 0
         else:
             # CALCUL AUTOMATIQUE (saisons non verrouillées)
-            # Trouver les membres actifs cette saison
-            membres_actifs = []
-            for m in members:
-                premiere_saison = m.get("annee_entree", 2013) - 2012
-                saisons_exclues = m.get("saisons_exclues", [])
-                if saison >= premiere_saison and saison not in saisons_exclues:
-                    membres_actifs.append(m["id"])
-            
-            nb_membres_saison = len(membres_actifs)
-            
             # Calculer les présences
             pres_aperos = 0
             pres_repas = 0

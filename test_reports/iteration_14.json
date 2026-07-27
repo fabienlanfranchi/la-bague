@@ -1,0 +1,40 @@
+{
+  "summary": "Backend testing of dynamic nb_membres_actifs calculation. Added 4 new tests to test_saisons_lock_v14.py. 12/14 pass. 2 FAILURES reveal a real bug in /api/statistiques/moyennes-dashboard (and by extension /saisons-resume): when the current season has 0 events (S14 today), the loop hits `if total_events_saison == 0: continue` BEFORE assigning nb_membres_current, so nb_membres_actifs_saison=0 instead of the 35 dynamic members. Regression tests (verrouiller/deverrouiller, saison-actuelle, delta réponse) all still pass. Preview has 35 members. Dynamic calculation itself works correctly for seasons with events (S1..S13 all match expected counts).",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "GET /api/statistiques/moyennes-dashboard",
+        "issue": "nb_membres_actifs_saison=0 pour la saison actuelle (S14) quand elle n'a encore aucun événement. Cause: dans server.py ligne ~5601, `if total_events_saison == 0: continue` s'exécute AVANT le calcul de `nb_membres_saison` et l'assignation `nb_membres_current = nb_membres_saison`. Résultat: dashboard affiche 0 membres actifs pour S14 alors qu'il doit afficher 35. Ajouter un membre ne change rien puisque l'assignation n'a jamais lieu.",
+        "priority": "HIGH"
+      },
+      {
+        "endpoint": "GET /api/statistiques/saisons-resume",
+        "issue": "Symptôme lié: S14 n'apparaît pas du tout dans la liste tant qu'elle n'a pas d'événement (même `continue` à ligne ~5476). Conséquence UX: si l'admin ajoute un membre en attendant que la saison démarre, le compteur reste invisible / à 0."
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_saisons_lock_v14.py",
+    "/app/test_reports/pytest/pytest_saisons_lock_v14.xml"
+  ],
+  "action_items": [
+    "Dans server.py get_statistiques_moyennes_dashboard (~5597): déplacer le calcul de nb_membres_saison et l'assignation `if saison == CURRENT_SEASON: nb_membres_current = nb_membres_saison` AVANT le `if total_events_saison == 0: continue`. Idéalement calculer d'abord membres actifs, puis short-circuit uniquement pour les stats de présence.",
+    "Optionnel mais recommandé: dans get_statistiques_saisons_resume (~5473), inclure la saison courante dans le résultat même sans événements (avec total_events=0, moyennes=0) pour que le front affiche membres_actifs=35 dès l'ajout d'un membre.",
+    "Après fix, relancer `pytest /app/backend/tests/test_saisons_lock_v14.py -v` — les 2 tests TestNbMembresActifsDynamique::test_moyennes_dashboard_membres_dynamique et ::test_ajout_membre_incremente_compteur doivent devenir verts."
+  ],
+  "critical_code_review_comments": [
+    "server.py:5601-5604 et 5473-5476 : `continue` sur total_events_saison==0 court-circuite le calcul dynamique de membres, contredisant l'intention de la refactorisation (nb_membres_actifs indépendant des présences).",
+    "server.py:5556 CURRENT_SEASON fallback hardcodé à 14 — devrait rester dynamique (issue déjà notée iter 13).",
+    "server.py:5544 endpoint moyennes-dashboard toujours sans auth (déjà noté iter 13)."
+  ],
+  "updated_files": ["/app/backend/tests/test_saisons_lock_v14.py"],
+  "success_rate": {"backend": "86% (12/14 pytest, 2 fails révèlent un bug applicatif)", "frontend": "N/A"},
+  "test_credentials": "labague1 (Président), labague3 (Trésorier), labague23 (Membre simple)",
+  "seed_data_creation": "Test test_ajout_membre_incremente_compteur crée un membre TEST_ (numero_membre=9999, annee_entree=2026, saison_entree='Saison 14') et le supprime dans finally. Nettoyage garanti même en cas d'échec d'assertion. Vérifié: 35 membres avant/après.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Tests dans /app/backend/tests/test_saisons_lock_v14.py — 14 tests total, classe TestNbMembresActifsDynamique couvre le calcul dynamique. Preview DB a 35 membres, S1 a 10 fondateurs (annee=2013), S13 a 35, S14 doit avoir 35 dès qu'il y a >=1 event OU dès que le fix code sur le `continue` est appliqué. La classe test_saisons_resume_membres_dynamique passe car elle itère uniquement sur les saisons présentes dans la réponse (donc pas S14 vide) et vérifie l'égalité stricte pour S1..S13.",
+  "rca of the issue": "Root cause: dans get_statistiques_moyennes_dashboard, la boucle `for saison, config in configs_dict.items()` fait un `continue` immédiat si total_events_saison==0. Or c'est le cas de S14 (nb_aperos=nb_repas=nb_anniversaires=0). Le bloc d'assignation `if saison == CURRENT_SEASON: nb_membres_current = nb_membres_saison` se trouve APRÈS ce continue (lignes 5648-5653). Donc pour S14, nb_membres_current reste à la valeur d'initialisation (0). Fix: extraire le calcul de membres_actifs AVANT le continue, ou remplacer `continue` par un simple skip des calculs de présence. Reproduction: `curl $BASE_URL/api/statistiques/moyennes-dashboard | jq .nb_membres_actifs_saison` → 0 (attendu 35)."
+}

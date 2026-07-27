@@ -234,3 +234,158 @@ class TestReponseSondageDelta:
         # Nettoyage : remettre l'état initial
         # Si Fabien n'avait pas de réponse au départ, supprimer la réponse
         requests.delete(f"{API}/reponses-sondages/{evt_id}/{fabien_id}", timeout=30)
+
+
+# -------------------- Tâche 4 : nb_membres_actifs dynamique --------------------
+
+class TestNbMembresActifsDynamique:
+    """Vérifie que membres_actifs / nb_membres_actifs_saison sont calculés depuis la
+    collection members (annee_entree + saisons_exclues) et NON depuis nb_membres_manuel."""
+
+    @pytest.fixture(scope="class")
+    def all_members(self):
+        r = requests.get(f"{API}/members", timeout=30)
+        assert r.status_code == 200
+        return r.json()
+
+    def _expected_for_saison(self, members, saison):
+        n = 0
+        for m in members:
+            premiere = (m.get("annee_entree") or 2013) - 2012
+            excl = m.get("saisons_exclues") or []
+            if saison >= premiere and saison not in excl:
+                n += 1
+        return n
+
+    def test_saisons_resume_membres_dynamique(self, all_members):
+        r = requests.get(f"{API}/statistiques/saisons-resume", timeout=30)
+        assert r.status_code == 200
+        stats = r.json()
+        assert len(stats) > 0
+
+        total_members = len(all_members)
+        print(f"\n[INFO] Nombre total de membres en base: {total_members}")
+
+        # Pour chaque saison, vérifier membres_actifs == calcul dynamique
+        for s in stats:
+            saison = s["saison"]
+            expected = self._expected_for_saison(all_members, saison)
+            actual = s["membres_actifs"]
+            print(f"  S{saison}: membres_actifs={actual} (attendu {expected}), is_manuel={s.get('is_manuel')}")
+            assert actual == expected, (
+                f"S{saison}: membres_actifs={actual} != attendu {expected} "
+                f"(dépend peut-être encore de nb_membres_manuel)"
+            )
+
+        # S1 : uniquement fondateurs (annee_entree = 2013 => premiere_saison = 1)
+        s1 = next((s for s in stats if s["saison"] == 1), None)
+        if s1:
+            fondateurs = [m for m in all_members if (m.get("annee_entree") or 2013) == 2013]
+            assert s1["membres_actifs"] == len(fondateurs), (
+                f"S1 devrait avoir {len(fondateurs)} fondateurs, a {s1['membres_actifs']}"
+            )
+            # Sanity: S1 doit être significativement plus petit que total
+            assert s1["membres_actifs"] <= total_members
+
+        # Saison la plus élevée : tous les membres actifs (annee_entree <= 2012+saison)
+        max_s = max(s["saison"] for s in stats)
+        top = next(s for s in stats if s["saison"] == max_s)
+        expected_top = self._expected_for_saison(all_members, max_s)
+        assert top["membres_actifs"] == expected_top
+
+    def test_moyennes_dashboard_membres_dynamique(self, all_members):
+        r = requests.get(f"{API}/statistiques/moyennes-dashboard", timeout=30)
+        assert r.status_code == 200
+        data = r.json()
+        saison_actuelle = data["saison_actuelle"]
+        expected = self._expected_for_saison(all_members, saison_actuelle)
+        actual = data["nb_membres_actifs_saison"]
+        print(f"\n[INFO] Dashboard saison_actuelle={saison_actuelle}, "
+              f"nb_membres_actifs_saison={actual}, attendu={expected}")
+        assert actual == expected, (
+            f"nb_membres_actifs_saison={actual} != attendu {expected} (calcul dynamique)"
+        )
+
+        # total_pres_possible_global doit être cohérent : > 0 dès qu'il y a des events
+        assert data["total_pres_possible_global"] >= 0
+        assert 0 <= data["pct_global"] <= 100
+
+    def test_is_manuel_dynamic_members_but_manual_presences(self, admin_token, all_members):
+        """Sur une saison verrouillée (is_manuel=True), les PRÉSENCES restent manuelles
+        MAIS membres_actifs doit rester dynamique."""
+        # Utiliser S14 qu'on sait verrouillée d'après l'itération précédente
+        r = requests.get(f"{API}/saisons-config/14", timeout=30)
+        if r.status_code != 200:
+            pytest.skip("S14 config not found")
+        cfg = r.json()
+        if not cfg.get("is_manuel"):
+            # Verrouiller pour le test
+            requests.post(f"{API}/saisons-config/14/verrouiller", headers=auth(admin_token), timeout=30)
+
+        r2 = requests.get(f"{API}/statistiques/saisons-resume", timeout=30)
+        stats = r2.json()
+        s14 = next((s for s in stats if s["saison"] == 14), None)
+        if s14 is None:
+            pytest.skip("S14 absente de saisons-resume (probablement pas d'évènements S14)")
+
+        expected_membres = self._expected_for_saison(all_members, 14)
+        assert s14["membres_actifs"] == expected_membres, (
+            f"S14 verrouillée: membres_actifs={s14['membres_actifs']} != {expected_membres} dynamique"
+        )
+        # is_manuel doit être True
+        assert s14.get("is_manuel") is True
+
+    def test_ajout_membre_incremente_compteur(self, all_members):
+        """Ajouter un membre S14 (annee_entree=2026) doit incrémenter membres_actifs de S14 de +1.
+        Nettoyage garanti via try/finally."""
+        # État initial S14
+        r = requests.get(f"{API}/statistiques/saisons-resume", timeout=30)
+        stats_before = r.json()
+        s14_before = next((s for s in stats_before if s["saison"] == 14), None)
+        # Si S14 n'a pas d'events → pas dans saisons-resume ; utilisons dashboard à la place
+        if s14_before is None:
+            r_dash = requests.get(f"{API}/statistiques/moyennes-dashboard", timeout=30)
+            dash_before = r_dash.json()
+            if dash_before.get("saison_actuelle") != 14:
+                pytest.skip(f"saison_actuelle={dash_before.get('saison_actuelle')} != 14")
+            n_before = dash_before["nb_membres_actifs_saison"]
+        else:
+            n_before = s14_before["membres_actifs"]
+
+        # Trouver un numéro libre (>=999 pour ne pas percuter la production)
+        used = {m["numero_membre"] for m in all_members}
+        test_numero = 9999
+        while test_numero in used:
+            test_numero -= 1
+
+        payload = {
+            "numero_membre": test_numero,
+            "nom_complet": "TEST_Membre Dynamique",
+            "fonction": "Membre",
+            "annee_entree": 2026,
+            "saison_entree": "Saison 14",
+        }
+        created_id = None
+        try:
+            r_create = requests.post(f"{API}/members", json=payload, timeout=30)
+            assert r_create.status_code == 200, f"Create failed: {r_create.status_code} {r_create.text}"
+            created_id = r_create.json()["id"]
+
+            # Récupérer stats après
+            if s14_before is None:
+                r_dash2 = requests.get(f"{API}/statistiques/moyennes-dashboard", timeout=30)
+                n_after = r_dash2.json()["nb_membres_actifs_saison"]
+            else:
+                r2 = requests.get(f"{API}/statistiques/saisons-resume", timeout=30)
+                s14_after = next((s for s in r2.json() if s["saison"] == 14), None)
+                assert s14_after is not None
+                n_after = s14_after["membres_actifs"]
+
+            print(f"\n[INFO] S14 membres_actifs avant={n_before} après ajout={n_after}")
+            assert n_after == n_before + 1, (
+                f"Ajout d'un membre S14 non pris en compte : {n_before} -> {n_after}"
+            )
+        finally:
+            if created_id:
+                r_del = requests.delete(f"{API}/members/{created_id}", timeout=30)
+                assert r_del.status_code in (200, 204), f"Cleanup failed: {r_del.status_code} {r_del.text}"
