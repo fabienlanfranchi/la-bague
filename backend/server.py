@@ -4100,6 +4100,37 @@ async def delete_reponse_manuelle(reponse_id: str):
             "ajout_manuel": True
         })
     
+    # Si c'était une réponse de membre présent, décrémenter presences_membres + supprimer presences_log
+    was_present = reponse.get('present', False)
+    if reponse.get('type') == 'membre_manuel' and reponse.get('membre_id') and was_present:
+        evt = await db.evenements.find_one({"id": reponse['evenement_id']}, {"type_sondage": 1, "saison": 1, "_id": 0})
+        if evt:
+            evt_type = (evt.get("type_sondage") or "").lower()
+            evt_saison = evt.get("saison")
+            presence_field = None
+            if evt_type == "repas":
+                presence_field = "presences_repas"
+            elif evt_type in ("apero", "apéro"):
+                presence_field = "presences_aperos"
+            elif evt_type == "anniversaire":
+                presence_field = "presences_anniversaires"
+            if presence_field and evt_saison is not None:
+                existing_p = await db.presences_membres.find_one({
+                    "membre_id": reponse['membre_id'],
+                    "saison": evt_saison
+                })
+                if existing_p and existing_p.get(presence_field, 0) > 0:
+                    await db.presences_membres.update_one(
+                        {"membre_id": reponse['membre_id'], "saison": evt_saison},
+                        {"$inc": {presence_field: -1},
+                         "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}}
+                    )
+        # Nettoyer aussi presences_log (sinon re-création admin ne compterait plus)
+        await db.presences_log.delete_many({
+            "evenement_id": reponse['evenement_id'],
+            "membre_id": reponse['membre_id']
+        })
+    
     # Supprimer la réponse manuelle
     await db.reponses_manuelles.delete_one({"id": reponse_id})
     

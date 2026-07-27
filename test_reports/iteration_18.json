@@ -1,0 +1,23 @@
+{
+  "summary": "Retest du correctif appliqué au DELETE /api/reponses-manuelles/{id} qui devait (a) décrémenter presences_membres[presence_field] avec garde-fou anti-négatif et (b) nettoyer presences_log. 3 nouveaux scénarios (A, B, C) ajoutés à /app/backend/tests/test_reponse_manuelle_no_double.py + les 4 tests existants + les 15 tests de régression test_saisons_lock_v14.py. Résultat: 22/22 tests PASS. Scénario A (cycle ADD→DELETE→ADD) confirme que la décrémentation ET le nettoyage de presences_log fonctionnent (la re-création admin re-incrémente bien de +1). Scénario B (compteur à 0) confirme le garde-fou anti-négatif (reste 0). Scénario C (suppression d'un absent) confirme qu'aucun décrément n'est appliqué si present=False. Événement test: 'Panzò' repas saison 13 (id=76b39431-4b9d-4b93-83dd-c2ca5f3d1474). Membre test: Ludovic Leca (labague18, id=1895c48b-d32e-407c-af1b-e964fc5793c2).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_reponse_manuelle_no_double.py",
+    "/app/test_reports/pytest/pytest_iter18_delete_cycle.xml",
+    "/app/test_reports/pytest/pytest_iter18_saisons_regression.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py L4081-4137 (delete_reponse_manuelle) : le fix est correct et symétrique avec annuler_reponse_sondage. Le check `> 0` garantit l'idempotence en cas de suppression multiple. Le mapping type_sondage→presence_field couvre bien repas/apero/anniversaire.",
+    "Suggestion mineure : extraire le mapping type_sondage→presence_field dans une constante ou helper `_presence_field_for(evt_type)` — il apparaît en miroir dans create_reponse_manuelle, submit_reponse_sondage et delete_reponse_manuelle."
+  ],
+  "updated_files": ["/app/backend/tests/test_reponse_manuelle_no_double.py (3 scénarios ajoutés : A, B, C)"],
+  "success_rate": {"backend": "100% (22/22 : 7 tests reponse-manuelle + 15 régression saisons/lock)", "frontend": "N/A"},
+  "test_credentials": "labague1 (Fabien admin), labague18 (Ludovic Leca)",
+  "seed_data_creation": "Réponses manuelles temporaires créées pour Ludovic sur évt Panzò saison 13. Fixture 'snapshot' nettoie et restaure presences_repas à sa valeur initiale après chaque test — aucun résidu.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Le fix DELETE /api/reponses-manuelles/{id} est complet et validé sur 3 axes : (A) décrément effectif, (B) garde-fou anti-négatif, (C) pas de décrément si absent. Le cycle ADD→DELETE→ADD est désormais idempotent grâce au cleanup presences_log. Les 22 tests couvrent tout le flux reponse manuelle + saisons lock. Aucune action requise.",
+  "rca of the issue": "Cf. iteration_17.json — l'iteration_18 ne fait que valider les 2 corrections mineures ajoutées après coup (décrément presences_membres et cleanup presences_log dans delete_reponse_manuelle)."
+}

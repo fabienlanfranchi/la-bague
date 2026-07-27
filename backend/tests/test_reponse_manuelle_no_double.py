@@ -351,3 +351,128 @@ class TestReponseManuelleNoDoublon:
         assert mongo.reponses_sondages.find_one(
             {"evenement_id": evt_id, "membre_id": membre_id, "ajout_manuel": True}
         ) is None
+
+    # -------- Scenario A: cycle complet ADD → DELETE → ADD --------
+    def test_A_add_delete_add_cycle_decrement_and_relog(
+        self, mongo, snapshot, admin_token, ludovic
+    ):
+        evt_id = snapshot["evt_id"]
+        membre_id = snapshot["membre_id"]
+        saison = snapshot["saison"]
+        initial = snapshot["initial_presences_repas"]
+
+        payload = {
+            "evenement_id": evt_id,
+            "nom": ludovic["member"]["nom_complet"],
+            "type": "membre_manuel",
+            "membre_id": membre_id,
+            "present": True,
+            "choix_entree": "E-A",
+            "choix_plat": "P-A",
+            "choix_dessert": "D-A",
+        }
+
+        # (1) ADD #1 → +1
+        r = requests.post(f"{API}/reponses-manuelles", json=payload, headers=auth(admin_token), timeout=30)
+        assert r.status_code == 200, r.text
+        rm_id = r.json()["reponse"]["id"]
+        assert _get_presences_repas(mongo, membre_id, saison) == initial + 1
+
+        # (2) DELETE → doit décrémenter à initial
+        r = requests.delete(f"{API}/reponses-manuelles/{rm_id}", headers=auth(admin_token), timeout=30)
+        assert r.status_code == 200, r.text
+        after_delete = _get_presences_repas(mongo, membre_id, saison)
+        assert after_delete == initial, (
+            f"After DELETE expected {initial}, got {after_delete} (delta={after_delete-initial})"
+        )
+        # presences_log doit être nettoyé
+        remaining_log = mongo.presences_log.count_documents({"evenement_id": evt_id, "membre_id": membre_id})
+        assert remaining_log == 0, f"presences_log not cleaned: {remaining_log} entries remain"
+
+        # (3) ADD #2 → doit re-incrémenter à initial+1 (idempotence de re-création)
+        r = requests.post(f"{API}/reponses-manuelles", json=payload, headers=auth(admin_token), timeout=30)
+        assert r.status_code == 200, r.text
+        after_readd = _get_presences_repas(mongo, membre_id, saison)
+        assert after_readd == initial + 1, (
+            f"After re-ADD expected {initial+1}, got {after_readd} — presences_log likely not cleaned"
+        )
+
+    # -------- Scenario B: non-négatif (garde-fou) --------
+    def test_B_delete_no_negative_when_counter_zero(
+        self, mongo, snapshot, admin_token, ludovic
+    ):
+        evt_id = snapshot["evt_id"]
+        membre_id = snapshot["membre_id"]
+        saison = snapshot["saison"]
+        initial = snapshot["initial_presences_repas"]
+
+        # ADD
+        r = requests.post(
+            f"{API}/reponses-manuelles",
+            json={
+                "evenement_id": evt_id,
+                "nom": ludovic["member"]["nom_complet"],
+                "type": "membre_manuel",
+                "membre_id": membre_id,
+                "present": True,
+                "choix_entree": "E-B",
+                "choix_plat": "P-B",
+                "choix_dessert": "D-B",
+            },
+            headers=auth(admin_token),
+            timeout=30,
+        )
+        assert r.status_code == 200, r.text
+        rm_id = r.json()["reponse"]["id"]
+
+        # Force presences_repas à 0 artificiellement
+        _set_presences_repas(mongo, membre_id, saison, 0)
+        assert _get_presences_repas(mongo, membre_id, saison) == 0
+
+        # DELETE → doit rester à 0 (pas -1)
+        r = requests.delete(f"{API}/reponses-manuelles/{rm_id}", headers=auth(admin_token), timeout=30)
+        assert r.status_code == 200, r.text
+        after = _get_presences_repas(mongo, membre_id, saison)
+        assert after == 0, f"Counter went negative! Expected 0, got {after}"
+
+        # Restore for teardown consistency
+        _set_presences_repas(mongo, membre_id, saison, initial)
+
+    # -------- Scenario C: suppression d'un absent --------
+    def test_C_delete_absent_no_decrement(
+        self, mongo, snapshot, admin_token, ludovic
+    ):
+        evt_id = snapshot["evt_id"]
+        membre_id = snapshot["membre_id"]
+        saison = snapshot["saison"]
+        initial = snapshot["initial_presences_repas"]
+
+        # ADD absent (present=False)
+        r = requests.post(
+            f"{API}/reponses-manuelles",
+            json={
+                "evenement_id": evt_id,
+                "nom": ludovic["member"]["nom_complet"],
+                "type": "membre_manuel",
+                "membre_id": membre_id,
+                "present": False,
+                "choix_entree": None,
+                "choix_plat": None,
+                "choix_dessert": None,
+            },
+            headers=auth(admin_token),
+            timeout=30,
+        )
+        assert r.status_code == 200, r.text
+        rm_id = r.json()["reponse"]["id"]
+
+        # presences_repas ne doit PAS bouger sur ADD absent
+        assert _get_presences_repas(mongo, membre_id, saison) == initial
+
+        # DELETE → doit rester à initial (pas de décrément puisque non-présent)
+        r = requests.delete(f"{API}/reponses-manuelles/{rm_id}", headers=auth(admin_token), timeout=30)
+        assert r.status_code == 200, r.text
+        after = _get_presences_repas(mongo, membre_id, saison)
+        assert after == initial, (
+            f"Deleting absent response should not change counter. Expected {initial}, got {after}"
+        )
