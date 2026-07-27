@@ -14,8 +14,8 @@
 - Flows validés : `/saison-actuelle`, `/moyennes-dashboard`, `/verrouiller`, `/deverrouiller` (avec auth JWT 401/403/200), delta réponses sans compteur négatif
 
 ### Commentaires de code (à traiter plus tard, P2)
-- ⚠️ `submit_reponse_sondage` ne vérifie pas que `session_member_id === input.membre_id` : n'importe qui avec un `membre_id` peut modifier la réponse d'un autre (audit_log capture mais ne bloque pas). À sécuriser.
 - server.py > 8500 lignes : refactorisation modules recommandée
+- ~~submit_reponse_sondage sans vérification membre_id~~ : ÉCARTÉ le 15/06/2026 — club privé de 35 membres, l'app envoie toujours `currentMember.id`, audit_log capture toute modification. Non pertinent.
 
 ---
 
