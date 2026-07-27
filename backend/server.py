@@ -5472,15 +5472,12 @@ async def get_statistiques_saisons_resume():
         nb_anniversaires = config.get("nb_anniversaires", 0)
         total_events = nb_aperos + nb_repas + nb_anniversaires
         
-        if total_events == 0:
-            continue
-        
         is_manuel = config.get("is_manuel", False)
         
         # ➜ nb_membres_actifs est TOUJOURS calculé dynamiquement depuis la base membres
         #    (respect de l'historique via annee_entree + saisons_exclues)
         #    Ainsi, si un nouveau membre est ajouté, il apparaîtra automatiquement
-        #    dans le compte à partir de sa saison d'entrée.
+        #    dans le compte à partir de sa saison d'entrée — même si la saison n'a pas encore d'événement.
         membres_actifs = []
         for m in members:
             premiere_saison = m.get("annee_entree", 2013) - 2012
@@ -5488,6 +5485,29 @@ async def get_statistiques_saisons_resume():
             if saison >= premiere_saison and saison not in saisons_exclues:
                 membres_actifs.append(m["id"])
         nb_membres_actifs = len(membres_actifs)
+        
+        # On garde la saison même sans événement (utile pour la saison actuelle en préparation)
+        if total_events == 0:
+            stats.append({
+                "saison": saison,
+                "annee_debut": 2012 + saison,
+                "annee_fin": 2013 + saison,
+                "nb_aperos": 0,
+                "nb_repas": 0,
+                "nb_anniversaires": 0,
+                "total_events": 0,
+                "membres_actifs": nb_membres_actifs,
+                "presences_membres_aperos": 0,
+                "presences_membres_repas": 0,
+                "presences_membres_anniversaires": 0,
+                "presences_total": 0,
+                "moy_aperos": 0,
+                "moy_repas": 0,
+                "moy_anniversaires": 0,
+                "moy_global": 0,
+                "is_manuel": is_manuel,
+            })
+            continue
         
         # Pour les saisons avec données manuelles (verrouillées) : présences depuis config
         if is_manuel:
@@ -5600,12 +5620,8 @@ async def get_statistiques_moyennes_dashboard():
         nb_anniversaires = config.get("nb_anniversaires", 0)
         total_events_saison = nb_aperos + nb_repas + nb_anniversaires
         
-        if total_events_saison == 0:
-            continue
-        
-        is_manuel = config.get("is_manuel", False)
-        
-        # ➜ nb_membres_saison est TOUJOURS calculé dynamiquement (respect historique via annee_entree)
+        # ➜ nb_membres_saison TOUJOURS calculé dynamiquement, même si la saison n'a pas d'événement
+        #    (permet à la saison actuelle sans événement encore créé de remonter le vrai nombre de membres actifs)
         membres_actifs = []
         for m in members:
             premiere_saison = m.get("annee_entree", 2013) - 2012
@@ -5613,6 +5629,16 @@ async def get_statistiques_moyennes_dashboard():
             if saison >= premiere_saison and saison not in saisons_exclues:
                 membres_actifs.append(m["id"])
         nb_membres_saison = len(membres_actifs)
+        
+        # Si c'est la saison actuelle, on remonte le nb_membres même sans événements
+        if saison == CURRENT_SEASON:
+            nb_membres_current = nb_membres_saison
+        
+        # Pour les stats de présences globales, on skip les saisons sans événements
+        if total_events_saison == 0:
+            continue
+        
+        is_manuel = config.get("is_manuel", False)
         
         if is_manuel:
             # DONNÉES MANUELLES pour les saisons verrouillées (présences uniquement)
@@ -5644,13 +5670,12 @@ async def get_statistiques_moyennes_dashboard():
         if nb_membres_saison > 0:
             total_pres_possible_global += total_events_saison * nb_membres_saison
         
-        # Si c'est la saison actuelle
+        # Si c'est la saison actuelle, on stocke les autres compteurs de présence
         if saison == CURRENT_SEASON:
             total_pres_current = pres_total
             total_events_current = total_events_saison
             total_pres_repas_current = pres_repas
             total_nb_repas_current = nb_repas
-            nb_membres_current = nb_membres_saison
     
     # ========== CALCUL DES RÉSULTATS ==========
     

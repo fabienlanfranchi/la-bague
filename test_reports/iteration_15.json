@@ -1,0 +1,16 @@
+{
+  "summary": "Regression test of fix for iteration_14 bug: nb_membres_actifs_saison now correctly returned even when current saison (S14) has 0 events. All 14 backend tests in test_saisons_lock_v14.py pass, including the 2 previously failing (test_moyennes_dashboard_membres_dynamique, test_ajout_membre_incremente_compteur). Manual API verification: /api/statistiques/moyennes-dashboard returns saison_actuelle=14, nb_membres_actifs_saison=35. /api/statistiques/saisons-resume includes S14 with membres_actifs=35, is_manuel=true, total_events=0. Historical values match (S1=10, S8=26, S13=35). Dynamic add/remove member test passes (create member S14 => 36, cleanup => 35).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": ["/app/backend/tests/test_saisons_lock_v14.py", "/app/test_reports/pytest/pytest_saisons_lock_v14.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (14/14)", "frontend": "N/A"},
+  "test_credentials": "labague1 (Fabien admin), labague3 (Jacques tresorier), labague23 (Pascal member)",
+  "seed_data_creation": "Test creates temporary member numero=9999 (annee_entree=2026, Saison 14) and deletes it in try/finally cleanup - verified cleanup works.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iteration_14 bug is fixed. All 14 tests in test_saisons_lock_v14.py pass. saisons-resume now includes seasons with 0 events (like S14). Historic S1-S14 values confirmed via API: S1=10, S8=26, S13=35, S14=35 (Preview env).",
+  "rca of the issue": "In iteration_14, the loop in get_statistiques_moyennes_dashboard skipped iterations with total_events_saison==0 via `continue` BEFORE calculating/assigning nb_membres_current. Fix moved membre calculation and assignment BEFORE the total_events==0 check. Similar fix in get_statistiques_saisons_resume so seasons with 0 events (like S14) are still included with membres_actifs computed dynamically. Verified fixed and stable."
+}
