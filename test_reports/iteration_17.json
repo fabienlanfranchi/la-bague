@@ -1,0 +1,34 @@
+{
+  "summary": "Bugfix double comptage réponse manuelle validé. 4 nouveaux tests créés dans test_reponse_manuelle_no_double.py, tous passent, + les 15 tests de régression de test_saisons_lock_v14.py passent aussi (19/19 total). Scénarios couverts: (1) Admin POST /api/reponses-manuelles type=membre_manuel present=True → presences_repas +1 ET reponses_evenements contient bien le doc avec ajout_manuel=True ET GET /api/reponses-sondages/{evt}/{membre} par Ludovic retourne le doc pré-rempli avec ajout_manuel=True; puis Ludovic re-poste la même réponse via POST /api/reponses-sondages → presences_repas reste inchangé (PAS de double comptage). (2) présent→absent via POST /api/reponses-sondages décrémente correctement à la valeur initiale. (3) Modification menu uniquement (plat change, present reste True) → delta=0. (4) DELETE /api/reponses-manuelles/{id} supprime bien l'entrée ajout_manuel=True de reponses_evenements ET de reponses_sondages. Événement test: 'Panzò' saison 13 (repas terminé le plus récent). Membre test: Ludovic Leca (labague18, id=1895c48b-d32e-407c-af1b-e964fc5793c2).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "DELETE /api/reponses-manuelles/{id}", "issue": "Ne décrémente PAS presences_membres.presences_repas quand ajout_manuel=True avec present=True. Seul reponses_evenements/reponses_sondages sont nettoyés. Peut créer un décalage si l'admin supprime une réponse manuelle qui avait incrémenté le compteur via presences_log. Comparer avec DELETE /api/reponses-sondages/{evt}/{membre} qui, lui, décrémente correctement."},
+      {"endpoint": "DELETE /api/reponses-manuelles/{id}", "issue": "Ne nettoie pas presences_log, donc si l'admin re-crée une réponse manuelle pour le même couple (evt, membre) après suppression, le contrôle 'already_counted' bloquera à jamais l'incrément de presences_membres."}
+    ]
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_reponse_manuelle_no_double.py",
+    "/app/test_reports/pytest/pytest_reponse_manuelle_no_double.xml",
+    "/app/test_reports/pytest/pytest_saisons_lock_regression.xml"
+  ],
+  "action_items": [
+    "Optionnel: Aligner DELETE /api/reponses-manuelles/{id} sur DELETE /api/reponses-sondages: si l'entrée ajout_manuel dans reponses_evenements avait present=True, décrémenter presences_membres[presence_field] ET supprimer l'entrée presences_log associée. Sinon suppression admin → re-création admin ne re-comptera plus la présence."
+  ],
+  "critical_code_review_comments": [
+    "server.py L4081-4106 (delete_reponse_manuelle): cascade incomplète — n'appelle pas la mise à jour de presences_membres ni ne supprime presences_log. Contraste avec L3835-3910 (annuler_reponse_sondage) qui gère les 2 collections + le compteur.",
+    "server.py L3971-4076 (create_reponse_manuelle) : logique dupliquée avec submit_reponse_sondage. La partie 'incrémenter presences_membres + presences_log' pourrait être extraite dans un helper _increment_presence(membre_id, saison, evt_id, presence_field).",
+    "server.py L3856-3872: double delete_one sur reponses_evenements consécutifs (avec puis sans filtre ajout_manuel) — redondant, le premier delete supprime déjà tout doc du couple (evt, membre)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_reponse_manuelle_no_double.py (nouveau fichier, 4 tests)"
+  ],
+  "success_rate": {"backend": "100% (19/19: 4 nouveaux + 15 régression)", "frontend": "N/A"},
+  "test_credentials": "labague1 (Fabien admin), labague18 (Ludovic Leca membre simple)",
+  "seed_data_creation": "Réponses manuelles temporaires créées pour Ludovic (id=1895c48b-d32e-407c-af1b-e964fc5793c2) sur évt Panzò (id=366af3f9-9ade-44f3-9b0c-2a91d5cbc183, saison 13). Fixture 'snapshot' nettoie les collections reponses_manuelles/reponses_evenements/reponses_sondages/presences_log et restaure presences_membres.presences_repas à sa valeur initiale après chaque test. Aucun résidu.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Le fix double-comptage est validé (test_1). La cascade DELETE reponses-manuelles → reponses_evenements est OK (test_4). Deux améliorations mineures à considérer côté DELETE reponses-manuelles: (a) décrémenter presences_membres si l'entrée était present=True, (b) nettoyer presences_log pour permettre re-création idempotente. Ces points ne bloquent pas le flow utilisateur nominal décrit dans le bug rapport initial mais peuvent créer des incohérences si l'admin utilise l'action Supprimer sur une réponse manuelle qu'il vient d'ajouter. Le test file /app/backend/tests/test_reponse_manuelle_no_double.py utilise pymongo pour cleanup/assertions directes (MONGO_URL localhost:27017, DB=test_database).",
+  "rca of the issue": "Bug d'origine: create_reponse_manuelle écrivait uniquement dans reponses_sondages (legacy) mais le GET /api/reponses-sondages/{evt}/{membre} et le POST /api/reponses-sondages du Dashboard membre lisent/écrivent dans reponses_evenements. Résultat: le membre voyait un formulaire vide et re-répondait, causant un second incrément de presences_repas (double comptage). Fix appliqué (server.py L3971-4022): create_reponse_manuelle écrit désormais dans reponses_evenements avec marqueur ajout_manuel=True (source de vérité) + miroir legacy dans reponses_sondages. Le existing check dans submit_reponse_sondage (L3644-3752) rend l'idempotence naturelle: si présent→présent, delta=0. Validation: test_1 confirme après POST manuel + GET côté membre + POST identique côté membre, presences_repas reste à initial+1."
+}

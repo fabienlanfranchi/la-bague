@@ -3855,10 +3855,15 @@ async def annuler_reponse_sondage(evenement_id: str, membre_id: str):
         "membre_id": membre_id
     })
     
-    # Supprimer aussi de reponses_sondages si c'était un ajout manuel
+    # Supprimer aussi de reponses_sondages ET reponses_evenements (si ajout manuel)
     await db.reponses_sondages.delete_one({
         "evenement_id": evenement_id,
         "membre_id": membre_id
+    })
+    await db.reponses_evenements.delete_one({
+        "evenement_id": evenement_id,
+        "membre_id": membre_id,
+        "ajout_manuel": True
     })
     
     # Supprimer aussi de reponses_manuelles
@@ -3970,27 +3975,51 @@ async def create_reponse_manuelle(input: ReponseManuelleCreate):
     
     # Si c'est un membre (pas un invité), créer aussi une vraie réponse de sondage
     # pour que ça compte dans ses stats et celles du club
+    # ⚠️ On écrit dans reponses_evenements (source de vérité pour le Dashboard membre)
+    # et aussi dans reponses_sondages (pour rétrocompat avec anciens endpoints)
     if input.type == 'membre_manuel' and input.membre_id:
-        # Vérifier si le membre n'a pas déjà répondu
-        existing = await db.reponses_sondages.find_one({
+        now_iso = datetime.now(timezone.utc).isoformat()
+        # Vérifier si le membre n'a pas déjà répondu (dans reponses_evenements)
+        existing_evt = await db.reponses_evenements.find_one({
             "evenement_id": input.evenement_id,
             "membre_id": input.membre_id
         })
         
-        if not existing:
-            # Créer la réponse de sondage officielle
-            sondage_response = {
-                "id": str(uuid.uuid4()),
-                "evenement_id": input.evenement_id,
-                "membre_id": input.membre_id,
-                "present": input.present,
-                "choix_entree": input.choix_entree,
-                "choix_plat": input.choix_plat,
-                "choix_dessert": input.choix_dessert,
-                "repondu_le": datetime.now(timezone.utc).isoformat(),
-                "ajout_manuel": True  # Marqueur pour savoir que c'est un ajout manuel
-            }
-            await db.reponses_sondages.insert_one(sondage_response)
+        sondage_doc = {
+            "evenement_id": input.evenement_id,
+            "membre_id": input.membre_id,
+            "present": input.present,
+            "choix_entree": input.choix_entree,
+            "choix_plat": input.choix_plat,
+            "choix_dessert": input.choix_dessert,
+            "ajout_manuel": True,  # Marqueur pour savoir que c'est un ajout par le président
+            "updated_at": now_iso
+        }
+        
+        if existing_evt:
+            # Mise à jour (le membre avait déjà une réponse)
+            await db.reponses_evenements.update_one(
+                {"evenement_id": input.evenement_id, "membre_id": input.membre_id},
+                {"$set": sondage_doc}
+            )
+        else:
+            # Nouvelle réponse
+            sondage_doc["id"] = str(uuid.uuid4())
+            sondage_doc["created_at"] = now_iso
+            sondage_doc["repondu_le"] = now_iso
+            await db.reponses_evenements.insert_one(sondage_doc)
+        
+        # Miroir legacy dans reponses_sondages (au cas où d'autres endpoints le lisent)
+        existing_legacy = await db.reponses_sondages.find_one({
+            "evenement_id": input.evenement_id,
+            "membre_id": input.membre_id
+        })
+        if not existing_legacy:
+            legacy_doc = dict(sondage_doc)
+            legacy_doc.setdefault("id", str(uuid.uuid4()))
+            legacy_doc.setdefault("created_at", now_iso)
+            legacy_doc.setdefault("repondu_le", now_iso)
+            await db.reponses_sondages.insert_one(legacy_doc)
         
         # ========== AUTOMATISATION: Mettre à jour presences_membres ==========
         if input.present:
@@ -4058,9 +4087,14 @@ async def delete_reponse_manuelle(reponse_id: str):
     if not reponse:
         raise HTTPException(status_code=404, detail="Réponse non trouvée")
     
-    # Si c'était une réponse de membre, supprimer aussi la réponse de sondage associée
+    # Si c'était une réponse de membre, supprimer aussi la réponse de sondage/événement associée
     if reponse.get('type') == 'membre_manuel' and reponse.get('membre_id'):
         await db.reponses_sondages.delete_one({
+            "evenement_id": reponse['evenement_id'],
+            "membre_id": reponse['membre_id'],
+            "ajout_manuel": True
+        })
+        await db.reponses_evenements.delete_one({
             "evenement_id": reponse['evenement_id'],
             "membre_id": reponse['membre_id'],
             "ajout_manuel": True
