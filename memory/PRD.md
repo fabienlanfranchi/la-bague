@@ -1,7 +1,13 @@
 # La Bague Impériale - PRD
 
-## SESSION 15 Juin 2026 - 🎯 4 nouvelles fonctionnalités livrées
+## SESSION 15 Juin 2026 - 🎯 4 nouvelles fonctionnalités + calcul dynamique membres
 
+### Fix bug (15/06/2026 fin de session)
+🔴 **Bug critique corrigé** : `nb_membres_actifs` était figé à la valeur `nb_membres_manuel` sauvegardée manuellement au lieu de refléter le nombre réel de membres inscrits. De plus, quand la saison actuelle (S14) n'avait pas encore d'événement, elle retournait 0 membres.
+✅ **Correctif appliqué** :
+   - `get_statistiques_saisons_resume` et `get_statistiques_moyennes_dashboard` : le nombre de membres actifs est TOUJOURS calculé dynamiquement depuis `members` (filtre `annee_entree` + `saisons_exclues`) — même quand `is_manuel=True`, seules les PRÉSENCES restent manuelles
+   - Le calcul du nombre de membres s'exécute AVANT le skip des saisons vides → S14 (0/0/0) remonte bien les 35 (Preview) / 39 (Prod) membres
+   - Réponse `saisons-resume` inclut désormais la saison actuelle même sans événement
 ### Nouveautés (15/06/2026)
 ✅ **1. Saisons hybrides** : la limite hardcodée `saison <= 12` est retirée. Toute saison avec `is_manuel=True` peut être éditée manuellement. Nouveau bouton cadenas (Lock/Edit) sur chaque ligne de "Stats Saisons" → verrouille/déverrouille depuis l'UI (data-testid: `toggle-lock-saison-{n}`).
    - Nouveaux endpoints : `POST /api/saisons-config/{n}/verrouiller`, `POST /api/saisons-config/{n}/deverrouiller` (Président/Trésorier/Secrétaire).
