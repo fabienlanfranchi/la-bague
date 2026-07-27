@@ -1,6 +1,25 @@
 # La Bague Impériale - PRD
 
-## SESSION 15 Juin 2026 - 💾 Sauvegarde Excel complète + Restauration disponible
+## SESSION 15 Juin 2026 - 🎯 4 nouvelles fonctionnalités livrées
+
+### Nouveautés (15/06/2026)
+✅ **1. Saisons hybrides** : la limite hardcodée `saison <= 12` est retirée. Toute saison avec `is_manuel=True` peut être éditée manuellement. Nouveau bouton cadenas (Lock/Edit) sur chaque ligne de "Stats Saisons" → verrouille/déverrouille depuis l'UI (data-testid: `toggle-lock-saison-{n}`).
+   - Nouveaux endpoints : `POST /api/saisons-config/{n}/verrouiller`, `POST /api/saisons-config/{n}/deverrouiller` (Président/Trésorier/Secrétaire).
+✅ **2. Saison 14 dynamique** : `CURRENT_SEASON` calculé dynamiquement = `max(saison)` dans `saisons_config`. Nouveau endpoint `GET /api/saison-actuelle`. La S14 est créée (0/0/0, verrouillée par défaut) et affichée sur le Dashboard à la place de S13.
+✅ **3. Modification de réponse** : nouveau bouton "Modifier ma réponse" (data-testid: `modifier-reponse-evenements-btn`) dans l'onglet Événements → redirige vers Dashboard (formulaire existant). Le backend `submit_reponse_sondage` gère déjà le delta ±1 sur `presences_membres` (test OUI→NON→NON→OUI passé).
+✅ **4. Badge "Nouveau membre"** : dans le Dashboard (liste par étoiles + modal), badge vert émeraude "✨ Nouveau membre" affiché quand `saison_entree === saison_actuelle` (data-testid: `nouveau-membre-badge-{id}`).
+
+### Tests backend (testing_agent)
+- 10/10 pytest passing dans `/app/backend/tests/test_saisons_lock_v14.py`
+- Flows validés : `/saison-actuelle`, `/moyennes-dashboard`, `/verrouiller`, `/deverrouiller` (avec auth JWT 401/403/200), delta réponses sans compteur négatif
+
+### Commentaires de code (à traiter plus tard, P2)
+- ⚠️ `submit_reponse_sondage` ne vérifie pas que `session_member_id === input.membre_id` : n'importe qui avec un `membre_id` peut modifier la réponse d'un autre (audit_log capture mais ne bloque pas). À sécuriser.
+- server.py > 8500 lignes : refactorisation modules recommandée
+
+---
+
+
 
 ### Nouveau (15/06/2026)
 ✅ **Endpoint export** `GET /api/admin/sauvegarde-complete-excel` (admin only)
