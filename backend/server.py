@@ -4889,6 +4889,48 @@ async def update_saison_manual_stats(saison: int, input: SaisonManualStatsUpdate
     return config
 
 
+@api_router.post("/saisons-config/{saison}/verrouiller")
+async def verrouiller_saison(saison: int, member: dict = Depends(get_current_member_from_jwt)):
+    """[ADMIN] Verrouille une saison (is_manuel=True) → protège des recalculs automatiques."""
+    if not (member.get('is_president') or member.get('fonction') in ('Président', 'Trésorier', 'Secrétaire')):
+        raise HTTPException(status_code=403, detail="Accès réservé à l'administration")
+    result = await db.saisons_config.update_one(
+        {"saison": saison},
+        {"$set": {"is_manuel": True, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail=f"Saison {saison} introuvable")
+    config = await db.saisons_config.find_one({"saison": saison}, {"_id": 0})
+    return {"success": True, "saison": saison, "is_manuel": True, "config": config}
+
+
+@api_router.post("/saisons-config/{saison}/deverrouiller")
+async def deverrouiller_saison(saison: int, member: dict = Depends(get_current_member_from_jwt)):
+    """[ADMIN] Déverrouille une saison (is_manuel=False) → permet le calcul automatique depuis les événements."""
+    if not (member.get('is_president') or member.get('fonction') in ('Président', 'Trésorier', 'Secrétaire')):
+        raise HTTPException(status_code=403, detail="Accès réservé à l'administration")
+    result = await db.saisons_config.update_one(
+        {"saison": saison},
+        {"$set": {"is_manuel": False, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail=f"Saison {saison} introuvable")
+    config = await db.saisons_config.find_one({"saison": saison}, {"_id": 0})
+    return {"success": True, "saison": saison, "is_manuel": False, "config": config}
+
+
+@api_router.get("/saison-actuelle")
+async def get_current_saison():
+    """Retourne la saison actuelle (= plus grande saison existante dans saisons_config)."""
+    doc = await db.saisons_config.find_one({}, sort=[("saison", -1)])
+    if not doc:
+        return {"saison_actuelle": 14}
+    return {"saison_actuelle": doc.get("saison")}
+
+
+
+
+
 
 # -------- PRÉSENCES MEMBRES --------
 
@@ -5435,8 +5477,8 @@ async def get_statistiques_saisons_resume():
         
         is_manuel = config.get("is_manuel", False)
         
-        # Pour les saisons historiques avec données manuelles
-        if is_manuel and saison <= 12:
+        # Pour les saisons avec données manuelles (toutes saisons désormais, plus limitées à ≤12)
+        if is_manuel:
             # Utiliser les données manuelles
             total_pres_aperos = config.get("presences_membres_aperos", 0) or 0
             total_pres_repas = config.get("presences_membres_repas", 0) or 0
@@ -5494,8 +5536,8 @@ async def get_statistiques_saisons_resume():
             "moy_repas": moy_repas,
             "moy_anniversaires": moy_anniversaires,
             "moy_global": moy_global,
-            # Indicateur si données manuelles
-            "is_manuel": is_manuel and saison <= 12
+            # Indicateur si données manuelles (source de vérité = is_manuel)
+            "is_manuel": is_manuel
         })
     
     return stats
@@ -5510,7 +5552,10 @@ async def get_statistiques_moyennes_dashboard():
     - Moyenne globale = Total présences / Total événements
     - Moyenne repas = Total présences repas / Total repas
     """
-    CURRENT_SEASON = 13
+    # Saison actuelle = plus grande saison présente dans saisons_config
+    # (permet de basculer automatiquement de S13 -> S14 -> S15 quand l'admin crée la config)
+    max_saison_doc = await db.saisons_config.find_one({}, sort=[("saison", -1)])
+    CURRENT_SEASON = max_saison_doc.get("saison", 14) if max_saison_doc else 14
     
     # Récupérer toutes les configs de saisons (contient les données manuelles pour S1-12)
     configs = await db.saisons_config.find({}, {"_id": 0}).to_list(100)
@@ -5562,15 +5607,15 @@ async def get_statistiques_moyennes_dashboard():
         
         is_manuel = config.get("is_manuel", False)
         
-        if is_manuel and saison <= 12:
-            # DONNÉES MANUELLES pour les saisons historiques
+        if is_manuel:
+            # DONNÉES MANUELLES pour les saisons verrouillées
             pres_aperos = config.get("presences_membres_aperos", 0) or 0
             pres_repas = config.get("presences_membres_repas", 0) or 0
             pres_anniv = config.get("presences_membres_anniversaires", 0) or 0
             pres_total = pres_aperos + pres_repas + pres_anniv
             nb_membres_saison = config.get("nb_membres_manuel", 0) or 0
         else:
-            # CALCUL AUTOMATIQUE pour les saisons récentes (13+)
+            # CALCUL AUTOMATIQUE (saisons non verrouillées)
             # Trouver les membres actifs cette saison
             membres_actifs = []
             for m in members:

@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -172,6 +173,7 @@ const MealCourseEditor = ({ label, items = [], placeholder, defaultPrefix, onCha
 
 const Evenements = () => {
   const { isAdmin, currentMember } = useUser();
+  const navigate = useNavigate();
   
   // SÉCURITÉ: Vérifier à la fois isAdmin ET is_president pour les actions admin
   const hasAdminAccess = isAdmin && currentMember?.is_president === true;
@@ -185,7 +187,8 @@ const Evenements = () => {
   // Mode d'affichage : 'list' (accordéon) ou 'table' (tableau éditable)
   // Tableau par défaut pour permettre l'édition facile des présences
   const [viewMode, setViewMode] = useState('table');
-  const [selectedSeason, setSelectedSeason] = useState(13);
+  const [saisonActuelle, setSaisonActuelle] = useState(14);  // Dynamique : chargé depuis l'API
+  const [selectedSeason, setSelectedSeason] = useState(14);
   
   // État pour l'édition en mode tableau
   const [tableEditData, setTableEditData] = useState({});
@@ -238,7 +241,7 @@ const Evenements = () => {
     lieu: '',
     detail: '',
     type_sondage: 'repas',
-    saison: 13,
+    saison: 14,
     statut: 'à venir',
     options_sondage: {
       entrees: ['Entrée A', 'Entrée B'],
@@ -257,6 +260,15 @@ const Evenements = () => {
   useEffect(() => {
     loadEvenements();
     loadProchainEvenementInfo();
+    // Charger la saison actuelle depuis l'API (basée sur max(saisons_config))
+    axios.get(`${API}/saison-actuelle`).then(res => {
+      const s = res.data?.saison_actuelle;
+      if (s && typeof s === 'number') {
+        setSaisonActuelle(s);
+        setSelectedSeason(s);
+        setNewEvent(prev => ({ ...prev, saison: s }));
+      }
+    }).catch(() => {});
   }, []);
 
   // Charger la réponse personnelle du membre pour le prochain événement
@@ -1039,7 +1051,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
 
   // Grouper les événements par saison et trier par date
   const evenementsParSaison = evenements.reduce((acc, evt) => {
-    const saison = evt.saison || 13;
+    const saison = evt.saison || saisonActuelle;
     if (!acc[saison]) acc[saison] = [];
     acc[saison].push(evt);
     return acc;
@@ -1225,9 +1237,23 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                     }`}
                     data-testid="ma-reponse-prochain"
                   >
-                    <p className={`font-semibold text-lg flex items-center ${maReponse.present ? 'text-green-300' : 'text-red-300'}`}>
-                      {maReponse.present ? '✅ Vous êtes PRÉSENT' : '❌ Vous êtes ABSENT'}
-                    </p>
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <p className={`font-semibold text-lg flex items-center ${maReponse.present ? 'text-green-300' : 'text-red-300'}`}>
+                        {maReponse.present ? '✅ Vous êtes PRÉSENT' : '❌ Vous êtes ABSENT'}
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate('/')}
+                        data-testid="modifier-reponse-evenements-btn"
+                        className={`${maReponse.present
+                          ? 'border-green-500/50 text-green-300 hover:bg-green-800/40'
+                          : 'border-red-500/50 text-red-300 hover:bg-red-800/40'}`}
+                      >
+                        <Edit3 className="w-4 h-4 mr-2" />
+                        Modifier ma réponse
+                      </Button>
+                    </div>
                     {maReponse.present && prochainEvenement.type_sondage === 'repas' && (
                       (maReponse.choix_entree || maReponse.choix_plat || maReponse.choix_dessert) ? (
                         <div className="mt-3 pt-3 border-t border-green-500/20">
@@ -1503,8 +1529,8 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => changeSeason(Math.min(13, selectedSeason + 1))}
-                      disabled={selectedSeason >= 13}
+                      onClick={() => changeSeason(Math.min(saisonActuelle, selectedSeason + 1))}
+                      disabled={selectedSeason >= saisonActuelle}
                       className="border-[#D4A024]/50 text-[#D4A024] hover:bg-[#D4A024]/20 disabled:opacity-30"
                     >
                       <ChevronRight className="w-4 h-4" />
@@ -1515,7 +1541,7 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
                   <div className="flex items-center gap-2 flex-wrap justify-center">
                     <span className="text-gray-400 text-xs sm:text-sm hidden sm:inline">Aller à :</span>
                     <div className="flex flex-wrap gap-1 justify-center max-w-[280px] sm:max-w-none">
-                      {[13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map(num => (
+                      {Array.from({ length: saisonActuelle }, (_, i) => saisonActuelle - i).map(num => (
                         <button
                           key={num}
                           onClick={() => changeSeason(num)}
@@ -1786,8 +1812,8 @@ _Vous n'avez pas encore répondu. Merci de confirmer rapidement !_`;
           {showHistorique && (
             <CardContent className="pt-4">
               <div className="space-y-4">
-                {[...Array(13)].map((_, i) => {
-                  const saisonNum = 13 - i; // De 13 à 1
+                {[...Array(saisonActuelle)].map((_, i) => {
+                  const saisonNum = saisonActuelle - i; // De saisonActuelle à 1
                   const evts = evenementsParSaison[saisonNum] || [];
                   const evtsTermines = evts.filter(e => e.statut === 'terminé');
 

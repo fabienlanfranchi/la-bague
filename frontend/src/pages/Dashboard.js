@@ -1600,11 +1600,23 @@ const DashboardMembre = ({ prochainEvenement, prochainEvenementInfo, currentMemb
                     >
                       <div className="flex items-center justify-between">
                         <div>
-                          <h3 className="text-white font-serif font-semibold text-lg flex items-center gap-2">
+                          <h3 className="text-white font-serif font-semibold text-lg flex items-center gap-2 flex-wrap">
                             {m.nom_complet}
                             {m.id === currentMember?.id && (
                               <Badge className="bg-[#D4A024] text-[#7A2020] text-xs">Vous</Badge>
                             )}
+                            {(() => {
+                              const saisonEntreeNum = parseInt(String(m.saison_entree || '').replace(/\D/g, ''), 10);
+                              const isNouveau = !!(stats.saisonActuelleNum && saisonEntreeNum && saisonEntreeNum === stats.saisonActuelleNum);
+                              return isNouveau ? (
+                                <Badge
+                                  className="bg-emerald-600 hover:bg-emerald-600 text-white text-xs"
+                                  data-testid={`nouveau-membre-badge-etoile-${m.id}`}
+                                >
+                                  ✨ Nouveau membre
+                                </Badge>
+                              ) : null;
+                            })()}
                           </h3>
                           <p className="text-sm text-gray-400">
                             {m.fonction || 'Membre'}{m.saison_entree ? ` • Entrée ${m.saison_entree}` : ''}{m.annee_entree ? ` ${m.annee_entree}` : ''}
@@ -2319,6 +2331,7 @@ Le Bureau de La Bague Impériale`;
       let moyPresenceSaison = 0;
       let moyRepasSaison = 0;
       let nbMembresActifsSaison = 0;
+      let saisonActuelleNum = 14;
       try {
         const moyennesRes = await fetch(`${API}/statistiques/moyennes-dashboard`);
         const moyennesData = await moyennesRes.json();
@@ -2331,15 +2344,21 @@ Le Bureau de La Bague Impériale`;
         moyPresenceSaison = moyennesData.moy_saison_actuelle || 0;
         moyRepasSaison = moyennesData.moy_repas_saison || 0;
         nbMembresActifsSaison = moyennesData.nb_membres_actifs_saison || 0;
+        saisonActuelleNum = moyennesData.saison_actuelle || 14;
       } catch (e) {
         console.log('Moyennes non disponibles');
       }
       
+      // Récupérer la saison actuelle
+      const anneeDebut = 2012 + saisonActuelleNum;
+      const anneeFin = 2013 + saisonActuelleNum;
+
       setStats({
         totalMembers,
         avgPresenceGlobal: pctGlobal.toFixed(1),
         avgPresenceSeason: pctSaisonActuelle.toFixed(1),
-        currentSeason: 'Saison 13 - 2025',
+        currentSeason: `Saison ${saisonActuelleNum} - ${anneeDebut}-${anneeFin}`,
+        saisonActuelleNum,
         membersByStars,
         cotisationsEnAttente,
         totalSaisonsDues,
@@ -3458,16 +3477,30 @@ Le Bureau de La Bague Impériale`;
                     Aucun membre dans cette catégorie
                   </p>
                 ) : (
-                  filteredMembers.map((membre) => (
+                  filteredMembers.map((membre) => {
+                    // Détecter si nouveau membre : entrée saison actuelle
+                    const saisonEntreeNum = parseInt(String(membre.saison_entree || '').replace(/\D/g, ''), 10);
+                    const isNouveau = !!(stats.saisonActuelleNum && saisonEntreeNum && saisonEntreeNum === stats.saisonActuelleNum);
+                    return (
                     <div
                       key={membre.id}
                       className="bg-black/40 border border-[#D4A024]/20 rounded-lg p-4 hover:border-[#D4A024]/50 transition-all"
                     >
                       <div className="flex items-center justify-between">
                         <div>
-                          <h3 className="text-white font-serif font-semibold text-lg">
-                            {membre.nom_complet}
-                          </h3>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="text-white font-serif font-semibold text-lg">
+                              {membre.nom_complet}
+                            </h3>
+                            {isNouveau && (
+                              <Badge
+                                className="bg-emerald-600 hover:bg-emerald-600 text-white text-xs px-2 py-0.5"
+                                data-testid={`nouveau-membre-badge-${membre.id}`}
+                              >
+                                ✨ Nouveau membre
+                              </Badge>
+                            )}
+                          </div>
                           <p className="text-sm text-gray-400">
                             {membre.fonction} • Entrée {membre.saison_entree} {membre.annee_entree}
                           </p>
@@ -3484,7 +3517,7 @@ Le Bureau de La Bague Impériale`;
                         </div>
                       </div>
                     </div>
-                  ))
+                  );})
                 )}
               </div>
             </CardContent>

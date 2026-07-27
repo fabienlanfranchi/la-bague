@@ -307,6 +307,33 @@ export default function Statistiques() {
     return saisonsManuelEdits[saison] && Object.keys(saisonsManuelEdits[saison]).length > 0;
   };
 
+  // Verrouiller / déverrouiller une saison
+  const toggleSaisonLock = async (saison, currentIsManuel) => {
+    const endpoint = currentIsManuel ? 'deverrouiller' : 'verrouiller';
+    const confirmMsg = currentIsManuel
+      ? `Déverrouiller la Saison ${saison} ?\n\nElle sera calculée automatiquement depuis les événements terminés (pas de saisie manuelle possible).`
+      : `Verrouiller la Saison ${saison} ?\n\nLes valeurs actuelles seront figées et modifiables uniquement en saisie manuelle. Aucun recalcul automatique ne pourra les écraser.`;
+    if (!window.confirm(confirmMsg)) return;
+    try {
+      const token = localStorage.getItem('lbi_access_token');
+      const res = await fetch(`${API_URL}/api/saisons-config/${saison}/${endpoint}`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data?.detail || `Erreur ${endpoint}`);
+        return;
+      }
+      toast.success(currentIsManuel ? `Saison ${saison} déverrouillée 🔓` : `Saison ${saison} verrouillée 🔒`);
+      loadData();
+    } catch (err) {
+      console.error('Erreur toggle lock saison:', err);
+      toast.error('Erreur réseau');
+    }
+  };
+
   // Télécharger la sauvegarde Excel complète
   const handleDownloadBackup = async () => {
     try {
@@ -940,9 +967,7 @@ export default function Statistiques() {
                 {statsSaisonDisplayMode === 'tableau' && (
                   <p className="text-sm text-stone-500 mt-2">
                     <Edit className="h-4 w-4 inline mr-1" />
-                    Saisons 1-12 : Saisie manuelle
-                    <Lock className="h-4 w-4 inline mx-2" />
-                    Saison 13+ : Calcul automatique
+                    Toute saison verrouillée <Lock className="h-4 w-4 inline mx-1 text-emerald-600" /> peut être éditée manuellement. Cliquez l'icône cadenas pour verrouiller/déverrouiller.
                   </p>
                 )}
               </div>
@@ -1090,7 +1115,7 @@ export default function Statistiques() {
                 </thead>
                 <tbody>
                   {sortedSaisonsStats.map((stat, index) => {
-                    const isEditable = stat.saison <= 12;
+                    const isEditable = !!stat.is_manuel; // Saison verrouillée = éditable manuellement
                     const hasChanges = hasSaisonChanges(stat.saison);
                     
                     return (
@@ -1100,11 +1125,19 @@ export default function Statistiques() {
                       >
                         <td className="px-3 py-2">
                           <div className="flex items-center gap-1">
-                            {isEditable ? (
-                              <Edit className="h-3 w-3 text-amber-500" />
-                            ) : (
-                              <Lock className="h-3 w-3 text-stone-400" />
-                            )}
+                            <button
+                              type="button"
+                              onClick={() => toggleSaisonLock(stat.saison, stat.is_manuel)}
+                              title={stat.is_manuel ? "Cliquer pour déverrouiller (calcul auto depuis événements)" : "Cliquer pour verrouiller (saisie manuelle)"}
+                              className="hover:scale-110 transition-transform"
+                              data-testid={`toggle-lock-saison-${stat.saison}`}
+                            >
+                              {stat.is_manuel ? (
+                                <Lock className="h-4 w-4 text-emerald-600" />
+                              ) : (
+                                <Edit className="h-4 w-4 text-amber-500" />
+                              )}
+                            </button>
                             <span className="font-medium text-stone-800">S{stat.saison}</span>
                           </div>
                           <span className="text-sm text-stone-400">{stat.annee_debut}-{stat.annee_fin}</span>
