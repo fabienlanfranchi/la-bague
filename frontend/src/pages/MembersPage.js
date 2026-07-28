@@ -60,6 +60,71 @@ const MembersPage = () => {
   const [showMotsDePasseModal, setShowMotsDePasseModal] = useState(false);
   const [membresMotsDePasse, setMembresMotsDePasse] = useState([]);
   
+  // Modal encaissement (cotisation ou dette) par le Président
+  const [encaissement, setEncaissement] = useState(null);  // { type: 'cotisation'|'dette', label, montant, membreId, detteId? }
+  const [encCaisse, setEncCaisse] = useState('Chez Fabien');
+  const [encMode, setEncMode] = useState('Espèces');
+  const [encLoading, setEncLoading] = useState(false);
+  
+  const openEncaisser = (type, label, montant, extra = {}) => {
+    setEncaissement({ type, label, montant, ...extra });
+    setEncCaisse('Chez Fabien');
+    setEncMode('Espèces');
+  };
+  
+  const submitEncaissement = async () => {
+    if (!encaissement || !encCaisse || !encMode) {
+      toast.error('Choisissez caisse et mode de paiement');
+      return;
+    }
+    setEncLoading(true);
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const declarantId = selectedMember?.id;  // fallback ; on l'écrasera si on a le président
+      const presFab = members.find(m => m.is_president || m.login_key === 'labague1');
+      const payload = {
+        membre_id: encaissement.membreId,
+        declarant_id: presFab?.id || declarantId,
+        date_paiement: today,
+        type: 'recette',
+        objet: encaissement.type === 'cotisation' ? 'cotisation' : (encaissement.cause || 'autres'),
+        montant: encaissement.montant,
+        endroit: encCaisse,
+        mode_paiement: encMode,
+        detail: encaissement.label,
+      };
+      if (encaissement.type === 'dette' && encaissement.detteId) {
+        payload.dette_id = encaissement.detteId;
+      }
+      const res = await fetch(`${API_URL}/api/paiements-en-attente`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error('http');
+      const data = await res.json();
+      const paiementId = data?.paiement?.id;
+      // Validation immédiate
+      if (paiementId && (presFab?.id || declarantId)) {
+        await fetch(`${API_URL}/api/paiements-en-attente/${paiementId}/valider?validateur_id=${presFab?.id || declarantId}`, { method: 'POST' });
+      }
+      toast.success(`Paiement de ${encaissement.montant} € encaissé sur "${encCaisse}"`);
+      setEncaissement(null);
+      // Refresh member data
+      const memRes = await fetch(`${API_URL}/api/members`);
+      const allMembers = await memRes.json();
+      const updated = allMembers.find(m => m.id === encaissement.membreId);
+      if (updated) setSelectedMember(updated);
+      const dRes = await fetch(`${API_URL}/api/dettes/membre/${encaissement.membreId}`);
+      setSelectedMemberDettes((await dRes.json()) || []);
+      if (typeof loadMembers === 'function') loadMembers();
+    } catch (_) {
+      toast.error("Erreur lors de l'encaissement");
+    } finally {
+      setEncLoading(false);
+    }
+  };
+  
   const [formData, setFormData] = useState({
     numero_membre: 0,
     nom_complet: '',
@@ -1053,31 +1118,59 @@ const MembersPage = () => {
                                     {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(l.montant)}
                                   </span>
                                   {l.key.startsWith('dette-') && (
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={async () => {
-                                        if (!window.confirm(`Effacer la dette « ${l.description} » (${l.montant} €) ?\n\nÀ utiliser uniquement si le paiement a déjà été reçu hors de l'app.`)) return;
-                                        try {
-                                          const detteId = l.key.replace('dette-', '');
-                                          const res = await fetch(`${API_URL}/api/dettes/${detteId}`, { method: 'DELETE' });
-                                          if (!res.ok) throw new Error('http');
-                                          toast.success('Dette effacée');
-                                          const r = await fetch(`${API_URL}/api/dettes/membre/${selectedMember.id}`);
-                                          setSelectedMemberDettes((await r.json()) || []);
-                                        } catch (_) {
-                                          toast.error('Erreur lors de la suppression');
-                                        }
-                                      }}
-                                      className="text-red-400 hover:text-red-200 hover:bg-red-500/10 px-2"
-                                      data-testid={`del-dette-${l.key.replace('dette-', '')}`}
-                                      title="Effacer cette dette (paiement reçu hors app)"
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </Button>
+                                    <div className="flex gap-1">
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => openEncaisser('dette', l.description, l.montant, {
+                                          membreId: selectedMember.id,
+                                          detteId: l.key.replace('dette-', ''),
+                                          cause: l.objet,
+                                        })}
+                                        className="text-green-400 hover:text-green-200 hover:bg-green-500/10 px-2"
+                                        data-testid={`enc-dette-${l.key.replace('dette-', '')}`}
+                                        title="Enregistrer un paiement (choix caisse + mode)"
+                                      >
+                                        💰
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={async () => {
+                                          if (!window.confirm(`Effacer la dette « ${l.description} » (${l.montant} €) ?\n\nÀ utiliser uniquement si le paiement a déjà été reçu hors de l'app.`)) return;
+                                          try {
+                                            const detteId = l.key.replace('dette-', '');
+                                            const res = await fetch(`${API_URL}/api/dettes/${detteId}`, { method: 'DELETE' });
+                                            if (!res.ok) throw new Error('http');
+                                            toast.success('Dette effacée');
+                                            const r = await fetch(`${API_URL}/api/dettes/membre/${selectedMember.id}`);
+                                            setSelectedMemberDettes((await r.json()) || []);
+                                          } catch (_) {
+                                            toast.error('Erreur lors de la suppression');
+                                          }
+                                        }}
+                                        className="text-red-400 hover:text-red-200 hover:bg-red-500/10 px-2"
+                                        data-testid={`del-dette-${l.key.replace('dette-', '')}`}
+                                        title="Effacer cette dette (paiement reçu hors app)"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </Button>
+                                    </div>
                                   )}
                                   {l.key.startsWith('cot-') && (
                                     <div className="flex gap-1">
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => openEncaisser('cotisation', l.description, l.montant, {
+                                          membreId: selectedMember.id,
+                                        })}
+                                        className="text-green-400 hover:text-green-200 hover:bg-green-500/10 px-2"
+                                        data-testid={`enc-cot-${l.key.replace('cot-', '')}`}
+                                        title="Enregistrer un paiement (choix caisse + mode)"
+                                      >
+                                        💰
+                                      </Button>
                                       <Button
                                         size="sm"
                                         variant="ghost"
@@ -1254,6 +1347,95 @@ const MembersPage = () => {
                     Aucun membre trouvé
                   </div>
                 )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* ============ MODAL : Encaissement d'une cotisation ou dette (Président) ============ */}
+      {encaissement && (
+        <div
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4"
+          onClick={() => setEncaissement(null)}
+          data-testid="encaissement-modal"
+        >
+          <Card
+            className="bg-[#1a1a1a] border-2 border-green-500/50 max-w-md w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <CardHeader className="border-b border-green-500/30">
+              <CardTitle className="text-green-300 flex items-center justify-between">
+                💰 Enregistrer un paiement
+                <button
+                  type="button"
+                  onClick={() => setEncaissement(null)}
+                  className="text-gray-400 hover:text-white"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </CardTitle>
+              <p className="text-sm text-gray-400">
+                {encaissement.label} ·{' '}
+                <span className="text-green-300 font-bold">
+                  {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(encaissement.montant)}
+                </span>
+              </p>
+            </CardHeader>
+            <CardContent className="pt-4 space-y-3">
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">Caisse créditée</label>
+                <select
+                  value={encCaisse}
+                  onChange={(e) => setEncCaisse(e.target.value)}
+                  className="w-full bg-black/40 border border-green-500/30 text-white rounded px-2 py-2 text-sm"
+                  data-testid="enc-caisse"
+                >
+                  <option value="Compte">Compte Bancaire</option>
+                  <option value="Chez Fabien">Chez Fabien</option>
+                  <option value="Chez Jacques">Chez Jacques</option>
+                  <option value="PayPal">PayPal</option>
+                  <option value="Asso Connect">Asso Connect</option>
+                  <option value="Chèque">Chèque (à déposer)</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">Mode de paiement</label>
+                <select
+                  value={encMode}
+                  onChange={(e) => setEncMode(e.target.value)}
+                  className="w-full bg-black/40 border border-green-500/30 text-white rounded px-2 py-2 text-sm"
+                  data-testid="enc-mode"
+                >
+                  <option value="Espèces">Espèces</option>
+                  <option value="Virement">Virement</option>
+                  <option value="Chèque">Chèque</option>
+                  <option value="CB">CB</option>
+                  <option value="PayPal">PayPal</option>
+                </select>
+              </div>
+              <div className="bg-green-900/20 border border-green-600/30 rounded p-3 text-xs text-green-200">
+                ✅ Paiement validé immédiatement, caisse "{encCaisse}" créditée de{' '}
+                {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(encaissement.montant)},
+                {encaissement.type === 'cotisation' ? ' compteur cotisation décrémenté.' : ' dette clôturée.'}
+              </div>
+              <div className="flex gap-2 pt-1">
+                <Button
+                  variant="outline"
+                  onClick={() => setEncaissement(null)}
+                  disabled={encLoading}
+                  className="flex-1 border-gray-600 text-gray-300 hover:bg-gray-800"
+                >
+                  Annuler
+                </Button>
+                <Button
+                  onClick={submitEncaissement}
+                  disabled={encLoading || !encCaisse || !encMode}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold disabled:opacity-50"
+                  data-testid="confirm-encaissement"
+                >
+                  {encLoading ? 'Enregistrement…' : `Encaisser ${new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(encaissement.montant)}`}
+                </Button>
               </div>
             </CardContent>
           </Card>

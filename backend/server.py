@@ -1582,7 +1582,9 @@ class Transaction(BaseModel):
     objet: str  # "cotisation", "dette", "album", "tickets", "habits", "autres"
     montant: float
     endroit: str  # "Compte", "chèque", "Fabien", "Jacques", "Enveloppe bar", "PayPal"
+    mode_paiement: Optional[str] = None  # Virement, Espèces, Chèque, CB, PayPal
     detail: str = ""  # Détail libre ou format spécial pour dette
+    pending_payment_id: Optional[str] = None  # Lien vers paiement en attente d'origine
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 

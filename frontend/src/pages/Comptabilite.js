@@ -66,6 +66,37 @@ const Comptabilite = () => {
   const [declareMode, setDeclareMode] = useState('Espèces');
   const [declareLoading, setDeclareLoading] = useState(false);
 
+  // Modal de déclaration de paiement d'une COTISATION (Président)
+  const [payingCotisation, setPayingCotisation] = useState(null);  // { membreId, nbSaisons, membreName }
+  const [cotisationCaisse, setCotisationCaisse] = useState('Chez Fabien');
+  const [cotisationMode, setCotisationMode] = useState('Espèces');
+  const [cotisationLoading, setCotisationLoading] = useState(false);
+
+  const openPayCotisation = (membreId, nbSaisons, membreName) => {
+    setPayingCotisation({ membreId, nbSaisons, membreName });
+    setCotisationCaisse('Chez Fabien');
+    setCotisationMode('Espèces');
+  };
+
+  const submitPayCotisation = async () => {
+    if (!payingCotisation || !cotisationCaisse || !cotisationMode) {
+      toast.error('Choisissez caisse et mode de paiement');
+      return;
+    }
+    setCotisationLoading(true);
+    try {
+      await handleDeclarerPaiementCotisation(
+        payingCotisation.membreId,
+        payingCotisation.nbSaisons,
+        cotisationCaisse,
+        cotisationMode
+      );
+      setPayingCotisation(null);
+    } finally {
+      setCotisationLoading(false);
+    }
+  };
+
   const openDeclareDette = (dette) => {
     setDeclaringDette(dette);
     setDeclareCaisse('Chez Fabien');
@@ -2300,13 +2331,13 @@ const Comptabilite = () => {
                             )}
                             <Button
                               size="sm"
-                              onClick={() => handleDeclarerPaiementCotisation(m.id, nb, 'Chez Fabien', 'Espèces')}
+                              onClick={() => openPayCotisation(m.id, nb, m.nom_complet)}
                               disabled={!canAct}
                               className="bg-green-700 hover:bg-green-600 text-white text-xs disabled:opacity-40"
                               data-testid={`declare-pay-${m.id}`}
-                              title={canAct ? "Déclarer un paiement (200€/saison)" : "Réservé au Président"}
+                              title={canAct ? "Déclarer un paiement (200€/saison) — choix caisse + mode" : "Réservé au Président"}
                             >
-                              💰 Déclarer payé · Fabien · Espèces
+                              💰 Enregistrer paiement
                             </Button>
                             <Button
                               size="sm"
@@ -2450,6 +2481,96 @@ const Comptabilite = () => {
                   data-testid="confirm-declare-dette"
                 >
                   {declareLoading ? 'Envoi…' : 'Déclarer'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* ============ MODAL : Encaisser une cotisation (Président) ============ */}
+      {payingCotisation && (
+        <div
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+          onClick={() => setPayingCotisation(null)}
+        >
+          <Card
+            className="bg-[#1a1a1a] border-2 border-green-500/50 max-w-md w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <CardHeader className="border-b border-green-500/30">
+              <CardTitle className="text-green-300 flex items-center justify-between">
+                💰 Encaisser cotisation
+                <button
+                  type="button"
+                  onClick={() => setPayingCotisation(null)}
+                  className="text-gray-400 hover:text-white"
+                  data-testid="close-pay-cotisation"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </CardTitle>
+              <p className="text-sm text-gray-400">
+                {payingCotisation.membreName} · {payingCotisation.nbSaisons} saison(s) ·{' '}
+                <span className="text-green-300 font-bold">{payingCotisation.nbSaisons * 200} €</span>
+              </p>
+            </CardHeader>
+            <CardContent className="pt-4 space-y-3">
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">Caisse créditée</label>
+                <select
+                  value={cotisationCaisse}
+                  onChange={(e) => setCotisationCaisse(e.target.value)}
+                  className="w-full bg-black/40 border border-green-500/30 text-white rounded px-2 py-2 text-sm"
+                  data-testid="pay-cotisation-caisse"
+                >
+                  <option value="Compte">Compte Bancaire</option>
+                  <option value="Chez Fabien">Chez Fabien</option>
+                  <option value="Chez Jacques">Chez Jacques</option>
+                  <option value="PayPal">PayPal</option>
+                  <option value="Asso Connect">Asso Connect</option>
+                  <option value="Chèque">Chèque (à déposer)</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">Mode de paiement</label>
+                <select
+                  value={cotisationMode}
+                  onChange={(e) => setCotisationMode(e.target.value)}
+                  className="w-full bg-black/40 border border-green-500/30 text-white rounded px-2 py-2 text-sm"
+                  data-testid="pay-cotisation-mode"
+                >
+                  <option value="Espèces">Espèces</option>
+                  <option value="Virement">Virement</option>
+                  <option value="Chèque">Chèque</option>
+                  <option value="CB">CB</option>
+                  <option value="PayPal">PayPal</option>
+                </select>
+              </div>
+              <div className="bg-green-900/20 border border-green-600/30 rounded p-3 text-xs text-green-200">
+                ✅ Paiement <strong>validé immédiatement</strong> par le Président :
+                <ul className="list-disc list-inside mt-1 space-y-0.5">
+                  <li>Caisse "{cotisationCaisse}" créditée de {payingCotisation.nbSaisons * 200} €</li>
+                  <li>Transaction recette enregistrée</li>
+                  <li>Compteur cotisation du membre décrémenté de {payingCotisation.nbSaisons}</li>
+                </ul>
+              </div>
+              <div className="flex gap-2 pt-1">
+                <Button
+                  variant="outline"
+                  onClick={() => setPayingCotisation(null)}
+                  disabled={cotisationLoading}
+                  className="flex-1 border-gray-600 text-gray-300 hover:bg-gray-800"
+                >
+                  Annuler
+                </Button>
+                <Button
+                  onClick={submitPayCotisation}
+                  disabled={cotisationLoading || !cotisationCaisse || !cotisationMode}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold disabled:opacity-50"
+                  data-testid="confirm-pay-cotisation"
+                >
+                  {cotisationLoading ? 'Enregistrement…' : `Encaisser ${payingCotisation.nbSaisons * 200} €`}
                 </Button>
               </div>
             </CardContent>

@@ -1,0 +1,37 @@
+{
+  "summary": "Validation du flow API paiements-en-attente avec choix caisse (endroit) + mode_paiement pour les scénarios cotisation et dette. 5 nouveaux tests dans /app/backend/tests/test_paiements_caisse_mode.py + 22 tests de régression (test_reponse_manuelle_no_double.py + test_saisons_lock_v14.py). Résultat final : 27/27 PASS après correction d'un bug backend mineur (champ mode_paiement absent du modèle Pydantic Transaction). Scénario 1 : cotisation Jacques (situation_cotisation=1) encaissée via 'Chez Jacques' + 'Virement' → transaction persistée avec endroit/mode corrects, situation décrémentée à 0, solde 'Chez Jacques' +200€. Scénario 2 : dette de 50€ créée puis encaissée via 'PayPal' + 'PayPal' → dette supprimée, solde 'PayPal' +50€. Scénario 3 : 3 combinaisons paramétrées (Compte/Virement→Compte Bancaire, Asso Connect/CB→Asso Connect, Chèque/Chèque→Compte Bancaire) validant le mapping endroit→compte et la persistance fidèle du mode_paiement. Cleanup complet : delete transaction (rollback solde + restore situation_cotisation via logique inverse), delete paiement, delete dette résiduelle.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "GET /api/transactions",
+        "issue": "Le modèle Pydantic Transaction ne déclarait PAS le champ `mode_paiement` alors que le doc MongoDB le stockait (via valider_paiement ligne 2961). Résultat : le mode choisi par le président ('Virement', 'CB', 'PayPal'...) était invisible côté frontend dans le listing des transactions — le fix produit était partiellement caché à l'utilisateur. FIX APPLIQUÉ par testing agent : ajout de `mode_paiement: Optional[str] = None` et `pending_payment_id: Optional[str] = None` au modèle Transaction (server.py ligne 1585-1586)."
+      }
+    ]
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_paiements_caisse_mode.py",
+    "/app/test_reports/pytest/pytest_iter19_caisse_mode.xml",
+    "/app/test_reports/pytest/pytest_iter19_regression.xml"
+  ],
+  "action_items": [
+    "Aucune action bloquante. Le fix Pydantic (mode_paiement + pending_payment_id sur Transaction) a été appliqué par le testing agent — main agent peut le vérifier via git diff. Recommandation : afficher le mode_paiement dans le listing des transactions côté frontend (Comptabilité) puisque l'info remonte maintenant."
+  ],
+  "critical_code_review_comments": [
+    "server.py L1574-1587 (Transaction Pydantic model) : le doc MongoDB insert (L2953-2965) contient plus de champs que le modèle Pydantic ne déclare. Combiné à `extra='ignore'` + `response_model=List[Transaction]`, cela masque silencieusement les champs stockés. Recommandation générale : garder les modèles Pydantic exhaustifs et alignés avec les inserts.",
+    "server.py L3008-3021 (compte_mapping dans valider_paiement) : le mapping 'Chèque'→'Compte Bancaire' est OK, mais l'endroit persisté sur la transaction reste 'Chèque' (la valeur d'origine), tandis que le solde est débité sur 'Compte Bancaire'. Cela peut créer une divergence entre le libellé de la transaction (Chèque) et le compte réellement impacté (Compte Bancaire). À clarifier avec le président — soit le libellé doit refléter le compte réel, soit la caisse 'Chèque' doit avoir son propre compte.",
+    "Le même compte_mapping est dupliqué entre valider_paiement (L3008) et delete_transaction (L2195). DRY : à extraire dans une constante module-level `COMPTE_MAPPING`."
+  ],
+  "updated_files": [
+    "/app/backend/server.py (Transaction model : ajout mode_paiement + pending_payment_id)",
+    "/app/backend/tests/test_paiements_caisse_mode.py (créé, 5 tests)"
+  ],
+  "success_rate": {"backend": "100% (27/27 : 5 tests caisse/mode + 22 régression)", "frontend": "N/A (testing_type=backend only)"},
+  "test_credentials": "labague1 (Fabien Président id=d6b30499-2c9b-43e4-9402-7234da4c9855), labague3 (Jacques Peretti id=de7f715f-c307-4168-9aed-ecb335634904, situation_cotisation=1)",
+  "seed_data_creation": "Dettes test 'TEST_iter19_*' créées à la volée pour chaque scénario 2 et 3, supprimées en teardown. Paiements en attente 'DBG_iter19' et 'TEST_iter19' créés+validés+delete. Solde et situation_cotisation entièrement restaurés grâce à la logique inverse de DELETE /api/transactions (assertion explicite : solde final == solde initial).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Le fix frontend (choix caisse/mode dans modales Comptabilité + MembersPage) est validé côté API : les valeurs choisies transitent correctement de POST /api/paiements-en-attente → validation → INSERT transaction MongoDB → GET /api/transactions (après ajout du champ manquant au modèle Pydantic). Combinaisons testées : Chez Jacques+Virement, PayPal+PayPal, Compte+Virement, Asso Connect+CB, Chèque+Chèque. Le champ pending_payment_id est maintenant aussi exposé, facilitant la traçabilité côté UI. Pour l'iteration suivante, penser à afficher la colonne 'mode_paiement' dans la vue transactions de Comptabilité.js.",
+  "rca of the issue": "Bug initial : le modèle Pydantic Transaction (server.py L1574) n'incluait pas mode_paiement, alors que le code valider_paiement (L2953-2965) inserait ce champ dans MongoDB. Combiné avec `model_config = ConfigDict(extra='ignore')` et `response_model=List[Transaction]` sur GET /api/transactions (L1928), FastAPI stripait silencieusement le champ à la sérialisation. Reproduction : POST paiement+validate avec mode_paiement='CB' → vérification directe MongoDB confirme la valeur stockée, mais GET /api/transactions renvoie un objet sans clé mode_paiement. Mitigation : ajout du champ Optional au modèle Pydantic. Root cause générique : dérive entre schéma d'insertion (dict brut) et schéma de sortie (Pydantic strict) — à surveiller sur les autres modèles."
+}
